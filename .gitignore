@@ -22,6 +22,8 @@ ssh_host_*
 
 # ── Go ────────────────────────────────────────────────────────────────────────
 # Compiled binaries and test binaries
+# (module-named binary at repo root from `go build ./...`)
+texere
 *.exe
 *.exe~
 *.dll
