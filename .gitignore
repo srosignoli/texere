@@ -1,0 +1,104 @@
+# ── Credentials & secrets (never commit these) ────────────────────────────────
+.env
+.env.*
+*.env
+*.pem
+*.key
+*.p8
+*.p12
+*.pfx
+*.cer
+*.crt
+credentials.json
+secrets.json
+secrets.yaml
+secrets.toml
+*.secret
+.netrc
+.git-credentials
+github-token
+gitlab-token
+ssh_host_*
+
+# ── Go ────────────────────────────────────────────────────────────────────────
+# Compiled binaries and test binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Coverage and profiling
+coverage.out
+coverage.html
+*.prof
+*.pprof
+cpu.prof
+mem.prof
+
+# Go workspace (keep go.work if intentional, but ignore generated sum)
+# go.work.sum  # uncomment if using workspaces
+
+# ── Wails v2 ─────────────────────────────────────────────────────────────────
+build/bin/
+# Wails local dev config (machine-specific)
+.wails/
+
+# Generated JS bindings (rebuildable via `wails generate module`)
+wailsjs/
+
+# ── Svelte / Node ─────────────────────────────────────────────────────────────
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.svelte-kit/
+frontend/build/
+.svelte-kit/
+dist/
+
+# Package manager locks (keep package-lock.json / pnpm-lock.yaml if committed)
+# Uncomment whichever you don't want tracked:
+# package-lock.json
+# pnpm-lock.yaml
+
+# ── User data / embedded stores (never commit user knowledge collections) ──────
+# BadgerDB directories
+badger/
+*.badger/
+# SQLite learning state
+*.db
+*.sqlite
+*.sqlite3
+# N4L notes collections (user data, not source code)
+*.n4l
+notes/
+collection/
+
+# ── OS artifacts ──────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ── IDE / editor ──────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+*.iml
+
+# ── Misc ──────────────────────────────────────────────────────────────────────
+tmp/
+temp/
+*.log
+*.bak
+*.orig
