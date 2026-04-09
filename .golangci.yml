@@ -1,0 +1,14 @@
+linters:
+  enable:
+    - govet
+    - errcheck
+    - staticcheck
+    - gofmt
+    - goimports
+    - unused
+
+issues:
+  exclude-dirs:
+    - frontend
+    - build
+    - wailsjs
