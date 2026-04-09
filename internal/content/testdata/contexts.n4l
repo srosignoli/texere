@@ -1,0 +1,27 @@
+- context state machine
+
+:: biology, chemistry
+
+Node in biology and chemistry context
+
+Node also in biology and chemistry context
+
++:: physics
+
+Node in biology, chemistry, physics context
+
+Node also in all three contexts
+
+-:: chemistry
+
+Node in biology, physics context
+
+Node also in biology, physics context
+
+:: linguistics
+
+Node in linguistics context only
+
+::
+
+Node with empty context

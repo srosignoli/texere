@@ -1,0 +1,8 @@
+- error cases
+
+"  (means) orphan ditto before any node on line 3
+
+Valid node after the orphan
+"  (badcode) unknown arrow code on ditto line 6
+
+$nonexistent.1 unresolved label reference on line 8

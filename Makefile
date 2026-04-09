@@ -1,6 +1,6 @@
 export PATH := $(PATH):$(shell go env GOPATH)/bin
 
-.PHONY: build build-windows test lint dev clean deps
+.PHONY: build build-windows test bench ci lint dev clean deps
 
 ## deps: install Linux system dependencies required for Wails builds
 deps:
@@ -17,6 +17,14 @@ build-windows:
 ## test: run all Go tests
 test:
 	go test ./...
+
+## bench: run benchmarks and gate on performance targets
+bench:
+	go test -bench=. -benchtime=3s ./internal/content/... | tee bench.txt
+	scripts/check-bench.sh bench.txt
+
+## ci: run tests and benchmarks (used in CI pipelines)
+ci: test bench
 
 ## lint: run golangci-lint over all Go source files
 lint:

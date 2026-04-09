@@ -1,0 +1,19 @@
+- labels and references
+
+@anchor1 First labeled node
+  (means) this node has a label
+
+@anchor2 Second labeled node
+  (e.g.) labeled nodes can be referenced
+
+$anchor1.1 Reference to first labeled node
+  (note) this resolves to anchor1
+
+Normal unlabeled node
+  (means) no label here
+
+@anchor3 Third labeled node
+
+$anchor2.1 Reference to second labeled node
+
+$anchor3.1 Forward reference resolved after parsing
