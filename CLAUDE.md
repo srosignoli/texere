@@ -1,8 +1,10 @@
 # texere Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-04-06
+Auto-generated from all feature plans. Last updated: 2026-04-08
 
 ## Active Technologies
+- Go 1.22 (enforced via `go.mod`) + `github.com/fsnotify/fsnotify` v1.7 (pure Go, cross-platform inotify/ReadDirectoryChanges/kqueue); standard library `hash/fnv` for node IDs; `bufio` for streaming line reads (002-n4l-parser)
+- None (parser is read-only; SQLite writes happen in `internal/learning` on save events triggered by the caller) (002-n4l-parser)
 
 - Go 1.21 (minimum enforced via `go.mod` directive) + Wails v2, Svelte + Vite (frontend), golangci-lint (dev tooling) (001-project-scaffold)
 
@@ -37,6 +39,7 @@ make clean           # Remove build artifacts
 - All new dependencies MUST be pure Go (no CGo) — exceptions require Complexity Tracking entry in the relevant plan
 
 ## Recent Changes
+- 002-n4l-parser: Added Go 1.22 (enforced via `go.mod`) + `github.com/fsnotify/fsnotify` v1.7 (pure Go, cross-platform inotify/ReadDirectoryChanges/kqueue); standard library `hash/fnv` for node IDs; `bufio` for streaming line reads
 
 - 001-project-scaffold: Added Go 1.21 (minimum enforced via `go.mod` directive) + Wails v2, Svelte + Vite (frontend), golangci-lint (dev tooling)
 

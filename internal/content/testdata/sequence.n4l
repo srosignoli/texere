@@ -1,0 +1,29 @@
+- sequence chapter
+
+Normal node before sequence
+  (means) not part of the sequence
+
++:: _sequence_
+
+First step in the sequence
+  (means) the beginning
+
+Second step in the sequence
+
+Third step in the sequence
+  (note) middle of sequence
+
+Fourth step in the sequence
+
+Fifth step in the sequence
+
+Sixth step in the sequence
+
+Seventh step in the sequence
+
+Eighth step in the sequence
+
+-:: _sequence_
+
+Normal node after sequence ends
+  (means) back to no special context

@@ -1,0 +1,54 @@
+- study marker variants
+
+# @card
+Individual basic card node
+"  (means) the answer to study
+
+# @card reverse
+Individual reverse card node
+"  (e.g.) remembered both ways
+
+# @card no-reverse
+Individual no-reverse card node
+
+# @cloze
+Cloze deletion {target word} in a sentence with {another target}
+
+Unmarked node one
+"  (note) this should not appear in study output
+
+# @study
+First node in study block
+"  (means) study block node one
+
+Second node in study block
+
+Third node in study block
+
+# @end
+
+# @study reverse
+Reverse block node one
+
+Reverse block node two
+
+# @end
+
++:: _sequence_
+
+# @study sequence
+Sequence block node one
+
+Sequence block node two
+"  (means) with a ditto
+
+Sequence block node three
+
+Sequence block node four
+
+# @end
+
+-:: _sequence_
+
+Unmarked node two
+"  (note) also should not appear in study output

@@ -1,0 +1,34 @@
+- reminders and priority
+
+FINISH THIS SECTION
+"  (note) genuine three-word reminder
+
+CHECK THESE REFERENCES NOW
+"  (note) genuine four-word reminder
+
+REVIEW AND UPDATE ALL CONCEPTS HERE # added 2026
+"  (note) reminder with trailing comment
+
+API
+"  (note) single word — NOT a reminder
+
+TODO NOW
+"  (note) two words — NOT a reminder
+
+Mixed Case Line should not be a reminder
+
+Another mixed case LINE
+
+# @priority 50
+Node with priority fifty
+"  (means) priority assigned
+
+# @priority 150
+Node with out-of-range priority
+"  (note) should produce error
+
+# @source Thinking Fast and Slow by Kahneman
+# @ref sources/kahneman-tfs.pdf
+# @progress ch.3 p.47
+Node with full provenance
+"  (means) all provenance markers present

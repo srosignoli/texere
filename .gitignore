@@ -77,6 +77,8 @@ badger/
 *.n4l
 notes/
 collection/
+# Exception: test fixtures are source code
+!internal/content/testdata/*.n4l
 
 # ── OS artifacts ──────────────────────────────────────────────────────────────
 .DS_Store
@@ -104,3 +106,4 @@ temp/
 *.log
 *.bak
 *.orig
+bench.txt
