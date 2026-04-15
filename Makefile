@@ -8,7 +8,7 @@ deps:
 
 ## build: compile Linux amd64 binary → build/bin/texere
 build:
-	wails build -platform linux/amd64 -tags webkit2_41
+	wails build -platform linux/amd64 -tags webkit2_41 -devtools
 
 ## build-windows: cross-compile Windows amd64 binary → build/bin/texere.exe
 build-windows:

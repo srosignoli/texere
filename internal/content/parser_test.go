@@ -309,12 +309,13 @@ func TestParseContextReplay(t *testing.T) {
 	}
 	ch := pf.Chapters[0]
 
-	// Expected context snapshots per node (0-indexed):
-	// Node 0,1: {biology, chemistry}
-	// Node 2,3: {biology, chemistry, physics}
-	// Node 4,5: {biology, physics}
-	// Node 6:   {linguistics}
-	// Node 7:   {} (empty)
+	// Expected context snapshots per node (0-indexed).
+	// contexts.n4l sets individual tags via separate ::, +::, -:: lines:
+	//   :: biology  +:: chemistry  →  nodes 0,1: {biology, chemistry}
+	//   +:: physics               →  nodes 2,3: {biology, chemistry, physics}
+	//   -:: chemistry             →  nodes 4,5: {biology, physics}
+	//   :: linguistics            →  node  6:   {linguistics}
+	//   ::                        →  node  7:   {} (empty)
 
 	contains := func(ctx []string, tag string) bool {
 		for _, t := range ctx {
@@ -431,21 +432,16 @@ func TestParseErrorCollection(t *testing.T) {
 		t.Fatal("expected errors from errors.n4l, got none")
 	}
 
-	// Should have at least: orphan ditto, unknown arrow, unresolved ref
-	var hasOrphan, hasUnknown, hasUnresolved bool
+	// Should have at least: unknown arrow, unresolved ref
+	// Note: orphan dittos are now treated as root nodes rather than errors
+	var hasUnknown, hasUnresolved bool
 	for _, e := range errs {
-		if strings.Contains(e.Msg, ErrOrphanDitto) {
-			hasOrphan = true
-		}
 		if strings.Contains(e.Msg, ErrUnknownArrow) {
 			hasUnknown = true
 		}
 		if strings.Contains(e.Msg, ErrUnresolvedRef) {
 			hasUnresolved = true
 		}
-	}
-	if !hasOrphan {
-		t.Errorf("expected orphan ditto error; got: %v", errs)
 	}
 	if !hasUnknown {
 		t.Errorf("expected unknown arrow error; got: %v", errs)
@@ -1183,6 +1179,157 @@ func TestUpdateProgressGuard(t *testing.T) {
 	after := readFileBytes(t, dst)
 	if !bytes.Equal(original, after) {
 		t.Error("file was modified despite error")
+	}
+}
+
+func TestSlashSlashComments(t *testing.T) {
+	reg := emptyRegistry()
+	src := "- chapter\n" +
+		"// whole-line comment\n" +
+		"node one // trailing comment\n" +
+		"  \" (means) target\n" +
+		"url node (means) \"https://example.com\" // inline\n"
+
+	f, err := os.CreateTemp(t.TempDir(), "*.n4l")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.WriteString(src); err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+
+	pf, _ := ParseFile(f.Name(), reg)
+	if pf == nil {
+		t.Fatal("nil ParsedFile")
+	}
+	if len(pf.Chapters) != 1 {
+		t.Fatalf("want 1 chapter, got %d", len(pf.Chapters))
+	}
+	nodes := pf.Chapters[0].Nodes
+	if len(nodes) != 2 {
+		names := make([]string, len(nodes))
+		for i, n := range nodes {
+			names[i] = n.Text
+		}
+		t.Fatalf("want 2 root nodes, got %d: %v", len(nodes), names)
+	}
+	// Node 0: "node one" — trailing // comment stripped
+	if nodes[0].Text != "node one" {
+		t.Errorf("node 0 text: want %q, got %q", "node one", nodes[0].Text)
+	}
+	if len(nodes[0].Dittos) != 1 {
+		t.Fatalf("want 1 ditto on node 0, got %d", len(nodes[0].Dittos))
+	}
+	// Node 1: url node — trailing // comment stripped, but URL target preserved
+	if nodes[1].Text != "url node" {
+		t.Errorf("node 1 text: want %q, got %q", "url node", nodes[1].Text)
+	}
+	if len(nodes[1].Arrows) != 1 || nodes[1].Arrows[0].Target != "https://example.com" {
+		t.Errorf("node 1 arrow target: want %q, got %v", "https://example.com", nodes[1].Arrows)
+	}
+}
+
+func TestApostropheInNodeText(t *testing.T) {
+	// Apostrophes in natural language (contractions, erhua phonetic markers) must
+	// not be treated as single-quote string delimiters by maskSpecial, otherwise
+	// arrow codes that follow them on the same line are masked and lost.
+	//
+	// Three distinct patterns:
+	//   1. Single apostrophe in a contraction: "don't", "I'm" — no second ' exists.
+	//   2. Two apostrophes on one line: "méishì 'r (eh) target (he) it's okay" —
+	//      the closing ' in "it's" is followed by the letter 's', so it must NOT
+	//      be accepted as the closing delimiter of the 'r region.
+	reg := emptyRegistry()
+	src := "- chapter\n" +
+		"no/no thanks i.e. I don't need it (means) 不要 (note) bù yào\n" +
+		"I'm waiting (means) target one (note) target two\n" +
+		"méishì 'r (means) 没事儿 (note) it's okay\n"
+
+	f, err := os.CreateTemp(t.TempDir(), "*.n4l")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.WriteString(src); err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+
+	pf, _ := ParseFile(f.Name(), reg)
+	if pf == nil || len(pf.Chapters) != 1 {
+		t.Fatal("unexpected parse result")
+	}
+	nodes := pf.Chapters[0].Nodes
+	if len(nodes) != 3 {
+		t.Fatalf("want 3 nodes, got %d", len(nodes))
+	}
+
+	// Node 0: "no/no thanks i.e. I don't need it" — two chained arrows
+	if nodes[0].Text != "no/no thanks i.e. I don't need it" {
+		t.Errorf("node 0 text: got %q", nodes[0].Text)
+	}
+	if len(nodes[0].Arrows) != 2 {
+		t.Errorf("node 0: want 2 arrows, got %d: %v", len(nodes[0].Arrows), nodes[0].Arrows)
+	}
+
+	// Node 1: "I'm waiting" — two chained arrows
+	if nodes[1].Text != "I'm waiting" {
+		t.Errorf("node 1 text: got %q", nodes[1].Text)
+	}
+	if len(nodes[1].Arrows) != 2 {
+		t.Errorf("node 1: want 2 arrows, got %d: %v", len(nodes[1].Arrows), nodes[1].Arrows)
+	}
+
+	// Node 2: "méishì 'r" — two apostrophes on the line; the closing ' in "it's"
+	// is followed by 's' so must NOT be treated as the closing delimiter of 'r.
+	if nodes[2].Text != "méishì 'r" {
+		t.Errorf("node 2 text: got %q", nodes[2].Text)
+	}
+	if len(nodes[2].Arrows) != 2 {
+		t.Errorf("node 2: want 2 arrows, got %d: %v", len(nodes[2].Arrows), nodes[2].Arrows)
+	}
+}
+
+func TestLabeledDittoLine(t *testing.T) {
+	// @label " ... must be treated as a ditto of the preceding node, NOT as a
+	// standalone root node. The label is registered on the parent node so that
+	// $label.N references remain resolvable.
+	reg := emptyRegistry()
+	src := "- chapter\n" +
+		"parent node (means) first arrow\n" +
+		"   \" (means) ditto one\n" +
+		"@myalias \" (means) labeled ditto\n" +
+		"   \" (means) ditto after label\n"
+
+	f, err := os.CreateTemp(t.TempDir(), "*.n4l")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.WriteString(src); err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+
+	pf, _ := ParseFile(f.Name(), reg)
+	if pf == nil || len(pf.Chapters) != 1 {
+		t.Fatal("unexpected parse result")
+	}
+	nodes := pf.Chapters[0].Nodes
+	// Must have exactly ONE root node (parent node), not two.
+	if len(nodes) != 1 {
+		t.Fatalf("want 1 root node, got %d (labeled ditto must not become a root)", len(nodes))
+	}
+	// Parent node must have 3 dittos: "ditto one", "labeled ditto", "ditto after label"
+	if len(nodes[0].Dittos) != 3 {
+		t.Fatalf("want 3 dittos, got %d", len(nodes[0].Dittos))
+	}
+	// The labeled ditto is the second one
+	if nodes[0].Dittos[1].Arrows[0].Target != "labeled ditto" {
+		t.Errorf("ditto[1] target: want %q, got %q", "labeled ditto", nodes[0].Dittos[1].Arrows[0].Target)
+	}
+	// Label must be registered (pointing to parent node for $alias.N reference resolution)
+	if _, ok := pf.Chapters[0].Labels["myalias"]; !ok {
+		t.Error("label 'myalias' not registered in chapter Labels")
 	}
 }
 
