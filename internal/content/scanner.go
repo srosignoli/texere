@@ -59,13 +59,18 @@ func scanChapterTitles(path string) ([]string, error) {
 	}
 	defer f.Close()
 
-	var titles []string
+	titles := []string{} // never nil so JS receives [] not null
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.HasPrefix(line, "- ") {
-			title := strings.TrimPrefix(line, "- ")
-			titles = append(titles, title)
+		// Trim leading whitespace — N4L files may indent chapter lines.
+		line := strings.TrimSpace(scanner.Text())
+		// Chapter header: starts with "-" (with or without trailing space),
+		// but not "--" (code/comment convention) and must have non-blank content.
+		if len(line) > 1 && line[0] == '-' && line[1] != '-' && line[1] != ':' {
+			title := strings.TrimSpace(line[1:])
+			if title != "" {
+				titles = append(titles, title)
+			}
 		}
 	}
 	if err := scanner.Err(); err != nil {

@@ -33,11 +33,104 @@ func ParseFile(path string, registry *SSTRegistry) (*ParsedFile, []ParseError) {
 
 	scanner := bufio.NewScanner(f)
 	lineNum := 0
+
+	// Multi-line single-quoted block state.
+	// N4L allows content to span multiple physical lines when wrapped in '...'.
+	// We only enter multi-line mode when the CONTENT TOKEN itself starts with '
+	// (i.e. the trimmed line begins with ' or matches @label '...). This avoids
+	// false positives from apostrophes inside comment lines or node text.
+	var mlBuf []string // accumulated raw lines
+	mlStart := 0       // line number of the opening line
+	inSQ := false      // inside an unclosed single-quoted block
+	inDQ := false      // inside an unclosed double-quoted paragraph block
+
 	for scanner.Scan() {
 		lineNum++
 		line := scanner.Text()
+
+		if inSQ {
+			// Accumulate continuation lines; toggle inSQ for each ' encountered.
+			mlBuf = append(mlBuf, line)
+			for _, ch := range line {
+				if ch == '\'' {
+					inSQ = !inSQ
+				}
+			}
+			if !inSQ {
+				// Block closed — process the whole joined block as one line.
+				processLine(pf, state, path, strings.Join(mlBuf, "\n"), mlStart, registry)
+				mlBuf = nil
+			}
+			continue
+		}
+
+		if inDQ {
+			// Accumulate continuation lines; toggle inDQ for each " encountered.
+			mlBuf = append(mlBuf, line)
+			for _, ch := range line {
+				if ch == '"' {
+					inDQ = !inDQ
+				}
+			}
+			if !inDQ {
+				// Block closed — strip the outer "..." delimiters and process as a
+				// plain node (not a ditto) so the inner content is never re-parsed
+				// as a ditto line or arrow target.
+				joined := strings.Join(mlBuf, "\n")
+				tj := strings.TrimSpace(joined)
+				if len(tj) >= 2 && tj[0] == '"' && tj[len(tj)-1] == '"' {
+					tj = tj[1 : len(tj)-1] // strip outer "..."
+				}
+				processLine(pf, state, path, tj, mlStart, registry)
+				mlBuf = nil
+			}
+			continue
+		}
+
+		// Single-quote multi-line: only when the content token itself starts with '.
+		// Eligible: lines trimmed to start with ' or @label '...
+		if contentSQStart(line) {
+			openQuote := false
+			for _, ch := range line {
+				if ch == '\'' {
+					openQuote = !openQuote
+				}
+			}
+			if openQuote {
+				mlBuf = []string{line}
+				mlStart = lineNum
+				inSQ = true
+				continue
+			}
+		}
+
+		// Double-quote multi-line paragraph: a "..." block whose content spans
+		// multiple physical lines. Only triggered when:
+		//   • The trimmed line starts with "
+		//   • The content after " has no " character (no inline closing quote)
+		//   • The content has non-empty display text and no arrow pattern
+		if contentDQMultiLine(line) {
+			mlBuf = []string{line}
+			mlStart = lineNum
+			inDQ = true
+			continue
+		}
+
 		processLine(pf, state, path, line, lineNum, registry)
 	}
+	// Flush any unclosed blocks at EOF (treat as complete).
+	if inSQ && len(mlBuf) > 0 {
+		processLine(pf, state, path, strings.Join(mlBuf, "\n"), mlStart, registry)
+	}
+	if inDQ && len(mlBuf) > 0 {
+		joined := strings.Join(mlBuf, "\n")
+		tj := strings.TrimSpace(joined)
+		if len(tj) >= 2 && tj[0] == '"' && tj[len(tj)-1] == '"' {
+			tj = tj[1 : len(tj)-1]
+		}
+		processLine(pf, state, path, tj, mlStart, registry)
+	}
+
 	if err := scanner.Err(); err != nil {
 		pf.Errors = append(pf.Errors, ParseError{File: path, Line: lineNum, Msg: ErrEncoding + ": " + err.Error()})
 	}
@@ -70,10 +163,12 @@ type pendingRef struct {
 }
 
 type parserState struct {
-	currentChapter  *Chapter
-	effectiveCtx    map[string]struct{}
-	dittoParent     *Node
-	studyBlock      studyBlockState
+	currentChapter      *Chapter
+	effectiveCtx        map[string]struct{}
+	dittoParent         *Node
+	dittoParentFromQuote bool // true when dittoParent was created from a `"` line
+	dittoParentIndent    int  // leading-space count of the `"` line that created dittoParent
+	studyBlock          studyBlockState
 	pendingStudy    *StudyMeta
 	pendingIDMarker string // shortid from "# @id <shortid>"
 	pendingIDLine   int    // line number of the "# @id" marker
@@ -88,41 +183,65 @@ type parserState struct {
 // ---------------------------------------------------------------------------
 
 func processLine(pf *ParsedFile, state *parserState, path, line string, lineNum int, reg *SSTRegistry) {
-	// Chapter title line
-	if strings.HasPrefix(line, "- ") {
-		openChapter(pf, state, line, lineNum)
+	// Strip // inline comments first (preserves leading whitespace for ditto indent detection).
+	line = stripLineComment(line)
+
+	// Strip leading whitespace first — N4L files freely indent all line types.
+	trimmed := strings.TrimSpace(line)
+
+	// Chapter title: "- title" or "-title"; rejects "--", "-::" and bare "-".
+	if len(trimmed) > 1 && trimmed[0] == '-' && trimmed[1] != '-' && trimmed[1] != ':' && strings.TrimSpace(trimmed[1:]) != "" {
+		openChapter(pf, state, trimmed, lineNum)
+		return
+	}
+	if trimmed == "" {
 		return
 	}
 
-	// Context operators (must check before node lines)
-	if strings.HasPrefix(line, "::") || strings.HasPrefix(line, "+::") || strings.HasPrefix(line, "-::") {
-		parseContextOp(state, line, lineNum)
+	// Context operators (check before comments — "::" is not a comment char)
+	if strings.HasPrefix(trimmed, "::") || strings.HasPrefix(trimmed, "+::") || strings.HasPrefix(trimmed, "-::") {
+		parseContextOp(state, trimmed, lineNum)
 		return
 	}
 
-	// Marker lines (# @...)
-	if strings.HasPrefix(line, "# @") || strings.HasPrefix(line, "#@") {
-		parseMarker(pf, state, path, line, lineNum)
+	// Marker lines (# @...) — must come before the generic comment check
+	if strings.HasPrefix(trimmed, "# @") || strings.HasPrefix(trimmed, "#@") {
+		parseMarker(pf, state, path, trimmed, lineNum)
 		return
 	}
 
-	// Ditto lines: start with `"  ` (double-quote followed by at least one space)
-	if strings.HasPrefix(line, `"`) {
+	// Pure comment lines
+	if strings.HasPrefix(trimmed, "#") {
+		return
+	}
+
+	// Ditto lines: `"` followed by content — pass the original (unstripped) line
+	// so parseDitto can distinguish column-0 root nodes from indented dittos.
+	if strings.HasPrefix(trimmed, `"`) {
 		parseDitto(pf, state, path, line, lineNum, reg)
 		return
 	}
 
-	// Blank or pure comment lines — reset some pending state
-	trimmed := strings.TrimSpace(line)
-	if trimmed == "" || strings.HasPrefix(trimmed, "#") {
-		return
+	// Labeled ditto: @label "... — a label prefix directly on a ditto-style line.
+	// Register the label pointing to the current parent node, then dispatch to
+	// parseDitto so the line appears as a continuation of that node rather than
+	// as a standalone root. Example: `@meirule " (rule) 没/méi Negates Past Actions`
+	if m := labelPrefixRe.FindStringSubmatch(trimmed); m != nil {
+		rest := strings.TrimSpace(trimmed[len(m[0]):])
+		if strings.HasPrefix(rest, `"`) {
+			ch := state.currentChapter
+			if ch != nil && len(ch.Nodes) > 0 {
+				state.labelMap[m[1]] = &ch.Nodes[len(ch.Nodes)-1]
+			}
+			parseDitto(pf, state, path, rest, lineNum, reg)
+			return
+		}
 	}
 
-	// Node line
+	// Node line (ignored before first chapter)
 	if state.currentChapter != nil {
-		parseNode(pf, state, path, line, lineNum, reg)
+		parseNode(pf, state, path, trimmed, lineNum, reg)
 	}
-	// Lines before the first chapter are ignored
 }
 
 // ---------------------------------------------------------------------------
@@ -135,7 +254,7 @@ func openChapter(pf *ParsedFile, state *parserState, line string, lineNum int) {
 		closeChapter(state)
 		pf.Chapters = append(pf.Chapters, *state.currentChapter)
 	}
-	title := strings.TrimPrefix(line, "- ")
+	title := strings.TrimSpace(line[1:]) // handles both "- title" and "-title"
 	state.currentChapter = &Chapter{
 		Title:     title,
 		LineStart: lineNum,
@@ -143,6 +262,8 @@ func openChapter(pf *ParsedFile, state *parserState, line string, lineNum int) {
 	}
 	state.effectiveCtx = make(map[string]struct{})
 	state.dittoParent = nil
+	state.dittoParentFromQuote = false
+	state.dittoParentIndent = 0
 	state.labelMap = make(map[string]*Node)
 	// Study block closed by chapter boundary? No — blocks persist across chapters in same file
 }
@@ -185,23 +306,22 @@ func parseContextOp(state *parserState, line string, _ int) {
 	}
 }
 
-// parseTags splits a context tag string on commas and spaces, strips trailing
-// punctuation like ":" or "::", and returns non-empty tags.
+// parseTags extracts context tags from a raw context-operator string.
+// Tags are comma-separated; each entry is trimmed of surrounding whitespace.
+// The optional trailing "::" closing delimiter is stripped before splitting.
 func parseTags(s string) []string {
-	// Strip trailing :: or :
+	// Strip trailing "::" or stray ":" / spaces (closing delimiter)
 	s = strings.TrimRight(s, ": ")
 	s = strings.TrimSpace(s)
 	if s == "" {
 		return nil
 	}
-	parts := strings.FieldsFunc(s, func(r rune) bool {
-		return r == ',' || r == ' ' || r == '\t'
-	})
-	var tags []string
+	parts := strings.Split(s, ",")
+	tags := parts[:0]
 	for _, p := range parts {
-		p = strings.TrimSpace(p)
-		if p != "" {
-			tags = append(tags, p)
+		t := strings.TrimSpace(p)
+		if t != "" {
+			tags = append(tags, t)
 		}
 	}
 	return tags
@@ -411,6 +531,8 @@ func parseNode(pf *ParsedFile, state *parserState, path, line string, lineNum in
 
 	state.currentChapter.Nodes = append(state.currentChapter.Nodes, *node)
 	state.dittoParent = &state.currentChapter.Nodes[len(state.currentChapter.Nodes)-1]
+	state.dittoParentFromQuote = false
+	state.dittoParentIndent = 0
 
 	// Collect reminders
 	if isReminder(cleanText) {
@@ -437,64 +559,371 @@ func stripNodeComment(s string) string {
 // ---------------------------------------------------------------------------
 
 func parseDitto(pf *ParsedFile, state *parserState, path, line string, lineNum int, reg *SSTRegistry) {
-	if state.dittoParent == nil {
-		pf.Errors = append(pf.Errors, ParseError{File: path, Line: lineNum, Msg: ErrOrphanDitto})
+	// Count leading spaces/tabs to determine indentation level.
+	currentIndent := 0
+	for _, ch := range line {
+		if ch == ' ' {
+			currentIndent++
+		} else if ch == '\t' {
+			currentIndent += 4
+		} else {
+			break
+		}
+	}
+
+	trimmed := strings.TrimSpace(line)
+	content := strings.TrimSpace(strings.TrimPrefix(trimmed, `"`))
+	if content == "" {
 		return
 	}
 
-	// Ditto lines: `"  (arrow) target`
-	// Strip the leading `" ` prefix
-	content := strings.TrimPrefix(line, `"`)
-	content = strings.TrimSpace(content)
-
-	_, arrows := extractArrows(content, lineNum, true, reg, path, pf)
-
-	ditto := DittoLine{
-		Line:   lineNum,
-		Arrows: arrows,
+	// Determine root vs. ditto using three rules in priority order:
+	//
+	//  1. No preceding node → always a root node.
+	//  2. Preceding node was itself a `"` root AND this line is strictly MORE
+	//     indented → always a ditto (indented annotation beneath a `"` root).
+	//  3. Otherwise → inspect the display text:
+	//       - Non-empty display text (content before the first arrow) → root.
+	//       - Empty display text (pure arrow line such as `(note) ...`) → ditto.
+	//
+	// Rule 3 makes `"` lines with content (e.g. LaTeX math followed by an arrow)
+	// behave as root nodes regardless of whether the preceding root was a regular
+	// line or a `"` line, while keeping pure annotation lines as dittos in
+	// simple.n4l-style files.
+	isRoot := false
+	if state.dittoParent == nil {
+		isRoot = true
+	} else if state.dittoParentFromQuote && currentIndent > state.dittoParentIndent {
+		isRoot = false // indented beneath a `"` root → annotation ditto
+	} else {
+		isRoot = quoteLineHasDisplayText(content)
 	}
 
-	// Find the actual node in the chapter slice and append the ditto
+	if isRoot {
+		parseNode(pf, state, path, content, lineNum, reg)
+		// parseNode resets dittoParentFromQuote/Indent; override to record that
+		// this dittoParent was established by a `"` line.
+		state.dittoParentFromQuote = true
+		state.dittoParentIndent = currentIndent
+		return
+	}
+
+	// Ditto: annotation/continuation of the immediately preceding node.
+	displayText, arrows := extractArrows(content, lineNum, true, reg, path, pf)
+	ditto := DittoLine{
+		Line:   lineNum,
+		Text:   displayText,
+		Arrows: arrows,
+	}
 	ch := state.currentChapter
 	if ch != nil && len(ch.Nodes) > 0 {
 		ch.Nodes[len(ch.Nodes)-1].Dittos = append(ch.Nodes[len(ch.Nodes)-1].Dittos, ditto)
 	}
 }
 
+// quoteLineHasDisplayText reports whether a `"` line's content (after the `"`
+// prefix is stripped) has non-empty display text — i.e., text that precedes
+// the first arrow code. Lines that start directly with an arrow such as
+// `(note) some annotation` return false (pure ditto); lines with textual or
+// mathematical content before the arrow return true (root node).
+func quoteLineHasDisplayText(content string) bool {
+	masked := maskSpecial(content)
+	arrowStart := strings.IndexByte(masked, '(')
+	var display string
+	if arrowStart < 0 {
+		display = stripTrailingQuote(content)
+	} else {
+		display = strings.TrimSpace(content[:arrowStart])
+		if len(display) > 0 && display[len(display)-1] == '"' {
+			display = strings.TrimSpace(display[:len(display)-1])
+		}
+	}
+	return display != ""
+}
+
 // ---------------------------------------------------------------------------
 // Arrow extraction (T019)
 // ---------------------------------------------------------------------------
 
-// arrowRe matches "(code) target" patterns.
-var arrowRe = regexp.MustCompile(`\(([^)]+)\)\s*(.*)`)
+// contentSQStart reports whether line begins a content token that starts with a
+// single quote. Only two patterns qualify:
+//
+//	'...        — trimmed line starts directly with '
+//	@label '... — trimmed line is a labeled node whose content starts with '
+//
+// This deliberately excludes comment lines (#), context ops (::), chapter
+// headers (-), ditto lines ("), and regular node text with embedded apostrophes,
+// preventing false multi-line triggers from stray ' in comments or prose.
+func contentSQStart(line string) bool {
+	trimmed := strings.TrimSpace(line)
+	if strings.HasPrefix(trimmed, "'") {
+		return true
+	}
+	if strings.HasPrefix(trimmed, "@") {
+		// @label followed eventually by '
+		idx := strings.IndexByte(trimmed, '\'')
+		return idx > 0
+	}
+	return false
+}
+
+// contentDQMultiLine reports whether line is the opening of a multi-line
+// double-quoted paragraph block — i.e. a `"` node line whose content spans
+// multiple physical lines. The three conditions that must all hold:
+//
+//  1. Trimmed line starts with `"` (N4L ditto/node prefix).
+//  2. The content after the `"` prefix contains no `"` character — if a
+//     closing `"` were present, the block would already be closed on this line.
+//  3. The content has non-empty display text with no arrow pattern in the
+//     masked text — a pure-arrow ditto like `"  (means) ...` is never a
+//     paragraph opener.
+func contentDQMultiLine(line string) bool {
+	trimmed := strings.TrimSpace(line)
+	if !strings.HasPrefix(trimmed, `"`) {
+		return false
+	}
+	content := strings.TrimSpace(trimmed[1:]) // strip the leading "
+	if content == "" {
+		return false
+	}
+	// Must not contain a closing " anywhere — that would make it single-line.
+	if strings.ContainsRune(content, '"') {
+		return false
+	}
+	// Must have no arrow pattern in the masked text (arrows → single-line ditto).
+	masked := maskSpecial(content)
+	if strings.IndexByte(masked, '(') >= 0 {
+		return false
+	}
+	// Must have non-empty display text.
+	return strings.TrimSpace(content) != ""
+}
+
+// maskSpecial replaces content that must not be scanned for arrows with space
+// characters of the same length, preserving character-level positions so that
+// an index into the masked string is also a valid index into the original.
+//
+// Masked regions:
+//   - LaTeX inline math  \( ... \)
+//   - LaTeX display math \[ ... \]
+//   - Single-quoted strings  '...'
+//
+// Double-quoted strings are NOT masked here because in N4L files the line
+// prefix `"` has already been stripped, making any remaining `"` characters
+// ambiguous (they may be closing quotes of the display text or opening quotes
+// of an arrow target).
+func maskSpecial(text string) string {
+	b := []byte(text)
+	i := 0
+	for i < len(b) {
+		// LaTeX inline math \( ... \)
+		if i+1 < len(b) && b[i] == '\\' && b[i+1] == '(' {
+			start := i
+			i += 2
+			for i+1 < len(b) {
+				if b[i] == '\\' && b[i+1] == ')' {
+					i += 2
+					break
+				}
+				i++
+			}
+			for j := start; j < i; j++ {
+				b[j] = ' '
+			}
+			continue
+		}
+		// LaTeX display math \[ ... \]
+		if i+1 < len(b) && b[i] == '\\' && b[i+1] == '[' {
+			start := i
+			i += 2
+			for i+1 < len(b) {
+				if b[i] == '\\' && b[i+1] == ']' {
+					i += 2
+					break
+				}
+				i++
+			}
+			for j := start; j < i; j++ {
+				b[j] = ' '
+			}
+			continue
+		}
+		// Single-quoted strings '...'
+		//
+		// Two rules prevent apostrophes in natural language from being treated as
+		// string delimiters:
+		//
+		//   Opening rule: the ' must NOT be preceded by an ASCII letter.
+		//     Rejects contractions like "don't", "I'm", "it's" where the apostrophe
+		//     follows a letter.  Chinese/multi-byte chars before ' are fine (their
+		//     high bytes are not in [A-Za-z]) so "méishì 'r" still reaches the
+		//     closing-rule check.
+		//
+		//   Closing rule: a candidate closing ' must NOT be followed by an ASCII
+		//     letter.  Rejects "méishì 'r (ph) ... it's okay" — the ' in "it's"
+		//     is followed by 's', so it is not a valid close, and the whole region
+		//     is left unmasked.
+		if b[i] == '\'' {
+			// Opening rule.
+			if i > 0 && isASCIILetter(b[i-1]) {
+				i++
+				continue
+			}
+			// Scan forward for the first valid closing quote.
+			j := i + 1
+			for j < len(b) {
+				if b[j] == '\'' && (j+1 >= len(b) || !isASCIILetter(b[j+1])) {
+					break // Valid close found.
+				}
+				j++
+			}
+			if j < len(b) {
+				// Mask the entire quoted region including both delimiters.
+				for k := i; k <= j; k++ {
+					b[k] = ' '
+				}
+				i = j + 1
+			} else {
+				// No valid closing quote — skip this apostrophe.
+				i++
+			}
+			continue
+		}
+		i++
+	}
+	return string(b)
+}
+
+// stripLineComment removes a trailing // comment from s, leaving the content
+// before it (right-trimmed). Occurrences inside LaTeX blocks or single-quoted
+// strings (already masked by maskSpecial) are ignored, as are URL protocol
+// separators such as "://" (the // is skipped when immediately preceded by ':').
+func stripLineComment(s string) string {
+	masked := maskSpecial(s)
+	for i := 0; i < len(masked)-1; i++ {
+		if masked[i] == '/' && masked[i+1] == '/' {
+			if i > 0 && masked[i-1] == ':' {
+				// Part of "://" — URL protocol separator, not a comment.
+				continue
+			}
+			return strings.TrimRight(s[:i], " \t")
+		}
+	}
+	return s
+}
+
+// stripTrailingQuote removes at most one trailing `"` character (and surrounding
+// whitespace) from s. It handles the N4L convention where a line such as
+// `"Display text" (code) "Target"` uses the leading `"` as both the ditto prefix
+// and the opening quote; after the prefix is stripped, the display text retains a
+// spurious closing `"`.
+//
+// It also strips matching outer single quotes from verbatim blocks such as
+// `'multi-line content'` so that the stored node text contains only the content.
+// isASCIILetter reports whether b is an ASCII letter (a–z or A–Z).
+func isASCIILetter(b byte) bool {
+	return (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z')
+}
+
+func stripTrailingQuote(s string) string {
+	s = strings.TrimSpace(s)
+	// Strip matching outer single quotes (verbatim / code-block convention).
+	if len(s) >= 2 && s[0] == '\'' && s[len(s)-1] == '\'' {
+		return strings.TrimSpace(s[1 : len(s)-1])
+	}
+	// Strip a single spurious trailing double-quote.
+	if len(s) > 0 && s[len(s)-1] == '"' {
+		s = strings.TrimSpace(s[:len(s)-1])
+	}
+	return s
+}
 
 // extractArrows parses arrow patterns from a line of text.
-// Returns the text with arrow tokens removed (for display) and the parsed Arrow slice.
+// Returns the display text (arrow tokens removed) and the parsed Arrow slice.
+//
+// Arrow detection is performed on a masked copy of the text (LaTeX blocks and
+// single-quoted strings replaced with spaces) so that parentheses inside math
+// or quoted content are never misidentified as arrow codes.
 func extractArrows(text string, lineNum int, isDitto bool, reg *SSTRegistry, path string, pf *ParsedFile) (string, []Arrow) {
-	m := arrowRe.FindStringSubmatch(text)
-	if m == nil {
-		return text, nil
+	var arrows []Arrow
+	displayText := text
+	remaining := text
+	firstPass := true
+
+	for {
+		masked := maskSpecial(remaining)
+
+		// Find the next unmasked '(' — start of a potential (code) arrow.
+		arrowStart := strings.IndexByte(masked, '(')
+		if arrowStart < 0 {
+			break
+		}
+
+		// Find the matching closing ')'.
+		relClose := strings.IndexByte(masked[arrowStart+1:], ')')
+		if relClose < 0 {
+			break
+		}
+		closeCode := arrowStart + 1 + relClose
+
+		code := strings.TrimSpace(remaining[arrowStart+1 : closeCode])
+		afterCode := remaining[closeCode+1:]
+
+		// Target = text up to the next unmasked '(' (start of next arrow), or end of string.
+		maskedAfter := maskSpecial(afterCode)
+		nextArrow := strings.IndexByte(maskedAfter, '(')
+		var target, nextRemaining string
+		if nextArrow >= 0 {
+			target = strings.TrimSpace(afterCode[:nextArrow])
+			nextRemaining = afterCode[nextArrow:]
+		} else {
+			target = strings.TrimSpace(afterCode)
+			nextRemaining = ""
+		}
+
+		// Strip outer double-quotes from the target (e.g. `"LaTeX expression"`).
+		if len(target) >= 2 && target[0] == '"' && target[len(target)-1] == '"' {
+			target = strings.TrimSpace(target[1 : len(target)-1])
+		}
+
+		// An arrow must have a non-empty target. A `(code)` with nothing after it
+		// is parenthetical prose — stop scanning.
+		if target == "" {
+			break
+		}
+
+		if firstPass {
+			// Display text is everything before the first arrow; strip trailing `"`.
+			displayText = strings.TrimSpace(remaining[:arrowStart])
+			if len(displayText) > 0 && displayText[len(displayText)-1] == '"' {
+				displayText = strings.TrimSpace(displayText[:len(displayText)-1])
+			}
+			firstPass = false
+		}
+
+		_, registered := reg.Arrows[code]
+		if !registered {
+			pf.Errors = append(pf.Errors, ParseError{File: path, Line: lineNum, Msg: fmt.Sprintf("%s: %q", ErrUnknownArrow, code)})
+		}
+
+		arrows = append(arrows, Arrow{
+			Code:         code,
+			Target:       target,
+			IsRegistered: registered,
+			Line:         lineNum,
+			IsDitto:      isDitto,
+		})
+
+		remaining = nextRemaining
+		if remaining == "" {
+			break
+		}
 	}
 
-	code := strings.TrimSpace(m[1])
-	target := strings.TrimSpace(m[2])
-
-	_, registered := reg.Arrows[code]
-	if !registered {
-		pf.Errors = append(pf.Errors, ParseError{File: path, Line: lineNum, Msg: fmt.Sprintf("%s: %q", ErrUnknownArrow, code)})
+	if len(arrows) == 0 {
+		return stripTrailingQuote(text), nil
 	}
-
-	arrow := Arrow{
-		Code:         code,
-		Target:       target,
-		IsRegistered: registered,
-		Line:         lineNum,
-		IsDitto:      isDitto,
-	}
-
-	// The "display text" for a node is the part before the arrow pattern
-	displayText := strings.TrimSpace(arrowRe.ReplaceAllString(text, ""))
-	return displayText, []Arrow{arrow}
+	return displayText, arrows
 }
 
 // ---------------------------------------------------------------------------

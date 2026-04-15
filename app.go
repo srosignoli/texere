@@ -3,17 +3,37 @@ package main
 import (
 	"context"
 	"log"
+	"os"
 	"path/filepath"
 
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"texere/internal/content"
 )
+
+// AppConfig is the persisted user configuration.
+// Stored at: os.UserConfigDir()/texere/config.json
+type AppConfig struct {
+	CollectionDir string   `json:"collectionDir"` // abs path; "" = no collection saved yet
+	RecentArrows  []string `json:"recentArrows"`  // LRU list of arrow codes; max 10 entries
+}
+
+// SaveFileResult is returned by the SaveFile Wails-bound method.
+type SaveFileResult struct {
+	Injections   []content.IDInjection `json:"injections"`
+	FinalContent string                `json:"finalContent"` // on-disk content after @id injection
+}
 
 // App is the main application struct. It holds the Wails runtime context and
 // serves as the binding surface between the Go backend and the Svelte frontend.
 type App struct {
-	ctx      context.Context
-	registry *content.SSTRegistry
-	watcher  *content.CollectionWatcher
+	ctx           context.Context
+	registry      *content.SSTRegistry
+	savingPath    string // path currently being written by SaveFile; suppresses false external-mod events
+	openFilePath  string // path of the file currently open in the Source tab
+	initialSums   []content.ChapterSummary // summaries loaded at startup from saved config
+	startupError  string                   // non-empty when auto-load failed (dir missing)
+	watcher       *content.CollectionWatcher
+	quitConfirmed bool // set by ConfirmQuit so beforeClose lets the second Quit() through
 }
 
 // NewApp creates a new App instance.
@@ -39,6 +59,31 @@ func (a *App) startup(ctx context.Context) {
 		}
 	}
 	a.registry = reg
+
+	// Auto-load the last-used collection from persisted config.
+	cfg, _ := loadConfig()
+	if cfg.CollectionDir == "" {
+		return // first launch — nothing to load
+	}
+	info, err := os.Stat(cfg.CollectionDir)
+	if err != nil || !info.IsDir() {
+		a.startupError = "Last collection directory not found: " + cfg.CollectionDir
+		return
+	}
+	summaries, err := content.ScanCollection(cfg.CollectionDir)
+	if err != nil {
+		a.startupError = "Could not load collection: " + err.Error()
+		return
+	}
+	a.initialSums = summaries
+
+	watcher, err := content.WatchCollection(cfg.CollectionDir)
+	if err != nil {
+		log.Printf("content: WatchCollection at startup: %v", err)
+	} else {
+		a.watcher = watcher
+		go a.consumeWatchEvents()
+	}
 }
 
 // domReady is called after the front-end dom has been loaded.
@@ -46,9 +91,27 @@ func (a *App) domReady(_ context.Context) {}
 
 // beforeClose is called when the application is about to quit, either by
 // clicking the window close button or calling runtime.Quit. Returning true
-// will cause the application to continue, false will continue shutdown as normal.
-func (a *App) beforeClose(_ context.Context) bool {
-	return false
+// will cause the application to continue (keeps window open), false will
+// continue shutdown as normal.
+//
+// On the first call (X button / Ctrl+C) we emit "app:close-requested" so the
+// frontend can prompt for unsaved changes, then return true to keep the window
+// open. The frontend calls ConfirmQuit() which sets quitConfirmed and calls
+// runtime.Quit() again; on that second call we return false to allow quit.
+func (a *App) beforeClose(ctx context.Context) bool {
+	if a.quitConfirmed {
+		return false // allow quit
+	}
+	runtime.EventsEmit(ctx, "app:close-requested")
+	return true // keep window open; frontend decides
+}
+
+// ConfirmQuit is called by the frontend after the user has confirmed they want
+// to quit (e.g. dismissed the unsaved-changes dialog). It sets the quit flag
+// and triggers the actual application shutdown.
+func (a *App) ConfirmQuit() {
+	a.quitConfirmed = true
+	runtime.Quit(a.ctx)
 }
 
 // shutdown is called at application termination.
@@ -60,13 +123,23 @@ func (a *App) shutdown(_ context.Context) {
 	}
 }
 
-// OpenCollection scans a directory of .n4l files and, if successful, starts the
-// filesystem watcher. Returns the chapter summaries for Column 1 population.
+// OpenCollection scans a directory of .n4l files, starts the filesystem watcher,
+// persists the directory to config, and returns the chapter summaries for Column 1.
 func (a *App) OpenCollection(dir string) ([]content.ChapterSummary, error) {
 	summaries, err := content.ScanCollection(dir)
 	if err != nil {
 		return nil, err
 	}
+
+	// Persist the chosen directory so startup() can auto-load it next launch.
+	cfg, _ := loadConfig()
+	cfg.CollectionDir = dir
+	if err := saveConfig(cfg); err != nil {
+		log.Printf("content: saveConfig: %v", err)
+	}
+
+	// No file is open after switching collections.
+	a.openFilePath = ""
 
 	// Start watcher (replace any existing one)
 	if a.watcher != nil {
@@ -84,30 +157,11 @@ func (a *App) OpenCollection(dir string) ([]content.ChapterSummary, error) {
 	return summaries, nil
 }
 
-// consumeWatchEvents drains the watcher event channel. In a full implementation
-// this would emit Wails events to the frontend for Column 1 updates.
-func (a *App) consumeWatchEvents() {
-	if a.watcher == nil {
-		return
-	}
-	for {
-		select {
-		case _, ok := <-a.watcher.Events:
-			if !ok {
-				return
-			}
-			// TODO: emit runtime.EventsEmit(a.ctx, "collection:change", ev)
-		case err, ok := <-a.watcher.Errors:
-			if !ok {
-				return
-			}
-			log.Printf("content: watcher error: %v", err)
-		}
-	}
-}
-
 // ParseFileForUI is a Wails-bound method that parses a .n4l file and returns
 // the full structured content for display in the editor view.
+// Side-effect: sets a.openFilePath so consumeWatchEvents can emit
+// file:modified-externally for the correct file.
 func (a *App) ParseFileForUI(path string) (*content.ParsedFile, []content.ParseError) {
+	a.openFilePath = path
 	return content.ParseFile(path, a.registry)
 }

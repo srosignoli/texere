@@ -46,6 +46,7 @@ type Arrow struct {
 // DittoLine is a continuation of the immediately preceding Node.
 type DittoLine struct {
 	Line   int     // 1-indexed
+	Text   string  // Display text of the ditto line (empty when the line is purely an arrow)
 	Arrows []Arrow // All arrows declared on this ditto line
 }
 
