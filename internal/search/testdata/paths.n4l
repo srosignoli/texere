@@ -1,0 +1,13 @@
+- Maze
+
+start
+"  (next) door
+"  (leadsto) passage
+
+door
+"  (next) passage
+
+passage
+"  (leadsto) goal
+
+goal

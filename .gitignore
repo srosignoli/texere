@@ -24,6 +24,8 @@ ssh_host_*
 # Compiled binaries and test binaries
 # (module-named binary at repo root from `go build ./...`)
 texere
+# Bare-name CLI binaries built from cmd/* subpackages at repo root
+dbinspect
 *.exe
 *.exe~
 *.dll
@@ -79,6 +81,7 @@ notes/
 collection/
 # Exception: test fixtures are source code
 !internal/content/testdata/*.n4l
+!internal/search/testdata/*.n4l
 
 # ── OS artifacts ──────────────────────────────────────────────────────────────
 .DS_Store
@@ -89,6 +92,10 @@ collection/
 ehthumbs.db
 Thumbs.db
 desktop.ini
+
+# ── Claude Code runtime ───────────────────────────────────────────────────────
+.claude/scheduled_tasks.lock
+.claude/settings.local.json
 
 # ── IDE / editor ──────────────────────────────────────────────────────────────
 .idea/

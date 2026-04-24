@@ -20,6 +20,7 @@ export const workbenchStore = writable({
   editorCursorLine: /** @type {number|null} */ (null),
   isParsing: false,
   nodeListScrollTarget: /** @type {number|null} */ (null),
+  graphVersion: 0,
 })
 
 /**
@@ -126,8 +127,11 @@ export const reminderCount = derived(workbenchStore, ($w) => {
   return $w.parsedFile?.Reminders?.length ?? 0
 })
 
-/** omnibarOpen — controls visibility of the global omnibar search panel. */
-export const omnibarOpen = writable(false)
+/** omnibarMode — null = closed, 'fuzzy' = Ctrl+K, 'graph' = Ctrl+Shift+K */
+export const omnibarMode = writable(/** @type {null|'fuzzy'|'graph'} */ (null))
+
+/** omnibarOpen — legacy alias kept for any existing imports; derive from mode. */
+export const omnibarOpen = { subscribe: omnibarMode.subscribe }
 
 /**
  * editorAPI — live reference to SourceTab's imperative methods.
