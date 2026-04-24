@@ -4,12 +4,10 @@ go 1.24.4
 
 require (
 	github.com/fsnotify/fsnotify v1.9.0
-	github.com/srosignoli/sstorytime-kv v0.2.0
+	github.com/srosignoli/sstorytime-kv v0.3.0
 	github.com/wailsapp/wails/v2 v2.12.0
 	golang.org/x/text v0.28.0
 )
-
-replace github.com/srosignoli/sstorytime-kv => /home/simone/projects/sstorytime-kv
 
 require (
 	git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 // indirect
