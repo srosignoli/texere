@@ -113,11 +113,12 @@ type SSTRegistry struct {
 
 // ArrowDef describes one arrow type from the SSTconfig.
 type ArrowDef struct {
-	Code         string // Short code, e.g., "means"
-	LongName     string // Human name, e.g., "means / is meaning of"
-	Reverse      string // Reverse code; "" if one-way
-	MetaType     string // SST meta-type (e.g., "contains", "properties")
-	Studyable    bool   // From SSTconfig comment metadata
+	Code          string // Short code, e.g., "means"
+	LongName      string // Human name, e.g., "means / is meaning of"
+	Reverse       string // Reverse code; "" if one-way
+	MetaType      string // SST meta-type (e.g., "contains", "properties")
+	Context       string // SSTconfig section header (":: label ::") the pair was declared under; "" if none
+	Studyable     bool   // From SSTconfig comment metadata
 	ClozeEligible bool
 }
 

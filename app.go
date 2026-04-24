@@ -8,6 +8,7 @@ import (
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"texere/internal/content"
+	"texere/internal/search"
 )
 
 // AppConfig is the persisted user configuration.
@@ -28,12 +29,14 @@ type SaveFileResult struct {
 type App struct {
 	ctx           context.Context
 	registry      *content.SSTRegistry
+	collectionDir string                   // abs path of the open collection; "" when none
 	savingPath    string // path currently being written by SaveFile; suppresses false external-mod events
 	openFilePath  string // path of the file currently open in the Source tab
 	initialSums   []content.ChapterSummary // summaries loaded at startup from saved config
 	startupError  string                   // non-empty when auto-load failed (dir missing)
 	watcher       *content.CollectionWatcher
-	quitConfirmed bool // set by ConfirmQuit so beforeClose lets the second Quit() through
+	quitConfirmed bool                     // set by ConfirmQuit so beforeClose lets the second Quit() through
+	searchSvc     *search.SearchService    // graph search; nil until a collection is loaded
 }
 
 // NewApp creates a new App instance.
@@ -75,7 +78,9 @@ func (a *App) startup(ctx context.Context) {
 		a.startupError = "Could not load collection: " + err.Error()
 		return
 	}
+	a.collectionDir = cfg.CollectionDir
 	a.initialSums = summaries
+	a.searchSvc = search.NewSearchService(cfg.CollectionDir, a.registry)
 
 	watcher, err := content.WatchCollection(cfg.CollectionDir)
 	if err != nil {
@@ -121,6 +126,9 @@ func (a *App) shutdown(_ context.Context) {
 			log.Printf("content: watcher close: %v", err)
 		}
 	}
+	if a.searchSvc != nil {
+		a.searchSvc.Close()
+	}
 }
 
 // OpenCollection scans a directory of .n4l files, starts the filesystem watcher,
@@ -140,6 +148,13 @@ func (a *App) OpenCollection(dir string) ([]content.ChapterSummary, error) {
 
 	// No file is open after switching collections.
 	a.openFilePath = ""
+	a.collectionDir = dir
+
+	// Re-create the search service for the new collection directory.
+	if a.searchSvc != nil {
+		a.searchSvc.Close()
+	}
+	a.searchSvc = search.NewSearchService(dir, a.registry)
 
 	// Start watcher (replace any existing one)
 	if a.watcher != nil {

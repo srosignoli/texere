@@ -1,0 +1,18 @@
+- Kubernetes
+
+:: _sequence_,  pod lifecycle ::
+
+To create a pod
+A user applies pod.yaml
+The API server stores the pod spec
+The scheduler binds the pod to a node
+
+-:: _sequence_ ::
+
+:: _sequence_,  operator upgrade ::
+
+To do an operator-upgrade
+A CRD defines a new resource version
+The operator observes outdated version
+
+-:: _sequence_ ::

@@ -118,16 +118,20 @@ func loadArrows(path string, reg *SSTRegistry) error {
 	//   + forward name (fcode) - reverse name (rcode)
 	// or forward-only:
 	//   + forward name (fcode)
+	// Section headers ":: label ::" apply to all following arrow pairs until the
+	// next header; they are captured as the arrow's Context.
+	var section string
 	for i := 0; i < len(lines); i++ {
 		clean := stripComments(lines[i])
 		if clean == "" {
 			continue
 		}
-		// Skip meta-type line and section headers
+		// Skip meta-type line
 		if strings.HasPrefix(clean, "- ") {
 			continue
 		}
 		if strings.HasPrefix(clean, "::") {
+			section = strings.TrimSpace(strings.Trim(clean, ":"))
 			continue
 		}
 
@@ -137,8 +141,10 @@ func loadArrows(path string, reg *SSTRegistry) error {
 			if !ok {
 				continue
 			}
+			fwd.Context = section
 			reg.Arrows[fwd.Code] = fwd
 			if rev.Code != "" {
+				rev.Context = section
 				reg.Arrows[rev.Code] = rev
 			}
 		}
