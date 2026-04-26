@@ -71,6 +71,9 @@ dist/
 # BadgerDB directories
 badger/
 *.badger/
+# Bleve full-text search index directories (rebuilt by Build graph)
+bleve/
+*.bleve/
 # SQLite learning state
 *.db
 *.sqlite

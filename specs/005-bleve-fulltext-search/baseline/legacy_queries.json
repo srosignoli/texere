@@ -1,0 +1,192 @@
+[
+  {
+    "Query": "fangzi",
+    "Hits": [
+      {
+        "NodeText": "fángzi",
+        "Chapter": "Chinese"
+      }
+    ]
+  },
+  {
+    "Query": "hello",
+    "Hits": [
+      {
+        "NodeText": "hello",
+        "Chapter": "Greetings"
+      }
+    ]
+  },
+  {
+    "Query": "soup",
+    "Hits": [
+      {
+        "NodeText": "fish soup",
+        "Chapter": "Cooking"
+      },
+      {
+        "NodeText": "a soup made with fish",
+        "Chapter": "Cooking"
+      }
+    ]
+  },
+  {
+    "Query": "!I!",
+    "Hits": []
+  },
+  {
+    "Query": "fangzi \\chapter chinese",
+    "Hits": [
+      {
+        "NodeText": "fángzi",
+        "Chapter": "Chinese"
+      }
+    ]
+  },
+  {
+    "Query": "hello \\chapter greetings",
+    "Hits": [
+      {
+        "NodeText": "hello",
+        "Chapter": "Greetings"
+      }
+    ]
+  },
+  {
+    "Query": "\\chapter Cooking",
+    "Hits": []
+  },
+  {
+    "Query": "\\paths fish soup",
+    "Hits": [
+      {
+        "NodeText": "fángzi",
+        "Chapter": "Chinese"
+      },
+      {
+        "NodeText": "房子",
+        "Chapter": "Chinese"
+      },
+      {
+        "NodeText": "apple",
+        "Chapter": "Cooking"
+      },
+      {
+        "NodeText": "house",
+        "Chapter": "Chinese"
+      },
+      {
+        "NodeText": "neocortex",
+        "Chapter": "brain notes"
+      },
+      {
+        "NodeText": "heart",
+        "Chapter": "body notes"
+      },
+      {
+        "NodeText": "lungs",
+        "Chapter": "body notes"
+      },
+      {
+        "NodeText": "start",
+        "Chapter": "Maze"
+      },
+      {
+        "NodeText": "door",
+        "Chapter": "Maze"
+      },
+      {
+        "NodeText": "passage",
+        "Chapter": "Maze"
+      },
+      {
+        "NodeText": "goal",
+        "Chapter": "Maze"
+      },
+      {
+        "NodeText": "wǒ",
+        "Chapter": "Chinese"
+      },
+      {
+        "NodeText": "hello",
+        "Chapter": "Greetings"
+      },
+      {
+        "NodeText": "我",
+        "Chapter": "Chinese"
+      },
+      {
+        "NodeText": "brain",
+        "Chapter": "brain notes"
+      },
+      {
+        "NodeText": "cardiovascular",
+        "Chapter": "body notes"
+      },
+      {
+        "NodeText": "respiratory",
+        "Chapter": "body notes"
+      },
+      {
+        "NodeText": "你好",
+        "Chapter": "Greetings"
+      },
+      {
+        "NodeText": "alpha waves",
+        "Chapter": "brain notes"
+      },
+      {
+        "NodeText": "beta waves",
+        "Chapter": "brain notes"
+      },
+      {
+        "NodeText": "gamma waves",
+        "Chapter": "brain notes"
+      },
+      {
+        "NodeText": "step 1",
+        "Chapter": "Tutorial"
+      },
+      {
+        "NodeText": "step 2",
+        "Chapter": "Tutorial"
+      },
+      {
+        "NodeText": "step 3",
+        "Chapter": "Tutorial"
+      },
+      {
+        "NodeText": "boil water",
+        "Chapter": "Recipes"
+      },
+      {
+        "NodeText": "add pasta",
+        "Chapter": "Recipes"
+      },
+      {
+        "NodeText": "I, me",
+        "Chapter": "Chinese"
+      },
+      {
+        "NodeText": "5-15 Hz",
+        "Chapter": "brain notes"
+      },
+      {
+        "NodeText": "very relaxed",
+        "Chapter": "brain notes"
+      },
+      {
+        "NodeText": "12-35 Hz",
+        "Chapter": "brain notes"
+      }
+    ]
+  },
+  {
+    "Query": "\\sequence",
+    "Hits": []
+  },
+  {
+    "Query": "\\notes Cooking",
+    "Hits": []
+  }
+]

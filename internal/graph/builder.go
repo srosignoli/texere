@@ -7,9 +7,10 @@ import (
 	"strings"
 	"time"
 
-	SST "github.com/srosignoli/sstorytime-kv/pkg/SSTorytime"
 	"texere/internal/content"
 	"texere/internal/search"
+
+	SST "github.com/srosignoli/sstorytime-kv/pkg/SSTorytime"
 )
 
 // BuildResult summarises a completed graph build.
@@ -37,6 +38,10 @@ func BuildFromCollection(collectionDir string, registry *content.SSTRegistry) (*
 	if err := os.RemoveAll(dbPath); err != nil && !os.IsNotExist(err) {
 		return nil, fmt.Errorf("graph: clear sst_data: %w", err)
 	}
+	blevePath := filepath.Join(collectionDir, "bleve")
+	if err := os.RemoveAll(blevePath); err != nil && !os.IsNotExist(err) {
+		return nil, fmt.Errorf("graph: clear bleve: %w", err)
+	}
 
 	// Reset in-memory node directory and cache so indices stay in sync with
 	// the freshly created BadgerDB (which resets its sequence to 0).
@@ -53,6 +58,13 @@ func BuildFromCollection(collectionDir string, registry *content.SSTRegistry) (*
 	sst := SST.PoSST{KV: kv}
 	defer SST.Close(sst)
 	SST.Configure(sst, false)
+
+	bleveIdx, err := SST.NewBleveIndex(blevePath)
+	if err != nil {
+		return nil, fmt.Errorf("graph: open bleve index: %w", err)
+	}
+	defer bleveIdx.Close()
+	bleveBatch := bleveIdx.NewBatch()
 
 	// nodeIndex maps normalised text → SST.Node with NPtr populated.
 	nodeIndex := make(map[string]SST.Node)
@@ -80,9 +92,16 @@ func BuildFromCollection(collectionDir string, registry *content.SSTRegistry) (*
 				n = SST.IdempDBAddNode(sst, n)
 				SST.CacheNode(n) // register in NODE_DIRECTORY and NODE_CACHE
 				nodeIndex[key] = n
+				bleveBatch.Add(n.NPtr, n.S, ch.Title, summary.FilePath)
 				result.NodesIngested++
 			}
 		}
+	}
+
+	// Commit Pass 1's index writes before Pass 2 starts so that any reader
+	// running between the two passes sees a consistent view.
+	if err := bleveIdx.ApplyBatch(bleveBatch); err != nil {
+		result.Errors = append(result.Errors, fmt.Sprintf("bleve apply batch (pass 1): %v", err))
 	}
 
 	// Pass 2 — add links and populate in-memory link arrays for orbit queries.
@@ -94,6 +113,7 @@ func BuildFromCollection(collectionDir string, registry *content.SSTRegistry) (*
 		if pf == nil {
 			continue
 		}
+		sourceFile := summary.FilePath
 		for _, ch := range pf.Chapters {
 			var prevSeq *SST.Node
 			var prevCtx []string
@@ -139,7 +159,7 @@ func BuildFromCollection(collectionDir string, registry *content.SSTRegistry) (*
 					if _, ok := registry.Arrows[arrow.Code]; !ok {
 						continue
 					}
-					toNode := ensureNode(sst, arrow.Target, ch.Title, nodeIndex, result)
+					toNode := ensureNode(sst, bleveIdx, arrow.Target, ch.Title, sourceFile, nodeIndex, result)
 					if fromNode.NPtr == toNode.NPtr {
 						continue
 					}
@@ -156,7 +176,7 @@ func BuildFromCollection(collectionDir string, registry *content.SSTRegistry) (*
 						if _, ok := registry.Arrows[arrow.Code]; !ok {
 							continue
 						}
-						toNode := ensureNode(sst, arrow.Target, ch.Title, nodeIndex, result)
+						toNode := ensureNode(sst, bleveIdx, arrow.Target, ch.Title, sourceFile, nodeIndex, result)
 						if fromNode.NPtr == toNode.NPtr {
 							continue
 						}
@@ -231,7 +251,11 @@ func appendMemoryLink(arrowPtr SST.ArrowPtr, fromDB, toDB SST.NodePtr, ctx SST.C
 // ensureNode returns the SST.Node for text, creating it in BadgerDB if absent.
 // chap is assigned when the node is first created; if the node already exists
 // with an empty Chap it is updated so arrow-target nodes inherit chapter info.
-func ensureNode(sst SST.PoSST, text, chap string, index map[string]SST.Node, result *BuildResult) SST.Node {
+//
+// New nodes created in Pass 2 are also indexed into the Bleve overlay
+// immediately (Pass 1's batch has already been committed by the caller).
+// These are typically rare arrow targets that weren't chapter roots.
+func ensureNode(sst SST.PoSST, bleveIdx *SST.Index, text, chap, sourceFile string, index map[string]SST.Node, result *BuildResult) SST.Node {
 	key := normalizeText(text)
 	if n, ok := index[key]; ok {
 		if n.Chap == "" && chap != "" {
@@ -246,6 +270,9 @@ func ensureNode(sst SST.PoSST, text, chap string, index map[string]SST.Node, res
 	n = SST.IdempDBAddNode(sst, n)
 	SST.CacheNode(n) // register target node in NODE_DIRECTORY and NODE_CACHE
 	index[key] = n
+	if err := bleveIdx.AddNode(n.NPtr, n.S, chap, sourceFile); err != nil {
+		result.Errors = append(result.Errors, fmt.Sprintf("bleve add node %q: %v", text, err))
+	}
 	result.NodesIngested++
 	return n
 }
