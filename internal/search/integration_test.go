@@ -1,6 +1,7 @@
 package search_test
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -8,10 +9,11 @@ import (
 	"strings"
 	"testing"
 
-	SST "github.com/srosignoli/sstorytime-kv/pkg/SSTorytime"
 	"texere/internal/content"
 	"texere/internal/graph"
 	"texere/internal/search"
+
+	SST "github.com/srosignoli/sstorytime-kv/pkg/SSTorytime"
 )
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -46,6 +48,14 @@ func testRegistry() *content.SSTRegistry {
 
 // buildTestGraph builds the fixture graph in a temp dir and returns a ready SearchService.
 func buildTestGraph(t *testing.T) *search.SearchService {
+	svc, _ := buildTestGraphInDir(t)
+	return svc
+}
+
+// buildTestGraphInDir is like buildTestGraph but also returns the collection
+// directory so tests can manipulate the underlying sst_data/ or bleve/ paths
+// (e.g. simulate a corrupt index for T059).
+func buildTestGraphInDir(t *testing.T) (*search.SearchService, string) {
 	t.Helper()
 	dir := t.TempDir()
 
@@ -67,7 +77,7 @@ func buildTestGraph(t *testing.T) *search.SearchService {
 
 	svc := search.NewSearchService(dir, reg)
 	t.Cleanup(svc.Close)
-	return svc
+	return svc, dir
 }
 
 func nodeTexts(nodes []search.GraphNode) []string {
@@ -1185,5 +1195,419 @@ func TestNotes_ChapterReingest(t *testing.T) {
 	}
 	if secondCount != firstCount {
 		t.Errorf("block count changed after re-ingest: before=%d after=%d", firstCount, secondCount)
+	}
+}
+
+// buildStemFixtureGraph writes a tiny English fixture with a single
+// "running" node, builds the graph (BadgerDB + Bleve), and returns a ready
+// SearchService. Used by TestSearchService_SearchNodes_StemMatch to verify
+// that the Bleve overlay path returns morphological variants for the
+// English Snowball stemmer (FR-013, US1).
+func buildStemFixtureGraph(t *testing.T) *search.SearchService {
+	t.Helper()
+	dir := t.TempDir()
+	src := "- English\n\nrunning\n\"  (means) jogging\n"
+	if err := os.WriteFile(filepath.Join(dir, "english.n4l"), []byte(src), 0644); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+	reg := testRegistry()
+	SST.NODE_DIRECTORY = SST.NodeDirectory{}
+	SST.NODE_CACHE = make(map[SST.NodePtr]SST.NodePtr)
+	if _, err := graph.BuildFromCollection(dir, reg); err != nil {
+		t.Fatalf("BuildFromCollection: %v", err)
+	}
+	svc := search.NewSearchService(dir, reg)
+	t.Cleanup(svc.Close)
+	return svc
+}
+
+// TestSearchService_SearchNodes_StemMatch verifies the Bleve overlay returns
+// `running` when the user queries `runs`. Will fail until builder.go indexes
+// nodes into Bleve and SearchService.searchNodes routes through SearchByQuery.
+func TestSearchService_SearchNodes_StemMatch(t *testing.T) {
+	svc := buildStemFixtureGraph(t)
+	res, err := svc.Search("runs")
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if res.GraphUnavailable {
+		t.Fatal("graph unavailable")
+	}
+	found := false
+	for _, n := range res.Nodes {
+		if strings.EqualFold(n.NodeText, "running") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("stem-form 'runs' did not return 'running'; got %v", nodeTexts(res.Nodes))
+	}
+}
+
+// buildPhraseBoolGraph writes a fixture covering both phrase- and
+// boolean-operator scenarios so a single graph can drive several US2
+// assertions through the Texere overlay.
+func buildPhraseBoolGraph(t *testing.T) *search.SearchService {
+	t.Helper()
+	dir := t.TempDir()
+	src := "- Recipes\n\nfish soup recipe\n\nfish curry and soup\n\nbrain research\n\nbrain notes\n\nnotes about music\n"
+	if err := os.WriteFile(filepath.Join(dir, "recipes.n4l"), []byte(src), 0644); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+	reg := testRegistry()
+	SST.NODE_DIRECTORY = SST.NodeDirectory{}
+	SST.NODE_CACHE = make(map[SST.NodePtr]SST.NodePtr)
+	if _, err := graph.BuildFromCollection(dir, reg); err != nil {
+		t.Fatalf("BuildFromCollection: %v", err)
+	}
+	svc := search.NewSearchService(dir, reg)
+	t.Cleanup(svc.Close)
+	return svc
+}
+
+// TestSearchService_SearchNodes_PhraseAndBoolean drives the full overlay
+// path for two US2 acceptance scenarios — phrase match and AND-NOT — to
+// catch any wiring regression between SearchByQuery's parse error / result
+// surfaces and SearchService.searchNodes.
+func TestSearchService_SearchNodes_PhraseAndBoolean(t *testing.T) {
+	svc := buildPhraseBoolGraph(t)
+
+	t.Run("phrase", func(t *testing.T) {
+		res, err := svc.Search(`"fish soup"`)
+		if err != nil {
+			t.Fatalf("Search: %v", err)
+		}
+		if res.GraphUnavailable {
+			t.Fatal("graph unavailable")
+		}
+		texts := nodeTexts(res.Nodes)
+		hasRecipe := false
+		hasCurry := false
+		for _, txt := range texts {
+			if strings.EqualFold(txt, "fish soup recipe") {
+				hasRecipe = true
+			}
+			if strings.EqualFold(txt, "fish curry and soup") {
+				hasCurry = true
+			}
+		}
+		if !hasRecipe {
+			t.Errorf(`phrase "fish soup" did not return "fish soup recipe"; got %v`, texts)
+		}
+		if hasCurry {
+			t.Errorf(`phrase "fish soup" must not match disjoint "fish curry and soup"; got %v`, texts)
+		}
+	})
+
+	t.Run("and-not", func(t *testing.T) {
+		res, err := svc.Search("brain&!notes")
+		if err != nil {
+			t.Fatalf("Search: %v", err)
+		}
+		if res.GraphUnavailable {
+			t.Fatal("graph unavailable")
+		}
+		texts := nodeTexts(res.Nodes)
+		hasResearch := false
+		hasBrainNotes := false
+		hasNotesOnly := false
+		for _, txt := range texts {
+			switch strings.ToLower(txt) {
+			case "brain research":
+				hasResearch = true
+			case "brain notes":
+				hasBrainNotes = true
+			case "notes about music":
+				hasNotesOnly = true
+			}
+		}
+		if !hasResearch {
+			t.Errorf(`brain&!notes should include "brain research"; got %v`, texts)
+		}
+		if hasBrainNotes {
+			t.Errorf(`brain&!notes must exclude "brain notes"; got %v`, texts)
+		}
+		if hasNotesOnly {
+			t.Errorf(`brain&!notes must exclude "notes about music"; got %v`, texts)
+		}
+	})
+}
+
+// ── US3 regression: zero-regression on `\` commands ──────────────────────────
+
+// panicBleveStub satisfies search.BleveSearcher and panics on SearchByQuery.
+// Used by US3 tests to assert that listing/notes/wildcard routes never reach
+// the index (FR-004).
+type panicBleveStub struct{}
+
+func (panicBleveStub) SearchByQuery(string, int) ([]SST.NodePtr, error) {
+	panic("BleveSearcher.SearchByQuery should not be called for routes that bypass Bleve")
+}
+
+func (panicBleveStub) Close() error { return nil }
+
+// TestSearchService_StructuralSequence_Bleve guards FR-023a chain ordering on
+// a `\sequence` query: replacing the sequence-branch seed lookup with Bleve
+// must not reorder chains (chain order is governed by GetSequenceContainers /
+// the score-stable resort, not Bleve). We assert the sequence head node and
+// step set survive end-to-end.
+func TestSearchService_StructuralSequence_Bleve(t *testing.T) {
+	svc := buildSequenceGraph(t)
+
+	res, err := svc.Search(`\story step 1`)
+	if err != nil {
+		t.Fatalf(`\story step 1: %v`, err)
+	}
+	if len(res.Structural) == 0 {
+		t.Fatal(`\story step 1: expected at least one chain; got none`)
+	}
+	chain := res.Structural[0]
+	texts := chainTexts(chain)
+	for _, want := range []string{"step 1", "step 2", "step 3"} {
+		found := false
+		for _, txt := range texts {
+			if strings.Contains(strings.ToLower(txt), want) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("\\story step 1 (Bleve): expected %q in chain; got %v", want, texts)
+		}
+	}
+}
+
+// TestSearchService_ResolvePathEndpoints_Bleve guards \paths endpoint
+// resolution under the Bleve fallback: textToDBPtr exact-match still wins
+// over Bleve seeds, and the path enumeration ordering is preserved.
+func TestSearchService_ResolvePathEndpoints_Bleve(t *testing.T) {
+	svc := buildPathsGraph(t)
+
+	res, err := svc.Search(`\from start \to goal`)
+	if err != nil {
+		t.Fatalf(`\from start \to goal: %v`, err)
+	}
+	if len(res.Structural) == 0 {
+		t.Fatal(`\from start \to goal: expected at least one path; got none`)
+	}
+	for i, chain := range res.Structural {
+		if chain.Kind != "path" {
+			t.Errorf("chain %d: Kind=%q want path", i, chain.Kind)
+		}
+		texts := chainTexts(chain)
+		if len(texts) < 2 {
+			t.Errorf("chain %d: %d nodes < 2", i, len(texts))
+			continue
+		}
+		if !strings.EqualFold(texts[0], "start") {
+			t.Errorf("chain %d: head=%q want exact 'start'; chain=%v", i, texts[0], texts)
+		}
+		if !strings.EqualFold(texts[len(texts)-1], "goal") {
+			t.Errorf("chain %d: tail=%q want exact 'goal'; chain=%v", i, texts[len(texts)-1], texts)
+		}
+	}
+}
+
+// TestSearchService_RouteListing_NoBleveCall asserts that `\chapter X`
+// completes without invoking the Bleve index (FR-004). After lazy-open we
+// swap in a stub that panics on SearchByQuery; the listing route must not
+// trigger it.
+func TestSearchService_RouteListing_NoBleveCall(t *testing.T) {
+	svc := buildTestGraph(t)
+	if _, err := svc.Search(`primer`); err != nil {
+		t.Fatalf("warmup: %v", err)
+	}
+	svc.SetBleveSearcherForTest(panicBleveStub{})
+
+	res, err := svc.Search(`\chapter Chinese`)
+	if err != nil {
+		t.Fatalf(`\chapter Chinese: %v`, err)
+	}
+	if len(res.Listings) == 0 {
+		t.Errorf(`\chapter Chinese: expected at least one listing; got none`)
+	}
+}
+
+// TestSearchService_RouteNotes_NoBleveCall asserts that `\notes` queries do
+// not reach the Bleve index.
+func TestSearchService_RouteNotes_NoBleveCall(t *testing.T) {
+	svc := buildCookingGraph(t)
+	if _, err := svc.Search(`primer`); err != nil {
+		t.Fatalf("warmup: %v", err)
+	}
+	svc.SetBleveSearcherForTest(panicBleveStub{})
+
+	res, err := svc.Search(`\notes Cooking`)
+	if err != nil {
+		t.Fatalf(`\notes Cooking: %v`, err)
+	}
+	if len(res.Notes) == 0 {
+		t.Errorf(`\notes Cooking: expected at least one FullNote; got none`)
+	}
+}
+
+// TestSearchService_EmptyName_BypassesBleve covers FR-021: a query with no
+// text term but a `\chapter` filter must use the IterateNodes path, not Bleve.
+// The classifier routes such input to routeListing; this test locks in that
+// behavior with the panic stub.
+func TestSearchService_EmptyName_BypassesBleve(t *testing.T) {
+	svc := buildTestGraph(t)
+	if _, err := svc.Search(`primer`); err != nil {
+		t.Fatalf("warmup: %v", err)
+	}
+	svc.SetBleveSearcherForTest(panicBleveStub{})
+
+	if _, err := svc.Search(`\chapter Chinese`); err != nil {
+		t.Errorf(`\chapter Chinese (no name): %v`, err)
+	}
+}
+
+// TestSearchService_LegacyQueryRegression covers T058 / SC-001 / FR-014:
+// the Bleve-backed Search must return at least every (NodeText, Chapter) pair
+// that the pre-Bleve implementation returned for representative queries.
+// Extra hits are allowed (e.g. stemming finds "soups" for "soup"); missing
+// hits are a regression. Baseline captured from commit 173f159 (the branch-cut
+// for feature 005) via cmd/baseline_capture (now removed); JSON committed at
+// specs/005-bleve-fulltext-search/baseline/legacy_queries.json.
+func TestSearchService_LegacyQueryRegression(t *testing.T) {
+	type baselineHit struct {
+		NodeText string `json:"NodeText"`
+		Chapter  string `json:"Chapter"`
+	}
+	type baselineEntry struct {
+		Query string        `json:"Query"`
+		Hits  []baselineHit `json:"Hits"`
+	}
+
+	// Resolve baseline JSON relative to the repo root (this test file's
+	// directory is internal/search/, so go up two).
+	_, file, _, _ := runtime.Caller(0)
+	baselinePath := filepath.Join(filepath.Dir(file), "..", "..",
+		"specs", "005-bleve-fulltext-search", "baseline", "legacy_queries.json")
+
+	data, err := os.ReadFile(baselinePath)
+	if err != nil {
+		t.Fatalf("read baseline %s: %v", baselinePath, err)
+	}
+	var baseline []baselineEntry
+	if err := json.Unmarshal(data, &baseline); err != nil {
+		t.Fatalf("unmarshal baseline: %v", err)
+	}
+
+	// Build the same fixtures used to capture the baseline.
+	dir := t.TempDir()
+	fix := testFixturesDir(t)
+	for _, name := range []string{"chinese.n4l", "cooking.n4l", "paths.n4l", "sequence.n4l", "implicit_sequence.n4l", "notes.n4l", "notes_two.n4l"} {
+		body, err := os.ReadFile(filepath.Join(fix, name))
+		if err != nil {
+			t.Fatalf("read fixture %s: %v", name, err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, name), body, 0644); err != nil {
+			t.Fatalf("write fixture %s: %v", name, err)
+		}
+	}
+	reg := testRegistry()
+	SST.NODE_DIRECTORY = SST.NodeDirectory{}
+	SST.NODE_CACHE = make(map[SST.NodePtr]SST.NodePtr)
+	if _, err := graph.BuildFromCollection(dir, reg); err != nil {
+		t.Fatalf("BuildFromCollection: %v", err)
+	}
+	svc := search.NewSearchService(dir, reg)
+	t.Cleanup(svc.Close)
+
+	for _, entry := range baseline {
+		entry := entry // capture
+		t.Run(entry.Query, func(t *testing.T) {
+			res, err := svc.Search(entry.Query)
+			if err != nil {
+				t.Fatalf("Search %q: %v", entry.Query, err)
+			}
+			got := make(map[string]struct{}, len(res.Nodes))
+			for _, n := range res.Nodes {
+				got[n.NodeText+"|"+n.Chapter] = struct{}{}
+			}
+			for _, want := range entry.Hits {
+				key := want.NodeText + "|" + want.Chapter
+				if _, ok := got[key]; !ok {
+					t.Errorf("regression: query %q missing baseline hit (NodeText=%q Chapter=%q)", entry.Query, want.NodeText, want.Chapter)
+				}
+			}
+		})
+	}
+}
+
+// TestSearchService_OpenCorruptIndex_SurfacesError covers T059: when the
+// bleve/ directory exists but its contents are unreadable, Search must surface
+// `result.GraphError` containing the corrupt-index sentinel so the OmniBar
+// can render the "Press Ctrl+G to rebuild" toast.
+func TestSearchService_OpenCorruptIndex_SurfacesError(t *testing.T) {
+	// First build a valid graph so sst_data/ exists, then nuke bleve/ and
+	// replace it with garbage bytes that Bleve cannot decode.
+	svc, dir := buildTestGraphInDir(t)
+	if _, err := svc.Search(`primer`); err != nil {
+		t.Fatalf("warmup: %v", err)
+	}
+	svc.Close() // release Bleve so we can overwrite the dir
+
+	blevePath := filepath.Join(dir, "bleve")
+	if err := os.RemoveAll(blevePath); err != nil {
+		t.Fatalf("remove bleve: %v", err)
+	}
+	if err := os.MkdirAll(blevePath, 0755); err != nil {
+		t.Fatalf("mkdir bleve: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(blevePath, "garbage.bolt"), []byte("not a real bleve store"), 0644); err != nil {
+		t.Fatalf("write garbage: %v", err)
+	}
+
+	// Re-open the service against the corrupted overlay.
+	svc2 := search.NewSearchService(dir, testRegistry())
+	t.Cleanup(svc2.Close)
+
+	if !svc2.IsReady() {
+		t.Fatal("IsReady() = false; corrupt-bleve dir still exists, want true")
+	}
+
+	res, err := svc2.Search("anything")
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if !res.GraphUnavailable {
+		t.Errorf("GraphUnavailable = false; want true on corrupt index")
+	}
+	if !strings.Contains(res.GraphError, "corrupted") {
+		t.Errorf("GraphError = %q; want substring 'corrupted'", res.GraphError)
+	}
+}
+
+// TestSearchService_IsReady_RequiresBothDirs locks in FR-019b: a SearchService
+// is ready only when BOTH the BadgerDB (sst_data/) and the Bleve index (bleve/)
+// directories exist on disk. A half-built collection (one missing) must report
+// not-ready so the caller surfaces the same "press Ctrl+G" toast.
+func TestSearchService_IsReady_RequiresBothDirs(t *testing.T) {
+	dir := t.TempDir()
+	reg := testRegistry()
+
+	// State 1: neither directory present.
+	svc := search.NewSearchService(dir, reg)
+	if svc.IsReady() {
+		t.Errorf("IsReady() with no dirs = true; want false")
+	}
+
+	// State 2: only sst_data/ present (simulates aborted build before Bleve flush).
+	if err := os.MkdirAll(filepath.Join(dir, "sst_data"), 0755); err != nil {
+		t.Fatalf("mkdir sst_data: %v", err)
+	}
+	if svc.IsReady() {
+		t.Errorf("IsReady() with only sst_data/ = true; want false")
+	}
+
+	// State 3: both dirs present.
+	if err := os.MkdirAll(filepath.Join(dir, "bleve"), 0755); err != nil {
+		t.Fatalf("mkdir bleve: %v", err)
+	}
+	if !svc.IsReady() {
+		t.Errorf("IsReady() with both dirs = false; want true")
 	}
 }

@@ -1,6 +1,7 @@
 package search
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -25,14 +26,24 @@ const (
 	routeNotes
 )
 
+// BleveSearcher is the small slice of *SST.Index that the search overlay
+// needs. Defined as an interface so tests can substitute a stub that asserts
+// (or panics) when called from a route that should bypass Bleve (FR-004).
+type BleveSearcher interface {
+	SearchByQuery(queryText string, limit int) ([]SST.NodePtr, error)
+	Close() error
+}
+
 // SearchService wraps the SSTorytime-KV PoSST and manages the BadgerDB lifecycle.
 // The store is opened lazily on first Search() call and kept open until Close().
 type SearchService struct {
 	dbPath        string
+	blevePath     string
 	collectionDir string
 	registry      *content.SSTRegistry
 	store         *SST.BadgerKV
 	pst           SST.PoSST
+	bleveIdx      BleveSearcher
 	mu            sync.Mutex
 	// nodeContexts maps BadgerDB NodePtr → context tags sourced from the N4L files.
 	// Populated during lazy open; used by \notes \context filtering.
@@ -47,24 +58,35 @@ type SearchService struct {
 func NewSearchService(collectionDir string, registry *content.SSTRegistry) *SearchService {
 	return &SearchService{
 		dbPath:        filepath.Join(collectionDir, "sst_data"),
+		blevePath:     filepath.Join(collectionDir, "bleve"),
 		collectionDir: collectionDir,
 		registry:      registry,
 	}
 }
 
-// IsReady returns true if the sst_data directory exists (graph has been built).
+// IsReady returns true if both sst_data/ and bleve/ directories exist
+// (the graph has been built and both indexes are present on disk).
 func (s *SearchService) IsReady() bool {
-	_, err := os.Stat(s.dbPath)
-	return err == nil
+	if _, err := os.Stat(s.dbPath); err != nil {
+		return false
+	}
+	if _, err := os.Stat(s.blevePath); err != nil {
+		return false
+	}
+	return true
 }
 
-// Close shuts down the BadgerDB connection if open.
+// Close shuts down the BadgerDB and Bleve connections if open.
 func (s *SearchService) Close() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.store != nil {
 		SST.Close(s.pst)
 		s.store = nil
+	}
+	if s.bleveIdx != nil {
+		_ = s.bleveIdx.Close()
+		s.bleveIdx = nil
 	}
 }
 
@@ -94,6 +116,23 @@ func (s *SearchService) Search(query string) (result *SearchResult, err error) {
 		s.store = kv
 		s.pst = SST.PoSST{KV: kv}
 		SST.Configure(s.pst, false)
+		bleveIdx, bleveErr := SST.OpenBleveIndex(s.blevePath)
+		if bleveErr != nil {
+			s.store = nil
+			SST.Close(s.pst)
+			switch {
+			case errors.Is(bleveErr, SST.ErrIndexNotFound):
+				result.GraphUnavailable = true
+				result.GraphError = "search index missing — press Ctrl+G to build"
+			case errors.Is(bleveErr, SST.ErrIndexCorrupt):
+				result.GraphUnavailable = true
+				result.GraphError = "search index corrupted — press Ctrl+G to rebuild"
+			default:
+				result.GraphError = fmt.Sprintf("bleve index unavailable: %v — press Ctrl+G to rebuild", bleveErr)
+			}
+			return result, nil
+		}
+		s.bleveIdx = bleveIdx
 		// Populate NODE_CACHE from BadgerDB, and collect text→DBptr for link rebuild
 		// and \from/\to endpoint resolution.
 		textToDBPtr := make(map[string]SST.NodePtr)
@@ -128,7 +167,17 @@ func (s *SearchService) Search(query string) (result *SearchResult, err error) {
 
 	switch s.classifyQuery(params) {
 	case routeNodeSearch:
-		result.Nodes = s.searchNodes(params, arrowptrs, maxlimit)
+		nodes, searchErr := s.searchNodes(params, arrowptrs, maxlimit)
+		if searchErr != nil {
+			var pe *SST.ParseError
+			if errors.As(searchErr, &pe) {
+				result.GraphError = pe.Error()
+			} else {
+				result.GraphError = searchErr.Error()
+			}
+			return result, nil
+		}
+		result.Nodes = nodes
 	case routeStructural:
 		result.Structural = s.searchStructural(params, arrowptrs, sttype, maxlimit)
 	case routeListing:
@@ -240,39 +289,101 @@ func sameSequenceContextTags(a, b []string) bool {
 }
 
 // searchNodes handles plain text, context-scoped, and chapter-scoped queries.
-// Uses IterateNodes with accent-insensitive matching so that queries like
-// "(fangzi) \chapter chinese" correctly match accented node texts like "fángzi".
-func (s *SearchService) searchNodes(params SST.SearchParameters, arrowptrs []SST.ArrowPtr, limit int) []GraphNode {
-	// Build per-term match specs. Terms wrapped in !…! or |…| use exact (equality)
-	// matching; all other terms use accent-insensitive substring matching.
-	type matchTerm struct {
-		text  string
-		exact bool
-	}
-	matchTerms := make([]matchTerm, 0, len(params.Name))
-	for _, raw := range params.Name {
-		if isEx, cleaned := SST.IsExactMatch(raw); isEx {
-			if n := normalizeForSearch(cleaned); n != "" {
-				matchTerms = append(matchTerms, matchTerm{n, true})
-			}
-		} else {
-			if n := normalizeForSearch(raw); n != "" {
-				matchTerms = append(matchTerms, matchTerm{n, false})
-			}
-		}
-	}
-
+// When params.Name is non-empty the query text is delegated to the Bleve
+// overlay (SearchByQuery), which handles stemming, CJK bigrams, accent
+// folding, and the operator grammar. The returned NodePtrs are then
+// fetched and filtered by chapter / context, preserving Bleve's score
+// order (FR-023a).
+func (s *SearchService) searchNodes(params SST.SearchParameters, arrowptrs []SST.ArrowPtr, limit int) ([]GraphNode, error) {
 	chapLower := normalizeForSearch(params.Chapter)
 	isChapFilter := chapLower != "" && chapLower != "%%" && chapLower != "tableofcontents"
 
-	nodes := make([]GraphNode, 0, limit)
+	if len(params.Name) == 0 {
+		return s.searchNodesWildcard(params, isChapFilter, chapLower, limit), nil
+	}
 
+	queryText := joinBleveQueryText(params.Name)
+	seeds, err := s.bleveIdx.SearchByQuery(queryText, limit*10)
+	if err != nil {
+		return nil, err
+	}
+
+	nodes := make([]GraphNode, 0, limit)
+	for _, ptr := range seeds {
+		n := SST.GetDBNodeByNodePtr(s.pst, ptr)
+		if n.S == "" {
+			continue
+		}
+		if isChapFilter {
+			matched := false
+			for _, tok := range strings.Split(n.Chap, ",") {
+				if strings.Contains(normalizeForSearch(tok), chapLower) {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				continue
+			}
+		}
+		if len(params.Context) > 0 {
+			memPtr, ok := SST.NODE_CACHE[ptr]
+			if !ok {
+				continue
+			}
+			memNode := SST.GetMemoryNodeFromPtr(memPtr)
+			ctxMatched := false
+		outerCtx:
+			for st := 0; st < SST.ST_TOP; st++ {
+				for _, lnk := range memNode.I[st] {
+					if lnk.Ctx != 0 && SST.MatchContexts(params.Context, lnk.Ctx) {
+						ctxMatched = true
+						break outerCtx
+					}
+				}
+			}
+			if !ctxMatched {
+				continue
+			}
+		}
+		nodes = append(nodes, GraphNode{
+			NodeText:    n.S,
+			Chapter:     n.Chap,
+			ContextTags: nodeContextTags(ptr),
+			Orbit:       s.buildOrbit(ptr, 8, params.Context),
+		})
+		if len(nodes) >= limit {
+			break
+		}
+	}
+	return nodes, nil
+}
+
+// joinBleveQueryText reconstructs a Bleve query string from the per-token
+// names produced by SST.DecodeSearchField. SplitQuotes strips surrounding
+// `"…"` and joins on whitespace, so an item with embedded spaces can only
+// have come from a quoted phrase atom — re-wrap such items in quotes so the
+// phrase semantics survive the round-trip into SearchByQuery.
+func joinBleveQueryText(names []string) string {
+	parts := make([]string, len(names))
+	for i, n := range names {
+		if strings.ContainsAny(n, " \t") {
+			parts[i] = `"` + n + `"`
+		} else {
+			parts[i] = n
+		}
+	}
+	return strings.Join(parts, " ")
+}
+
+// searchNodesWildcard preserves the existing IterateNodes path for queries
+// with no name term (FR-021): \chapter / \context listings without text.
+func (s *SearchService) searchNodesWildcard(params SST.SearchParameters, isChapFilter bool, chapLower string, limit int) []GraphNode {
+	nodes := make([]GraphNode, 0, limit)
 	s.pst.KV.IterateNodes(func(n SST.Node, ptr SST.NodePtr) bool {
 		if n.S == "" {
 			return true
 		}
-		// Chapter filter: case-insensitive substring match against each chapter
-		// token (n.Chap may be comma-separated when a node belongs to multiple chapters).
 		if isChapFilter {
 			matched := false
 			for _, tok := range strings.Split(n.Chap, ",") {
@@ -285,31 +396,6 @@ func (s *SearchService) searchNodes(params SST.SearchParameters, arrowptrs []SST
 				return true
 			}
 		}
-		// Name filter: OR across all terms — node passes if ANY term matches.
-		// Exact terms use equality; plain terms use accent-insensitive substring.
-		if len(matchTerms) > 0 {
-			nodeNorm := normalizeForSearch(n.S)
-			matched := false
-			for _, mt := range matchTerms {
-				if mt.exact {
-					if nodeNorm == mt.text {
-						matched = true
-						break
-					}
-				} else {
-					if strings.Contains(nodeNorm, mt.text) {
-						matched = true
-						break
-					}
-				}
-			}
-			if !matched {
-				return true
-			}
-		}
-		// Context filter: node passes only if it has at least one in-memory link
-		// whose stored context matches the query filter (OR semantics).
-		// Links with Ctx==0 carry no context and are skipped.
 		if len(params.Context) > 0 {
 			memPtr, ok := SST.NODE_CACHE[ptr]
 			if !ok {
@@ -334,11 +420,10 @@ func (s *SearchService) searchNodes(params SST.SearchParameters, arrowptrs []SST
 			NodeText:    n.S,
 			Chapter:     n.Chap,
 			ContextTags: nodeContextTags(ptr),
-			Orbit:       s.buildOrbit(ptr, 8),
+			Orbit:       s.buildOrbit(ptr, 8, params.Context),
 		})
 		return len(nodes) < limit
 	})
-
 	return nodes
 }
 
@@ -375,7 +460,7 @@ func nodeContextTags(ptr SST.NodePtr) []string {
 // Instead we walk NODE_DIRECTORY directly via in-memory ptrs, using
 // GetMemoryNodeFromPtr for text lookup at every hop.
 // nptr is a BadgerDB NodePtr; NODE_CACHE bridges it to the in-memory index.
-func (s *SearchService) buildOrbit(nptr SST.NodePtr, cap int) []OrbitEntry {
+func (s *SearchService) buildOrbit(nptr SST.NodePtr, cap int, ctxFilter []string) []OrbitEntry {
 	memPtr, ok := SST.NODE_CACHE[nptr]
 	if !ok {
 		return nil
@@ -403,6 +488,14 @@ func (s *SearchService) buildOrbit(nptr SST.NodePtr, cap int) []OrbitEntry {
 			if len(entries) >= cap {
 				break
 			}
+			// Honor \context: a link declared under a non-matching context
+			// must not appear in the orbit, otherwise scoped queries leak
+			// neighbors from sibling contexts (e.g. kubectl's "(runs)" link
+			// from "networking and security" leaking into a `\context
+			// "core concepts"` query).
+			if len(ctxFilter) > 0 && !SST.MatchContexts(ctxFilter, lnk1.Ctx) {
+				continue
+			}
 			hop1 := SST.GetMemoryNodeFromPtr(lnk1.Dst)
 			if hop1.S == "" || hop1.S == rootNode.S {
 				continue
@@ -423,6 +516,9 @@ func (s *SearchService) buildOrbit(nptr SST.NodePtr, cap int) []OrbitEntry {
 			for _, lnk2 := range hop1.I[stIdx] {
 				if len(entries) >= cap {
 					break
+				}
+				if len(ctxFilter) > 0 && !SST.MatchContexts(ctxFilter, lnk2.Ctx) {
+					continue
 				}
 				hop2 := SST.GetMemoryNodeFromPtr(lnk2.Dst)
 				if hop2.S == "" || hop2.S == rootNode.S || hop2.S == hop1.S {
@@ -448,15 +544,13 @@ func (s *SearchService) buildOrbit(nptr SST.NodePtr, cap int) []OrbitEntry {
 
 // resolvePathEndpoints maps \from/\to names to in-memory NodePtrs.
 //
-// Why: SolveNodePtrs → SearchNodesByName iterates the BadgerDB `text:` index
-// alphabetically and applies a substring filter only up to `limit` hits. On a
-// real collection the plain "start" node is drowned out by thousands of
-// unrelated lines that contain "start" and sort before `text:start` (e.g.
-// Moby-Dick paragraphs), so the true node is never returned. We therefore
-// walk NODE_CACHE directly for an exact (case-folded) text match before
-// falling back to the substring scan — NODE_CACHE has one entry per node,
-// so this is O(N) over the whole graph (~14k nodes in practice).
-func (s *SearchService) resolvePathEndpoints(names []string, params SST.SearchParameters, arrowptrs []SST.ArrowPtr, limit int) []SST.NodePtr {
+// We walk NODE_CACHE first for an exact (case-folded) text match — this keeps
+// unambiguous endpoints dominant on real collections where a plain word like
+// "start" can be drowned out by thousands of unrelated lines that contain it
+// (e.g. Moby-Dick paragraphs). When no exact-text match exists we fall back
+// to a Bleve seed lookup so partial / stemmed / accent-folded inputs still
+// resolve.
+func (s *SearchService) resolvePathEndpoints(names []string, limit int) []SST.NodePtr {
 	seen := make(map[SST.NodePtr]bool)
 	out := make([]SST.NodePtr, 0, len(names))
 	addMem := func(mem SST.NodePtr) {
@@ -482,7 +576,14 @@ func (s *SearchService) resolvePathEndpoints(names []string, params SST.SearchPa
 				continue
 			}
 		}
-		for _, dbPtr := range SST.SolveNodePtrs(s.pst, []string{raw}, params, arrowptrs, limit) {
+		// Bleve fallback when no exact-text match exists (e.g. \from "salm" → "grilled salmon").
+		// Score-ordered seeds enter the path walk in iteration order; the existing
+		// exact-text preference above keeps an unambiguous endpoint dominant when present.
+		seeds, qerr := s.bleveIdx.SearchByQuery(clean, limit)
+		if qerr != nil {
+			continue
+		}
+		for _, dbPtr := range seeds {
 			if memPtr, ok := SST.NODE_CACHE[dbPtr]; ok {
 				addMem(memPtr)
 			}
@@ -519,11 +620,16 @@ func (s *SearchService) searchStructural(params SST.SearchParameters, arrowptrs 
 				return len(nodeptrs) < limit*10
 			})
 		} else {
-			// Join name tokens to form the full node text for an exact substring
-			// match. DecodeSearchField splits multi-word names into individual
-			// tokens, but SolveNodePtrs ORs them, returning too many candidates.
-			joined := strings.Join(params.Name, " ")
-			dbPtrs := s.pst.KV.SearchNodesByName(joined, limit)
+			// Bleve seeds the sequence-head candidates: tokens are passed through
+			// the same operator grammar used by routeNodeSearch (joinBleveQueryText
+			// preserves quoted phrases). Score-ordered seeds are filtered down to
+			// nodes that carry the `_sequence_` marker; chain ordering downstream
+			// is governed by the longest-fwd-path resort, not Bleve (FR-023a).
+			queryText := joinBleveQueryText(params.Name)
+			dbPtrs, qerr := s.bleveIdx.SearchByQuery(queryText, limit)
+			if qerr != nil {
+				return chains
+			}
 			for _, p := range dbPtrs {
 				if hasSequenceMarker(s.nodeContexts[p]) {
 					nodeptrs = append(nodeptrs, p)
@@ -656,8 +762,8 @@ func (s *SearchService) searchStructural(params SST.SearchParameters, arrowptrs 
 	// many unrelated nodes sort before it (e.g. the `start` node is drowned out
 	// by Moby-Dick paragraphs containing "start"). Prefer exact-text matches
 	// over substring results.
-	leftptrs := s.resolvePathEndpoints(params.From, params, arrowptrs, limit)
-	rightMem := s.resolvePathEndpoints(params.To, params, arrowptrs, limit)
+	leftptrs := s.resolvePathEndpoints(params.From, limit)
+	rightMem := s.resolvePathEndpoints(params.To, limit)
 	if len(leftptrs) == 0 || len(rightMem) == 0 {
 		return chains
 	}

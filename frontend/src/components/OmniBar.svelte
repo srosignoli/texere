@@ -505,7 +505,9 @@
           {:else if isListingQuery(query.trim()) && !graphResults}
             <div class="graph-searching">Press Enter to search…</div>
           {:else if graphResults?.GraphUnavailable}
-            <div class="graph-unavailable">Build your graph first (Ctrl+G) to enable graph search.</div>
+            <div class="graph-unavailable">
+              {graphResults.GraphError || 'Build your graph first (Ctrl+G) to enable graph search.'}
+            </div>
           {:else if graphResults?.GraphError}
             <div class="result-label">Error</div>
             <div class="graph-error">{graphResults.GraphError}</div>
