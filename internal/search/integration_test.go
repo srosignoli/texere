@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"sort"
 	"strings"
@@ -297,7 +298,11 @@ func TestChapterListing_FilterCaseInsensitive(t *testing.T) {
 	}
 }
 
-func TestChapterListing_NoNodeList(t *testing.T) {
+// TestChapterListing_NodesAlwaysEmpty preserves the original NoNodeList
+// invariant: the chapter listing path must not populate ListingItem.Nodes
+// (that field is reserved for callers that genuinely emit node texts). The
+// new TOC behavior surfaces contexts via Contexts, not Nodes.
+func TestChapterListing_NodesAlwaysEmpty(t *testing.T) {
 	svc := buildTestGraph(t)
 
 	res, err := svc.Search(`\chapter any`)
@@ -306,8 +311,155 @@ func TestChapterListing_NoNodeList(t *testing.T) {
 	}
 	for _, item := range res.Listings {
 		if item.Kind == "chapter" && len(item.Nodes) > 0 {
-			t.Errorf("chapter listing item %q should not contain Nodes", item.Title)
+			t.Errorf("chapter listing item %q should not contain Nodes (got %v)", item.Title, item.Nodes)
 		}
+	}
+}
+
+// TestChapterListing_SpecificChapterListsContexts verifies that
+// `\chapter <name>` populates Contexts with the distinct :: ctx :: headers
+// authored under the chapter, in stable (alphabetical) order, with no
+// empty-state Detail when contexts exist.
+func TestChapterListing_SpecificChapterListsContexts(t *testing.T) {
+	dir := t.TempDir()
+	body := "" +
+		"- Tools\n\n" +
+		":: alpha ::\n\n" +
+		"widget\n\"  (uses) thingA\n\n" +
+		":: beta ::\n\n" +
+		"widget\n\"  (runs) thingB\n"
+	if err := os.WriteFile(filepath.Join(dir, "tools.n4l"), []byte(body), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	reg := &content.SSTRegistry{
+		Arrows:      make(map[string]content.ArrowDef),
+		Annotations: make(map[string]content.AnnotDef),
+	}
+	reg.Arrows["uses"] = content.ArrowDef{Code: "uses", LongName: "uses", MetaType: "express"}
+	reg.Arrows["runs"] = content.ArrowDef{Code: "runs", LongName: "runs", MetaType: "express"}
+
+	SST.NODE_DIRECTORY = SST.NodeDirectory{}
+	SST.NODE_CACHE = make(map[SST.NodePtr]SST.NodePtr)
+	if _, err := graph.BuildFromCollection(dir, reg); err != nil {
+		t.Fatal(err)
+	}
+
+	svc := search.NewSearchService(dir, reg)
+	t.Cleanup(svc.Close)
+
+	res, err := svc.Search(`\chapter Tools`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Listings) != 1 {
+		t.Fatalf("want 1 listing, got %d", len(res.Listings))
+	}
+	item := res.Listings[0]
+	if item.Title != "Tools" {
+		t.Errorf("want Title=Tools, got %q", item.Title)
+	}
+	wantCtx := []string{"alpha", "beta"}
+	if !reflect.DeepEqual(item.Contexts, wantCtx) {
+		t.Errorf("want Contexts=%v, got %v", wantCtx, item.Contexts)
+	}
+	if item.Detail != "" {
+		t.Errorf("want empty Detail when contexts exist, got %q", item.Detail)
+	}
+}
+
+// TestChapterListing_SpecificChapterEmptyContextsHint verifies the empty-state
+// hint: when a specific chapter exists but carries no contexts, Detail must
+// guide the user toward \notes.
+func TestChapterListing_SpecificChapterEmptyContextsHint(t *testing.T) {
+	svc := buildTestGraph(t)
+
+	// chinese.n4l fixture: chapters "Chinese" and "Greetings" both have zero
+	// :: ctx :: headers, so this is the canonical empty-state case.
+	res, err := svc.Search(`\chapter Chinese`)
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	var found *search.ListingItem
+	for i := range res.Listings {
+		if res.Listings[i].Title == "Chinese" {
+			found = &res.Listings[i]
+			break
+		}
+	}
+	if found == nil {
+		t.Fatalf("chapter \"Chinese\" missing from listings: %+v", res.Listings)
+	}
+	if len(found.Contexts) != 0 {
+		t.Errorf("want empty Contexts for chapter \"Chinese\", got %v", found.Contexts)
+	}
+	wantSubstr := "no contexts defined for chapter Chinese"
+	if !strings.Contains(found.Detail, wantSubstr) {
+		t.Errorf("Detail missing hint %q: got %q", wantSubstr, found.Detail)
+	}
+	if !strings.Contains(found.Detail, `\notes Chinese`) {
+		t.Errorf("Detail missing \\notes redirect: got %q", found.Detail)
+	}
+}
+
+// TestChapterListing_WildcardIncludesContexts verifies that `\chapter any`
+// populates Contexts on each row (when contexts exist) but does NOT raise
+// the empty-state Detail hint — wildcard listings should enumerate quietly.
+func TestChapterListing_WildcardIncludesContexts(t *testing.T) {
+	dir := t.TempDir()
+	body := "" +
+		"- ChapA\n\n" +
+		":: ctxA1 ::\n\n" +
+		"alphaNode\n\"  (uses) target1\n\n" +
+		"- ChapB\n\n" +
+		"betaNode\n\"  (uses) target2\n"
+	if err := os.WriteFile(filepath.Join(dir, "wild.n4l"), []byte(body), 0644); err != nil {
+		t.Fatal(err)
+	}
+	reg := &content.SSTRegistry{
+		Arrows:      make(map[string]content.ArrowDef),
+		Annotations: make(map[string]content.AnnotDef),
+	}
+	reg.Arrows["uses"] = content.ArrowDef{Code: "uses", LongName: "uses", MetaType: "express"}
+
+	SST.NODE_DIRECTORY = SST.NodeDirectory{}
+	SST.NODE_CACHE = make(map[SST.NodePtr]SST.NodePtr)
+	if _, err := graph.BuildFromCollection(dir, reg); err != nil {
+		t.Fatal(err)
+	}
+
+	svc := search.NewSearchService(dir, reg)
+	t.Cleanup(svc.Close)
+
+	res, err := svc.Search(`\chapter any`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	byTitle := map[string]search.ListingItem{}
+	for _, l := range res.Listings {
+		if l.Kind == "chapter" {
+			byTitle[l.Title] = l
+		}
+	}
+	a, ok := byTitle["ChapA"]
+	if !ok {
+		t.Fatalf("ChapA missing from listings: %+v", res.Listings)
+	}
+	if !reflect.DeepEqual(a.Contexts, []string{"ctxA1"}) {
+		t.Errorf("ChapA: want Contexts=[ctxA1], got %v", a.Contexts)
+	}
+	if a.Detail != "" {
+		t.Errorf("ChapA: wildcard listing must not raise Detail hint, got %q", a.Detail)
+	}
+	b, ok := byTitle["ChapB"]
+	if !ok {
+		t.Fatalf("ChapB missing from listings: %+v", res.Listings)
+	}
+	if len(b.Contexts) != 0 {
+		t.Errorf("ChapB: want empty Contexts, got %v", b.Contexts)
+	}
+	if b.Detail != "" {
+		t.Errorf("ChapB: wildcard listing must not raise Detail hint, got %q", b.Detail)
 	}
 }
 

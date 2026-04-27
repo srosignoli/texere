@@ -93,6 +93,7 @@ type ListingItem struct {
 	Detail   string   `json:"Detail"`
 	NodeText string   `json:"NodeText"` // non-empty if navigable (first node for navigation)
 	Nodes    []string `json:"Nodes"`    // all node texts for chapter listings
+	Contexts []string `json:"Contexts"` // distinct contexts within a chapter (TOC view)
 	MetaType string   `json:"MetaType"` // arrow meta-type (e.g. "contains", "properties")
 	Context  string   `json:"Context"`  // section header where the arrow was defined, e.g. "identity orientation"
 }

@@ -454,6 +454,41 @@ func nodeContextTags(ptr SST.NodePtr) []string {
 	return tags
 }
 
+// chapterContexts returns the distinct context-tag strings of every link
+// authored under any node whose Chap field substring-matches chapName
+// (case-insensitive, accent-folded — mirrors the chapter filter used in
+// searchNodes / searchNodesWildcard). Order is alphabetical for stable
+// output. Used by searchListing to render \chapter as a table of contents.
+func (s *SearchService) chapterContexts(chapName string) []string {
+	normChap := normalizeForSearch(chapName)
+	if normChap == "" {
+		return nil
+	}
+	seen := make(map[string]bool)
+	out := []string{}
+	s.pst.KV.IterateNodes(func(n SST.Node, ptr SST.NodePtr) bool {
+		matched := false
+		for _, tok := range strings.Split(n.Chap, ",") {
+			if strings.Contains(normalizeForSearch(tok), normChap) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return true
+		}
+		for _, tag := range nodeContextTags(ptr) {
+			if !seen[tag] {
+				seen[tag] = true
+				out = append(out, tag)
+			}
+		}
+		return true
+	})
+	sort.Strings(out)
+	return out
+}
+
 // buildOrbit returns the orbit for a node using direct in-memory traversal.
 // GetNodeOrbit cannot be used here because it calls GetDBNodeByNodePtr with
 // in-memory ptrs (per-class indices) that don't match BadgerDB sequence IDs.
@@ -946,11 +981,23 @@ func (s *SearchService) searchListing(params SST.SearchParameters, arrowptrs []S
 	}
 	sort.Strings(chapNames)
 
+	// specificFilter is true when the user typed a chapter name (e.g. \chapter foo)
+	// vs. a wildcard (\chapter, \chapter any, \chapter %%). Only the specific
+	// case raises an empty-state hint pointing at \notes — the wildcard case is
+	// expected to enumerate quietly.
+	specificFilter := chap != ""
 	for _, chapName := range chapNames {
-		items = append(items, ListingItem{
-			Kind:  "chapter",
-			Title: chapName,
-		})
+		item := ListingItem{
+			Kind:     "chapter",
+			Title:    chapName,
+			Contexts: s.chapterContexts(chapName),
+		}
+		if specificFilter && len(item.Contexts) == 0 {
+			item.Detail = fmt.Sprintf(
+				"no contexts defined for chapter %s — use \\notes %s to see the chapter's notes",
+				chapName, chapName)
+		}
+		items = append(items, item)
 	}
 
 	// If context filter produced no chapter results, list contexts directly

@@ -678,6 +678,15 @@
                     <span class="result-icon graph-icon">§</span>
                     <span class="result-text">{r.Title}</span>
                   </button>
+                  {#if r.Contexts?.length}
+                    <div class="listing-context-list">
+                      {#each r.Contexts as ctx}
+                        <span class="arrow-context">:: {ctx} ::</span>
+                      {/each}
+                    </div>
+                  {:else if r.Detail}
+                    <div class="result-hint listing-empty-hint">{r.Detail}</div>
+                  {/if}
                   {#if r.Nodes?.length}
                     <div class="listing-node-list">
                       {#each r.Nodes as nodeText, ni}
@@ -1005,6 +1014,20 @@
     display: flex;
     flex-direction: column;
     gap: 1px;
+  }
+
+  .listing-context-list {
+    padding: 2px 0 6px 28px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+  }
+
+  .listing-empty-hint {
+    padding: 2px 0 6px 28px;
+    font-size: 0.78rem;
+    font-style: italic;
+    color: #8a9aaa;
   }
 
   .listing-node-row {
