@@ -52,6 +52,11 @@ type SearchService struct {
 	// lazy open so \from/\to endpoint resolution can do O(1) exact-text lookup
 	// without issuing a KV read per NODE_CACHE entry.
 	textToDBPtr map[string]SST.NodePtr
+	// tagChapters inverts the PageMap into "context tag → chapters that use it",
+	// powering the inline chapter chips on \context listings. Built lazily on
+	// first \context call and reset on store reopen (Close → re-lazy-open).
+	tagChapters      map[string][]string
+	tagChaptersBuilt bool
 }
 
 // NewSearchService creates a SearchService pointed at <collectionDir>/sst_data.
@@ -147,6 +152,8 @@ func (s *SearchService) Search(query string) (result *SearchResult, err error) {
 		// and are lost on app restart; re-parsing here avoids a mandatory Ctrl+G
 		// after every restart.
 		s.rebuildMemoryLinks(textToDBPtr)
+		s.tagChapters = nil
+		s.tagChaptersBuilt = false
 	}
 
 	// Recover from SSTorytime-KV panics so the overlay never crashes the app.
@@ -161,6 +168,10 @@ func (s *SearchService) Search(query string) (result *SearchResult, err error) {
 	_, maxlimit := SST.MinMaxPolicy(params)
 	if maxlimit <= 0 {
 		maxlimit = 10
+	}
+	// Ceiling to bound Bleve candidate pool (limit*10) and graph traversal cost.
+	if maxlimit > 10000 {
+		maxlimit = 10000
 	}
 
 	arrowptrs, sttype := SST.ArrowPtrFromArrowsNames(s.pst, params.Arrows)
@@ -946,6 +957,57 @@ func (s *SearchService) searchListing(params SST.SearchParameters, arrowptrs []S
 		return items
 	}
 
+	// \context modes that emit a flat list of context names rather than a
+	// chapter TOC — mirrors upstream `searchN4L context …` output.
+	//
+	// The N4L parser collapses every token after `\context` into a single
+	// space-joined string, so we split the first entry by whitespace and
+	// dispatch on its head:
+	//
+	//   \context any / \context %%       → all unique context tokens
+	//   \context <term>     (no chapter) → tokens that co-occur with <term>
+	//                                       (the "related contexts" view)
+	if chapter == "" && len(context) > 0 {
+		first := strings.TrimSpace(context[0])
+		parts := strings.Fields(first)
+		head := ""
+		if len(parts) > 0 {
+			head = strings.ToLower(parts[0])
+		}
+
+		if head == "any" || head == "%%" {
+			return s.contextNamesAsListings(s.listAllContextTokens())
+		}
+
+		// Plain `\context <term>` with no chapter filter — return contexts
+		// that co-occur with <term>, falling back to substring matches when
+		// <term> isn't a known context label. Mirrors upstream behaviour
+		// where `searchN4L context restaurant` yields a flat numbered list
+		// of related context names.
+		related := s.listRelatedContextTokens(first)
+		if len(related) > 0 {
+			return s.contextNamesAsListings(related)
+		}
+		matches := s.listContextTokensContaining(first)
+		if len(matches) > 0 {
+			return s.contextNamesAsListings(matches)
+		}
+
+		// Nothing matched. Did-you-mean hint when the input looks like an
+		// inverted-syntax search (`\context A B C`) — in texere the working
+		// form is `term \context tag`.
+		if len(parts) >= 2 {
+			ctx := parts[0]
+			term := strings.Join(parts[1:], " ")
+			return []ListingItem{{
+				Kind:   "hint",
+				Title:  fmt.Sprintf("Did you mean: %s \\context %s", term, ctx),
+				Detail: "\\context filters by tag — put the search term before \\context.",
+			}}
+		}
+		return []ListingItem{}
+	}
+
 	// Chapter / context TOC listing.
 	// GetChapters uses prefix "chap:<name>:" — exact prefix, case-sensitive.
 	// DecodeSearchField maps \chapter any → "%%" and bare \chapter → "TableOfContents";
@@ -1000,17 +1062,173 @@ func (s *SearchService) searchListing(params SST.SearchParameters, arrowptrs []S
 		items = append(items, item)
 	}
 
-	// If context filter produced no chapter results, list contexts directly
-	if len(items) == 0 && len(context) > 0 {
-		for _, ctx := range context {
-			items = append(items, ListingItem{
-				Kind:  "context",
-				Title: ctx,
-			})
+	return items
+}
+
+// contextChaptersDisplayCap bounds the per-tag chapter list shipped to the
+// frontend. The omnibar caps the visible chip count further (5 + "+N more"),
+// so this just keeps the JSON payload predictable for hyper-popular tags.
+const contextChaptersDisplayCap = 50
+
+// contextNamesAsListings wraps a sorted list of context names into ListingItem
+// rows of Kind "context" — the flat-list form used by \context any, \context
+// direct, and \context <term> (related contexts). Each row is annotated with
+// the chapters that use the tag so the frontend can render inline chips.
+func (s *SearchService) contextNamesAsListings(names []string) []ListingItem {
+	items := make([]ListingItem, 0, len(names))
+	for _, name := range names {
+		items = append(items, ListingItem{
+			Kind:     "context",
+			Title:    name,
+			Chapters: s.chaptersForTag(name, contextChaptersDisplayCap),
+		})
+	}
+	return items
+}
+
+// buildTagChapters lazily inverts ListContextChapterPairs into the
+// `tag → []chapter` map that drives inline chapter chips on \context
+// listings. Each PageMap pair contributes its chapter to every token of its
+// combo string. The result is cached on the SearchService and only rebuilt
+// after Close → re-lazy-open. Caller must hold s.mu.
+func (s *SearchService) buildTagChapters() {
+	if s.tagChaptersBuilt {
+		return
+	}
+	pairs := SST.ListContextChapterPairs(s.pst)
+	tagSets := make(map[string]map[string]bool)
+	for _, p := range pairs {
+		for _, tag := range splitContextCombo(p.Combo) {
+			set, ok := tagSets[tag]
+			if !ok {
+				set = make(map[string]bool)
+				tagSets[tag] = set
+			}
+			set[p.Chapter] = true
 		}
 	}
+	out := make(map[string][]string, len(tagSets))
+	for tag, set := range tagSets {
+		chs := make([]string, 0, len(set))
+		for ch := range set {
+			chs = append(chs, ch)
+		}
+		sort.Slice(chs, func(i, j int) bool {
+			return strings.ToLower(chs[i]) < strings.ToLower(chs[j])
+		})
+		out[tag] = chs
+	}
+	s.tagChapters = out
+	s.tagChaptersBuilt = true
+}
 
-	return items
+// chaptersForTag returns the cached chapter list for `tag` (lazy-built on
+// first call). Capped at maxChapters so a single hyper-popular tag can't
+// blow up the JSON payload — the frontend caps display further at 5.
+func (s *SearchService) chaptersForTag(tag string, maxChapters int) []string {
+	s.buildTagChapters()
+	chs := s.tagChapters[tag]
+	if len(chs) > maxChapters {
+		chs = chs[:maxChapters]
+	}
+	return chs
+}
+
+// splitContextCombo splits a stored context name (e.g. "restaurant, eating,
+// cooking") into its constituent single tokens. Empty entries and the
+// internal `_sequence_` marker are dropped. Used by every \context listing
+// helper.
+func splitContextCombo(combo string) []string {
+	parts := strings.Split(combo, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" || p == "_sequence_" {
+			continue
+		}
+		out = append(out, p)
+	}
+	return out
+}
+
+// sortContextTokens returns the keys of `seen` alphabetically sorted
+// (case-insensitive). Helper to keep the three listing functions terse.
+func sortContextTokens(seen map[string]bool) []string {
+	out := make([]string, 0, len(seen))
+	for tag := range seen {
+		out = append(out, tag)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		return strings.ToLower(out[i]) < strings.ToLower(out[j])
+	})
+	return out
+}
+
+// listAllContextTokens returns every distinct context tag stored in the
+// graph backend, alphabetically sorted (case-insensitive). Used by
+// \context any. Goes through SST.ListContexts so search reads the graph
+// store, not the in-memory N4L re-parse cache (Constitution III).
+func (s *SearchService) listAllContextTokens() []string {
+	combos := SST.ListContexts(s.pst)
+	seen := make(map[string]bool, len(combos))
+	for _, combo := range combos {
+		for _, tag := range splitContextCombo(combo) {
+			seen[tag] = true
+		}
+	}
+	return sortContextTokens(seen)
+}
+
+// listContextTokensContaining returns context tags whose label contains
+// `term` (case-insensitive substring). Used as the substring-fallback for
+// \context <term> when no co-occurrence match exists.
+func (s *SearchService) listContextTokensContaining(term string) []string {
+	termLower := strings.ToLower(strings.TrimSpace(term))
+	if termLower == "" {
+		return nil
+	}
+	combos := SST.ListContexts(s.pst)
+	seen := make(map[string]bool)
+	for _, combo := range combos {
+		for _, tag := range splitContextCombo(combo) {
+			if strings.Contains(strings.ToLower(tag), termLower) {
+				seen[tag] = true
+			}
+		}
+	}
+	return sortContextTokens(seen)
+}
+
+// listRelatedContextTokens returns the context tags that co-occur with
+// `term` in any stored context combo — the upstream "related contexts"
+// view used by \context <term>. A combo "co-occurs" with the term when one
+// of its tokens matches `term` (case-insensitive equality or substring of a
+// single token); every token from that combo is then collected.
+func (s *SearchService) listRelatedContextTokens(term string) []string {
+	termLower := strings.ToLower(strings.TrimSpace(term))
+	if termLower == "" {
+		return nil
+	}
+	combos := SST.ListContexts(s.pst)
+	seen := make(map[string]bool)
+	for _, combo := range combos {
+		tokens := splitContextCombo(combo)
+		matched := false
+		for _, tag := range tokens {
+			tagLower := strings.ToLower(tag)
+			if tagLower == termLower || strings.Contains(tagLower, termLower) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			continue
+		}
+		for _, tag := range tokens {
+			seen[tag] = true
+		}
+	}
+	return sortContextTokens(seen)
 }
 
 // searchNotes returns the authored per-line layout of notes matching the

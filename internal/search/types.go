@@ -88,12 +88,13 @@ type ChainNode struct {
 
 // ListingItem is the output of a listing command (\chapter any, \context, \arrow, \notes).
 type ListingItem struct {
-	Kind     string   `json:"Kind"`     // "chapter" | "context" | "arrow" | "note-line"
+	Kind     string   `json:"Kind"`     // "chapter" | "context" | "arrow" | "note-line" | "hint"
 	Title    string   `json:"Title"`
 	Detail   string   `json:"Detail"`
 	NodeText string   `json:"NodeText"` // non-empty if navigable (first node for navigation)
 	Nodes    []string `json:"Nodes"`    // all node texts for chapter listings
 	Contexts []string `json:"Contexts"` // distinct contexts within a chapter (TOC view)
+	Chapters []string `json:"Chapters"` // for Kind:"context" — chapters that use this tag (capped server-side)
 	MetaType string   `json:"MetaType"` // arrow meta-type (e.g. "contains", "properties")
 	Context  string   `json:"Context"`  // section header where the arrow was defined, e.g. "identity orientation"
 }

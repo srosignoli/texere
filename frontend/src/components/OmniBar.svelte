@@ -2,17 +2,86 @@
   import { onMount, onDestroy } from 'svelte'
   import { omnibarMode, workbenchStore } from '../stores/workbench.js'
   import { ParseFileForUI, SearchGraph } from '../../wailsjs/go/main/App'
+  import VirtualList from './VirtualList.svelte'
 
   let query = ''
   let selectedIndex = -1
   let inputEl = null
-  let panelEl = null
+  let virtualListEl = null
   let loading = false
 
   // Graph search state
   let graphResults = null
   let graphLoading = false
   let debounceTimer = null
+
+  // Limit handling — if no \limit is in the query, default to 100.
+  // Backend ceiling enforced server-side at 10000.
+  const DEFAULT_LIMIT = 100
+  function extractUserLimit(q) {
+    const m = /\\limit\s+(\d+)/i.exec(q)
+    if (m) {
+      return { hasLimit: true, limit: parseInt(m[1], 10), cleaned: q.replace(/\\limit\s+\d+/i, '').trim() }
+    }
+    return { hasLimit: false, limit: DEFAULT_LIMIT, cleaned: q.trim() }
+  }
+
+  // \notes is paginated by the backend at 60 rows per call. The user advances
+  // pages with `\page N`. Extract the current page so we can render the next
+  // hint after the last note row.
+  function extractPageNr(q) {
+    const m = /\\page\s+(\d+)/i.exec(q)
+    return m ? Math.max(1, parseInt(m[1], 10)) : 1
+  }
+
+  // Per-tag expansion state for inline chapter chips on \context rows.
+  // When a tag is in this Set, all its chapters are shown; otherwise the
+  // first 5 plus a "+N more" toggle.
+  const CONTEXT_CHIP_LIMIT = 5
+  let expandedContextTags = new Set()
+  function toggleContextExpand(tag) {
+    if (expandedContextTags.has(tag)) expandedContextTags.delete(tag)
+    else expandedContextTags.add(tag)
+    expandedContextTags = expandedContextTags
+  }
+
+  // Pivot the omnibar query to `\notes \context "<tag>"` so the user sees
+  // every note tagged with that context across the collection. Quoting is
+  // applied when the tag has whitespace or commas to keep the parser happy.
+  function pivotToNotesContext(tag) {
+    const needsQuote = /[\s,]/.test(tag)
+    const escaped = needsQuote ? `"${tag}"` : tag
+    query = `\\notes \\context ${escaped}`
+    selectedIndex = -1
+    clearTimeout(debounceTimer)
+    graphLoading = true
+    graphResults = null
+    dispatchGraphSearch(query.trim())
+  }
+
+  // Resolve a chapter title to its (filePath, chapter) and navigate to its
+  // first node — same pattern as the fuzzy-chapter row's navigate() branch.
+  function navigateToChapterByTitle(chapterTitle) {
+    for (const [filePath, pf] of Object.entries(fileCache)) {
+      for (const ch of pf.Chapters ?? []) {
+        if (ch.Title === chapterTitle) {
+          workbenchStore.update(s => ({
+            ...s,
+            selectedChapterKey: { filePath, chapterTitle: ch.Title },
+            parsedFile: pf,
+            activeContextFilter: new Set(),
+            selectedNodeLine: null,
+            activeTab: 'note',
+            pendingScrollLine: ch.LineStart ?? null,
+            isDirty: false,
+            isParsing: false,
+          }))
+          close()
+          return
+        }
+      }
+    }
+  }
 
   // ── Mode flags ───────────────────────────────────────────────────────────────
   $: isFuzzyMode = $omnibarMode === 'fuzzy'
@@ -129,7 +198,8 @@
   // Listing queries (\notes …) scan the full DB and must only fire on Enter,
   // not on every keystroke.
   function isListingQuery(q) {
-    return /^\\(notes|story|stories|sequence|seq|path|paths|from)(\s|$)/i.test(q)
+    const stripped = q.replace(/^\\limit\s+\d+\s*/i, '')
+    return /^\\(notes|story|stories|sequence|seq|path|paths|from)(\s|$)/i.test(stripped)
   }
 
   function enrichGraphNodes(nodes) {
@@ -171,7 +241,12 @@
 
   async function dispatchGraphSearch(q) {
     try {
-      const result = await SearchGraph(q)
+      // Ensure the backend gets at least DEFAULT_LIMIT results when the user
+      // didn't specify \limit. The frontend virtual scroller renders all of
+      // them; the user-facing `\limit` directive is left untouched if present.
+      const { hasLimit } = extractUserLimit(q)
+      const queryToSend = hasLimit ? q : `\\limit ${DEFAULT_LIMIT} ${q}`
+      const result = await SearchGraph(queryToSend)
       graphResults = result
     } catch (e) {
       console.error('OmniBar: graph search error', e)
@@ -182,43 +257,40 @@
 
   // ── Fuzzy results (only computed in fuzzy mode) ──────────────────────────────
   $: results = (() => {
-    const q = query.trim()
-    if (!q || !isFuzzyMode) return { chapters: [], contexts: [], nodes: [] }
+    if (!isFuzzyMode) return { chapters: [], contexts: [], nodes: [] }
+    const { limit, cleaned } = extractUserLimit(query)
+    if (!cleaned) return { chapters: [], contexts: [], nodes: [] }
 
     const chapters = allFileChapters
-      .map(({ filePath, chapter }) => ({ filePath, chapter, s: fuzzyScore(q, chapter.Title) }))
+      .map(({ filePath, chapter }) => ({ filePath, chapter, s: fuzzyScore(cleaned, chapter.Title) }))
       .filter(x => x.s !== null)
       .sort((a, b) => b.s - a.s)
-      .slice(0, 5)
+      .slice(0, limit)
 
     const ctxMap = new Map()
     for (const { filePath, chapter } of allFileChapters)
       for (const node of chapter.Nodes ?? [])
         for (const tag of node.EffectiveCtx ?? [])
           if (!ctxMap.has(tag)) {
-            const s = fuzzyScore(q, tag)
+            const s = fuzzyScore(cleaned, tag)
             if (s !== null) ctxMap.set(tag, { tag, filePath, chapterTitle: chapter.Title, s })
           }
-    const contexts = [...ctxMap.values()].sort((a, b) => b.s - a.s).slice(0, 6)
+    const contexts = [...ctxMap.values()].sort((a, b) => b.s - a.s).slice(0, limit)
 
     const nodes = []
     for (const { filePath, chapter } of allFileChapters)
       for (const node of chapter.Nodes ?? []) {
-        const s = fuzzyScore(q, node.Text ?? '')
+        const s = fuzzyScore(cleaned, node.Text ?? '')
         if (s !== null) nodes.push({ filePath, chapterTitle: chapter.Title, node, s })
       }
     nodes.sort((a, b) => b.s - a.s)
-    nodes.splice(10)
+    nodes.splice(limit)
 
     return { chapters, contexts, nodes }
   })()
 
   // ── Graph result enrichment ──────────────────────────────────────────────────
-  $: enrichedGraphNodes = (() => {
-    if (!graphResults?.Nodes) return []
-    const raw = graphResults.Nodes.slice(0, 10)
-    return enrichGraphNodes(raw)
-  })()
+  $: enrichedGraphNodes = graphResults?.Nodes ? enrichGraphNodes(graphResults.Nodes) : []
 
   // Sequence chains expand into one flat item per step so the user can jump to
   // any node. Path chains are kept as whole chains — one nav entry per path,
@@ -282,18 +354,212 @@
       }
     })
 
-  // ── Combined flat list for keyboard navigation ───────────────────────────────
-  $: flatResults = [
-    ...(isFuzzyMode ? results.chapters.map(r => ({ type: 'chapter', ...r }))         : []),
-    ...(isFuzzyMode ? results.contexts.map(r => ({ type: 'context', ...r }))         : []),
-    ...(isFuzzyMode ? results.nodes.map(r => ({ type: 'node', ...r }))               : []),
-    ...(isGraphMode ? enrichedGraphNodes.map(r => ({ type: 'graph-node', ...r }))    : []),
-    ...(isGraphMode ? flatPaths                                                        : []),
-    ...(isGraphMode ? flatStructural                                                   : []),
-    ...(isGraphMode ? flatNotes                                                        : []),
-    ...(isGraphMode ? (graphResults?.Listings ?? []).map(r => ({ type: 'graph-listing', ...r })) : []),
-  ]
+  // ── Unified virtualized list ─────────────────────────────────────────────────
+  // virtualItems is the full render order (labels, group headers, separators,
+  // and actionable rows). flatResults is the actionable subset, indexed by
+  // selectedIndex for keyboard navigation. actionableToVirtual maps
+  // selectedIndex → virtualItems index for scroll-to-row math.
+  $: virtualItems = (() => {
+    const out = []
+    let aIdx = 0
+    const pushAction = (kind, data, extra = {}) => {
+      out.push({ kind, data, actionableIdx: aIdx, ...extra })
+      aIdx += 1
+    }
+
+    if (isFuzzyMode) {
+      if (results.chapters.length) {
+        out.push({ kind: 'label', text: 'Chapters' })
+        for (const r of results.chapters) pushAction('fuzzy-chapter', { type: 'chapter', ...r })
+      }
+      if (results.contexts.length) {
+        out.push({ kind: 'label', text: 'Contexts' })
+        for (const r of results.contexts) pushAction('fuzzy-context', { type: 'context', ...r })
+      }
+      if (results.nodes.length) {
+        out.push({ kind: 'label', text: 'Nodes' })
+        for (const r of results.nodes) pushAction('fuzzy-node', { type: 'node', ...r })
+      }
+    }
+
+    if (isGraphMode && graphResults && !graphResults.GraphUnavailable && !graphResults.GraphError) {
+      if (enrichedGraphNodes.length) {
+        out.push({ kind: 'label', text: 'Graph Nodes' })
+        for (let i = 0; i < enrichedGraphNodes.length; i++) {
+          pushAction('graph-node', { type: 'graph-node', ...enrichedGraphNodes[i] }, { displayIdx: i })
+        }
+      }
+
+      if (flatPaths.length) {
+        const pathsByChapter = new Map()
+        for (const p of flatPaths) {
+          const k = p.chapter || ''
+          if (!pathsByChapter.has(k)) pathsByChapter.set(k, [])
+          pathsByChapter.get(k).push(p)
+        }
+        for (const [chapter, paths] of pathsByChapter) {
+          out.push({ kind: 'path-group-header', chapter })
+          for (const p of paths) pushAction('path', p)
+        }
+      }
+
+      if (flatStructural.length) {
+        out.push({ kind: 'label', text: 'Sequences' })
+        let prev = null
+        for (const r of flatStructural) {
+          const isNewGroup = !prev || prev.context !== r.context || prev.chapter !== r.chapter
+          const isNewChain = !prev || prev.chainIdx !== r.chainIdx
+          if (isNewGroup) {
+            out.push({ kind: 'sequence-group-header', context: r.context, chapter: r.chapter })
+          } else if (isNewChain) {
+            out.push({ kind: 'sequence-chain-sep' })
+          }
+          const isLastStep = r.stepIdx === r.totalSteps - 1
+          pushAction('sequence-step', r, { isLastStep })
+          prev = r
+        }
+      }
+
+      if (flatNotes.length) {
+        const notesByChapter = new Map()
+        for (const n of flatNotes) {
+          const k = n.chapter || ''
+          if (!notesByChapter.has(k)) notesByChapter.set(k, [])
+          notesByChapter.get(k).push(n)
+        }
+        for (const [chapter, blocks] of notesByChapter) {
+          out.push({ kind: 'note-group-header', chapter })
+          for (const n of blocks) {
+            pushAction('note-block-header', n)
+            for (const arrow of n.arrows) {
+              out.push({ kind: 'note-block-arrow', arrow })
+            }
+          }
+        }
+        // \notes is paginated server-side (60 PageMap rows per call). Append a
+        // marker so the user knows where the page ends and how to load more.
+        const pageNr = extractPageNr(query)
+        out.push({ kind: 'notes-end-of-page', pageNr })
+      }
+
+      if (graphResults.Listings?.length) {
+        const chapterItems = graphResults.Listings.filter(l => l.Kind === 'chapter')
+        const hintItems = graphResults.Listings.filter(l => l.Kind === 'hint')
+        const contextItems = graphResults.Listings.filter(l => l.Kind === 'context')
+        const otherItems = graphResults.Listings.filter(l =>
+          l.Kind !== 'chapter' && l.Kind !== 'hint' && l.Kind !== 'context')
+
+        // Hints render at the top so the user sees the syntax suggestion
+        // before any (possibly noisy) result list.
+        if (hintItems.length) {
+          for (const r of hintItems) {
+            out.push({ kind: 'listing-hint', title: r.Title, detail: r.Detail })
+          }
+        }
+
+        if (chapterItems.length) {
+          out.push({ kind: 'label', text: 'Chapters' })
+          for (const r of chapterItems) {
+            const data = { type: 'graph-listing', ...r }
+            pushAction('listing-chapter-header', data)
+            if (r.Contexts?.length) {
+              out.push({ kind: 'listing-chapter-contexts', contexts: r.Contexts })
+            } else if (r.Detail) {
+              out.push({ kind: 'listing-chapter-detail', detail: r.Detail })
+            }
+            if (r.Nodes?.length) {
+              for (let ni = 0; ni < r.Nodes.length; ni++) {
+                out.push({ kind: 'listing-chapter-node', nodeText: r.Nodes[ni], idx: ni })
+              }
+            }
+          }
+        }
+
+        if (contextItems.length) {
+          out.push({ kind: 'label', text: 'Contexts' })
+          for (const r of contextItems) {
+            pushAction('listing-context-row', { type: 'graph-listing', ...r })
+          }
+        }
+
+        if (otherItems.length) {
+          const kindLabel = { arrow: 'Arrows', 'note-line': 'Notes' }
+          const otherByKind = new Map()
+          for (const item of otherItems) {
+            if (!otherByKind.has(item.Kind)) otherByKind.set(item.Kind, [])
+            otherByKind.get(item.Kind).push(item)
+          }
+          for (const [kind, items] of otherByKind) {
+            out.push({ kind: 'label', text: kindLabel[kind] ?? kind })
+            for (const r of items) pushAction('listing-other', { type: 'graph-listing', ...r }, { listingKind: kind })
+          }
+        }
+      }
+    }
+
+    return out
+  })()
+
+  $: flatResults = virtualItems.filter(v => v.actionableIdx !== undefined).map(v => v.data)
+
+  $: actionableToVirtual = (() => {
+    const m = new Map()
+    for (let vi = 0; vi < virtualItems.length; vi++) {
+      const v = virtualItems[vi]
+      if (v.actionableIdx !== undefined) m.set(v.actionableIdx, vi)
+    }
+    return m
+  })()
+
   $: totalCount = flatResults.length
+
+  // ── Result count summary ─────────────────────────────────────────────────────
+  // Per-bucket counts joined with ' · ', e.g. "12 chapters · 247 nodes · 8 contexts".
+  // Helps users see what came back at a glance and that there's more to scroll.
+  function plural(n, singular, pluralForm) {
+    return `${n} ${n === 1 ? singular : (pluralForm ?? singular + 's')}`
+  }
+
+  $: resultSummary = (() => {
+    const parts = []
+    if (isFuzzyMode) {
+      if (results.chapters.length) parts.push(plural(results.chapters.length, 'chapter'))
+      if (results.contexts.length) parts.push(plural(results.contexts.length, 'context', 'contexts'))
+      if (results.nodes.length) parts.push(plural(results.nodes.length, 'node'))
+      return parts.join(' · ')
+    }
+    if (!isGraphMode || !graphResults || graphResults.GraphUnavailable || graphResults.GraphError) {
+      return ''
+    }
+    if (enrichedGraphNodes.length) parts.push(plural(enrichedGraphNodes.length, 'node'))
+    if (flatPaths.length) parts.push(plural(flatPaths.length, 'path'))
+    const sequenceChainCount = (graphResults.Structural ?? []).filter(c => (c.Kind ?? 'sequence') === 'sequence').length
+    if (sequenceChainCount) {
+      parts.push(plural(sequenceChainCount, 'sequence'))
+      if (flatStructural.length !== sequenceChainCount) {
+        parts.push(plural(flatStructural.length, 'step'))
+      }
+    }
+    if (flatNotes.length) {
+      parts.push(plural(flatNotes.length, 'note'))
+      const arrowTotal = flatNotes.reduce((a, n) => a + (n.arrows?.length ?? 0), 0)
+      if (arrowTotal) parts.push(plural(arrowTotal, 'arrow'))
+    }
+    const listings = graphResults.Listings ?? []
+    const chapterListings = listings.filter(l => l.Kind === 'chapter')
+    if (chapterListings.length) {
+      parts.push(plural(chapterListings.length, 'chapter'))
+      const nodeTotal = chapterListings.reduce((a, l) => a + (l.Nodes?.length ?? 0), 0)
+      if (nodeTotal) parts.push(plural(nodeTotal, 'node'))
+    }
+    const ctxListings = listings.filter(l => l.Kind === 'context').length
+    if (ctxListings) parts.push(plural(ctxListings, 'context', 'contexts'))
+    const arrowListings = listings.filter(l => l.Kind === 'arrow').length
+    if (arrowListings) parts.push(plural(arrowListings, 'arrow'))
+    const noteLineListings = listings.filter(l => l.Kind === 'note-line').length
+    if (noteLineListings) parts.push(plural(noteLineListings, 'note line'))
+    return parts.join(' · ')
+  })()
 
   // ── Navigation ───────────────────────────────────────────────────────────────
   function navigate(item) {
@@ -341,6 +607,13 @@
         }))
       }
     } else if (item.type === 'graph-listing') {
+      // Enter on a \context row pivots the query to `\notes \context "<tag>"`
+      // so the user gets every note tagged with that context — keeps the
+      // omnibar open instead of closing to navigate.
+      if (item.Kind === 'context') {
+        pivotToNotesContext(item.Title)
+        return
+      }
       if (item.NodeText) {
         outer: for (const [filePath, lpf] of Object.entries(fileCache)) {
           for (const ch of lpf.Chapters ?? []) {
@@ -371,6 +644,12 @@
     selectedIndex = -1
   }
 
+  function scrollSelectedIntoView() {
+    if (selectedIndex < 0 || !virtualListEl) return
+    const vi = actionableToVirtual.get(selectedIndex)
+    if (vi !== undefined) virtualListEl.scrollToIndex(vi)
+  }
+
   // ── Keyboard navigation ──────────────────────────────────────────────────────
   function handleKeydown(e) {
     if (e.key === 'Tab') { e.preventDefault(); return }
@@ -378,10 +657,7 @@
     if (e.key === 'ArrowDown') {
       e.preventDefault()
       selectedIndex = Math.min(selectedIndex + 1, flatResults.length - 1)
-      setTimeout(() => {
-        panelEl?.querySelector(`[data-idx="${selectedIndex}"]`)
-          ?.scrollIntoView({ block: 'nearest' })
-      }, 0)
+      scrollSelectedIntoView()
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
       if (selectedIndex <= 0) {
@@ -389,6 +665,7 @@
         inputEl?.focus()
       } else {
         selectedIndex--
+        scrollSelectedIntoView()
       }
     } else if (e.key === 'Enter') {
       e.preventDefault()
@@ -414,7 +691,6 @@
 
   <div
     class="omnibar-panel"
-    bind:this={panelEl}
     on:keydown={handleKeydown}
     role="dialog"
     aria-label="Search"
@@ -440,97 +716,101 @@
     </div>
 
     {#if query.trim()}
-      <div class="omnibar-results">
+      {#if isGraphMode && graphLoading}
+        <div class="omnibar-status"><div class="graph-searching">Searching…</div></div>
+      {:else if isGraphMode && isListingQuery(query.trim()) && !graphResults}
+        <div class="omnibar-status"><div class="graph-searching">Press Enter to search…</div></div>
+      {:else if isGraphMode && graphResults?.GraphUnavailable}
+        <div class="omnibar-status">
+          <div class="graph-unavailable">
+            {graphResults.GraphError || 'Build your graph first (Ctrl+G) to enable graph search.'}
+          </div>
+        </div>
+      {:else if isGraphMode && graphResults?.GraphError}
+        <div class="omnibar-status">
+          <div class="result-label">Error</div>
+          <div class="graph-error">{graphResults.GraphError}</div>
+        </div>
+      {:else if totalCount === 0}
+        <div class="omnibar-status">
+          <div class="omnibar-empty">{loading ? 'Loading collection…' : 'No results'}</div>
+        </div>
+      {:else}
+        {#if resultSummary}
+          <div class="omnibar-summary" title="Scroll the list for the full content">
+            <span class="omnibar-summary-counts">{resultSummary}</span>
+            <span class="omnibar-summary-hint">↓ scroll for more</span>
+          </div>
+        {/if}
+        <div class="omnibar-results">
+          <VirtualList
+            bind:this={virtualListEl}
+            items={virtualItems}
+            estimatedHeight={28}
+            overscan={5}
+            let:item
+            let:index
+          >
+            {#if item.kind === 'label'}
+              <div class="result-label" data-vidx={index}>{item.text}</div>
 
-        <!-- ── Fuzzy mode results ── -->
-        {#if isFuzzyMode}
-          {#if results.chapters.length}
-            <div class="result-label">Chapters</div>
-            {#each results.chapters as r, i}
+            {:else if item.kind === 'fuzzy-chapter'}
               <button
                 class="result-item"
-                class:selected={selectedIndex === i}
-                data-idx={i}
-                on:click={() => navigate({ type: 'chapter', ...r })}
-                on:mouseenter={() => (selectedIndex = i)}
+                class:selected={selectedIndex === item.actionableIdx}
+                data-idx={item.actionableIdx}
+                on:click={() => navigate(item.data)}
+                on:mouseenter={() => (selectedIndex = item.actionableIdx)}
               >
                 <span class="result-icon">§</span>
-                <span class="result-text">{r.chapter.Title}</span>
-                <span class="result-hint">{r.filePath.split('/').pop()}</span>
+                <span class="result-text">{item.data.chapter.Title}</span>
+                <span class="result-hint">{item.data.filePath.split('/').pop()}</span>
               </button>
-            {/each}
-          {/if}
 
-          {#if results.contexts.length}
-            <div class="result-label">Contexts</div>
-            {#each results.contexts as r, i}
-              {@const idx = results.chapters.length + i}
+            {:else if item.kind === 'fuzzy-context'}
               <button
                 class="result-item"
-                class:selected={selectedIndex === idx}
-                data-idx={idx}
-                on:click={() => navigate({ type: 'context', ...r })}
-                on:mouseenter={() => (selectedIndex = idx)}
+                class:selected={selectedIndex === item.actionableIdx}
+                data-idx={item.actionableIdx}
+                on:click={() => navigate(item.data)}
+                on:mouseenter={() => (selectedIndex = item.actionableIdx)}
               >
                 <span class="result-icon">::</span>
-                <span class="result-text">{r.tag}</span>
-                <span class="result-hint">{r.chapterTitle}</span>
+                <span class="result-text">{item.data.tag}</span>
+                <span class="result-hint">{item.data.chapterTitle}</span>
               </button>
-            {/each}
-          {/if}
 
-          {#if results.nodes.length}
-            <div class="result-label">Nodes</div>
-            {#each results.nodes as r, i}
-              {@const idx = results.chapters.length + results.contexts.length + i}
+            {:else if item.kind === 'fuzzy-node'}
               <button
                 class="result-item"
-                class:selected={selectedIndex === idx}
-                data-idx={idx}
-                on:click={() => navigate({ type: 'node', ...r })}
-                on:mouseenter={() => (selectedIndex = idx)}
+                class:selected={selectedIndex === item.actionableIdx}
+                data-idx={item.actionableIdx}
+                on:click={() => navigate(item.data)}
+                on:mouseenter={() => (selectedIndex = item.actionableIdx)}
               >
                 <span class="result-icon">¶</span>
-                <span class="result-text">{r.node.Text}</span>
-                <span class="result-hint">{r.chapterTitle}</span>
+                <span class="result-text">{item.data.node.Text}</span>
+                <span class="result-hint">{item.data.chapterTitle}</span>
               </button>
-            {/each}
-          {/if}
-        {/if}
 
-        <!-- ── Graph mode results ── -->
-        {#if isGraphMode}
-          {#if graphLoading}
-            <div class="graph-searching">Searching…</div>
-          {:else if isListingQuery(query.trim()) && !graphResults}
-            <div class="graph-searching">Press Enter to search…</div>
-          {:else if graphResults?.GraphUnavailable}
-            <div class="graph-unavailable">
-              {graphResults.GraphError || 'Build your graph first (Ctrl+G) to enable graph search.'}
-            </div>
-          {:else if graphResults?.GraphError}
-            <div class="result-label">Error</div>
-            <div class="graph-error">{graphResults.GraphError}</div>
-          {:else if graphResults}
-            {#if enrichedGraphNodes.length}
-              <div class="result-label">Graph Nodes</div>
-              {#each enrichedGraphNodes as r, i}
+            {:else if item.kind === 'graph-node'}
+              <div class="vrow-graph-node">
                 <button
                   class="result-item orbit-node-header"
-                  class:selected={selectedIndex === i}
-                  data-idx={i}
-                  on:click={() => navigate({ type: 'graph-node', ...r })}
-                  on:mouseenter={() => (selectedIndex = i)}
+                  class:selected={selectedIndex === item.actionableIdx}
+                  data-idx={item.actionableIdx}
+                  on:click={() => navigate(item.data)}
+                  on:mouseenter={() => (selectedIndex = item.actionableIdx)}
                 >
-                  <span class="orbit-node-idx">{i}:</span>
-                  <span class="result-text">{r.NodeText}</span>
-                  {#if r.chapterTitle ?? r.Chapter}
-                    <span class="result-hint">{r.chapterTitle ?? r.Chapter}</span>
+                  <span class="orbit-node-idx">{item.displayIdx}:</span>
+                  <span class="result-text">{item.data.NodeText}</span>
+                  {#if item.data.chapterTitle ?? item.data.Chapter}
+                    <span class="result-hint">{item.data.chapterTitle ?? item.data.Chapter}</span>
                   {/if}
                 </button>
-                {#if r.Orbit?.length}
+                {#if item.data.Orbit?.length}
                   <div class="orbit-list">
-                    {#each r.Orbit as orb}
+                    {#each item.data.Orbit as orb}
                       <div class="orbit-entry" style="padding-left: {(orb.Radius - 1) * 18}px">
                         <span class="orbit-dash"> -</span>
                         <span class="orbit-arrow">({orb.ArrowLong})</span>
@@ -542,198 +822,191 @@
                     {/each}
                   </div>
                 {/if}
-              {/each}
-            {/if}
+              </div>
 
-            {#if flatPaths.length}
-              {@const pathsByChapter = flatPaths.reduce((acc, p) => {
-                (acc[p.chapter || ''] = acc[p.chapter || ''] ?? []).push(p); return acc
-              }, {})}
-              {#each Object.entries(pathsByChapter) as [chapter, paths]}
-                <div class="sequence-group-header">
-                  <span class="sequence-context">:: paths ::</span>
-                  {#if chapter}
-                    <span class="sequence-chapter">{chapter}</span>
-                  {/if}
-                </div>
-                {#each paths as p}
-                  {@const idx = enrichedGraphNodes.length + flatPaths.indexOf(p)}
-                  <button
-                    class="result-item path-chain"
-                    class:selected={selectedIndex === idx}
-                    data-idx={idx}
-                    on:click={() => navigate(p)}
-                    on:mouseenter={() => (selectedIndex = idx)}
-                  >
-                    {#each p.nodes as step, si}
-                      <span class="path-node">{step.NodeText}</span>
-                      {#if si < p.nodes.length - 1 && step.ArrowLong}
-                        <span class="path-arrow">-({step.ArrowLong})-&gt;</span>
-                      {/if}
-                    {/each}
-                  </button>
-                {/each}
-              {/each}
-            {/if}
-
-            {#if flatStructural.length}
-              <div class="result-label">Sequences</div>
-              {#each flatStructural as r, i}
-                {@const idx = enrichedGraphNodes.length + flatPaths.length + i}
-                {@const prev = i > 0 ? flatStructural[i - 1] : null}
-                {@const isNewGroup = !prev || prev.context !== r.context || prev.chapter !== r.chapter}
-                {@const isNewChain = !prev || prev.chainIdx !== r.chainIdx}
-                {@const isLastStep = r.stepIdx === r.totalSteps - 1}
-
-                {#if isNewGroup}
-                  <div class="sequence-group-header">
-                    {#if r.context}
-                      <span class="sequence-context">:: {r.context} ::</span>
-                    {/if}
-                    {#if r.chapter}
-                      <span class="sequence-chapter">{r.chapter}</span>
-                    {/if}
-                    {#if !r.context && !r.chapter}
-                      <span class="sequence-context sequence-context-muted">(uncontextualised)</span>
-                    {/if}
-                  </div>
-                {:else if isNewChain}
-                  <div class="sequence-chain-sep" />
+            {:else if item.kind === 'path-group-header'}
+              <div class="sequence-group-header">
+                <span class="sequence-context">:: paths ::</span>
+                {#if item.chapter}
+                  <span class="sequence-chapter">{item.chapter}</span>
                 {/if}
+              </div>
 
-                <button
-                  class="result-item sequence-step"
-                  class:selected={selectedIndex === idx}
-                  class:chain-start={r.stepIdx === 0}
-                  class:chain-end={isLastStep}
-                  data-idx={idx}
-                  on:click={() => navigate(r)}
-                  on:mouseenter={() => (selectedIndex = idx)}
-                >
-                  <div class="step-gutter">
-                    <span class="step-num">({r.stepIdx + 1})</span>
-                    {#if !isLastStep}<div class="step-stem" />{/if}
-                  </div>
-                  <span class="step-text">{r.nodeText}</span>
-                </button>
-              {/each}
-            {/if}
-
-            {#if flatNotes.length}
-              {@const notesByChapter = flatNotes.reduce((acc, n) => {
-                (acc[n.chapter || ''] = acc[n.chapter || ''] ?? []).push(n); return acc
-              }, {})}
-              {#each Object.entries(notesByChapter) as [chapter, blocks]}
-                <div class="note-group-header">
-                  <span class="note-group-marker">── notes ──</span>
-                  {#if chapter}
-                    <span class="note-group-chapter">{chapter}</span>
+            {:else if item.kind === 'path'}
+              <button
+                class="result-item path-chain"
+                class:selected={selectedIndex === item.actionableIdx}
+                data-idx={item.actionableIdx}
+                on:click={() => navigate(item.data)}
+                on:mouseenter={() => (selectedIndex = item.actionableIdx)}
+              >
+                {#each item.data.nodes as step, si}
+                  <span class="path-node">{step.NodeText}</span>
+                  {#if si < item.data.nodes.length - 1 && step.ArrowLong}
+                    <span class="path-arrow">-({step.ArrowLong})-&gt;</span>
                   {/if}
+                {/each}
+              </button>
+
+            {:else if item.kind === 'sequence-group-header'}
+              <div class="sequence-group-header">
+                {#if item.context}
+                  <span class="sequence-context">:: {item.context} ::</span>
+                {/if}
+                {#if item.chapter}
+                  <span class="sequence-chapter">{item.chapter}</span>
+                {/if}
+                {#if !item.context && !item.chapter}
+                  <span class="sequence-context sequence-context-muted">(uncontextualised)</span>
+                {/if}
+              </div>
+
+            {:else if item.kind === 'sequence-chain-sep'}
+              <div class="sequence-chain-sep" />
+
+            {:else if item.kind === 'sequence-step'}
+              <button
+                class="result-item sequence-step"
+                class:selected={selectedIndex === item.actionableIdx}
+                class:chain-start={item.data.stepIdx === 0}
+                class:chain-end={item.isLastStep}
+                data-idx={item.actionableIdx}
+                on:click={() => navigate(item.data)}
+                on:mouseenter={() => (selectedIndex = item.actionableIdx)}
+              >
+                <div class="step-gutter">
+                  <span class="step-num">({item.data.stepIdx + 1})</span>
+                  {#if !item.isLastStep}<div class="step-stem" />{/if}
                 </div>
-                {#each blocks as n}
-                  {@const idx = enrichedGraphNodes.length + flatPaths.length + flatStructural.length + flatNotes.indexOf(n)}
+                <span class="step-text">{item.data.nodeText}</span>
+              </button>
+
+            {:else if item.kind === 'note-group-header'}
+              <div class="note-group-header">
+                <span class="note-group-marker">── notes ──</span>
+                {#if item.chapter}
+                  <span class="note-group-chapter">{item.chapter}</span>
+                {/if}
+              </div>
+
+            {:else if item.kind === 'note-block-header'}
+              <button
+                class="result-item note-block-header"
+                class:selected={selectedIndex === item.actionableIdx}
+                data-idx={item.actionableIdx}
+                on:click={() => navigate(item.data)}
+                on:mouseenter={() => (selectedIndex = item.actionableIdx)}
+              >
+                <span class="note-node-text">{item.data.nodeText}</span>
+                {#if item.data.context}
+                  <span class="note-node-context">:: {item.data.context} ::</span>
+                {/if}
+              </button>
+
+            {:else if item.kind === 'note-block-arrow'}
+              <div class="note-arrow-line">
+                <span class="note-arrow">({item.arrow.ArrowLong})</span>
+                <span class="note-arrow-target">{item.arrow.Target}</span>
+              </div>
+
+            {:else if item.kind === 'notes-end-of-page'}
+              <div class="notes-end-of-page">
+                <span class="notes-end-rule">──── end of page {item.pageNr} ────</span>
+                <span class="notes-end-hint">type <code>\page {item.pageNr + 1}</code> for more · empty result means you've reached the end</span>
+              </div>
+
+            {:else if item.kind === 'listing-chapter-header'}
+              <button
+                class="result-item listing-chapter-header"
+                class:selected={selectedIndex === item.actionableIdx}
+                data-idx={item.actionableIdx}
+                on:click={() => navigate(item.data)}
+                on:mouseenter={() => (selectedIndex = item.actionableIdx)}
+                title="Open chapter “{item.data.Title}”"
+              >
+                <span class="result-icon graph-icon">§</span>
+                <span class="result-text">{item.data.Title}</span>
+              </button>
+
+            {:else if item.kind === 'listing-chapter-contexts'}
+              <div class="listing-context-chips">
+                {#each item.contexts as ctx}
                   <button
-                    class="result-item note-block"
-                    class:selected={selectedIndex === idx}
-                    data-idx={idx}
-                    on:click={() => navigate(n)}
-                    on:mouseenter={() => (selectedIndex = idx)}
-                  >
-                    <div class="note-node">
-                      <span class="note-node-text">{n.nodeText}</span>
-                      {#if n.context}
-                        <span class="note-node-context">:: {n.context} ::</span>
-                      {/if}
-                    </div>
-                    {#if n.arrows.length}
-                      <div class="note-arrow-list">
-                        {#each n.arrows as arrow}
-                          <div class="note-arrow-line">
-                            <span class="note-arrow">({arrow.ArrowLong})</span>
-                            <span class="note-arrow-target">{arrow.Target}</span>
-                          </div>
-                        {/each}
-                      </div>
+                    class="listing-context-chip"
+                    on:click|stopPropagation={() => pivotToNotesContext(ctx)}
+                    title="Show all notes tagged with :: {ctx} ::"
+                  >{ctx}</button>
+                {/each}
+              </div>
+
+            {:else if item.kind === 'listing-chapter-detail'}
+              <div class="result-hint listing-empty-hint">{item.detail}</div>
+
+            {:else if item.kind === 'listing-chapter-node'}
+              <div class="listing-node-row">
+                <span class="listing-node-idx">{item.idx}.</span>
+                <span class="listing-node-text">{item.nodeText}</span>
+              </div>
+
+            {:else if item.kind === 'listing-hint'}
+              <div class="listing-hint">
+                <span class="listing-hint-title">{item.title}</span>
+                {#if item.detail}<span class="listing-hint-detail">{item.detail}</span>{/if}
+              </div>
+
+            {:else if item.kind === 'listing-context-row'}
+              <div class="listing-context-row">
+                <button
+                  class="result-item listing-context-tag"
+                  class:selected={selectedIndex === item.actionableIdx}
+                  data-idx={item.actionableIdx}
+                  on:click={() => pivotToNotesContext(item.data.Title)}
+                  on:mouseenter={() => (selectedIndex = item.actionableIdx)}
+                  title="Show all notes tagged with this context"
+                >
+                  <span class="result-icon graph-icon">::</span>
+                  <span class="result-text">{item.data.Title}</span>
+                </button>
+                {#if item.data.Chapters?.length}
+                  {@const chs = item.data.Chapters}
+                  {@const expanded = expandedContextTags.has(item.data.Title)}
+                  {@const visible = expanded ? chs : chs.slice(0, CONTEXT_CHIP_LIMIT)}
+                  <div class="listing-context-chips">
+                    {#each visible as chapName}
+                      <button
+                        class="listing-context-chip"
+                        on:click|stopPropagation={() => navigateToChapterByTitle(chapName)}
+                        title="Open chapter “{chapName}”"
+                      >{chapName}</button>
+                    {/each}
+                    {#if !expanded && chs.length > CONTEXT_CHIP_LIMIT}
+                      <button
+                        class="listing-context-more"
+                        on:click|stopPropagation={() => toggleContextExpand(item.data.Title)}
+                      >+{chs.length - CONTEXT_CHIP_LIMIT} more</button>
                     {/if}
-                  </button>
-                {/each}
-              {/each}
+                  </div>
+                {/if}
+              </div>
+
+            {:else if item.kind === 'listing-other'}
+              <button
+                class="result-item"
+                class:selected={selectedIndex === item.actionableIdx}
+                data-idx={item.actionableIdx}
+                on:click={() => navigate(item.data)}
+                on:mouseenter={() => (selectedIndex = item.actionableIdx)}
+              >
+                <span class="result-icon graph-icon">{item.listingKind === 'arrow' ? '→' : '·'}</span>
+                <span class="result-text">{item.data.Title}</span>
+                {#if item.data.Detail}<span class="result-hint">{item.data.Detail}</span>{/if}
+                {#if item.listingKind === 'arrow' && item.data.MetaType}<span class="arrow-meta">{item.data.MetaType}</span>{/if}
+                {#if item.listingKind === 'arrow' && item.data.Context}<span class="arrow-context">:: {item.data.Context} ::</span>{/if}
+              </button>
             {/if}
-
-            {#if graphResults.Listings?.length}
-              {@const chapterItems = graphResults.Listings.filter(l => l.Kind === 'chapter')}
-              {@const otherItems   = graphResults.Listings.filter(l => l.Kind !== 'chapter')}
-
-              {#if chapterItems.length}
-                <div class="result-label">Chapters</div>
-                {#each chapterItems as r, ci}
-                  {@const baseIdx = enrichedGraphNodes.length + flatPaths.length + flatStructural.length + flatNotes.length + ci}
-                  <button
-                    class="result-item listing-chapter-header"
-                    class:selected={selectedIndex === baseIdx}
-                    data-idx={baseIdx}
-                    on:click={() => navigate({ type: 'graph-listing', ...r })}
-                    on:mouseenter={() => (selectedIndex = baseIdx)}
-                  >
-                    <span class="result-icon graph-icon">§</span>
-                    <span class="result-text">{r.Title}</span>
-                  </button>
-                  {#if r.Contexts?.length}
-                    <div class="listing-context-list">
-                      {#each r.Contexts as ctx}
-                        <span class="arrow-context">:: {ctx} ::</span>
-                      {/each}
-                    </div>
-                  {:else if r.Detail}
-                    <div class="result-hint listing-empty-hint">{r.Detail}</div>
-                  {/if}
-                  {#if r.Nodes?.length}
-                    <div class="listing-node-list">
-                      {#each r.Nodes as nodeText, ni}
-                        <div class="listing-node-row">
-                          <span class="listing-node-idx">{ni}.</span>
-                          <span class="listing-node-text">{nodeText}</span>
-                        </div>
-                      {/each}
-                    </div>
-                  {/if}
-                {/each}
-              {/if}
-
-              {#if otherItems.length}
-                {@const kindLabel = { arrow: 'Arrows', context: 'Contexts', 'note-line': 'Notes' }}
-                {@const otherByKind = otherItems.reduce((acc, item) => {
-                  (acc[item.Kind] = acc[item.Kind] ?? []).push(item); return acc
-                }, {})}
-                {#each Object.entries(otherByKind) as [kind, items]}
-                  <div class="result-label">{kindLabel[kind] ?? kind}</div>
-                  {#each items as r, i}
-                    {@const baseIdx = enrichedGraphNodes.length + flatPaths.length + flatStructural.length + flatNotes.length + chapterItems.length + i}
-                    <button
-                      class="result-item"
-                      class:selected={selectedIndex === baseIdx}
-                      data-idx={baseIdx}
-                      on:click={() => navigate({ type: 'graph-listing', ...r })}
-                      on:mouseenter={() => (selectedIndex = baseIdx)}
-                    >
-                      <span class="result-icon graph-icon">{kind === 'arrow' ? '→' : '·'}</span>
-                      <span class="result-text">{r.Title}</span>
-                      {#if r.Detail}<span class="result-hint">{r.Detail}</span>{/if}
-                      {#if kind === 'arrow' && r.MetaType}<span class="arrow-meta">{r.MetaType}</span>{/if}
-                      {#if kind === 'arrow' && r.Context}<span class="arrow-context">:: {r.Context} ::</span>{/if}
-                    </button>
-                  {/each}
-                {/each}
-              {/if}
-            {/if}
-          {/if}
-        {/if}
-
-        {#if totalCount === 0 && !graphLoading}
-          <div class="omnibar-empty">{loading ? 'Loading collection…' : 'No results'}</div>
-        {/if}
-
-      </div>
+          </VirtualList>
+        </div>
+      {/if}
     {:else if isGraphMode}
       <div class="omnibar-hint">
         Type a graph query — e.g. <code>\chapter any</code>, <code>node text \chapter title</code>, <code>\from A \to B</code>
@@ -835,8 +1108,62 @@
   }
 
   .omnibar-results {
+    flex: 1;
+    min-height: 0;
+    padding: 4px 0 8px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  .omnibar-results :global(.vlist-viewport) {
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* Static fade hint that more content is below the viewport. */
+  .omnibar-results::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 24px;
+    pointer-events: none;
+    background: linear-gradient(to bottom, rgba(26, 37, 53, 0) 0%, #1a2535 100%);
+  }
+
+  .omnibar-summary {
+    flex-shrink: 0;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 4px 14px 4px;
+    border-bottom: 1px solid #1a2530;
+    font-size: 0.72rem;
+    color: #6a8aa0;
+  }
+
+  .omnibar-summary-counts {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+
+  .omnibar-summary-hint {
+    color: #4a6a7a;
+    font-style: italic;
+    flex-shrink: 0;
+  }
+
+  .omnibar-status {
     overflow-y: auto;
     padding: 4px 0 8px;
+  }
+
+  .vrow-graph-node {
+    display: flex;
+    flex-direction: column;
   }
 
   .omnibar-empty {
@@ -1009,20 +1336,6 @@
     font-weight: 600;
   }
 
-  .listing-node-list {
-    padding: 2px 0 6px 28px;
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-  }
-
-  .listing-context-list {
-    padding: 2px 0 6px 28px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 12px;
-  }
-
   .listing-empty-hint {
     padding: 2px 0 6px 28px;
     font-size: 0.78rem;
@@ -1035,7 +1348,7 @@
     gap: 6px;
     font-size: 0.78rem;
     color: #8a9aaa;
-    padding: 1px 0;
+    padding: 1px 14px 1px 42px;
   }
 
   .listing-node-idx {
@@ -1047,6 +1360,68 @@
 
   .listing-node-text {
     color: #a0b4c4;
+  }
+
+  /* \context listing row — tag button + inline chapter chips */
+  .listing-context-row {
+    display: flex;
+    flex-direction: column;
+  }
+  .listing-context-tag {
+    /* uses .result-item base; nothing extra needed but kept for selector specificity */
+  }
+  .listing-context-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 6px;
+    padding: 0 14px 6px 42px;
+  }
+  .listing-context-chip,
+  .listing-context-more {
+    background: #1e2f40;
+    border: 1px solid #2a4258;
+    border-radius: 10px;
+    padding: 1px 8px;
+    color: #a0b4c4;
+    font-size: 0.72rem;
+    font-family: inherit;
+    cursor: pointer;
+    line-height: 1.4;
+    transition: background 0.08s, color 0.08s, border-color 0.08s;
+  }
+  .listing-context-chip:hover {
+    background: #2a4258;
+    color: #e8eaf0;
+    border-color: #3a5a7a;
+  }
+  .listing-context-more {
+    color: #6a8aa0;
+    font-style: italic;
+  }
+  .listing-context-more:hover {
+    color: #c8d2dc;
+    border-color: #3a5a7a;
+  }
+
+  /* Did-you-mean hints surfaced by the search backend */
+  .listing-hint {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 6px 14px;
+    padding: 8px 12px;
+    background: #1e3242;
+    border-left: 2px solid #c9a96e;
+    border-radius: 3px;
+    font-size: 0.78rem;
+  }
+  .listing-hint-title {
+    color: #d8c590;
+    font-weight: 500;
+  }
+  .listing-hint-detail {
+    color: #8aa0b0;
+    font-style: italic;
   }
 
   /* ── Sequence / \story \sequence groups ────────────────────────────────── */
@@ -1169,43 +1544,32 @@
     text-transform: uppercase;
     letter-spacing: 0.06em;
   }
-  .note-block {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 2px;
-    padding: 4px 14px;
-  }
-  .note-block .note-node {
+  .note-block-header {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
     gap: 8px;
+    padding: 4px 14px;
   }
-  .note-block .note-node-text {
+  .note-block-header .note-node-text {
     font-weight: 500;
     color: #c8d2dc;
     font-size: 0.86rem;
   }
-  .note-block.selected .note-node-text {
+  .note-block-header.selected .note-node-text {
     color: #e8eaf0;
   }
-  .note-block .note-node-context {
+  .note-block-header .note-node-context {
     font-size: 0.68rem;
     color: #c9a96e;
     font-style: italic;
-  }
-  .note-arrow-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    padding-left: 18px;
   }
   .note-arrow-line {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
     font-size: 0.78rem;
+    padding: 1px 14px 1px 32px;
   }
   .note-arrow {
     color: #6a9aaa;
@@ -1215,7 +1579,31 @@
   .note-arrow-target {
     color: #b0bac5;
   }
-  .note-block.selected .note-arrow-target {
-    color: #d8dae0;
+
+  .notes-end-of-page {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 10px 14px 14px;
+    color: #6a8aa0;
+    font-size: 0.72rem;
+    text-align: center;
+  }
+  .notes-end-rule {
+    letter-spacing: 0.04em;
+    color: #4a6a7a;
+  }
+  .notes-end-hint {
+    color: #6a8aa0;
+    font-style: italic;
+  }
+  .notes-end-hint code {
+    font-style: normal;
+    background: #0f1e2e;
+    color: #8aa8c9;
+    padding: 0 4px;
+    border-radius: 3px;
+    font-family: monospace;
   }
 </style>
