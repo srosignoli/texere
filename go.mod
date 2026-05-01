@@ -4,7 +4,7 @@ go 1.24.4
 
 require (
 	github.com/fsnotify/fsnotify v1.9.0
-	github.com/srosignoli/sstorytime-kv v0.4.0
+	github.com/srosignoli/sstorytime-kv v0.5.0
 	github.com/wailsapp/wails/v2 v2.12.0
 	golang.org/x/text v0.28.0
 )
