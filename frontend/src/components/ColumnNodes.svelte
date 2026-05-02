@@ -273,7 +273,7 @@
 <style>
   /* ── Layout ──────────────────────────────────────────────────────────────── */
   .col-nodes {
-    flex: 1 1 0;
+    /* width is owned by the parent slot in TopBand (flex remainder) */
     display: flex;
     flex-direction: column;
     overflow: hidden;

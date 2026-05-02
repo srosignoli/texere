@@ -19,7 +19,17 @@ type BuildResult struct {
 	LinksIngested  int
 	FilesProcessed int
 	Errors         []string
-	DurationMs     int64
+	// UnknownArrows aggregates arrow codes encountered in the source files
+	// that aren't registered in the SSTRegistry. Key = arrow code text,
+	// value = number of occurrences across the collection. The corresponding
+	// links and target nodes are NOT created (existing builder behaviour);
+	// surfaced in the log panel so authors know what to register.
+	UnknownArrows map[string]int
+	// ParseErrors hoists every per-file content.ParseError encountered
+	// during the build, so the frontend can list them in one place rather
+	// than waiting for the user to navigate to each file.
+	ParseErrors []content.ParseError
+	DurationMs  int64
 }
 
 // BuildFromCollection ingests all .n4l files from collectionDir into a fresh
@@ -27,7 +37,9 @@ type BuildResult struct {
 // SearchService before calling this (BadgerDB does not allow two writers).
 func BuildFromCollection(collectionDir string, registry *content.SSTRegistry) (*BuildResult, error) {
 	start := time.Now()
-	result := &BuildResult{}
+	result := &BuildResult{
+		UnknownArrows: make(map[string]int),
+	}
 
 	summaries, err := content.ScanCollection(collectionDir)
 	if err != nil {
@@ -82,6 +94,11 @@ func BuildFromCollection(collectionDir string, registry *content.SSTRegistry) (*
 			continue
 		}
 		result.FilesProcessed++
+		// Hoist per-file parse errors into the build summary so the log
+		// panel can render every problem from one Ctrl+G batch.
+		if len(pf.Errors) > 0 {
+			result.ParseErrors = append(result.ParseErrors, pf.Errors...)
+		}
 		for _, ch := range pf.Chapters {
 			for _, node := range ch.Nodes {
 				key := normalizeText(node.Text)
@@ -157,6 +174,7 @@ func BuildFromCollection(collectionDir string, registry *content.SSTRegistry) (*
 						continue
 					}
 					if _, ok := registry.Arrows[arrow.Code]; !ok {
+						result.UnknownArrows[arrow.Code]++
 						continue
 					}
 					toNode := ensureNode(sst, bleveIdx, arrow.Target, ch.Title, sourceFile, nodeIndex, result)

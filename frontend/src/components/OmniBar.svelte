@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte'
   import { omnibarMode, workbenchStore } from '../stores/workbench.js'
   import { ParseFileForUI, SearchGraph } from '../../wailsjs/go/main/App'
+  import { appendLog } from '../stores/logPanel.js'
   import VirtualList from './VirtualList.svelte'
 
   let query = ''
@@ -248,8 +249,14 @@
       const queryToSend = hasLimit ? q : `\\limit ${DEFAULT_LIMIT} ${q}`
       const result = await SearchGraph(queryToSend)
       graphResults = result
+      // Mirror inline graph errors into the log panel so the user keeps a
+      // history across queries — the inline message still shows as today.
+      if (result?.GraphError) {
+        appendLog([{ severity: 'error', source: 'search', message: `${queryToSend}: ${result.GraphError}` }])
+      }
     } catch (e) {
       console.error('OmniBar: graph search error', e)
+      appendLog([{ severity: 'error', source: 'search', message: `${queryToSend}: ${String(e?.message ?? e)}` }])
     } finally {
       graphLoading = false
     }

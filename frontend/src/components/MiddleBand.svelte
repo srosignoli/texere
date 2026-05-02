@@ -1,9 +1,25 @@
 <script>
-  import { OpenCollection, PickCollectionDir } from '../../wailsjs/go/main/App'
+  import { createEventDispatcher } from 'svelte'
+  import { OpenCollection, PickCollectionDir, CreateNewFile } from '../../wailsjs/go/main/App'
   import { workbenchStore, reminderCount, omnibarOpen, editorAPI } from '../stores/workbench.js'
   import ReminderPanel from './ReminderPanel.svelte'
 
+  const dispatch = createEventDispatcher()
   let reminderPanelOpen = false
+
+  async function handleNewFile() {
+    if (!$workbenchStore.collectionDir) return
+    const raw = window.prompt('New file name (e.g. notes.n4l):')
+    if (raw === null) return // cancelled
+    try {
+      const summary = await CreateNewFile(raw)
+      dispatch('file-created', summary)
+    } catch (e) {
+      // Wails surfaces Go errors as plain Error objects with .message; fall
+      // back to String coercion just in case.
+      window.alert(`Couldn't create file: ${e?.message ?? String(e)}`)
+    }
+  }
 
   async function handleChangeCollection() {
     const dir = await PickCollectionDir()
@@ -58,6 +74,7 @@
 
     <div class="separator" />
 
+    <button class="btn" on:click={handleNewFile} title="New .n4l file in this collection">+file</button>
     <button class="btn" on:click={handleAddNode} title="Insert node (+node)">+node</button>
     <button class="btn" on:click={handleAddContext} title="Insert context line (+context)">+ctx</button>
     <button class="btn" on:click={() => $editorAPI?.openArrowPicker()} title="Insert arrow (+link)">+link</button>

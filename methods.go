@@ -224,6 +224,12 @@ func (a *App) consumeWatchEvents() {
 			case content.EventAdded, content.EventRemoved, content.EventRenamed:
 				runtime.EventsEmit(a.ctx, "collection:change", ev)
 			case content.EventModified:
+				// Always notify the file tree so chapter add/remove/rename
+				// inside a file is reflected, regardless of whether the
+				// change came from us (SaveFile) or an external editor.
+				runtime.EventsEmit(a.ctx, "collection:change", ev)
+				// Only surface the "external mod" toast when *another*
+				// process changed the currently-open file.
 				if ev.Path == a.openFilePath && ev.Path != a.savingPath {
 					runtime.EventsEmit(a.ctx, "file:modified-externally", map[string]string{"path": ev.Path})
 				}
@@ -284,4 +290,48 @@ func (a *App) GetInitialSummaries() []content.ChapterSummary {
 // Returns "" on first launch or successful auto-load.
 func (a *App) GetStartupError() string {
 	return a.startupError
+}
+
+// CreateNewFile creates an empty `.n4l` file in the currently open
+// collection and returns the same ChapterSummary shape the watcher would
+// emit. The frontend can append the result optimistically; the watcher's
+// EventAdded handler is idempotent (dedupes by FilePath).
+//
+// Validation: rejects empty / path-separator-bearing names, auto-suffixes
+// `.n4l` when missing, and refuses to overwrite an existing file.
+func (a *App) CreateNewFile(name string) (*content.ChapterSummary, error) {
+	if a.collectionDir == "" {
+		return nil, fmt.Errorf("CreateNewFile: no collection open")
+	}
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return nil, fmt.Errorf("CreateNewFile: filename is empty")
+	}
+	if strings.ContainsAny(name, `/\`) {
+		return nil, fmt.Errorf("CreateNewFile: filename cannot contain path separators")
+	}
+	if !strings.HasSuffix(strings.ToLower(name), ".n4l") {
+		name += ".n4l"
+	}
+	path := filepath.Join(a.collectionDir, name)
+
+	switch _, err := os.Stat(path); {
+	case err == nil:
+		return nil, fmt.Errorf("CreateNewFile: file already exists: %s", name)
+	case !os.IsNotExist(err):
+		return nil, fmt.Errorf("CreateNewFile: stat: %w", err)
+	}
+
+	a.savingPath = path
+	if err := atomicWriteText(path, ""); err != nil {
+		a.savingPath = ""
+		return nil, fmt.Errorf("CreateNewFile: %w", err)
+	}
+	a.savingPath = ""
+
+	return &content.ChapterSummary{
+		FilePath: path,
+		FileName: name,
+		Chapters: nil,
+	}, nil
 }

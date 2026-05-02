@@ -98,7 +98,20 @@ func translateEvent(ev fsnotify.Event, _ string) *CollectionEvent {
 		return ce
 
 	case ev.Has(fsnotify.Write):
-		return &CollectionEvent{Kind: EventModified, Path: ev.Name}
+		// Re-scan chapter titles so the frontend can update the file tree
+		// when chapters are added/removed/renamed by an editor save (or by
+		// an external tool). The scan is cheap — it only reads the lines
+		// that look like chapter headers, not the whole node body.
+		ce := &CollectionEvent{Kind: EventModified, Path: ev.Name}
+		chapters, err := scanChapterTitles(ev.Name)
+		if err == nil {
+			ce.Chapters = []ChapterSummary{{
+				FilePath: ev.Name,
+				FileName: filepath.Base(ev.Name),
+				Chapters: chapters,
+			}}
+		}
+		return ce
 	}
 	return nil
 }
