@@ -93,11 +93,11 @@
 
 <style>
   .col-chapters {
-    flex: 0 0 200px;
+    /* width is owned by the parent slot in TopBand (uiLayout.chaptersWidth);
+       the right-hand divider line is owned by the Splitter that follows. */
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    border-right: 1px solid #2a3a4a;
   }
 
   .col-header {

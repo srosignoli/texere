@@ -3,11 +3,28 @@
   import { EventsOn } from '../wailsjs/runtime/runtime'
   import { GetArrowRegistry, GetInitialSummaries, GetStartupError, ConfirmQuit, ParseFileForUI, BuildGraph } from '../wailsjs/go/main/App'
   import { workbenchStore } from './stores/workbench.js'
+  import { uiLayout } from './stores/uiLayout.js'
+  import { logPanelOpen, appendLog, toggleLogPanel } from './stores/logPanel.js'
   import EmptyState from './components/EmptyState.svelte'
   import MiddleBand from './components/MiddleBand.svelte'
   import TopBand from './components/TopBand.svelte'
   import BottomBand from './components/BottomBand.svelte'
   import OmniBar from './components/OmniBar.svelte'
+  import Splitter from './components/Splitter.svelte'
+  import LogPanel from './components/LogPanel.svelte'
+
+  // Track viewport height so the top-band drag handle can clamp to a value
+  // that always leaves the editor with at least EDITOR_FLOOR_PX of room.
+  const TOOLBAR_PX = 44
+  const HANDLE_PX = 5
+  const EDITOR_FLOOR_PX = 200
+  let windowHeight = typeof window !== 'undefined' ? window.innerHeight : 800
+  function onResize() { windowHeight = window.innerHeight }
+  $: maxTopBandHeight = Math.max(80, windowHeight - TOOLBAR_PX - HANDLE_PX - EDITOR_FLOOR_PX)
+
+  function setTopBandHeight(e) {
+    uiLayout.update(s => ({ ...s, topBandHeight: e.detail }))
+  }
 
   let cancelCollectionChange = () => {}
   let cancelFileModified = () => {}
@@ -27,14 +44,41 @@
       if (r.error) {
         graphBuildState = 'error'
         graphBuildMsg = `Graph error: ${r.error}`
+        appendLog([{ severity: 'error', source: 'build', message: r.error }])
       } else {
         graphBuildState = 'done'
         graphBuildMsg = `Graph ready — ${r.nodesIngested} nodes, ${r.linksIngested} links (${r.durationMs}ms)`
         workbenchStore.update((s) => ({ ...s, graphVersion: (s.graphVersion ?? 0) + 1 }))
+        // Hoisted parse errors from every file in the collection.
+        if (r.parseErrors?.length) {
+          appendLog(r.parseErrors.map((pe) => ({
+            severity: 'warning',
+            source: 'parse',
+            filePath: pe.File,
+            fileName: pe.File ? pe.File.split(/[\\/]/).pop() : undefined,
+            line: pe.Line || undefined,
+            message: pe.Msg,
+          })))
+        }
+        // Aggregated unknown-arrow summary — one entry per distinct code.
+        if (r.unknownArrows) {
+          const summary = Object.entries(r.unknownArrows)
+          if (summary.length) {
+            appendLog(summary.map(([code, count]) => ({
+              severity: 'warning',
+              source: 'build',
+              message: `Unknown arrow code "${code}" — ${count} occurrence${count === 1 ? '' : 's'}. Register in SSTconfig to materialise links.`,
+            })))
+          }
+        }
+        if (r.errors?.length) {
+          appendLog(r.errors.map((m) => ({ severity: 'error', source: 'build', message: m })))
+        }
       }
     } catch (e) {
       graphBuildState = 'error'
       graphBuildMsg = `Graph build failed: ${e}`
+      appendLog([{ severity: 'error', source: 'build', message: String(e?.message ?? e) }])
     }
     setTimeout(() => { graphBuildState = null }, 5000)
   }
@@ -43,6 +87,16 @@
     if (e.key === 'g' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault()
       triggerBuildGraph()
+    }
+    // Ctrl/Cmd+Shift+M toggles the log panel — VS Code's Problems-panel convention.
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'M' || e.key === 'm')) {
+      e.preventDefault()
+      toggleLogPanel()
+    }
+    // Esc closes the log panel when it's open (and the omnibar isn't already eating Esc).
+    if (e.key === 'Escape' && $logPanelOpen) {
+      e.preventDefault()
+      logPanelOpen.set(false)
     }
   }
 
@@ -78,12 +132,55 @@
           pendingScrollLine: ch?.LineStart ?? null,
           isParsing: false,
         }))
+        // Surface per-file parse errors (unknown arrows, malformed syntax,
+        // …) into the log panel so the user can see them without rebuilding.
+        if (result.Errors?.length) {
+          const fileName = filePath.split(/[\\/]/).pop()
+          appendLog(result.Errors.map((pe) => ({
+            severity: 'warning',
+            source: 'parse',
+            filePath: pe.File ?? filePath,
+            fileName,
+            line: pe.Line || undefined,
+            message: pe.Msg,
+          })))
+        }
       } else {
         workbenchStore.update((s) => ({ ...s, isParsing: false }))
       }
     } catch (e) {
       console.error('ParseFileForUI failed:', e)
       workbenchStore.update((s) => ({ ...s, isParsing: false }))
+      appendLog([{ severity: 'error', source: 'parse', filePath, message: String(e?.message ?? e) }])
+    }
+  }
+
+  // Log-panel row click → open the file at the offending line. Reuses the
+  // chapter-selected pipeline so the same context-filter reset / tab switch
+  // semantics apply, then nudges the editor to the specific line via the
+  // existing pendingScrollLine + editorAPI hooks.
+  async function handleLogEntryClick(e) {
+    const entry = e.detail
+    if (!entry?.filePath) return
+    // Find any chapter whose LineStart precedes the error line so the chapter
+    // pipeline opens the right tab; default to '' (whole-file open) when the
+    // file's chapters can't be inspected yet.
+    let targetChapter = ''
+    const summaries = $workbenchStore.summaries ?? []
+    const sum = summaries.find((s) => s.FilePath === entry.filePath)
+    if (sum?.Chapters?.length) {
+      // ChapterSummary only has titles, no line ranges — pick the first as a
+      // safe fallback. The handleChapterSelected path will load and scroll
+      // via pendingScrollLine below.
+      targetChapter = sum.Chapters[0]
+    }
+    await handleChapterSelected({ detail: { filePath: entry.filePath, chapterTitle: targetChapter } })
+    // The chapter pipeline sets pendingScrollLine to the chapter's LineStart;
+    // override with the error's actual line so the editor lands on the right
+    // row. SourceTab consumes pendingScrollLine via its existing reactive
+    // hook (no new editor API needed).
+    if (entry.line) {
+      workbenchStore.update((s) => ({ ...s, pendingScrollLine: entry.line }))
     }
   }
 
@@ -91,8 +188,26 @@
     workbenchStore.update((s) => ({ ...s, selectedNodeLine: e.detail, activeTab: 'note' }))
   }
 
+  // Triggered when MiddleBand creates a brand-new .n4l file. Optimistically
+  // appends the summary so the file appears in the tree before the watcher
+  // event arrives (the watcher path is now FilePath-deduped, so the eventual
+  // EventAdded is a no-op). Then opens the empty file via the existing
+  // chapter-selected pipeline; chapterTitle is "" because a fresh file has
+  // no chapters yet.
+  function handleFileCreated(e) {
+    const summary = e.detail
+    if (!summary?.FilePath) return
+    workbenchStore.update((s) => {
+      const summaries = s.summaries ?? []
+      if (summaries.some((x) => x.FilePath === summary.FilePath)) return s
+      return { ...s, summaries: [...summaries, summary] }
+    })
+    handleChapterSelected({ detail: { filePath: summary.FilePath, chapterTitle: '' } })
+  }
+
   onMount(async () => {
     window.addEventListener('keydown', handleKeydown)
+    window.addEventListener('resize', onResize)
     // Load arrow registry once at startup
     try {
       const defs = await GetArrowRegistry()
@@ -128,13 +243,29 @@
       workbenchStore.update((s) => {
         const summaries = [...(s.summaries ?? [])]
         if (ev.Kind === 0 /* EventAdded */ && ev.Chapters?.length) {
-          summaries.push(...ev.Chapters)
+          // Upsert by FilePath. atomicWriteText (used by SaveFile and
+          // CreateNewFile) writes via temp-then-rename, which fsnotify
+          // reports as Create on the destination — even when the file
+          // already existed. We therefore must replace any existing
+          // summary at this path so chapter add/remove/rename via save
+          // is reflected in the tree.
+          for (const sum of ev.Chapters) {
+            const idx = summaries.findIndex((x) => x.FilePath === sum.FilePath)
+            if (idx === -1) summaries.push(sum)
+            else summaries[idx] = sum
+          }
         } else if (ev.Kind === 1 /* EventRemoved */) {
           const idx = summaries.findIndex((su) => su.FilePath === ev.Path)
           if (idx !== -1) summaries.splice(idx, 1)
         } else if (ev.Kind === 2 /* EventRenamed */ && ev.Chapters?.length) {
           const idx = summaries.findIndex((su) => su.FilePath === ev.Path)
           if (idx !== -1) summaries[idx] = ev.Chapters[0]
+        } else if (ev.Kind === 3 /* EventModified */ && ev.Chapters?.length) {
+          // Replace the summary in place when a file's chapter set
+          // changes (chapters added / removed / renamed via save).
+          const idx = summaries.findIndex((su) => su.FilePath === ev.Path)
+          if (idx !== -1) summaries[idx] = ev.Chapters[0]
+          else summaries.push(ev.Chapters[0])
         }
         return { ...s, summaries }
       })
@@ -159,6 +290,7 @@
     cancelCollectionChange()
     cancelFileModified()
     window.removeEventListener('keydown', handleKeydown)
+    window.removeEventListener('resize', onResize)
   })
 </script>
 
@@ -167,14 +299,35 @@
     <div class="graph-banner graph-banner--{graphBuildState}">{graphBuildMsg}</div>
   {/if}
   {#if collectionOpen}
-    <div class="band-top">
+    <div class="band-top" style="height: {$uiLayout.topBandHeight}px;">
       <TopBand on:chapter-selected={handleChapterSelected} on:node-selected={handleNodeSelected} />
     </div>
+    <Splitter
+      orientation="horizontal"
+      size={$uiLayout.topBandHeight}
+      min={80}
+      max={maxTopBandHeight}
+      on:resize={setTopBandHeight}
+    />
     <div class="band-middle">
-      <MiddleBand />
+      <MiddleBand on:file-created={handleFileCreated} />
     </div>
     <div class="band-bottom">
-      <BottomBand bind:this={bottomBandRef} />
+      <div class="editor-region">
+        <BottomBand bind:this={bottomBandRef} />
+      </div>
+      {#if $logPanelOpen}
+        <Splitter
+          orientation="horizontal"
+          size={$uiLayout.logPanelHeight}
+          min={120}
+          max={Math.max(180, windowHeight * 0.6)}
+          on:resize={(e) => uiLayout.update(s => ({ ...s, logPanelHeight: e.detail }))}
+        />
+        <div class="log-region" style="height: {$uiLayout.logPanelHeight}px;">
+          <LogPanel on:entry-click={handleLogEntryClick} />
+        </div>
+      {/if}
     </div>
     <OmniBar />
   {:else}
@@ -202,7 +355,9 @@
   }
 
   .band-top {
-    flex: 0 0 220px;
+    /* height is set inline from the uiLayout store; keep flex-shrink:0 so the
+       splitter below is what controls vertical space, not flex pressure. */
+    flex: 0 0 auto;
     display: flex;
     border-bottom: 1px solid #2a3a4a;
     overflow: hidden;
@@ -222,6 +377,21 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+  }
+
+  .editor-region {
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .log-region {
+    flex: 0 0 auto;
+    min-height: 0;
+    overflow: hidden;
+    border-top: 1px solid #2a3a4a;
   }
 
   .graph-banner {

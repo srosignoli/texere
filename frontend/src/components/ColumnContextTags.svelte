@@ -4,12 +4,23 @@
   let scrollEl = null
   let _tagScrollTimer = null
 
-  function toggleTag(name) {
+  // Default click is single-select: the clicked chip becomes the only
+  // selection, releasing any previously active chips. Ctrl/Cmd+click is
+  // additive — toggles this chip in/out of the existing set. Re-clicking the
+  // sole selected chip (without modifier) clears the filter, mirroring the
+  // toggle-off feel users expect.
+  function handleChipClick(event, name) {
+    const additive = event.ctrlKey || event.metaKey
     workbenchStore.update((s) => {
-      const next = new Set(s.activeContextFilter)
-      if (next.has(name)) {
-        next.delete(name)
+      const next = new Set(additive ? s.activeContextFilter : [])
+      if (additive) {
+        if (next.has(name)) next.delete(name)
+        else next.add(name)
+      } else if (s.activeContextFilter.size === 1 && s.activeContextFilter.has(name)) {
+        // Already the sole selection — clear the filter.
+        next.clear()
       } else {
+        next.clear()
         next.add(name)
       }
       return { ...s, activeContextFilter: next }
@@ -71,7 +82,7 @@
             class:active={tag.isActive}
             class:sequence={tag.isSequence}
             class:cursor-at={cursorContextTags.has(tag.name)}
-            on:click={() => toggleTag(tag.name)}
+            on:click={(e) => handleChipClick(e, tag.name)}
             title={tag.name}
           >
             {#if tag.isSequence}
@@ -87,11 +98,11 @@
 
 <style>
   .col-context-tags {
-    flex: 0 0 160px;
+    /* width is owned by the parent slot in TopBand (uiLayout.contextTagsWidth);
+       the right-hand divider line is owned by the Splitter that follows. */
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    border-right: 1px solid #2a3a4a;
   }
 
   .col-header {
