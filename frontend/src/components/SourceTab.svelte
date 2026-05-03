@@ -28,6 +28,13 @@
   let arrowDefsRef = []
   let recentCodesRef = []
 
+  // Tracks the last pendingScrollNonce we've already honoured so the nonce
+  // reactive fires *exactly once* per navigateToLine() bump — even when the
+  // target line is the same as the previous click (Svelte reactivity dedupes
+  // identical primitive values, so watching pendingScrollLine alone misses
+  // back-to-back navigations to the same line).
+  let _scrollNonce = 0
+
   $: {
     arrowDefsRef = $workbenchStore.arrowDefs
   }
@@ -46,11 +53,14 @@
         .then((text) => {
           setContent(text ?? '')
           workbenchStore.update((s) => ({ ...s, isDirty: false }))
-          // Case A: ParseFileForUI already resolved → pendingScrollLine is set
-          const { pendingScrollLine } = get(workbenchStore)
-          if (pendingScrollLine) {
-            scrollToLine(pendingScrollLine)
-            workbenchStore.update((s) => ({ ...s, pendingScrollLine: null }))
+          // Case A: navigateToLine() already set pendingScrollLine; honour
+          // the scroll synchronously after content lands and sync the local
+          // _scrollNonce so the Case B reactive doesn't double-fire on the
+          // same nonce.
+          const w = get(workbenchStore)
+          if (w.pendingScrollLine) {
+            scrollToLine(w.pendingScrollLine)
+            _scrollNonce = w.pendingScrollNonce ?? _scrollNonce
           }
         })
         .catch((e) => console.error('GetFileContent failed:', e))
@@ -61,10 +71,17 @@
   // Also handles same-file chapter/node switches (no reload, just scroll).
   // Guard: only fire when the target file is already loaded; otherwise Case A
   // (inside GetFileContent.then) will handle it after the async load completes.
-  $: if ($workbenchStore.pendingScrollLine && view?.state.doc.length > 0
+  //
+  // Watches pendingScrollNonce in addition to the line value so two clicks
+  // that target the *same* line still re-trigger the scroll. Without the
+  // nonce, Svelte's reactive dedupe of identical numbers swallows the
+  // second event.
+  $: if ($workbenchStore.pendingScrollNonce !== _scrollNonce
+         && $workbenchStore.pendingScrollLine
+         && view?.state.doc.length > 0
          && $workbenchStore.selectedChapterKey?.filePath === loadedFilePath) {
+    _scrollNonce = $workbenchStore.pendingScrollNonce
     scrollToLine($workbenchStore.pendingScrollLine)
-    workbenchStore.update((s) => ({ ...s, pendingScrollLine: null }))
   }
 
   // Node selected in column 3 → scroll editor to that node's line, then clear so

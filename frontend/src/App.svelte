@@ -84,18 +84,27 @@
   }
 
   function handleKeydown(e) {
+    // stopPropagation alongside preventDefault on every match — registered
+    // in capture phase, so stopping propagation here prevents the event
+    // from continuing down to CodeMirror's defaultKeymap (Ctrl+G →
+    // findNext, Ctrl+Shift+K → deleteLine, etc.). Without it, the editor
+    // would consume the key first, dirty the file, and only then hand
+    // control back to us.
     if (e.key === 'g' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault()
+      e.stopPropagation()
       triggerBuildGraph()
     }
     // Ctrl/Cmd+Shift+M toggles the log panel — VS Code's Problems-panel convention.
     if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'M' || e.key === 'm')) {
       e.preventDefault()
+      e.stopPropagation()
       toggleLogPanel()
     }
     // Esc closes the log panel when it's open (and the omnibar isn't already eating Esc).
     if (e.key === 'Escape' && $logPanelOpen) {
       e.preventDefault()
+      e.stopPropagation()
       logPanelOpen.set(false)
     }
   }
@@ -206,7 +215,12 @@
   }
 
   onMount(async () => {
-    window.addEventListener('keydown', handleKeydown)
+    // Capture phase: global shortcuts (Ctrl+Shift+K, Ctrl+K, Ctrl+G,
+    // Ctrl+Shift+M, Esc) must fire BEFORE CodeMirror's defaultKeymap, which
+    // binds Ctrl+Shift+K to deleteLine and Ctrl+G to findNext. Without
+    // capture, the editor would consume the key, dirty the file, and only
+    // then bubble the event up to us.
+    window.addEventListener('keydown', handleKeydown, true)
     window.addEventListener('resize', onResize)
     // Load arrow registry once at startup
     try {
@@ -289,7 +303,7 @@
   onDestroy(() => {
     cancelCollectionChange()
     cancelFileModified()
-    window.removeEventListener('keydown', handleKeydown)
+    window.removeEventListener('keydown', handleKeydown, true)
     window.removeEventListener('resize', onResize)
   })
 </script>
