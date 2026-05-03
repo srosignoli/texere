@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy } from 'svelte'
-  import { omnibarMode, workbenchStore } from '../stores/workbench.js'
+  import { omnibarMode, workbenchStore, navigateToLine } from '../stores/workbench.js'
   import { ParseFileForUI, SearchGraph } from '../../wailsjs/go/main/App'
   import { appendLog } from '../stores/logPanel.js'
   import VirtualList from './VirtualList.svelte'
@@ -66,17 +66,12 @@
     for (const [filePath, pf] of Object.entries(fileCache)) {
       for (const ch of pf.Chapters ?? []) {
         if (ch.Title === chapterTitle) {
-          workbenchStore.update(s => ({
-            ...s,
-            selectedChapterKey: { filePath, chapterTitle: ch.Title },
+          navigateToLine({
+            filePath,
+            chapterTitle: ch.Title,
+            line: ch.LineStart ?? null,
             parsedFile: pf,
-            activeContextFilter: new Set(),
-            selectedNodeLine: null,
-            activeTab: 'note',
-            pendingScrollLine: ch.LineStart ?? null,
-            isDirty: false,
-            isParsing: false,
-          }))
+          })
           close()
           return
         }
@@ -94,16 +89,26 @@
   // Ctrl+Shift+K → graph search
   function onGlobalKeydown(e) {
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'k') {
+      // stopPropagation in addition to preventDefault — capture-phase
+      // means we fire BEFORE CodeMirror's keymap, but only stopPropagation
+      // prevents the event from continuing down to the editor element
+      // (where CodeMirror would map it to deleteLine for Ctrl+Shift+K or
+      // similar collisions for other Ctrl/Cmd shortcuts).
       e.preventDefault()
+      e.stopPropagation()
       omnibarMode.update(m => m === 'fuzzy' ? null : 'fuzzy')
     }
     if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'k' || e.key === 'K')) {
       e.preventDefault()
+      e.stopPropagation()
       omnibarMode.update(m => m === 'graph' ? null : 'graph')
     }
   }
-  onMount(()  => document.addEventListener('keydown', onGlobalKeydown))
-  onDestroy(() => document.removeEventListener('keydown', onGlobalKeydown))
+  // Capture phase: must run before CodeMirror's defaultKeymap so
+  // Ctrl+Shift+K doesn't trigger deleteLine on the focused editor before
+  // toggling graph mode (which would dirty the file).
+  onMount(()  => document.addEventListener('keydown', onGlobalKeydown, true))
+  onDestroy(() => document.removeEventListener('keydown', onGlobalKeydown, true))
 
   // ── Reset query when panel opens ─────────────────────────────────────────────
   let prevMode = null
@@ -203,12 +208,40 @@
     return /^\\(notes|story|stories|sequence|seq|path|paths|from)(\s|$)/i.test(stripped)
   }
 
-  function enrichGraphNodes(nodes) {
+  // Reads `cache` from the second arg (rather than the closed-over `fileCache`)
+  // so reactive callers can declare cache as a dependency — see `$: enrichedGraphNodes`,
+  // `flatStructural`, `flatNotes`, `flatPaths` — and re-run when loadAllFiles
+  // finishes. Otherwise, results that arrived before the cache filled stay
+  // stranded with filePath=null and silent-skip on click forever.
+  //
+  // Match is whitespace-tolerant: the parser preserves trailing whitespace in
+  // some node strings while the Bleve indexer trims, so an exact string-equal
+  // would miss perfectly valid targets.
+  // Whitespace-tolerant node lookup against the in-memory file cache.
+  // Returns true if any cached file has a node whose text equals `text`
+  // (after trim). Used by the virtualItems builder to decide whether a
+  // listing row is navigable.
+  function lookupNodeInCache(text) {
+    const target = String(text ?? '').trim()
+    if (!target) return false
+    for (const pf of Object.values(fileCache)) {
+      for (const ch of pf.Chapters ?? []) {
+        for (const node of ch.Nodes ?? []) {
+          if (String(node.Text ?? '').trim() === target) return true
+        }
+      }
+    }
+    return false
+  }
+
+  function enrichGraphNodes(nodes, cache) {
+    const pairs = Object.entries(cache ?? {})
     return nodes.map(gn => {
-      for (const [filePath, pf] of Object.entries(fileCache)) {
+      const target = String(gn.NodeText ?? '').trim()
+      for (const [filePath, pf] of pairs) {
         for (const ch of pf.Chapters ?? []) {
           for (const node of ch.Nodes ?? []) {
-            if (node.Text === gn.NodeText) {
+            if (String(node.Text ?? '').trim() === target) {
               return { ...gn, filePath, line: node.Line, chapterTitle: ch.Title }
             }
           }
@@ -297,69 +330,85 @@
   })()
 
   // ── Graph result enrichment ──────────────────────────────────────────────────
-  $: enrichedGraphNodes = graphResults?.Nodes ? enrichGraphNodes(graphResults.Nodes) : []
+  // All four derivations explicitly read `fileCache` so Svelte's reactive system
+  // re-runs them when loadAllFiles() finishes. Without that dependency, results
+  // that arrive before the cache is populated stay stranded with filePath:null
+  // and silent-skip on click forever.
+  $: enrichedGraphNodes = graphResults?.Nodes ? enrichGraphNodes(graphResults.Nodes, fileCache) : []
 
   // Sequence chains expand into one flat item per step so the user can jump to
   // any node. Path chains are kept as whole chains — one nav entry per path,
   // rendered horizontally with arrow labels between nodes.
-  $: flatStructural = (graphResults?.Structural ?? [])
-    .filter(chain => (chain.Kind ?? 'sequence') === 'sequence')
-    .flatMap((chain, chainIdx) => {
-      return (chain.Nodes ?? []).map((step, stepIdx) => {
-        const enriched = enrichGraphNodes([
-          { NodeText: step.NodeText, Chapter: '', ContextTags: [], Orbit: [] }
-        ])[0]
+  $: flatStructural = (() => {
+    void fileCache // re-run when cache fills (re-enrichment)
+    return (graphResults?.Structural ?? [])
+      .filter(chain => (chain.Kind ?? 'sequence') === 'sequence')
+      .flatMap((chain, chainIdx) => {
+        return (chain.Nodes ?? []).map((step, stepIdx) => {
+          const enriched = enrichGraphNodes(
+            [{ NodeText: step.NodeText, Chapter: '', ContextTags: [], Orbit: [] }],
+            fileCache,
+          )[0]
+          return {
+            type: 'graph-structural',
+            chainIdx,
+            stepIdx,
+            totalSteps: chain.Nodes.length,
+            context: chain.Context ?? '',
+            chapter: chain.Chapter ?? '',
+            nodeText: step.NodeText,
+            ...enriched,
+          }
+        })
+      })
+  })()
+
+  // Full notes — one entry per NoteBlock; clicking navigates to the root node.
+  $: flatNotes = (() => {
+    void fileCache
+    return (graphResults?.Notes ?? [])
+      .flatMap((note, noteIdx) =>
+        (note.Blocks ?? []).map((block, blockIdx) => {
+          const enriched = enrichGraphNodes(
+            [{ NodeText: block.NodeText, Chapter: note.Chapter, ContextTags: [], Orbit: [] }],
+            fileCache,
+          )[0]
+          return {
+            type: 'graph-note',
+            noteIdx,
+            blockIdx,
+            chapter: note.Chapter,
+            nodeText: block.NodeText,
+            line: block.Line,
+            context: block.Context ?? '',
+            arrows: block.Arrows ?? [],
+            ...enriched,
+          }
+        })
+      )
+  })()
+
+  // Path chains — one entry per chain; clicking navigates to the start node.
+  $: flatPaths = (() => {
+    void fileCache
+    return (graphResults?.Structural ?? [])
+      .filter(chain => chain.Kind === 'path')
+      .map((chain, chainIdx) => {
+        const startText = chain.Nodes?.[0]?.NodeText ?? ''
+        const enriched = enrichGraphNodes(
+          [{ NodeText: startText, Chapter: '', ContextTags: [], Orbit: [] }],
+          fileCache,
+        )[0]
         return {
           type: 'graph-structural',
           chainIdx,
-          stepIdx,
-          totalSteps: chain.Nodes.length,
-          context: chain.Context ?? '',
           chapter: chain.Chapter ?? '',
-          nodeText: step.NodeText,
+          nodes: chain.Nodes ?? [],
+          nodeText: startText,
           ...enriched,
         }
       })
-    })
-
-  // Full notes — one entry per NoteBlock; clicking navigates to the root node.
-  $: flatNotes = (graphResults?.Notes ?? [])
-    .flatMap((note, noteIdx) =>
-      (note.Blocks ?? []).map((block, blockIdx) => {
-        const enriched = enrichGraphNodes([
-          { NodeText: block.NodeText, Chapter: note.Chapter, ContextTags: [], Orbit: [] }
-        ])[0]
-        return {
-          type: 'graph-note',
-          noteIdx,
-          blockIdx,
-          chapter: note.Chapter,
-          nodeText: block.NodeText,
-          line: block.Line,
-          context: block.Context ?? '',
-          arrows: block.Arrows ?? [],
-          ...enriched,
-        }
-      })
-    )
-
-  // Path chains — one entry per chain; clicking navigates to the start node.
-  $: flatPaths = (graphResults?.Structural ?? [])
-    .filter(chain => chain.Kind === 'path')
-    .map((chain, chainIdx) => {
-      const startText = chain.Nodes?.[0]?.NodeText ?? ''
-      const enriched = enrichGraphNodes([
-        { NodeText: startText, Chapter: '', ContextTags: [], Orbit: [] }
-      ])[0]
-      return {
-        type: 'graph-structural',
-        chainIdx,
-        chapter: chain.Chapter ?? '',
-        nodes: chain.Nodes ?? [],
-        nodeText: startText,
-        ...enriched,
-      }
-    })
+  })()
 
   // ── Unified virtualized list ─────────────────────────────────────────────────
   // virtualItems is the full render order (labels, group headers, separators,
@@ -498,7 +547,19 @@
           }
           for (const [kind, items] of otherByKind) {
             out.push({ kind: 'label', text: kindLabel[kind] ?? kind })
-            for (const r of items) pushAction('listing-other', { type: 'graph-listing', ...r }, { listingKind: kind })
+            for (const r of items) {
+              // navigate() looks up r.NodeText in fileCache; if it's empty
+              // or doesn't resolve, the click would silently no-op. Render
+              // such rows as inert (visually muted, no actionableIdx, not
+              // reachable via keyboard) so the user knows the row carries
+              // no jump target.
+              const navigable = !!r.NodeText && lookupNodeInCache(r.NodeText)
+              if (navigable) {
+                pushAction('listing-other', { type: 'graph-listing', ...r }, { listingKind: kind })
+              } else {
+                out.push({ kind: 'listing-other-inert', data: { type: 'graph-listing', ...r }, listingKind: kind })
+              }
+            }
           }
         }
       }
@@ -569,77 +630,97 @@
   })()
 
   // ── Navigation ───────────────────────────────────────────────────────────────
+  // trace() emits a one-line breadcrumb to the log panel (Ctrl+Shift+M) for
+  // every navigate() decision so click failures stop being silent. severity
+  // info → hidden by default in the panel's `errors`/`warnings` filters.
+  function trace(action, item, detail = {}) {
+    appendLog([{
+      severity: 'info',
+      source: 'search',
+      filePath: item?.filePath,
+      line: item?.line,
+      message: `navigate(${item?.type ?? '?'}) → ${action}${detail.reason ? `: ${detail.reason}` : ''}`,
+    }])
+  }
+
   function navigate(item) {
+    trace('enter', item)
     const pf = fileCache[item.filePath] ?? null
     if (item.type === 'chapter') {
-      workbenchStore.update(s => ({
-        ...s,
-        selectedChapterKey: { filePath: item.filePath, chapterTitle: item.chapter.Title },
+      navigateToLine({
+        filePath: item.filePath,
+        chapterTitle: item.chapter.Title,
+        line: item.chapter.LineStart ?? null,
         parsedFile: pf,
-        activeContextFilter: new Set(), selectedNodeLine: null,
-        activeTab: 'note', pendingScrollLine: item.chapter.LineStart ?? null,
-        isDirty: false, isParsing: false,
-      }))
+      })
+      trace('opened', item)
     } else if (item.type === 'context') {
       const ch = pf?.Chapters?.find(c => c.Title === item.chapterTitle)
-      workbenchStore.update(s => ({
-        ...s,
-        selectedChapterKey: { filePath: item.filePath, chapterTitle: item.chapterTitle },
+      navigateToLine({
+        filePath: item.filePath,
+        chapterTitle: item.chapterTitle,
+        line: ch?.LineStart ?? null,
         parsedFile: pf,
-        activeContextFilter: new Set([item.tag]), selectedNodeLine: null,
-        activeTab: 'note', pendingScrollLine: ch?.LineStart ?? null,
-        isDirty: false, isParsing: false,
-      }))
+        contextFilter: new Set([item.tag]),
+      })
+      trace('opened', item, { reason: `context ${item.tag}` })
     } else if (item.type === 'node') {
-      workbenchStore.update(s => ({
-        ...s,
-        selectedChapterKey: { filePath: item.filePath, chapterTitle: item.chapterTitle },
+      navigateToLine({
+        filePath: item.filePath,
+        chapterTitle: item.chapterTitle,
+        line: item.node.Line,
         parsedFile: pf,
-        activeContextFilter: new Set(), selectedNodeLine: item.node.Line,
-        activeTab: 'note', pendingScrollLine: item.node.Line,
-        isDirty: false, isParsing: false,
-        nodeListScrollTarget: item.node.Line,
-      }))
+      })
+      trace('opened', item, { reason: `line ${item.node.Line}` })
     } else if (item.type === 'graph-node' || item.type === 'graph-structural' || item.type === 'graph-note') {
-      if (item.filePath) {
-        const gpf = fileCache[item.filePath] ?? null
-        workbenchStore.update(s => ({
-          ...s,
-          selectedChapterKey: { filePath: item.filePath, chapterTitle: item.chapterTitle ?? '' },
-          parsedFile: gpf,
-          activeContextFilter: new Set(), selectedNodeLine: item.line,
-          activeTab: 'note', pendingScrollLine: item.line,
-          isDirty: false, isParsing: false,
-          nodeListScrollTarget: item.line,
-        }))
+      if (!item.filePath) {
+        trace('skipped', item, { reason: 'filePath null (NodeText not in fileCache; graph result enriched before files loaded?)' })
+        close()
+        return
       }
+      const gpf = fileCache[item.filePath] ?? null
+      navigateToLine({
+        filePath: item.filePath,
+        chapterTitle: item.chapterTitle ?? '',
+        line: item.line,
+        parsedFile: gpf,
+      })
+      trace('opened', item, { reason: `line ${item.line}` })
     } else if (item.type === 'graph-listing') {
       // Enter on a \context row pivots the query to `\notes \context "<tag>"`
       // so the user gets every note tagged with that context — keeps the
       // omnibar open instead of closing to navigate.
       if (item.Kind === 'context') {
         pivotToNotesContext(item.Title)
+        trace('pivoted', item, { reason: `\\notes \\context "${item.Title}"` })
         return
       }
-      if (item.NodeText) {
-        outer: for (const [filePath, lpf] of Object.entries(fileCache)) {
-          for (const ch of lpf.Chapters ?? []) {
-            for (const node of ch.Nodes ?? []) {
-              if (node.Text === item.NodeText) {
-                workbenchStore.update(s => ({
-                  ...s,
-                  selectedChapterKey: { filePath, chapterTitle: ch.Title },
-                  parsedFile: lpf,
-                  activeContextFilter: new Set(), selectedNodeLine: node.Line,
-                  activeTab: 'note', pendingScrollLine: node.Line,
-                  isDirty: false, isParsing: false,
-                  nodeListScrollTarget: node.Line,
-                }))
-                break outer
-              }
+      if (!item.NodeText) {
+        trace('skipped', item, { reason: 'listing has no NodeText' })
+        close()
+        return
+      }
+      const target = String(item.NodeText).trim()
+      let found = false
+      outer: for (const [filePath, lpf] of Object.entries(fileCache)) {
+        for (const ch of lpf.Chapters ?? []) {
+          for (const node of ch.Nodes ?? []) {
+            if (String(node.Text ?? '').trim() === target) {
+              navigateToLine({
+                filePath,
+                chapterTitle: ch.Title,
+                line: node.Line,
+                parsedFile: lpf,
+              })
+              trace('opened', item, { reason: `${ch.Title}:${node.Line}` })
+              found = true
+              break outer
             }
           }
         }
+      }
+      if (!found) {
+        trace('skipped', item, { reason: `NodeText "${target}" not found in fileCache` })
       }
     }
     close()
@@ -1010,6 +1091,15 @@
                 {#if item.listingKind === 'arrow' && item.data.MetaType}<span class="arrow-meta">{item.data.MetaType}</span>{/if}
                 {#if item.listingKind === 'arrow' && item.data.Context}<span class="arrow-context">:: {item.data.Context} ::</span>{/if}
               </button>
+
+            {:else if item.kind === 'listing-other-inert'}
+              <div class="result-item result-item-inert" title="No navigation target — this listing has no associated node">
+                <span class="result-icon graph-icon">{item.listingKind === 'arrow' ? '→' : '·'}</span>
+                <span class="result-text">{item.data.Title}</span>
+                {#if item.data.Detail}<span class="result-hint">{item.data.Detail}</span>{/if}
+                {#if item.listingKind === 'arrow' && item.data.MetaType}<span class="arrow-meta">{item.data.MetaType}</span>{/if}
+                {#if item.listingKind === 'arrow' && item.data.Context}<span class="arrow-context">:: {item.data.Context} ::</span>{/if}
+              </div>
             {/if}
           </VirtualList>
         </div>
@@ -1229,6 +1319,19 @@
   .result-item.selected {
     border-left: 2px solid #2563eb;
     padding-left: 12px;
+  }
+
+  /* Inert listing rows — Kind:'arrow' / 'note-line' that have no navigation
+     target (no NodeText, or NodeText not present in the in-memory file
+     cache). Rendered as plain <div>s with no click handler so the user
+     gets no false expectation. */
+  .result-item-inert {
+    cursor: default;
+    color: #6a8aa0;
+  }
+  .result-item-inert:hover {
+    background: none;
+    color: #6a8aa0;
   }
 
   .result-icon {

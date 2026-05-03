@@ -43,6 +43,37 @@
   function close() {
     logPanelOpen.set(false)
   }
+
+  // Format a single entry as a compact text line for clipboard / file paste.
+  function formatEntry(e) {
+    const sev = e.severity?.toUpperCase().padEnd(7, ' ') ?? '       '
+    const loc = e.fileName ?? (e.filePath ? shortPath(e.filePath) : '')
+    const locStr = loc ? `${loc}${e.line ? ':' + e.line : ''}\t` : ''
+    const src = e.source ? `[${e.source}]\t` : ''
+    return `${sev}\t${src}${locStr}${e.message ?? ''}`
+  }
+
+  let copyBadge = '' // transient "copied!" feedback
+  async function copyAll() {
+    const text = filtered.map(formatEntry).join('\n')
+    try {
+      await navigator.clipboard.writeText(text)
+      copyBadge = `copied ${filtered.length}`
+    } catch (err) {
+      // navigator.clipboard may be unavailable in some webview contexts;
+      // fall back to a temporary <textarea> select+copy.
+      const ta = document.createElement('textarea')
+      ta.value = text
+      ta.style.position = 'fixed'
+      ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.select()
+      try { document.execCommand('copy'); copyBadge = `copied ${filtered.length}` }
+      catch { copyBadge = 'copy failed' }
+      document.body.removeChild(ta)
+    }
+    setTimeout(() => { copyBadge = '' }, 1500)
+  }
 </script>
 
 <div class="log-panel">
@@ -60,6 +91,8 @@
       <button class="filter" class:active={severityFilter === 'warning'} on:click={() => (severityFilter = 'warning')}>warnings</button>
     </div>
     <span class="spacer" />
+    {#if copyBadge}<span class="copy-badge">{copyBadge}</span>{/if}
+    <button class="action" on:click={copyAll} title="Copy filtered entries to clipboard">copy</button>
     <button class="action" on:click={clearLog} title="Clear all entries">clear</button>
     <button class="action close" on:click={close} title="Close (Esc)">✕</button>
   </div>
@@ -159,6 +192,13 @@
 
   .spacer { flex: 1; }
 
+  .copy-badge {
+    color: #6a9aaa;
+    font-size: 0.7rem;
+    font-style: italic;
+    flex-shrink: 0;
+  }
+
   .action {
     background: transparent;
     border: none;
@@ -198,6 +238,15 @@
     text-align: left;
     cursor: pointer;
     border-left: 2px solid transparent;
+    /* Allow drag-select inside the row so the user can grab message text
+       directly. The "copy" header button is still the easy path for
+       copying every visible entry; this just makes single-line copy work. */
+    user-select: text;
+  }
+  .log-row .loc,
+  .log-row .msg {
+    user-select: text;
+    -webkit-user-select: text;
   }
   .log-row:hover {
     background: #1a2535;

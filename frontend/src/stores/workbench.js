@@ -17,6 +17,11 @@ export const workbenchStore = writable({
   externalModification: /** @type {string|null} */ (null),
   arrowDefs: /** @type {any[]} */ ([]),
   pendingScrollLine: /** @type {number|null} */ (null),
+  // Monotonically increasing nonce bumped by every navigation that wants the
+  // editor to scroll. Consumers (SourceTab) watch the nonce instead of the
+  // line value alone, so two consecutive jumps to the *same* line still
+  // re-trigger the scroll (Svelte reactivity dedupes identical primitives).
+  pendingScrollNonce: 0,
   editorCursorLine: /** @type {number|null} */ (null),
   isParsing: false,
   nodeListScrollTarget: /** @type {number|null} */ (null),
@@ -143,3 +148,30 @@ export const editorAPI = writable(/** @type {{
   triggerUndo: () => void,
   insertAtCursor: (text: string) => void,
 } | null} */ (null))
+
+/**
+ * navigateToLine — single source of truth for "open this file at this line"
+ * navigations triggered from search results, log-panel rows, etc. Centralises
+ * the workbenchStore mutation so every caller sets the same fields and bumps
+ * pendingScrollNonce, ensuring the editor scrolls even when the new line
+ * equals the previous one.
+ *
+ * Pass `line = null` to open the file without targeting a specific line
+ * (e.g. an empty newly-created file). chapterTitle may be '' when the file
+ * has no chapters yet.
+ */
+export function navigateToLine({ filePath, chapterTitle, line, parsedFile, contextFilter }) {
+  workbenchStore.update((s) => ({
+    ...s,
+    selectedChapterKey: { filePath, chapterTitle: chapterTitle ?? '' },
+    parsedFile: parsedFile ?? s.parsedFile,
+    activeContextFilter: contextFilter instanceof Set ? contextFilter : new Set(),
+    selectedNodeLine: line ?? null,
+    pendingScrollLine: line ?? null,
+    pendingScrollNonce: (s.pendingScrollNonce ?? 0) + 1,
+    nodeListScrollTarget: line ?? null,
+    activeTab: 'note',
+    isDirty: false,
+    isParsing: false,
+  }))
+}
