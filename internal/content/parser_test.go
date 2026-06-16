@@ -1230,6 +1230,58 @@ func TestSlashSlashComments(t *testing.T) {
 	}
 }
 
+// TestFileURLTripleSlashPreserved guards against a regression where a file://
+// URL (three slashes after the scheme) was truncated to "file:/" because the
+// second-and-third slash pair was mistaken for a // comment. Each editor.c#Ln
+// URL must survive intact so the graph shows one node per file location.
+func TestFileURLTripleSlashPreserved(t *testing.T) {
+	reg := emptyRegistry()
+	reg.Arrows["url"] = ArrowDef{Code: "url"}
+	reg.Arrows["contains"] = ArrowDef{Code: "contains"}
+	src := "- chapter\n" +
+		"editor_code (contains) includes\n" +
+		"  \" (url) \"file:///home/simone/projects/sst-literate-test/editor.c#L4\"\n" +
+		"editor_code (contains) data\n" +
+		"  \" (url) \"file:///home/simone/projects/sst-literate-test/editor.c#L5\"\n"
+
+	f, err := os.CreateTemp(t.TempDir(), "*.n4l")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.WriteString(src); err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+
+	pf, _ := ParseFile(f.Name(), reg)
+	if pf == nil {
+		t.Fatal("nil ParsedFile")
+	}
+	if len(pf.Chapters) != 1 {
+		t.Fatalf("want 1 chapter, got %d", len(pf.Chapters))
+	}
+	nodes := pf.Chapters[0].Nodes
+	if len(nodes) != 2 {
+		t.Fatalf("want 2 root nodes, got %d", len(nodes))
+	}
+	wantURLs := []string{
+		"file:///home/simone/projects/sst-literate-test/editor.c#L4",
+		"file:///home/simone/projects/sst-literate-test/editor.c#L5",
+	}
+	for i, n := range nodes {
+		if len(n.Dittos) != 1 {
+			t.Fatalf("node %d: want 1 ditto, got %d", i, len(n.Dittos))
+		}
+		d := n.Dittos[0]
+		if len(d.Arrows) != 1 {
+			t.Fatalf("node %d ditto: want 1 arrow, got %d", i, len(d.Arrows))
+		}
+		if got := d.Arrows[0].Target; got != wantURLs[i] {
+			t.Errorf("node %d url target: want %q, got %q", i, wantURLs[i], got)
+		}
+	}
+}
+
 func TestApostropheInNodeText(t *testing.T) {
 	// Apostrophes in natural language (contractions, erhua phonetic markers) must
 	// not be treated as single-quote string delimiters by maskSpecial, otherwise
@@ -1330,6 +1382,44 @@ func TestLabeledDittoLine(t *testing.T) {
 	// Label must be registered (pointing to parent node for $alias.N reference resolution)
 	if _, ok := pf.Chapters[0].Labels["myalias"]; !ok {
 		t.Error("label 'myalias' not registered in chapter Labels")
+	}
+}
+
+func TestObjectDittoResolution(t *testing.T) {
+	// A lone `"` in OBJECT position repeats the previous line's object. Mirrors
+	// examples/doors.n4l lines 26-28: river/tram/bike all (fwd) "target 3".
+	reg := emptyRegistry()
+	reg.Arrows["fwd"] = ArrowDef{Code: "fwd", LongName: "forward", MetaType: "leadsto"}
+	src := "- maze\n" +
+		"river (fwd) target 3\n" +
+		"tram  (fwd) \"\n" +
+		"bike  (fwd) \"\n"
+
+	f, err := os.CreateTemp(t.TempDir(), "*.n4l")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.WriteString(src); err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+
+	pf, _ := ParseFile(f.Name(), reg)
+	if pf == nil || len(pf.Chapters) != 1 {
+		t.Fatal("unexpected parse result")
+	}
+	nodes := pf.Chapters[0].Nodes
+	if len(nodes) != 3 {
+		t.Fatalf("want 3 root nodes (river, tram, bike); got %d", len(nodes))
+	}
+	for _, n := range nodes {
+		if len(n.Arrows) != 1 {
+			t.Fatalf("node %q: want 1 arrow; got %d", n.Text, len(n.Arrows))
+		}
+		if got := n.Arrows[0].Target; got != "target 3" {
+			t.Errorf("node %q: object-ditto target = %q, want %q (a lone %q must resolve, not become a node)",
+				n.Text, got, "target 3", `"`)
+		}
 	}
 }
 
