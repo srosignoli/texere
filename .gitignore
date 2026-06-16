@@ -117,3 +117,6 @@ temp/
 *.bak
 *.orig
 bench.txt
+
+# Local Claude Code artifacts
+.claude/plans/

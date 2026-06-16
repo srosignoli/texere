@@ -120,6 +120,12 @@ type ArrowDef struct {
 	Context       string // SSTconfig section header (":: label ::") the pair was declared under; "" if none
 	Studyable     bool   // From SSTconfig comment metadata
 	ClozeEligible bool
+	// Unknown marks an arrow that was NOT declared in any SSTconfig but was
+	// encountered in the source notes. Such arrows are synthesized into the
+	// registry (via AugmentWithUnknownArrows) so their links still materialize
+	// in the graph — rendered with a distinct "unknown" style — instead of
+	// being silently dropped. The authored code doubles as the LongName.
+	Unknown bool
 }
 
 // AnnotDef maps an annotation symbol to an arrow code.

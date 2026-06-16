@@ -58,9 +58,13 @@ type GraphNode struct {
 // OrbitEntry is one orbit satellite of a graph node.
 // Radius mirrors SST.Orbit.Radius: 1 = immediate neighbor, 2 = 2nd degree, etc.
 // Ctx is a comma-separated context tag string (empty when no context).
+// ParentText is the node this satellite hangs off (the seed for Radius 1,
+// otherwise the Radius-1 hop, etc.) so the explorer can draw an edge for
+// EVERY radius rather than only radius 1. Empty parent means the seed itself.
 type OrbitEntry struct {
 	ArrowLong    string `json:"ArrowLong"`
 	NeighborText string `json:"NeighborText"`
+	ParentText   string `json:"ParentText"`
 	Radius       int    `json:"Radius"`
 	Ctx          string `json:"Ctx"`
 }

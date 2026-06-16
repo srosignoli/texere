@@ -55,6 +55,31 @@ func BuildFromCollection(collectionDir string, registry *content.SSTRegistry) (*
 		return nil, fmt.Errorf("graph: clear bleve: %w", err)
 	}
 
+	// Parse every file ONCE up front and reuse the result across both build
+	// passes (parsing is the build's dominant cost — re-parsing per pass on a
+	// large collection is what made Ctrl+G feel like it hung). Pass 1/2 look
+	// up arrow codes in the live registry map, not the parsed IsRegistered
+	// flag, so files parsed before the registry is augmented stay valid.
+	//
+	// The pre-parse also discovers arrow codes not declared in any SSTconfig
+	// and synthesizes ArrowDefs for them (so their links materialize, rendered
+	// "unknown", instead of being dropped). AugmentWithUnknownArrows MUST run
+	// before RegisterArrows so the synthesized arrows land in ARROW_DIRECTORY;
+	// the search service runs the identical augmentation at lazy-open so
+	// ArrowPtr indices line up across build and query.
+	parsedByPath := make(map[string]*content.ParsedFile, len(summaries))
+	preParsed := make([]*content.ParsedFile, 0, len(summaries))
+	for _, summary := range summaries {
+		if summary.ScanError != nil {
+			continue
+		}
+		if pf, _ := content.ParseFile(summary.FilePath, registry); pf != nil {
+			parsedByPath[summary.FilePath] = pf
+			preParsed = append(preParsed, pf)
+		}
+	}
+	content.AugmentWithUnknownArrows(registry, preParsed)
+
 	// Reset in-memory node directory and cache so indices stay in sync with
 	// the freshly created BadgerDB (which resets its sequence to 0).
 	SST.NODE_DIRECTORY = SST.NodeDirectory{}
@@ -76,6 +101,13 @@ func BuildFromCollection(collectionDir string, registry *content.SSTRegistry) (*
 		return nil, fmt.Errorf("graph: open bleve index: %w", err)
 	}
 	defer bleveIdx.Close()
+	// One batch for the WHOLE build (both passes). Bleve's scorch backend turns
+	// every individual Index() call into its own segment plus a persist/merge
+	// cycle, so per-node writes in Pass 2 — one per unique arrow target — were
+	// the dominant cost after full-text indexing was added. Staging every node
+	// into a single batch and committing once collapses that to one segment
+	// build. Safe because BuildGraph closes the search service first, so no
+	// reader observes the index mid-build.
 	bleveBatch := bleveIdx.NewBatch()
 
 	// nodeIndex maps normalised text → SST.Node with NPtr populated.
@@ -89,7 +121,7 @@ func BuildFromCollection(collectionDir string, registry *content.SSTRegistry) (*
 			result.Errors = append(result.Errors, summary.ScanError.Error())
 			continue
 		}
-		pf, _ := content.ParseFile(summary.FilePath, registry)
+		pf := parsedByPath[summary.FilePath]
 		if pf == nil {
 			continue
 		}
@@ -115,18 +147,14 @@ func BuildFromCollection(collectionDir string, registry *content.SSTRegistry) (*
 		}
 	}
 
-	// Commit Pass 1's index writes before Pass 2 starts so that any reader
-	// running between the two passes sees a consistent view.
-	if err := bleveIdx.ApplyBatch(bleveBatch); err != nil {
-		result.Errors = append(result.Errors, fmt.Sprintf("bleve apply batch (pass 1): %v", err))
-	}
-
 	// Pass 2 — add links and populate in-memory link arrays for orbit queries.
+	// Arrow-target nodes discovered here stage into the same bleveBatch (see
+	// ensureNode); the single commit happens after this loop.
 	for _, summary := range summaries {
 		if summary.ScanError != nil {
 			continue
 		}
-		pf, _ := content.ParseFile(summary.FilePath, registry)
+		pf := parsedByPath[summary.FilePath]
 		if pf == nil {
 			continue
 		}
@@ -173,11 +201,21 @@ func BuildFromCollection(collectionDir string, registry *content.SSTRegistry) (*
 					if arrow.Target == "" || arrow.Code == "" {
 						continue
 					}
-					if _, ok := registry.Arrows[arrow.Code]; !ok {
+					def, ok := registry.Arrows[arrow.Code]
+					if !ok {
+						// Defensive: AugmentWithUnknownArrows should have added
+						// every code already. If one slipped through, drop it
+						// (old behaviour) and report it.
 						result.UnknownArrows[arrow.Code]++
 						continue
 					}
-					toNode := ensureNode(sst, bleveIdx, arrow.Target, ch.Title, sourceFile, nodeIndex, result)
+					// Unknown (synthesized) arrows still materialize as links —
+					// rendered with the "unknown" style — but are also counted
+					// so the log panel keeps nudging authors to register them.
+					if def.Unknown {
+						result.UnknownArrows[arrow.Code]++
+					}
+					toNode := ensureNode(sst, bleveBatch, arrow.Target, ch.Title, sourceFile, nodeIndex, result)
 					if fromNode.NPtr == toNode.NPtr {
 						continue
 					}
@@ -191,10 +229,15 @@ func BuildFromCollection(collectionDir string, registry *content.SSTRegistry) (*
 						if arrow.Target == "" || arrow.Code == "" {
 							continue
 						}
-						if _, ok := registry.Arrows[arrow.Code]; !ok {
+						def, ok := registry.Arrows[arrow.Code]
+						if !ok {
+							result.UnknownArrows[arrow.Code]++
 							continue
 						}
-						toNode := ensureNode(sst, bleveIdx, arrow.Target, ch.Title, sourceFile, nodeIndex, result)
+						if def.Unknown {
+							result.UnknownArrows[arrow.Code]++
+						}
+						toNode := ensureNode(sst, bleveBatch, arrow.Target, ch.Title, sourceFile, nodeIndex, result)
 						if fromNode.NPtr == toNode.NPtr {
 							continue
 						}
@@ -241,6 +284,12 @@ func BuildFromCollection(collectionDir string, registry *content.SSTRegistry) (*
 		}
 	}
 
+	// Commit every staged node (Pass 1 chapter roots + Pass 2 arrow targets) in
+	// a single batch.
+	if err := bleveIdx.ApplyBatch(bleveBatch); err != nil {
+		result.Errors = append(result.Errors, fmt.Sprintf("bleve apply batch: %v", err))
+	}
+
 	result.DurationMs = time.Since(start).Milliseconds()
 	return result, nil
 }
@@ -270,10 +319,11 @@ func appendMemoryLink(arrowPtr SST.ArrowPtr, fromDB, toDB SST.NodePtr, ctx SST.C
 // chap is assigned when the node is first created; if the node already exists
 // with an empty Chap it is updated so arrow-target nodes inherit chapter info.
 //
-// New nodes created in Pass 2 are also indexed into the Bleve overlay
-// immediately (Pass 1's batch has already been committed by the caller).
-// These are typically rare arrow targets that weren't chapter roots.
-func ensureNode(sst SST.PoSST, bleveIdx *SST.Index, text, chap, sourceFile string, index map[string]SST.Node, result *BuildResult) SST.Node {
+// New nodes created in Pass 2 are staged into the shared Bleve batch (committed
+// once after Pass 2 completes) rather than indexed individually — per-node
+// commits were the dominant build cost. These are typically arrow targets that
+// weren't chapter roots.
+func ensureNode(sst SST.PoSST, bleveBatch *SST.IndexBatch, text, chap, sourceFile string, index map[string]SST.Node, result *BuildResult) SST.Node {
 	key := normalizeText(text)
 	if n, ok := index[key]; ok {
 		if n.Chap == "" && chap != "" {
@@ -288,9 +338,7 @@ func ensureNode(sst SST.PoSST, bleveIdx *SST.Index, text, chap, sourceFile strin
 	n = SST.IdempDBAddNode(sst, n)
 	SST.CacheNode(n) // register target node in NODE_DIRECTORY and NODE_CACHE
 	index[key] = n
-	if err := bleveIdx.AddNode(n.NPtr, n.S, chap, sourceFile); err != nil {
-		result.Errors = append(result.Errors, fmt.Sprintf("bleve add node %q: %v", text, err))
-	}
+	bleveBatch.Add(n.NPtr, n.S, chap, sourceFile)
 	result.NodesIngested++
 	return n
 }

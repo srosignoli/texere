@@ -1,6 +1,6 @@
 # texere Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-04-25
+Auto-generated from all feature plans. Last updated: 2026-05-04
 
 ## Active Technologies
 - Go 1.22 (enforced via `go.mod`) + `github.com/fsnotify/fsnotify` v1.7 (pure Go, cross-platform inotify/ReadDirectoryChanges/kqueue); standard library `hash/fnv` for node IDs; `bufio` for streaming line reads (002-n4l-parser)
@@ -10,6 +10,8 @@ Auto-generated from all feature plans. Last updated: 2026-04-25
 - Go 1.22 (backend) + JavaScript/Svelte 3.49 (frontend) + Wails v2.12, SSTorytime-KV (`github.com/srosignoli/sstorytime-kv`, published module), CodeMirror 6, fsnotify v1.9 (004-unified-search-graph)
 - BadgerDB via SSTorytime-KV (`<collectionDir>/sst_data/`); read-only from search feature perspective (004-unified-search-graph)
 - Go 1.22 (backend only — this feature ships no frontend changes beyond an error-toast string update) (005-bleve-fulltext-search)
+- Go 1.22 (backend, layout engine + Wails bindings); JavaScript/Svelte 3.49 (frontend); pinned via existing `go.mod` and `frontend/package.json`. (006-isometric-graph-explorer)
+- None added. Read-only consumer of the SSTorytime-KV BadgerDB store (`<collectionDir>/sst_data/`) populated by feature 004's Build Graph (Ctrl+G). No new files, no new tables, no persisted layout state. (006-isometric-graph-explorer)
 
 - Go 1.21 (minimum enforced via `go.mod` directive) + Wails v2, Svelte + Vite (frontend), golangci-lint (dev tooling) (001-project-scaffold)
 
@@ -44,9 +46,9 @@ make clean           # Remove build artifacts
 - All new dependencies MUST be pure Go (no CGo) — exceptions require Complexity Tracking entry in the relevant plan
 
 ## Recent Changes
+- 006-isometric-graph-explorer: Added Go 1.22 (backend, layout engine + Wails bindings); JavaScript/Svelte 3.49 (frontend); pinned via existing `go.mod` and `frontend/package.json`.
 - 005-bleve-fulltext-search: Added Go 1.22 (backend only — this feature ships no frontend changes beyond an error-toast string update)
 - 004-unified-search-graph: Added Go 1.22 (backend) + JavaScript/Svelte 3.49 (frontend) + Wails v2.12, SSTorytime-KV (`github.com/srosignoli/sstorytime-kv`, published module), CodeMirror 6, fsnotify v1.9
-- 003-editor-core: Added Go 1.22 (backend) + TypeScript/JavaScript, Svelte 3.49, Vite 3 (frontend) + Wails v2.12, CodeMirror 6 (`@codemirror/state`, `@codemirror/view`, `@codemirror/language`, `@codemirror/autocomplete`), `fsnotify` v1.9 (already in `go.mod`)
 
 
 <!-- MANUAL ADDITIONS START -->

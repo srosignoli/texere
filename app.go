@@ -8,6 +8,7 @@ import (
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"texere/internal/content"
+	"texere/internal/explorer"
 	"texere/internal/search"
 )
 
@@ -37,6 +38,7 @@ type App struct {
 	watcher       *content.CollectionWatcher
 	quitConfirmed bool                     // set by ConfirmQuit so beforeClose lets the second Quit() through
 	searchSvc     *search.SearchService    // graph search; nil until a collection is loaded
+	explorerSvc   *explorer.ExplorerService // 2.5D isometric explorer; lifetime mirrors searchSvc
 }
 
 // NewApp creates a new App instance.
@@ -81,6 +83,7 @@ func (a *App) startup(ctx context.Context) {
 	a.collectionDir = cfg.CollectionDir
 	a.initialSums = summaries
 	a.searchSvc = search.NewSearchService(cfg.CollectionDir, a.registry)
+	a.explorerSvc = explorer.NewExplorerService(a.searchSvc, a.registry)
 
 	watcher, err := content.WatchCollection(cfg.CollectionDir)
 	if err != nil {
@@ -155,6 +158,11 @@ func (a *App) OpenCollection(dir string) ([]content.ChapterSummary, error) {
 		a.searchSvc.Close()
 	}
 	a.searchSvc = search.NewSearchService(dir, a.registry)
+	if a.explorerSvc == nil {
+		a.explorerSvc = explorer.NewExplorerService(a.searchSvc, a.registry)
+	} else {
+		a.explorerSvc.SetSearchService(a.searchSvc)
+	}
 
 	// Start watcher (replace any existing one)
 	if a.watcher != nil {
@@ -179,4 +187,51 @@ func (a *App) OpenCollection(dir string) ([]content.ChapterSummary, error) {
 func (a *App) ParseFileForUI(path string) (*content.ParsedFile, []content.ParseError) {
 	a.openFilePath = path
 	return content.ParseFile(path, a.registry)
+}
+
+// =============================================================================
+// 2.5D Isometric Graph Explorer (feature 006) — Wails IPC surface.
+// See specs/006-isometric-graph-explorer/contracts/layout-ipc.md for the
+// full contract: error model, lifecycle, and JSON shapes.
+// =============================================================================
+
+// ExplorerOpen runs a graph query, materializes the result subgraph, and
+// returns the initial layout for the default anchor. User-visible failure
+// modes (graph not built, no results) ride in LayoutResult.Diagnostics
+// rather than the error return.
+func (a *App) ExplorerOpen(query string, mode string) (explorer.LayoutResult, error) {
+	if a.explorerSvc == nil {
+		// No collection loaded yet — surface the same hint the search
+		// overlay's Tier 2 uses so the frontend can render a useful
+		// empty state.
+		return explorer.LayoutResult{
+			Nodes:       []explorer.NodeView{},
+			Edges:       []explorer.EdgeView{},
+			Territories: []explorer.TerritoryView{},
+			Diagnostics: explorer.Diagnostics{
+				GraphError: "Build your graph first (Ctrl+G) to enable graph search.",
+			},
+		}, nil
+	}
+	return a.explorerSvc.Open(query, mode)
+}
+
+// ExplorerReanchor runs a new layout pass against the cached ResultSet
+// with the supplied anchor. `mode` flips between layout encodings
+// (stacked / extended) without re-running the search. Returns
+// ErrStaleResultID or ErrAnchorNotInResult for programmer errors;
+// never for user-visible states.
+func (a *App) ExplorerReanchor(resultID string, anchorID string, mode string) (explorer.LayoutResult, error) {
+	if a.explorerSvc == nil {
+		return explorer.LayoutResult{}, explorer.ErrStaleResultID
+	}
+	return a.explorerSvc.Reanchor(resultID, anchorID, mode)
+}
+
+// ExplorerClose evicts the cached ResultSet. Idempotent.
+func (a *App) ExplorerClose() error {
+	if a.explorerSvc == nil {
+		return nil
+	}
+	return a.explorerSvc.Close()
 }

@@ -4,6 +4,59 @@ html {
     color: white;
 }
 
+/* 2.5D Isometric Graph Explorer (feature 006) — theme palette.
+ * These CSS variables are the single source of truth for the explorer's
+ * territory colors, edge colors, and label / ground / anchor colors.
+ * Three.js reads them at scene-build time via Theme.js's resolve* helpers.
+ * Override these in a theme switcher to retheme the explorer without
+ * touching JS.
+ *
+ * Hex strings only (#rrggbb) — Theme.js parses them into 24-bit ints.
+ */
+:root {
+    /* Edge palette — meta-type → color (FR-011 / FR-012). */
+    --explorer-edge-contains: #f59e0b;     /* amber, structural / pillar */
+    --explorer-edge-leads-to: #06b6d4;     /* cyan, primary causal flow */
+    --explorer-edge-properties: #10b981;   /* green, detail / dashed */
+    --explorer-edge-similar-to: #a855f7;   /* purple, analogy / dotted */
+    --explorer-edge-unclassified: #6b7280; /* neutral gray */
+    --explorer-edge-unknown: #e05fa0;      /* magenta-pink, unregistered arrow (dashed) */
+
+    /* Node colors. */
+    --explorer-node-default: #6cb4ee;
+    --explorer-node-anchor: #ffffff;
+
+    /* Label + ground. */
+    --explorer-label: #e8eaf0;
+    --explorer-label-halo: #0e0f12;
+    --explorer-ground: #1b2636;
+
+    /* Layered grid-plane colors (post layered redesign). The grid
+     * lines stand out against the dark ground; the tint backs the grid
+     * so the plane reads as a distinct surface even at low opacity. */
+    --explorer-plane-grid: #6b7c95;
+    --explorer-plane-tint: #1f2a3a;
+
+    /* Extended-mode shared plane: a single floor under every cluster.
+     * Distinct hue from every per-context palette entry so the user can
+     * tell at a glance that they're in Extended mode (and not looking
+     * at, e.g., a stacked layout collapsed onto one Y). */
+    --explorer-extended-plane-tint: #2c2a40;
+    --explorer-extended-plane-grid: #7a78a5;
+
+    /* Territory palette (FR-019). Each entry shifts ≥1 RGB channel by
+     * ≥120 from the ground color so the 0.42 alpha blend is clearly
+     * visible. The palette wraps for results with more contexts. */
+    --explorer-territory-0: #e07a3a; /* amber-orange */
+    --explorer-territory-1: #3aa8e0; /* sky blue */
+    --explorer-territory-2: #c8e03a; /* chartreuse */
+    --explorer-territory-3: #b83ae0; /* violet */
+    --explorer-territory-4: #3ae0a0; /* mint */
+    --explorer-territory-5: #e03a8a; /* hot pink */
+    --explorer-territory-6: #e0c83a; /* gold */
+    --explorer-territory-7: #3ae0e0; /* cyan */
+}
+
 body {
     margin: 0;
     color: white;

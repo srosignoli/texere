@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"texere/internal/content"
+	"texere/internal/explorer"
 	"texere/internal/graph"
 	"texere/internal/search"
 )
@@ -35,7 +36,9 @@ func (a *App) BuildGraph() *BuildGraphResult {
 		a.searchSvc = nil
 	}
 
-	runtime.EventsEmit(a.ctx, "graph:build-started", nil)
+	if a.ctx != nil {
+		runtime.EventsEmit(a.ctx, "graph:build-started", nil)
+	}
 
 	br, err := graph.BuildFromCollection(a.collectionDir, a.registry)
 	if err != nil {
@@ -52,7 +55,18 @@ func (a *App) BuildGraph() *BuildGraphResult {
 
 	// Reopen so searches work immediately after build.
 	a.searchSvc = search.NewSearchService(a.collectionDir, a.registry)
+	// Re-point the explorer at the new search service. Without this the
+	// explorer keeps a reference to the now-closed pre-build service, so the
+	// graph stays empty until the app is restarted (OpenCollection already
+	// does this via SetSearchService; BuildGraph must too).
+	if a.explorerSvc != nil {
+		a.explorerSvc.SetSearchService(a.searchSvc)
+	} else {
+		a.explorerSvc = explorer.NewExplorerService(a.searchSvc, a.registry)
+	}
 
-	runtime.EventsEmit(a.ctx, "graph:build-complete", result)
+	if a.ctx != nil {
+		runtime.EventsEmit(a.ctx, "graph:build-complete", result)
+	}
 	return result
 }

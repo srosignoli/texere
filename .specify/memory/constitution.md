@@ -95,7 +95,8 @@ consumer laptop with a 10 000-line collection:
 | SSTconfig registry build | < 10 ms | Read once at startup |
 | Build graph (Ctrl+G) | 100–500 ms | BadgerDB batch write |
 | Orbit query (radius 1) | < 1 ms | BadgerDB key lookup |
-| Graph explorer initial render | < 500 ms | Cytoscape.js layout |
+| Graph explorer frame 0 (skeleton) | ≤ 16 ms | Ground plane + territory polygons + camera frame; runs synchronously on the IPC return so the user sees the empty isometric world immediately. |
+| Graph explorer full settle | ≤ 2 s | All node + edge meshes built and fade-in tweens complete; staggered by `distanceFromAnchor` to keep each frame ≤ 8 ms during construction. |
 | Study queue build | < 100 ms | SQLite indexed query |
 | Neural activation per hop | < 50 ms | BFS with weighted edges |
 | Read view render | < 200 ms | HTML from parsed AST |
@@ -113,7 +114,7 @@ documented as a constitution amendment with migration rationale:
 |---|---|
 | Application framework | Wails v2 (Go + OS webview) |
 | Source editor | CodeMirror 6 |
-| Graph visualization | Cytoscape.js |
+| Graph visualization | Three.js (2.5D isometric WebGL canvas) |
 | Knowledge graph | SSTorytime-KV (BadgerDB, pure Go) |
 | Learning state | SQLite (`modernc.org/sqlite`, pure Go) |
 | Version control | `go-git` (pure Go) |

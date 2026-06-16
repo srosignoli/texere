@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"unicode"
@@ -17,6 +19,39 @@ import (
 	"texere/internal/content"
 )
 
+// orbitDepthRE matches the texere-only \radius N directive. Anchored on a
+// word/whitespace boundary on the left so it doesn't trip on, e.g., \radiusx.
+var orbitDepthRE = regexp.MustCompile(`(?i)(^|\s)\\radius\s+(\d+)`)
+
+// spaceCollapseRE collapses runs of whitespace left after stripping a
+// mid-query directive into a single space.
+var spaceCollapseRE = regexp.MustCompile(`\s{2,}`)
+
+// extractOrbitDepth pulls a \radius N directive out of the query (if any),
+// returning the clamped depth and the query with the directive removed. When
+// absent it returns DefaultOrbitDepth and the query unchanged. Depth is
+// clamped to [1, MaxOrbitDepth] so a deep traversal can't blow past the
+// explorer's render ceiling.
+func extractOrbitDepth(query string) (int, string) {
+	m := orbitDepthRE.FindStringSubmatch(query)
+	if m == nil {
+		return DefaultOrbitDepth, query
+	}
+	depth, _ := strconv.Atoi(m[2])
+	if depth < 1 {
+		depth = 1
+	}
+	if depth > MaxOrbitDepth {
+		depth = MaxOrbitDepth
+	}
+	// Replace the directive (and its leading separator) with a single space,
+	// then collapse any resulting double space so a mid-query \radius doesn't
+	// leave a gap. Trim the ends for the leading/trailing directive cases.
+	cleaned := orbitDepthRE.ReplaceAllString(query, " ")
+	cleaned = strings.TrimSpace(spaceCollapseRE.ReplaceAllString(cleaned, " "))
+	return depth, cleaned
+}
+
 type queryRoute int
 
 const (
@@ -24,6 +59,22 @@ const (
 	routeStructural
 	routeListing
 	routeNotes
+)
+
+// Orbit expansion tuning.
+//
+//   - orbitSatelliteCap bounds how many neighbors a single seed contributes,
+//     regardless of depth, so a high-degree hub can't flood the result. This
+//     is intentionally orthogonal to \radius: radius controls how FAR we
+//     traverse, this controls how MANY satellites we keep.
+//   - DefaultOrbitDepth is the BFS depth used when the query carries no
+//     \radius directive. 2 preserves the historical radius-1+radius-2 orbit.
+//   - MaxOrbitDepth clamps \radius so a deep traversal can't explode past the
+//     explorer's render ceiling (a hairball that just hits the node clamp).
+const (
+	orbitSatelliteCap = 8
+	DefaultOrbitDepth = 2
+	MaxOrbitDepth     = 3
 )
 
 // BleveSearcher is the small slice of *SST.Index that the search overlay
@@ -57,6 +108,11 @@ type SearchService struct {
 	// first \context call and reset on store reopen (Close → re-lazy-open).
 	tagChapters      map[string][]string
 	tagChaptersBuilt bool
+	// parsedCache holds the files parsed during augmentUnknownArrows so the
+	// immediately-following rebuildMemoryLinks can reuse them instead of
+	// re-parsing the whole collection a second time (parsing dominates
+	// lazy-open cost on large collections). Cleared after rebuild.
+	parsedCache map[string]*content.ParsedFile
 }
 
 // NewSearchService creates a SearchService pointed at <collectionDir>/sst_data.
@@ -112,6 +168,12 @@ func (s *SearchService) Search(query string) (result *SearchResult, err error) {
 		SST.NODE_DIRECTORY = SST.NodeDirectory{}
 		SST.NODE_CACHE = make(map[SST.NodePtr]SST.NodePtr)
 		SST.MemoryInit()
+		// Synthesize ArrowDefs for any unregistered arrow codes BEFORE
+		// RegisterArrows, mirroring what graph.BuildFromCollection does, so
+		// the ARROW_DIRECTORY (and thus ArrowPtr indices) match the build's.
+		// Without this, unknown-arrow links the build materialized would fail
+		// to resolve here and the explorer/orbit would omit them.
+		s.augmentUnknownArrows()
 		RegisterArrows(s.registry)
 		kv, openErr := SST.OpenBadgerStore(s.dbPath)
 		if openErr != nil {
@@ -164,6 +226,13 @@ func (s *SearchService) Search(query string) (result *SearchResult, err error) {
 		}
 	}()
 
+	// \radius N is a texere-only directive controlling orbit BFS depth. It is
+	// NOT understood by SST.DecodeSearchField (which would treat "radius" as a
+	// search term), so we extract and strip it before decoding. Both the
+	// OmniBar graph search and the explorer route through here, so the same
+	// query text produces the same depth on both surfaces — by construction.
+	depth, query := extractOrbitDepth(query)
+
 	params := SST.DecodeSearchField(query)
 	_, maxlimit := SST.MinMaxPolicy(params)
 	if maxlimit <= 0 {
@@ -178,7 +247,7 @@ func (s *SearchService) Search(query string) (result *SearchResult, err error) {
 
 	switch s.classifyQuery(params) {
 	case routeNodeSearch:
-		nodes, searchErr := s.searchNodes(params, arrowptrs, maxlimit)
+		nodes, searchErr := s.searchNodes(params, arrowptrs, maxlimit, depth)
 		if searchErr != nil {
 			var pe *SST.ParseError
 			if errors.As(searchErr, &pe) {
@@ -194,7 +263,7 @@ func (s *SearchService) Search(query string) (result *SearchResult, err error) {
 	case routeListing:
 		result.Listings = s.searchListing(params, arrowptrs, sttype, maxlimit)
 	case routeNotes:
-		result.Notes = s.searchNotes(params)
+		result.Notes = s.searchNotes(params, query)
 	}
 
 	return result, nil
@@ -211,8 +280,13 @@ func (s *SearchService) classifyQuery(params SST.SearchParameters) queryRoute {
 	pagenr := params.PageNr > 0
 	arrows := len(params.Arrows) > 0
 
-	// Structural: path queries (\from + \to) or sequence queries (\sequence)
-	if (from && to) || seq {
+	// Structural: closed path (\from + \to), open causal cone (\from XOR \to),
+	// or sequence (\sequence). A lone \from is a FORWARD cone and a lone \to a
+	// BACKWARD cone — mirroring upstream SSTorytime's Search(), which routes any
+	// of (name|from|to) into CausalCones when no closing endpoint is given.
+	// This check must precede the arrow-listing check below so `\from X \leadsto`
+	// (from set, name empty, arrows set) routes structurally, not to a listing.
+	if from || to || seq {
 		return routeStructural
 	}
 
@@ -305,12 +379,12 @@ func sameSequenceContextTags(a, b []string) bool {
 // folding, and the operator grammar. The returned NodePtrs are then
 // fetched and filtered by chapter / context, preserving Bleve's score
 // order (FR-023a).
-func (s *SearchService) searchNodes(params SST.SearchParameters, arrowptrs []SST.ArrowPtr, limit int) ([]GraphNode, error) {
+func (s *SearchService) searchNodes(params SST.SearchParameters, arrowptrs []SST.ArrowPtr, limit, depth int) ([]GraphNode, error) {
 	chapLower := normalizeForSearch(params.Chapter)
 	isChapFilter := chapLower != "" && chapLower != "%%" && chapLower != "tableofcontents"
 
 	if len(params.Name) == 0 {
-		return s.searchNodesWildcard(params, isChapFilter, chapLower, limit), nil
+		return s.searchNodesWildcard(params, isChapFilter, chapLower, limit, depth), nil
 	}
 
 	queryText := joinBleveQueryText(params.Name)
@@ -361,7 +435,7 @@ func (s *SearchService) searchNodes(params SST.SearchParameters, arrowptrs []SST
 			NodeText:    n.S,
 			Chapter:     n.Chap,
 			ContextTags: nodeContextTags(ptr),
-			Orbit:       s.buildOrbit(ptr, 8, params.Context),
+			Orbit:       s.buildOrbit(ptr, orbitSatelliteCap, depth, params.Context),
 		})
 		if len(nodes) >= limit {
 			break
@@ -389,7 +463,7 @@ func joinBleveQueryText(names []string) string {
 
 // searchNodesWildcard preserves the existing IterateNodes path for queries
 // with no name term (FR-021): \chapter / \context listings without text.
-func (s *SearchService) searchNodesWildcard(params SST.SearchParameters, isChapFilter bool, chapLower string, limit int) []GraphNode {
+func (s *SearchService) searchNodesWildcard(params SST.SearchParameters, isChapFilter bool, chapLower string, limit, depth int) []GraphNode {
 	nodes := make([]GraphNode, 0, limit)
 	s.pst.KV.IterateNodes(func(n SST.Node, ptr SST.NodePtr) bool {
 		if n.S == "" {
@@ -431,7 +505,7 @@ func (s *SearchService) searchNodesWildcard(params SST.SearchParameters, isChapF
 			NodeText:    n.S,
 			Chapter:     n.Chap,
 			ContextTags: nodeContextTags(ptr),
-			Orbit:       s.buildOrbit(ptr, 8, params.Context),
+			Orbit:       s.buildOrbit(ptr, orbitSatelliteCap, depth, params.Context),
 		})
 		return len(nodes) < limit
 	})
@@ -506,82 +580,89 @@ func (s *SearchService) chapterContexts(chapName string) []string {
 // Instead we walk NODE_DIRECTORY directly via in-memory ptrs, using
 // GetMemoryNodeFromPtr for text lookup at every hop.
 // nptr is a BadgerDB NodePtr; NODE_CACHE bridges it to the in-memory index.
-func (s *SearchService) buildOrbit(nptr SST.NodePtr, cap int, ctxFilter []string) []OrbitEntry {
+// orbitSTOrder is the deterministic STtype scan order used when expanding a
+// node's links. Express relations first, then containment (inverse), flow,
+// and nearness — matching the priority the original radius-1/2 orbit used.
+var orbitSTOrder = []int{
+	SST.STTypeToSTIndex(SST.EXPRESS),
+	SST.STTypeToSTIndex(-SST.EXPRESS),
+	SST.STTypeToSTIndex(-SST.CONTAINS),
+	SST.STTypeToSTIndex(SST.LEADSTO),
+	SST.STTypeToSTIndex(-SST.LEADSTO),
+	SST.STTypeToSTIndex(SST.NEAR),
+}
+
+// buildOrbit assembles a node's neighborhood as a breadth-first spanning tree
+// out to `depth` hops, keeping at most `cap` satellites. This mirrors the
+// depth-parametric cone traversal upstream SSTorytime uses (GetFwdConeAsLinks
+// is a `for d < depth` BFS) while preserving texere's two additions:
+//
+//   - \context scoping: a link declared under a non-matching context is
+//     skipped, so scoped queries never leak neighbors from sibling contexts.
+//   - deterministic STtype ordering + dedup so output is reproducible.
+//
+// Each node is discovered exactly once, at its shortest radius, and records
+// the ParentText it was reached from. That gives every satellite exactly one
+// connecting edge at any depth — the explorer can therefore draw edges for
+// EVERY radius, not just radius 1, so deeper rings stay connected rather than
+// floating. depth=1 yields direct neighbors only; the historical default is 2.
+//
+// nptr is a BadgerDB NodePtr; NODE_CACHE bridges it to the in-memory index.
+func (s *SearchService) buildOrbit(nptr SST.NodePtr, cap, depth int, ctxFilter []string) []OrbitEntry {
 	memPtr, ok := SST.NODE_CACHE[nptr]
 	if !ok {
 		return nil
 	}
-
-	stOrder := []int{
-		SST.STTypeToSTIndex(SST.EXPRESS),
-		SST.STTypeToSTIndex(-SST.EXPRESS),
-		SST.STTypeToSTIndex(-SST.CONTAINS),
-		SST.STTypeToSTIndex(SST.LEADSTO),
-		SST.STTypeToSTIndex(-SST.LEADSTO),
-		SST.STTypeToSTIndex(SST.NEAR),
+	if depth < 1 {
+		depth = 1
 	}
-
-	entries := make([]OrbitEntry, 0, cap)
-	seen := make(map[string]bool)
 
 	rootNode := SST.GetMemoryNodeFromPtr(memPtr)
 
-	for _, stIdx := range stOrder {
-		if len(entries) >= cap {
-			break
+	entries := make([]OrbitEntry, 0, cap)
+	// seen tracks node texts already discovered (root included) so each node
+	// is emitted once, at its shortest hop distance, and never re-expanded.
+	seen := map[string]bool{rootNode.S: true}
+
+	type frame struct {
+		memPtr SST.NodePtr
+		text   string
+		radius int
+	}
+	queue := []frame{{memPtr: memPtr, text: rootNode.S, radius: 0}}
+
+	for len(queue) > 0 && len(entries) < cap {
+		cur := queue[0]
+		queue = queue[1:]
+		if cur.radius >= depth {
+			continue // reached the depth ceiling; don't expand further
 		}
-		for _, lnk1 := range rootNode.I[stIdx] {
+		node := SST.GetMemoryNodeFromPtr(cur.memPtr)
+		for _, stIdx := range orbitSTOrder {
 			if len(entries) >= cap {
 				break
 			}
-			// Honor \context: a link declared under a non-matching context
-			// must not appear in the orbit, otherwise scoped queries leak
-			// neighbors from sibling contexts (e.g. kubectl's "(runs)" link
-			// from "networking and security" leaking into a `\context
-			// "core concepts"` query).
-			if len(ctxFilter) > 0 && !SST.MatchContexts(ctxFilter, lnk1.Ctx) {
-				continue
-			}
-			hop1 := SST.GetMemoryNodeFromPtr(lnk1.Dst)
-			if hop1.S == "" || hop1.S == rootNode.S {
-				continue
-			}
-			arr1 := SST.GetDBArrowByPtr(s.pst, lnk1.Arr)
-			key1 := hop1.S + "|" + arr1.Long
-			if seen[key1] {
-				continue
-			}
-			seen[key1] = true
-			entries = append(entries, OrbitEntry{
-				ArrowLong:    arr1.Long,
-				NeighborText: hop1.S,
-				Radius:       1,
-				Ctx:          SST.GetContext(lnk1.Ctx),
-			})
-			// Radius-2: follow same-STtype links from hop1
-			for _, lnk2 := range hop1.I[stIdx] {
+			for _, lnk := range node.I[stIdx] {
 				if len(entries) >= cap {
 					break
 				}
-				if len(ctxFilter) > 0 && !SST.MatchContexts(ctxFilter, lnk2.Ctx) {
+				if len(ctxFilter) > 0 && !SST.MatchContexts(ctxFilter, lnk.Ctx) {
 					continue
 				}
-				hop2 := SST.GetMemoryNodeFromPtr(lnk2.Dst)
-				if hop2.S == "" || hop2.S == rootNode.S || hop2.S == hop1.S {
+				hop := SST.GetMemoryNodeFromPtr(lnk.Dst)
+				if hop.S == "" || seen[hop.S] {
 					continue
 				}
-				arr2 := SST.GetDBArrowByPtr(s.pst, lnk2.Arr)
-				key2 := hop2.S + "|" + arr2.Long
-				if seen[key2] {
-					continue
-				}
-				seen[key2] = true
+				seen[hop.S] = true
+				arr := SST.GetDBArrowByPtr(s.pst, lnk.Arr)
 				entries = append(entries, OrbitEntry{
-					ArrowLong:    arr2.Long,
-					NeighborText: hop2.S,
-					Radius:       2,
-					Ctx:          SST.GetContext(lnk2.Ctx),
+					ArrowLong:    arr.Long,
+					NeighborText: hop.S,
+					ParentText:   cur.text,
+					Radius:       cur.radius + 1,
+					Ctx:          SST.GetContext(lnk.Ctx),
 				})
+				queue = append(queue, frame{memPtr: lnk.Dst, text: hop.S, radius: cur.radius + 1})
 			}
 		}
 	}
@@ -607,8 +688,9 @@ func (s *SearchService) resolvePathEndpoints(names []string, limit int) []SST.No
 		out = append(out, mem)
 	}
 	for _, raw := range names {
+		isEx, stripped := SST.IsExactMatch(raw)
 		clean := raw
-		if isEx, stripped := SST.IsExactMatch(raw); isEx {
+		if isEx {
 			clean = stripped
 		}
 		clean = strings.TrimSpace(clean)
@@ -619,12 +701,20 @@ func (s *SearchService) resolvePathEndpoints(names []string, limit int) []SST.No
 		if dbPtr, ok := s.textToDBPtr[target]; ok {
 			if memPtr, ok := SST.NODE_CACHE[dbPtr]; ok {
 				addMem(memPtr)
-				continue
 			}
+			continue
 		}
-		// Bleve fallback when no exact-text match exists (e.g. \from "salm" → "grilled salmon").
-		// Score-ordered seeds enter the path walk in iteration order; the existing
-		// exact-text preference above keeps an unambiguous endpoint dominant when present.
+		// No exact-text match. When the user requested an EXACT match (`!start!`
+		// / `|start|`) we must NOT fuzzy-fallback: if that node doesn't exist the
+		// endpoint resolves to nothing, rather than to unrelated Bleve hits that
+		// would seed a cone/path rooted at the wrong nodes. Honoring `!` is the
+		// whole point of the syntax.
+		if isEx {
+			continue
+		}
+		// Bleve fallback for non-exact inputs (e.g. \from salm → "grilled salmon").
+		// Score-ordered seeds enter the path walk in iteration order; the
+		// exact-text preference above keeps an unambiguous endpoint dominant.
 		seeds, qerr := s.bleveIdx.SearchByQuery(clean, limit)
 		if qerr != nil {
 			continue
@@ -802,6 +892,23 @@ func (s *SearchService) searchStructural(params SST.SearchParameters, arrowptrs 
 		return chains
 	}
 
+	// Open causal cone: a lone \from (forward) or lone \to (backward), with no
+	// closing endpoint. Upstream SSTorytime routes these through CausalCones →
+	// GetFwdPathsAsLinks; we do the same and emit each root-to-leaf path as a
+	// chain, so the explorer renders the focused cone subgraph reachable from
+	// the endpoint rather than dumping the whole graph (the bug a lone \from
+	// otherwise fell into via the node-search wildcard path).
+	fromOnly := len(params.From) > 0 && len(params.To) == 0
+	toOnly := len(params.To) > 0 && len(params.From) == 0
+	if fromOnly || toOnly {
+		names := params.From
+		if toOnly {
+			names = params.To
+		}
+		endpoints := s.resolvePathEndpoints(names, limit)
+		return s.searchCone(endpoints, sttype, limit, fromOnly)
+	}
+
 	// Path query: \from + \to
 	// Resolve endpoints to memory ptrs. SolveNodePtrs does substring matching
 	// with an alphabetical limit, so the target node itself can be missed when
@@ -913,6 +1020,144 @@ func (s *SearchService) searchStructural(params SST.SearchParameters, arrowptrs 
 		}
 		if len(chain.Nodes) > 0 {
 			chains = append(chains, chain)
+		}
+	}
+	return chains
+}
+
+// coneMaxDepth bounds how many hops a causal cone traverses from its endpoint.
+// Generous enough to span a realistic story path while keeping a pathological
+// deep chain from blowing past the explorer's node clamp.
+const coneMaxDepth = 24
+
+// coneNodeCap / coneEdgeCap bound a cone's BFS so a high-degree hub endpoint
+// can't enumerate an unbounded subgraph. Set above the explorer's MaxNodes/
+// MaxEdges clamp (500/1500) so the clamp, not these, governs what renders.
+const (
+	coneNodeCap = 2000
+	coneEdgeCap = 6000
+)
+
+// coneSTTypes is the set of relation STtypes a cone follows when the query
+// carries no explicit arrow constraint. A causal "cone path" follows DIRECTED
+// relations — LEADSTO (sequential flow, e.g. the doors `fwd` arrow) and CONTAINS
+// (hierarchy) — in their authored direction. The SYMMETRIC relations EXPRESS
+// (synonyms/translations such as the chinese `eh`/`hp` arrows) and NEAR
+// (proximity) are deliberately excluded: they have no meaningful path direction,
+// and following them makes a cone bleed sideways into translations/synonyms of
+// the start node (e.g. `start → 开始`), fusing otherwise-unrelated chapters.
+// An explicit arrow constraint (`\from X \someArrow`) overrides this default.
+var coneSTTypes = []int{SST.LEADSTO, SST.CONTAINS}
+
+// searchCone emits the forward (or backward) causal cone from the endpoints as
+// a layered DAG. It runs a multi-source breadth-first walk over the in-memory
+// link arrays, keeping ONLY strictly-outward edges (depth(dst) == depth(src)+1).
+//
+// Walking the explicit BFS — rather than upstream GetFwdPathsAsLinks — fixes two
+// problems that surface on real collections where a node is shared across files
+// and carries symmetric EXPRESS relations:
+//
+//   - GetFwdPathsAsLinks never marks the start node visited, so a bidirectional
+//     arrow (A→B and B→A) produces start→B→start→… loops that revisit the root
+//     and burn the path budget before the genuine forward paths are emitted.
+//   - Those back-edges also give the true root a non-zero in-degree, which broke
+//     the explorer's "in-degree 0 = cone root" placement.
+//
+// Keeping outward-only edges yields an acyclic cone whose single source is the
+// endpoint, emitted as one 2-node chain per edge (BuildResultSet dedups and
+// reconstructs depth from the directed edges). forward=false walks inverse slots
+// for a lone \to.
+func (s *SearchService) searchCone(endpoints []SST.NodePtr, sttype []int, limit int, forward bool) []StructuralChain {
+	chains := make([]StructuralChain, 0)
+	if len(endpoints) == 0 {
+		return chains
+	}
+
+	// STindex slots to follow. When the query constrained arrows
+	// (\from X \leadsto) honor only those STtypes; otherwise follow every kind.
+	scan := coneSTTypes
+	if len(sttype) > 0 {
+		scan = sttype
+	}
+	slots := make([]int, 0, len(scan))
+	for _, st := range scan {
+		dir := st
+		if !forward {
+			if st == SST.NEAR {
+				continue // NEAR is symmetric — no inverse slot to walk
+			}
+			dir = -st
+		}
+		idx := SST.STTypeToSTIndex(dir)
+		if idx >= 0 && idx < SST.ST_TOP {
+			slots = append(slots, idx)
+		}
+	}
+
+	// Multi-source BFS. depth records each node's shortest forward distance from
+	// any endpoint; the root(s) sit at depth 0 and are marked visited up front so
+	// a back-edge can never re-root the cone.
+	depth := make(map[SST.NodePtr]int, len(endpoints))
+	queue := make([]SST.NodePtr, 0, len(endpoints))
+	for _, ep := range endpoints {
+		if _, seen := depth[ep]; seen {
+			continue
+		}
+		depth[ep] = 0
+		queue = append(queue, ep)
+	}
+
+	for len(queue) > 0 && len(chains) < coneEdgeCap && len(depth) < coneNodeCap {
+		cur := queue[0]
+		queue = queue[1:]
+		d := depth[cur]
+		if d >= coneMaxDepth {
+			continue
+		}
+		curNode := SST.GetMemoryNodeFromPtr(cur)
+		if curNode.S == "" {
+			continue
+		}
+		for _, idx := range slots {
+			for _, lnk := range curNode.I[idx] {
+				dd, seen := depth[lnk.Dst]
+				if !seen {
+					depth[lnk.Dst] = d + 1
+					queue = append(queue, lnk.Dst)
+				} else if dd < d {
+					// Destination sits in a SHALLOWER layer — this edge points back
+					// toward the root. Skipping it is what drops the start→B→start
+					// EXPRESS bounce. Lateral edges (dd == d) and forward edges to an
+					// already-discovered node (dd == d+1) are kept so the cone keeps
+					// every genuine outward/sideways relationship.
+					continue
+				}
+				dst := SST.GetMemoryNodeFromPtr(lnk.Dst)
+				if dst.S == "" || dst.S == curNode.S {
+					continue
+				}
+				arr := SST.GetDBArrowByPtr(s.pst, lnk.Arr)
+				// Chapter is intentionally empty. The explorer keys nodes by
+				// (text, chapter); a node merged across files (like `start`,
+				// authored in both doors.n4l and chinese.n4l) has an ambiguous
+				// chapter, so tagging each cone edge with its source's chapter
+				// keys the SAME node differently per edge and SHATTERS the cone
+				// into disconnected fragments (the bug where `start` vanished into
+				// its own stray fragment). Keying cone nodes by text alone matches
+				// how the graph store actually merges nodes, so each node is one
+				// node everywhere and the cone stays connected.
+				chains = append(chains, StructuralChain{
+					Kind:    "path",
+					Chapter: "",
+					Nodes: []ChainNode{
+						{NodeText: curNode.S, ArrowCode: arr.Short, ArrowLong: arr.Long},
+						{NodeText: dst.S},
+					},
+				})
+				if len(chains) >= coneEdgeCap {
+					return chains
+				}
+			}
 		}
 	}
 	return chains
@@ -1235,17 +1480,73 @@ func (s *SearchService) listRelatedContextTokens(term string) []string {
 // \notes query, reading PageMap rows from BadgerDB.  Chapter and context
 // filtering are applied at the store level; grouping into FullNote/NoteBlock
 // is done in buildFullNotes so the store stays a dumb row source.
-func (s *SearchService) searchNotes(params SST.SearchParameters) []FullNote {
+// noteAutoPageCap is a hard safety bound on the number of pages
+// searchNotes will fetch when no explicit \page is given. The
+// upstream GetDBPageMap returns up to pageMapHitsPerPage (60) rows
+// per call and iterates the whole pm: keyspace each time, so the
+// aggregate cost is O(pages² × pageSize). 100 pages = up to 6000
+// page-map rows = enough for any realistic chapter.
+const noteAutoPageCap = 100
+
+func (s *SearchService) searchNotes(params SST.SearchParameters, rawQuery string) []FullNote {
 	chap := params.Chapter
 	if chap == "%%" || chap == "TableOfContents" {
 		chap = ""
 	}
-	page := params.PageNr
-	if page <= 0 {
-		page = 1
+
+	// `\notes` ALWAYS sets params.PageNr = 1 upstream (it's a sentinel
+	// marking the notes route, not an explicit page request). The only
+	// reliable signal that the user typed `\page N` is the literal
+	// token in the raw query. When present we honor params.PageNr;
+	// otherwise we aggregate every page.
+	if hasExplicitPageDirective(rawQuery) {
+		rows := SST.GetDBPageMap(s.pst, chap, params.Context, params.PageNr)
+		return s.buildFullNotes(rows)
 	}
-	rows := SST.GetDBPageMap(s.pst, chap, params.Context, page)
+
+	// No \page: aggregate every page so the explorer sees the
+	// whole chapter. The upstream pageMapHitsPerPage cap (60)
+	// otherwise silently drops everything past line ~60.
+	var rows []SST.PageMap
+	for page := 1; page <= noteAutoPageCap; page++ {
+		batch := SST.GetDBPageMap(s.pst, chap, params.Context, page)
+		if len(batch) == 0 {
+			break
+		}
+		rows = append(rows, batch...)
+	}
 	return s.buildFullNotes(rows)
+}
+
+// hasExplicitPageDirective returns true when the raw query string
+// contains `\page` as a standalone N4L directive (whitespace- or
+// start-anchored on the left). Used to distinguish a real user-typed
+// `\page N` from the implicit PageNr=1 that `\notes` sets as a route
+// marker.
+func hasExplicitPageDirective(q string) bool {
+	lower := strings.ToLower(q)
+	idx := strings.Index(lower, "\\page")
+	if idx < 0 {
+		return false
+	}
+	// Must be at start or preceded by whitespace.
+	if idx > 0 {
+		prev := lower[idx-1]
+		if prev != ' ' && prev != '\t' && prev != '\n' {
+			return false
+		}
+	}
+	// Must be followed by whitespace, end, or the digit immediately
+	// (e.g. `\page2` is the same intent as `\page 2`).
+	rest := lower[idx+len("\\page"):]
+	if len(rest) == 0 {
+		return true
+	}
+	c := rest[0]
+	if c == ' ' || c == '\t' || c == '\n' || (c >= '0' && c <= '9') {
+		return true
+	}
+	return false
 }
 
 // buildFullNotes collapses per-line PageMap rows into one FullNote per chapter
@@ -1322,6 +1623,33 @@ func (s *SearchService) buildFullNotes(rows []SST.PageMap) []FullNote {
 	return out
 }
 
+// augmentUnknownArrows scans the collection's N4L files for arrow codes not
+// declared in any SSTconfig and injects synthetic ArrowDefs into s.registry,
+// matching graph.BuildFromCollection's pre-pass. Called at lazy-open before
+// RegisterArrows so the search-side ARROW_DIRECTORY is identical to the build's
+// and unknown-arrow links resolve. Caller must hold s.mu.
+func (s *SearchService) augmentUnknownArrows() {
+	summaries, err := content.ScanCollection(s.collectionDir)
+	if err != nil {
+		return
+	}
+	files := make([]*content.ParsedFile, 0, len(summaries))
+	cache := make(map[string]*content.ParsedFile, len(summaries))
+	for _, summary := range summaries {
+		if summary.ScanError != nil {
+			continue
+		}
+		if pf, _ := content.ParseFile(summary.FilePath, s.registry); pf != nil {
+			files = append(files, pf)
+			cache[summary.FilePath] = pf
+		}
+	}
+	content.AugmentWithUnknownArrows(s.registry, files)
+	// Hand the parsed files to rebuildMemoryLinks (next in the lazy-open
+	// sequence) so it doesn't re-parse the entire collection.
+	s.parsedCache = cache
+}
+
 // rebuildMemoryLinks re-populates NODE_DIRECTORY link arrays from N4L source
 // files after an app restart (when the in-memory state was lost). textToDBPtr
 // maps lower-cased node text → its BadgerDB NodePtr, built during IterateNodes.
@@ -1338,11 +1666,19 @@ func (s *SearchService) rebuildMemoryLinks(textToDBPtr map[string]SST.NodePtr) {
 	}
 	nodeContexts := make(map[SST.NodePtr][]string)
 	thenArrowPtr, _ := SST.GetDBArrowsWithArrowName(s.pst, SequenceArrowCode)
+	// Reuse files parsed moments ago by augmentUnknownArrows when available
+	// (the common lazy-open path); only parse on a cache miss. Clear the cache
+	// afterward so it can't go stale across rebuilds.
+	cache := s.parsedCache
+	s.parsedCache = nil
 	for _, summary := range summaries {
 		if summary.ScanError != nil {
 			continue
 		}
-		pf, _ := content.ParseFile(summary.FilePath, s.registry)
+		pf := cache[summary.FilePath]
+		if pf == nil {
+			pf, _ = content.ParseFile(summary.FilePath, s.registry)
+		}
 		if pf == nil {
 			continue
 		}

@@ -176,6 +176,11 @@ type parserState struct {
 	pendingProv     Provenance
 	labelMap        map[string]*Node
 	pendingRefs     []pendingRef
+	// prevObject holds the most recent real (non-ditto) arrow target seen, so a
+	// lone `"` in object position — N4L object-ditto, e.g. `tram (fwd) "` meaning
+	// `tram (fwd) target 3` — resolves to the line above's object instead of
+	// creating a spurious node literally named `"`. Reset at each chapter.
+	prevObject string
 }
 
 // ---------------------------------------------------------------------------
@@ -264,6 +269,7 @@ func openChapter(pf *ParsedFile, state *parserState, line string, lineNum int) {
 	state.dittoParent = nil
 	state.dittoParentFromQuote = false
 	state.dittoParentIndent = 0
+	state.prevObject = ""
 	state.labelMap = make(map[string]*Node)
 	// Study block closed by chapter boundary? No — blocks persist across chapters in same file
 }
@@ -458,6 +464,7 @@ func parseNode(pf *ParsedFile, state *parserState, path, line string, lineNum in
 
 	// Extract arrows from node text
 	cleanText, arrows := extractArrows(nodeText, lineNum, false, reg, path, pf)
+	resolveObjectDittos(state, arrows)
 
 	// Build study meta from pending or block
 	var sm *StudyMeta
@@ -544,6 +551,27 @@ func parseNode(pf *ParsedFile, state *parserState, path, line string, lineNum in
 	}
 }
 
+// resolveObjectDittos rewrites N4L object-ditto targets in place. A lone `"`
+// in object position (e.g. `tram (fwd) "`) means "repeat the previous arrow's
+// object" — the value on the line above. extractArrows already strips paired
+// `"…"`, so any surviving single-`"` target is unambiguously an object-ditto.
+// Each resolved/real target updates state.prevObject so a run of dittos all
+// inherit the same original object. Targets that can't resolve (no prior
+// object yet) are left untouched for the downstream unknown-target handling.
+func resolveObjectDittos(state *parserState, arrows []Arrow) {
+	for i := range arrows {
+		if arrows[i].Target == `"` {
+			if state.prevObject != "" {
+				arrows[i].Target = state.prevObject
+			}
+			continue
+		}
+		if arrows[i].Target != "" {
+			state.prevObject = arrows[i].Target
+		}
+	}
+}
+
 // stripNodeComment removes a trailing "# ..." comment from a node text line.
 func stripNodeComment(s string) string {
 	// Only strip if there's a " #" (space before hash) to avoid stripping
@@ -610,6 +638,7 @@ func parseDitto(pf *ParsedFile, state *parserState, path, line string, lineNum i
 
 	// Ditto: annotation/continuation of the immediately preceding node.
 	displayText, arrows := extractArrows(content, lineNum, true, reg, path, pf)
+	resolveObjectDittos(state, arrows)
 	ditto := DittoLine{
 		Line:   lineNum,
 		Text:   displayText,
@@ -802,8 +831,14 @@ func stripLineComment(s string) string {
 	masked := maskSpecial(s)
 	for i := 0; i < len(masked)-1; i++ {
 		if masked[i] == '/' && masked[i+1] == '/' {
-			if i > 0 && masked[i-1] == ':' {
-				// Part of "://" — URL protocol separator, not a comment.
+			// Part of a URL protocol separator ("://", "file:///", ...) — not a
+			// comment. Walk back to the start of this slash run; if it begins
+			// immediately after a ':', the slashes belong to the URL scheme.
+			j := i
+			for j > 0 && masked[j-1] == '/' {
+				j--
+			}
+			if j > 0 && masked[j-1] == ':' {
 				continue
 			}
 			return strings.TrimRight(s[:i], " \t")
