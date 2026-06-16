@@ -41,6 +41,12 @@ func testRegistry() *content.SSTRegistry {
 	reg.Arrows["means"] = content.ArrowDef{Code: "means", LongName: "means", MetaType: "express"}
 	reg.Arrows["next"] = content.ArrowDef{Code: "next", LongName: "next", MetaType: "leadsto"}
 	reg.Arrows["leadsto"] = content.ArrowDef{Code: "leadsto", LongName: "leads to", MetaType: "leadsto"}
+	// doors.n4l uses the leadsto `fwd`/`bwd` pair (mirrors the real SSTconfig
+	// `+ leads to (fwd) - comes from (bwd)`), so the causal cone follows it. The
+	// long names must stay distinct from the "leadsto" arrow above — a duplicate
+	// LongName collides in InsertArrowDirectory and corrupts both arrows' links.
+	reg.Arrows["fwd"] = content.ArrowDef{Code: "fwd", LongName: "forward to", Reverse: "bwd", MetaType: "leadsto"}
+	reg.Arrows["bwd"] = content.ArrowDef{Code: "bwd", LongName: "backward from", Reverse: "fwd", MetaType: "leadsto"}
 	reg.Arrows["freq"] = content.ArrowDef{Code: "freq", LongName: "has frequency", MetaType: "properties"}
 	reg.Arrows["state"] = content.ArrowDef{Code: "state", LongName: "has state", MetaType: "properties"}
 	reg.Arrows["pt-of"] = content.ArrowDef{Code: "pt-of", LongName: "is part of", MetaType: "contains"}
@@ -1558,6 +1564,108 @@ func TestSearchService_ResolvePathEndpoints_Bleve(t *testing.T) {
 		if !strings.EqualFold(texts[len(texts)-1], "goal") {
 			t.Errorf("chain %d: tail=%q want exact 'goal'; chain=%v", i, texts[len(texts)-1], texts)
 		}
+	}
+}
+
+// TestSearchService_ForwardCone covers a lone `\from` (no `\to`): upstream
+// SSTorytime treats this as a FORWARD causal cone, not a node-text search.
+// Before the fix it fell through to the node-search wildcard and dumped the
+// whole graph; now it must return focused Structural chains rooted at the
+// endpoint and reaching the cone's leaves.
+func TestSearchService_ForwardCone(t *testing.T) {
+	svc := buildPathsGraph(t)
+
+	res, err := svc.Search(`\from start`)
+	if err != nil {
+		t.Fatalf(`\from start: %v`, err)
+	}
+	// A lone \from is a cone, not a node search — results land in Structural.
+	if len(res.Nodes) != 0 {
+		t.Errorf(`\from start: expected no node-search results (cone routes to Structural); got %v`, nodeTexts(res.Nodes))
+	}
+	if len(res.Structural) == 0 {
+		t.Fatal(`\from start: expected at least one cone chain; got none`)
+	}
+
+	// The cone is emitted as a layered DAG of one edge per chain. "start" must be
+	// the unique source (it appears as an edge head but NEVER as a destination —
+	// the layout relies on its in-degree being 0 to root the flow). The cone must
+	// reach "goal" and must not leak nodes outside the four-node Maze.
+	mazeNodes := map[string]bool{"start": true, "door": true, "passage": true, "goal": true}
+	reached := map[string]bool{}
+	startIsDest := false
+	for i, chain := range res.Structural {
+		if chain.Kind != "path" {
+			t.Errorf("chain %d: Kind=%q want path", i, chain.Kind)
+		}
+		texts := chainTexts(chain)
+		if len(texts) < 2 {
+			t.Errorf("chain %d: %d nodes < 2", i, len(texts))
+			continue
+		}
+		for j, txt := range texts {
+			reached[strings.ToLower(txt)] = true
+			if !mazeNodes[strings.ToLower(txt)] {
+				t.Errorf("chain %d: cone leaked unrelated node %q; chain=%v", i, txt, texts)
+			}
+			if j > 0 && strings.EqualFold(txt, "start") {
+				startIsDest = true // an edge points back into the root
+			}
+		}
+	}
+	if !reached["start"] {
+		t.Errorf(`\from start: "start" missing from cone`)
+	}
+	if startIsDest {
+		t.Errorf(`\from start: "start" must be the root (in-degree 0), but an edge points back to it`)
+	}
+	if !reached["goal"] {
+		t.Errorf(`\from start: cone never reached "goal"; reached=%v`, reached)
+	}
+}
+
+// TestSearchService_ExactConeEndpoint guards the exact-match contract on cone
+// endpoints: `\from !start!` resolves ONLY to a node literally named "start",
+// and `\from !nope!` (no such node) returns nothing rather than fuzzy-falling
+// back to unrelated Bleve hits that would seed cones at the wrong roots.
+func TestSearchService_ExactConeEndpoint(t *testing.T) {
+	svc := buildPathsGraph(t)
+
+	// Exact match that exists → a cone rooted at "start".
+	res, err := svc.Search(`\from !start!`)
+	if err != nil {
+		t.Fatalf(`\from !start!: %v`, err)
+	}
+	if len(res.Structural) == 0 {
+		t.Fatal(`\from !start!: expected a cone; got none`)
+	}
+	// "start" must anchor the cone: present as a source, never as a destination.
+	startSeen, startIsDest := false, false
+	for _, chain := range res.Structural {
+		texts := chainTexts(chain)
+		for j, txt := range texts {
+			if strings.EqualFold(txt, "start") {
+				startSeen = true
+				if j > 0 {
+					startIsDest = true
+				}
+			}
+		}
+	}
+	if !startSeen {
+		t.Errorf(`\from !start!: cone does not include "start"`)
+	}
+	if startIsDest {
+		t.Errorf(`\from !start!: "start" must be the cone root, but an edge points back to it`)
+	}
+
+	// Exact match that does NOT exist → empty, no fuzzy substitutes.
+	res, err = svc.Search(`\from !definitelynotanode!`)
+	if err != nil {
+		t.Fatalf(`\from !definitelynotanode!: %v`, err)
+	}
+	if len(res.Structural) != 0 {
+		t.Errorf(`\from !definitelynotanode!: exact miss must yield no chains; got %d`, len(res.Structural))
 	}
 }
 

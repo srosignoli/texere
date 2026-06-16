@@ -1,15 +1,60 @@
 <script>
   import { onMount, onDestroy } from 'svelte'
   import { omnibarMode, workbenchStore, navigateToLine } from '../stores/workbench.js'
+  import { explorerOpen, explorerQuery, currentLayout, pendingReanchorID } from '../stores/explorer.js'
+  import { get } from 'svelte/store'
   import { ParseFileForUI, SearchGraph } from '../../wailsjs/go/main/App'
   import { appendLog } from '../stores/logPanel.js'
   import VirtualList from './VirtualList.svelte'
+  import QueryAutocomplete from './QueryAutocomplete.svelte'
+  import { analyzeQuery, getSuggestions } from '../lib/query-grammar.js'
+  import { queryHints, queryHelpOpen, ensureQueryHints } from '../stores/queryHints.js'
 
   let query = ''
   let selectedIndex = -1
   let inputEl = null
   let virtualListEl = null
   let loading = false
+
+  // Query autocomplete (graph mode only). Suggests directives after '\' and
+  // the user's real chapters/contexts/arrows after the matching directive.
+  let acItems = []
+  let acIndex = 0
+  let acOpen = false
+  let caretPos = 0
+
+  function recomputeAutocomplete() {
+    if (!isGraphMode) { acOpen = false; return }
+    const analysis = analyzeQuery(query, caretPos)
+    acItems = getSuggestions(analysis, { liveValues: $queryHints })
+    acIndex = 0
+    acOpen = acItems.length > 0
+  }
+
+  function onQueryInput(e) {
+    caretPos = e.target.selectionStart ?? query.length
+    recomputeAutocomplete()
+  }
+
+  function applySuggestion(item) {
+    const analysis = analyzeQuery(query, caretPos)
+    const before = query.slice(0, analysis.replaceFrom)
+    const after = query.slice(analysis.replaceTo)
+    query = before + item.apply + after
+    const newCaret = (before + item.apply).length
+    acOpen = false
+    Promise.resolve().then(() => {
+      if (!inputEl) return
+      inputEl.focus()
+      inputEl.setSelectionRange(newCaret, newCaret)
+      caretPos = newCaret
+      recomputeAutocomplete()
+    })
+  }
+
+  function openQueryHelp() {
+    queryHelpOpen.set(true)
+  }
 
   // Graph search state
   let graphResults = null
@@ -99,6 +144,10 @@
       omnibarMode.update(m => m === 'fuzzy' ? null : 'fuzzy')
     }
     if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'k' || e.key === 'K')) {
+      // While the explorer is open its own always-visible query bar owns
+      // this shortcut (focuses the bar). Don't toggle the modal graph
+      // omnibar on top of the explorer surface.
+      if (get(explorerOpen)) return
       e.preventDefault()
       e.stopPropagation()
       omnibarMode.update(m => m === 'graph' ? null : 'graph')
@@ -645,6 +694,56 @@
 
   function navigate(item) {
     trace('enter', item)
+
+    // When the explorer is open, Enter on a graph result either
+    // re-anchors the current ResultSet (in-result hit, FR-026h) or
+    // launches a fresh ExplorerOpen (out-of-result hit, FR-026i).
+    // Non-graph items fall through to the editor-navigation path so
+    // the user can still reach the editor with the explorer open.
+    if (get(explorerOpen)) {
+      const nodeText = item.NodeText ?? item.nodeText ?? null
+      const chapter = item.Chapter ?? item.chapter ?? item.chapterTitle ?? null
+
+      if (item.type === 'graph-node' || item.type === 'graph-note' || item.type === 'graph-structural') {
+        if (nodeText) {
+          // Resolve "is this node in the active layout?" by scanning
+          // currentLayout.nodes. Prefer wire-ID match (<chapter>::<text>)
+          // when chapter is known; fall back to label match otherwise.
+          const layout = get(currentLayout)
+          const targetID = findNodeIDInLayout(layout, nodeText, chapter)
+          if (targetID) {
+            pendingReanchorID.set(targetID)
+            trace('explorer-reanchor', item, { reason: targetID })
+            close()
+            return
+          }
+          // Out-of-result — fall through to ExplorerOpen with the
+          // node's text as a focused query. The explorer's handleLayout
+          // sees a new resultID and clears anchor history (T050).
+          const nextQuery = `"${String(nodeText).trim()}"`
+          explorerQuery.set(nextQuery)
+          trace('explorer-newquery', item, { reason: nextQuery })
+          close()
+          return
+        }
+      } else if (item.type === 'graph-listing') {
+        // Listings always trigger a fresh query — there's no single
+        // node to re-anchor on.
+        let nextQuery = null
+        if (item.Kind === 'chapter' && item.Title) {
+          nextQuery = `\\notes \\chapter "${item.Title}"`
+        } else if (item.Kind === 'context' && item.Title) {
+          nextQuery = `\\notes \\context "${item.Title}"`
+        }
+        if (nextQuery) {
+          explorerQuery.set(nextQuery)
+          trace('explorer-newquery', item, { reason: nextQuery })
+          close()
+          return
+        }
+      }
+    }
+
     const pf = fileCache[item.filePath] ?? null
     if (item.type === 'chapter') {
       navigateToLine({
@@ -732,6 +831,30 @@
     selectedIndex = -1
   }
 
+  // findNodeIDInLayout returns the wire ID (<chapter>::<text>) of a node
+  // in the supplied LayoutResult that matches the supplied text +
+  // optional chapter. Returns null when no match is found.
+  //
+  // Preference order:
+  //   1. exact match on `<chapter>::<text>` when both are known
+  //   2. exact match on `label` (NodeView.label === NodeText)
+  //   3. case-insensitive match on label (search-side normalization
+  //      may differ from authored case; the SST tests cover this).
+  function findNodeIDInLayout(layout, nodeText, chapter) {
+    if (!layout || !Array.isArray(layout.nodes) || !nodeText) return null
+    const targetWireID = chapter ? `${chapter}::${nodeText}` : null
+    const lowerText = String(nodeText).toLowerCase()
+
+    let exactLabel = null
+    let caseInsensitive = null
+    for (const n of layout.nodes) {
+      if (targetWireID && n.id === targetWireID) return n.id
+      if (n.label === nodeText && exactLabel === null) exactLabel = n.id
+      else if (n.label && n.label.toLowerCase() === lowerText && caseInsensitive === null) caseInsensitive = n.id
+    }
+    return exactLabel ?? caseInsensitive
+  }
+
   function scrollSelectedIntoView() {
     if (selectedIndex < 0 || !virtualListEl) return
     const vi = actionableToVirtual.get(selectedIndex)
@@ -740,6 +863,31 @@
 
   // ── Keyboard navigation ──────────────────────────────────────────────────────
   function handleKeydown(e) {
+    // Autocomplete dropdown owns the arrow/enter/tab/escape keys while open.
+    if (acOpen && acItems.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        acIndex = (acIndex + 1) % acItems.length
+        return
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        acIndex = (acIndex - 1 + acItems.length) % acItems.length
+        return
+      }
+      if (e.key === 'Tab' || e.key === 'Enter') {
+        e.preventDefault()
+        applySuggestion(acItems[acIndex])
+        return
+      }
+      if (e.key === 'Escape') {
+        // First Escape closes the dropdown; a second closes the omnibar.
+        e.preventDefault()
+        e.stopPropagation()
+        acOpen = false
+        return
+      }
+    }
     if (e.key === 'Tab') { e.preventDefault(); return }
     if (e.key === 'Escape') { close(); return }
     if (e.key === 'ArrowDown') {
@@ -785,21 +933,37 @@
   >
     <div class="omnibar-input-row">
       <span class="search-icon" aria-hidden="true">{isFuzzyMode ? '🔍' : '◈'}</span>
-      <input
-        bind:this={inputEl}
-        bind:value={query}
-        class="omnibar-input"
-        type="text"
-        {placeholder}
-        autocomplete="off"
-        spellcheck="false"
-      />
+      <div class="omnibar-input-field">
+        <input
+          bind:this={inputEl}
+          bind:value={query}
+          class="omnibar-input"
+          type="text"
+          {placeholder}
+          autocomplete="off"
+          spellcheck="false"
+          on:input={onQueryInput}
+          on:focus={() => { if (isGraphMode) ensureQueryHints() }}
+          on:blur={() => setTimeout(() => { acOpen = false }, 120)}
+        />
+        {#if isGraphMode}
+          <QueryAutocomplete
+            open={acOpen}
+            items={acItems}
+            activeIndex={acIndex}
+            on:select={(e) => applySuggestion(e.detail)}
+            on:hover={(e) => acIndex = e.detail} />
+        {/if}
+      </div>
       {#if loading || graphLoading}
         <span class="loading-hint">{graphLoading ? 'searching…' : 'loading…'}</span>
       {/if}
       <span class="mode-badge" class:mode-graph={isGraphMode}>
         {isFuzzyMode ? 'Fuzzy' : 'Graph'}
       </span>
+      {#if isGraphMode}
+        <button class="omnibar-help" on:click={openQueryHelp} title="Query syntax help" aria-label="Query syntax help">?</button>
+      {/if}
       <button class="omnibar-close" on:click={close} title="Close (Esc)">✕</button>
     </div>
 
@@ -1149,8 +1313,16 @@
     flex-shrink: 0;
   }
 
+  .omnibar-input-field {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    display: flex;
+  }
+
   .omnibar-input {
     flex: 1;
+    min-width: 0;
     background: transparent;
     border: none;
     outline: none;
@@ -1190,7 +1362,8 @@
     border-color: #2a5a3a;
   }
 
-  .omnibar-close {
+  .omnibar-close,
+  .omnibar-help {
     background: none;
     border: none;
     color: #5a7a9a;
@@ -1200,7 +1373,15 @@
     flex-shrink: 0;
   }
 
-  .omnibar-close:hover {
+  .omnibar-help {
+    font-weight: 700;
+    border: 1px solid #2a4a6a;
+    border-radius: 3px;
+    line-height: 1;
+  }
+
+  .omnibar-close:hover,
+  .omnibar-help:hover {
     color: #e8eaf0;
   }
 

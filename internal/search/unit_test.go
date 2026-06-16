@@ -62,6 +62,21 @@ func TestClassifyQuery(t *testing.T) {
 			want:   routeStructural,
 		},
 		{
+			name:   "from only (forward cone) → structural",
+			params: SST.SearchParameters{From: []string{"start"}},
+			want:   routeStructural,
+		},
+		{
+			name:   "to only (backward cone) → structural",
+			params: SST.SearchParameters{To: []string{"target"}},
+			want:   routeStructural,
+		},
+		{
+			name:   "from + arrows, no name → structural (not listing)",
+			params: SST.SearchParameters{From: []string{"start"}, Arrows: []string{"lt"}},
+			want:   routeStructural,
+		},
+		{
 			name:   "sequence → structural",
 			params: SST.SearchParameters{Sequence: true},
 			want:   routeStructural,

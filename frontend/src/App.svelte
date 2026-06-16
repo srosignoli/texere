@@ -12,6 +12,10 @@
   import OmniBar from './components/OmniBar.svelte'
   import Splitter from './components/Splitter.svelte'
   import LogPanel from './components/LogPanel.svelte'
+  import GraphExplorer from './components/GraphExplorer.svelte'
+  import QueryHelpPanel from './components/QueryHelpPanel.svelte'
+  import { explorerOpen } from './stores/explorer.js'
+  import { refreshQueryHints } from './stores/queryHints.js'
 
   // Track viewport height so the top-band drag handle can clamp to a value
   // that always leaves the editor with at least EDITOR_FLOOR_PX of room.
@@ -49,6 +53,9 @@
         graphBuildState = 'done'
         graphBuildMsg = `Graph ready — ${r.nodesIngested} nodes, ${r.linksIngested} links (${r.durationMs}ms)`
         workbenchStore.update((s) => ({ ...s, graphVersion: (s.graphVersion ?? 0) + 1 }))
+        // Refresh query-bar autocomplete hints (chapters/contexts/arrows may
+        // have changed with the rebuilt graph).
+        refreshQueryHints()
         // Hoisted parse errors from every file in the collection.
         if (r.parseErrors?.length) {
           appendLog(r.parseErrors.map((pe) => ({
@@ -344,6 +351,10 @@
       {/if}
     </div>
     <OmniBar />
+    {#if $explorerOpen}
+      <GraphExplorer onClose={() => explorerOpen.set(false)} />
+    {/if}
+    <QueryHelpPanel />
   {:else}
     <EmptyState errorMessage={startupError} />
   {/if}

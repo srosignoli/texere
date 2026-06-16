@@ -2,6 +2,7 @@
   import { createEventDispatcher } from 'svelte'
   import { OpenCollection, PickCollectionDir, CreateNewFile } from '../../wailsjs/go/main/App'
   import { workbenchStore, reminderCount, omnibarOpen, editorAPI } from '../stores/workbench.js'
+  import { explorerOpen, explorerQuery } from '../stores/explorer.js'
   import ReminderPanel from './ReminderPanel.svelte'
 
   const dispatch = createEventDispatcher()
@@ -66,6 +67,29 @@
   function handleSave() {
     $editorAPI?.triggerSave()
   }
+
+  // Open the 2.5D Isometric Graph Explorer (feature 006). Launches with
+  // \notes \chapter "<title>" so the search service returns the
+  // chapter's nodes and authored arrows (FullNote → NoteBlock →
+  // NoteArrow) instead of a TOC listing.
+  //
+  // Why \chapter and not bare \notes "<title>": SSTorytime's parser
+  // strips quotes only from the \chapter argument; bare \notes leaves
+  // them in, which produces params.Chapter = "\"foo bar\"" and
+  // matches nothing. \notes \chapter "..." is the documented
+  // canonical form for multi-word chapter titles. Single-word titles
+  // could omit quotes, but always quoting keeps the launcher branch-free.
+  $: explorerLaunchQuery = (() => {
+    const c = $workbenchStore.selectedChapterKey
+    if (!c?.chapterTitle) return ''
+    return `\\notes \\chapter "${c.chapterTitle}"`
+  })()
+
+  function handleOpenExplorer() {
+    if (!explorerLaunchQuery) return
+    explorerQuery.set(explorerLaunchQuery)
+    explorerOpen.set(true)
+  }
 </script>
 
 <div class="middle-band">
@@ -82,6 +106,12 @@
     <div class="separator" />
 
     <button class="btn" on:click={handleSearch} title="Search (Ctrl+K / Cmd+K)">🔍</button>
+    <button
+      class="btn"
+      on:click={handleOpenExplorer}
+      disabled={!explorerLaunchQuery}
+      title={explorerLaunchQuery ? 'Open 2.5D Graph Explorer' : 'Select a chapter to enable'}
+    >🌐</button>
     <button class="btn" on:click={handleUndo} title="Undo">↩</button>
     <button class="btn" on:click={handleSave} title="Save (Ctrl+S)">💾</button>
   {/if}
@@ -125,9 +155,14 @@
     flex-shrink: 0;
   }
 
-  .btn:hover {
+  .btn:hover:not(:disabled) {
     background: #2e4060;
     color: #e8eaf0;
+  }
+
+  .btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
   }
 
   .separator {
