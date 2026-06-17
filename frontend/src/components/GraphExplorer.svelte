@@ -310,6 +310,13 @@
   // Lazily-parsed file cache for node->source resolution. Keyed by filePath.
   // Entries are dropped after an edit so the next open re-resolves fresh lines.
   let editFileCache = {}
+  // Drop the parse cache when the active collection changes so resolution
+  // never serves stale paths/lines from a previously-open collection.
+  let _editCacheCollectionDir = null
+  $: if ($workbenchStore.collectionDir !== _editCacheCollectionDir) {
+    _editCacheCollectionDir = $workbenchStore.collectionDir
+    editFileCache = {}
+  }
   // One-shot: restore the freeze pin on this node after a rebuild rebuilds the
   // scene (revealLandscape clears the live pin, so we re-apply once meshes exist).
   let pendingFreezeID = null
