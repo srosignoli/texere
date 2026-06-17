@@ -169,3 +169,77 @@ Install mingw-w64: `sudo apt-get install -y gcc-mingw-w64-x86-64`.
 **`npm install` errors during build**
 Wails runs `npm install` in `frontend/` automatically on first build. Ensure Node.js
 18+ is installed and `npm` is on your PATH.
+
+---
+
+## Manual Test Matrix: Graph Explorer Edit Card
+
+This section documents manual testing of the graph explorer's edit card feature (Ctrl+G to open the 3D explorer, click a node to pin it, press Enter to open an edit card on that node's source line, edit and save).
+
+### Edit Card: Normal Flow
+
+**Steps:**
+1. Open a Texere collection with at least one `.n4l` file
+2. Press Ctrl+G to open the 3D graph explorer
+3. Click a node in the graph to pin it
+4. Press Enter
+5. An edit card opens, centered over the graph, showing the pinned node's source line
+6. Edit the text in the card
+7. Press Ctrl+S to save
+8. Press Esc to close the card
+
+**Expected result:** The card closes, the graph rebuilds and re-anchors, and the pinned node remains pinned at its new position.
+
+### Edit Card: No Change, Instant Return
+
+**Steps:**
+1. Open a Texere collection
+2. Press Ctrl+G, click a node to pin it, press Enter
+3. The edit card opens
+4. Without editing, press Ctrl+S
+
+**Expected result:** The card closes immediately without triggering a graph rebuild. The explorer remains in the same view with the node still pinned.
+
+### Edit Card: Pinned Node Text Changed
+
+**Steps:**
+1. Open a Texere collection
+2. Press Ctrl+G, click a node to pin it, press Enter
+3. The edit card opens on that node's source line
+4. Edit the source text (e.g., change a tag or relation)
+5. Press Ctrl+S to save
+
+**Expected result:** The card closes, the graph rebuilds, the search query is refreshed to the new node text, an info-level log message appears ("pinned node text changed"), and the pinned node stays anchored to the new query.
+
+### Edit Card: Other Line Edited, Pin Restored
+
+**Steps:**
+1. Open a Texere collection with multiple `.n4l` lines
+2. Press Ctrl+G, click a node to pin it, press Enter
+3. The edit card opens on that node's line
+4. Navigate to a different line in the same file (Ctrl+G, Ctrl+H, or arrow keys) and edit it
+5. Press Ctrl+S to save
+6. Press Esc to close the card
+
+**Expected result:** The card closes, the graph rebuilds and re-anchors to the original pinned node (not the edited other line). The pin is restored to its original target.
+
+### Edit Card: Unresolvable Node Warns
+
+**Steps:**
+1. Open a Texere collection
+2. Press Ctrl+G to open the explorer
+3. Locate a node that is only ever an arrow target (appears on the right side of relations, never as a source on the left side of a line)
+4. Click that node to pin it
+5. Press Enter
+
+**Expected result:** A warning-level toast or log message appears ("cannot open edit card for unresolvable node" or similar). The edit card does NOT open. The graph explorer remains open and the node is NOT pinned.
+
+### Edit Card: Esc Closes Card, Not Explorer
+
+**Steps:**
+1. Open a Texere collection
+2. Press Ctrl+G, click a node to pin it, press Enter
+3. The edit card opens
+4. Press Esc
+
+**Expected result:** The edit card closes and returns focus to the graph explorer (if no change was made) or triggers a rebuild (if a change was saved). The explorer itself remains open and visible behind the card.
