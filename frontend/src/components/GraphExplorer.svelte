@@ -357,8 +357,8 @@
     loading = true
     try {
       await BuildGraph()
-      const q = lastDiagnostics?.sourceQuery
-      if (!q || q === '<reanchor>') return
+      const q = get(explorerQuery)
+      if (!q) return
       const layout = await openExplorer(q, get(layoutMode))
       const anchorId = target?.anchorId
       const stillThere = !!anchorId && (layout.nodes ?? []).some((n) => n.id === anchorId)
