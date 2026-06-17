@@ -1,10 +1,9 @@
 <script>
   import { onMount, onDestroy, createEventDispatcher } from 'svelte'
-  import { get } from 'svelte/store'
   import { EditorView, keymap, lineNumbers, drawSelection, highlightActiveLine, highlightActiveLineGutter } from '@codemirror/view'
   import { EditorState } from '@codemirror/state'
   import { defaultKeymap, historyKeymap, history } from '@codemirror/commands'
-  import { autocompletion } from '@codemirror/autocomplete'
+  import { autocompletion, completionStatus } from '@codemirror/autocomplete'
   import { workbenchStore } from '../../stores/workbench.js'
   import { n4lLanguage } from '../../lib/n4l-language.js'
   import { n4lHighlighting } from '../../lib/n4l-highlight.js'
@@ -47,7 +46,10 @@
       }),
       keymap.of([
         { key: 'Mod-s', run: () => { handleSave(); return true }, preventDefault: true },
-        { key: 'Escape', run: () => { requestClose(); return true } },
+        { key: 'Escape', run: (view) => {
+            if (completionStatus(view.state) !== null) return false // let autocompletion close its dropdown first
+            requestClose(); return true
+        } },
         ...defaultKeymap,
         ...historyKeymap,
       ]),
