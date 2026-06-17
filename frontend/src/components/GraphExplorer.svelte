@@ -57,11 +57,17 @@
     hiddenMetas,
     layoutMode,
     resetExplorerState,
+    editCardOpen,
+    editCardTarget,
   } from '../stores/explorer.js'
   import { appendLog } from '../stores/logPanel.js'
   import { analyzeQuery, getSuggestions } from '../lib/query-grammar.js'
   import { queryHints, queryHelpOpen, ensureQueryHints } from '../stores/queryHints.js'
   import QueryAutocomplete from './QueryAutocomplete.svelte'
+  import EditCard from './explorer/EditCard.svelte'
+  import { resolveNodeSource } from '../lib/node-source.js'
+  import { workbenchStore } from '../stores/workbench.js'
+  import { ParseFileForUI, BuildGraph } from '../../wailsjs/go/main/App'
 
   /** Fired by parent when the user requests close (Esc / button). */
   export let onClose = null
@@ -301,6 +307,81 @@
   let frozenNodeID = null
   let frozenNodeLabel = ''
 
+  // Lazily-parsed file cache for node->source resolution. Keyed by filePath.
+  // Entries are dropped after an edit so the next open re-resolves fresh lines.
+  let editFileCache = {}
+  // One-shot: restore the freeze pin on this node after a rebuild rebuilds the
+  // scene (revealLandscape clears the live pin, so we re-apply once meshes exist).
+  let pendingFreezeID = null
+
+  async function ensureEditFileCache() {
+    const summaries = get(workbenchStore).summaries ?? []
+    for (const s of summaries) {
+      if (!s.FilePath || editFileCache[s.FilePath] || s.ScanError) continue
+      try {
+        const pf = await ParseFileForUI(s.FilePath)
+        if (pf) editFileCache[s.FilePath] = pf
+      } catch (e) {
+        console.warn('edit-card: parse failed', s.FilePath, e)
+      }
+    }
+  }
+
+  async function openEditCard() {
+    if (frozenNodeID === null) return
+    await ensureEditFileCache()
+    const src = resolveNodeSource(frozenNodeID, editFileCache)
+    if (!src) {
+      appendLog([{ severity: 'warning', source: 'explorer',
+        message: `no editable source line for "${frozenNodeLabel}"` }])
+      return
+    }
+    editCardTarget.set({
+      filePath: src.filePath, chapterTitle: src.chapterTitle, line: src.line,
+      label: frozenNodeLabel, anchorId: frozenNodeID, matchCount: src.matchCount,
+    })
+    editCardOpen.set(true)
+  }
+
+  async function handleCardClose(e) {
+    const savedAChange = e.detail?.savedAChange
+    const target = get(editCardTarget)
+    editCardOpen.set(false)
+    editCardTarget.set(null)
+    // Invalidate the edited file so a later open re-resolves against new text.
+    if (target?.filePath) delete editFileCache[target.filePath]
+    if (!savedAChange) return
+
+    // Re-layout only if dirty: rebuild the index, re-run the same query, and
+    // re-anchor on the pinned node when it survives the edit.
+    loading = true
+    try {
+      await BuildGraph()
+      const q = lastDiagnostics?.sourceQuery
+      if (!q || q === '<reanchor>') return
+      const layout = await openExplorer(q, get(layoutMode))
+      const anchorId = target?.anchorId
+      const stillThere = !!anchorId && (layout.nodes ?? []).some((n) => n.id === anchorId)
+      if (anchorId) pendingFreezeID = anchorId
+      if (stillThere && anchorId !== (layout.anchorId || null)) {
+        const relayout = await explorerReanchor(layout.resultId, anchorId, get(layoutMode))
+        handleLayout(relayout, q)
+      } else {
+        handleLayout(layout, q)
+        if (!stillThere) {
+          pendingFreezeID = null
+          appendLog([{ severity: 'info', source: 'explorer',
+            message: 'pinned node text changed — showing updated graph' }])
+        }
+      }
+    } catch (err) {
+      appendLog([{ severity: 'error', source: 'explorer',
+        message: `rebuild after edit failed: ${err?.message ?? err}` }])
+    } finally {
+      loading = false
+    }
+  }
+
   // Reset-view tween (US7, T058). Camera-only animation back to the
   // current anchor's fit-to-result framing.
   let resetTweenRAF = null
@@ -537,6 +618,13 @@
       applyHiddenLayers(get(hiddenLayers))
       applyHiddenMetas(get(hiddenMetas))
       highlight = createHighlight(nodeMeshes, edgeMeshes, layout, () => sceneCtx?.render())
+      // Re-pin after an edit round-trip rebuilt the scene (FR: node stays pinned).
+      if (pendingFreezeID && nodeMeshes?.byId(pendingFreezeID)) {
+        frozenNodeID = pendingFreezeID
+        frozenNodeLabel = nodeMeshes.fullLabelOf(pendingFreezeID) ?? pendingFreezeID
+        highlight.setHovered(pendingFreezeID)
+      }
+      pendingFreezeID = null
       scheduleRevealTweens(layout, t0)
       ensureRAF()
     })
@@ -1180,6 +1268,9 @@
   // =============================================================================
 
   function handleKeydown(e) {
+    // While the edit card is open it owns the keyboard (its own CodeMirror
+    // handles Esc/Ctrl+S). Don't let the explorer act on any key.
+    if (get(editCardOpen)) return
     // Ctrl/Cmd+Shift+K focuses the explorer's always-visible query bar.
     // The modal graph omnibar is suppressed while the explorer is open
     // (see OmniBar.svelte), so this shortcut belongs to the bar. Handle it
@@ -1199,6 +1290,14 @@
     // (e.g. close the omnibar without closing the explorer).
     const t = e.target
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
+      return
+    }
+
+    if (e.key === 'Enter') {
+      if (frozenNodeID === null) return // nothing pinned — let Enter pass through
+      e.preventDefault()
+      e.stopPropagation()
+      openEditCard()
       return
     }
 
@@ -1386,6 +1485,10 @@
       <span class="freeze-label">Pinned · {frozenNodeLabel}</span>
       <span class="freeze-hint">click to release</span>
     </button>
+  {/if}
+
+  {#if $editCardOpen && $editCardTarget}
+    <EditCard target={$editCardTarget} on:close={handleCardClose} />
   {/if}
 
   {#if hoveredNodeID && hoveredFullLabel && hoveredFullLabel.trim().length > 0}
