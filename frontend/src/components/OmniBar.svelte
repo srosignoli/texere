@@ -9,6 +9,7 @@
   import QueryAutocomplete from './QueryAutocomplete.svelte'
   import { analyzeQuery, getSuggestions } from '../lib/query-grammar.js'
   import { queryHints, queryHelpOpen, ensureQueryHints } from '../stores/queryHints.js'
+  import { resolveNodeSource } from '../lib/node-source.js'
 
   let query = ''
   let selectedIndex = -1
@@ -284,18 +285,9 @@
   }
 
   function enrichGraphNodes(nodes, cache) {
-    const pairs = Object.entries(cache ?? {})
-    return nodes.map(gn => {
-      const target = String(gn.NodeText ?? '').trim()
-      for (const [filePath, pf] of pairs) {
-        for (const ch of pf.Chapters ?? []) {
-          for (const node of ch.Nodes ?? []) {
-            if (String(node.Text ?? '').trim() === target) {
-              return { ...gn, filePath, line: node.Line, chapterTitle: ch.Title }
-            }
-          }
-        }
-      }
+    return nodes.map((gn) => {
+      const r = resolveNodeSource(String(gn.NodeText ?? '').trim(), cache ?? {})
+      if (r) return { ...gn, filePath: r.filePath, line: r.line, chapterTitle: r.chapterTitle }
       return { ...gn, filePath: null, line: null, chapterTitle: gn.Chapter }
     })
   }
