@@ -223,7 +223,7 @@ This section documents manual testing of the graph explorer's edit card feature 
 
 **Expected result:** The card closes, the graph rebuilds and re-anchors to the original pinned node (not the edited other line). The pin is restored to its original target.
 
-### Edit Card: Unresolvable Node Warns
+### Edit Card: Arrow-Target Node Opens at Its Reference Line
 
 **Steps:**
 1. Open a Texere collection
@@ -232,7 +232,15 @@ This section documents manual testing of the graph explorer's edit card feature 
 4. Click that node to pin it
 5. Press Enter
 
-**Expected result:** A warning-level toast or log message appears ("cannot open edit card for unresolvable node" or similar). The edit card does NOT open. The graph explorer remains open and the node is NOT pinned.
+**Expected result:** The edit card opens on the line that *references* this node (the line whose arrow points at it). Such object/target nodes are common, so this is a normal flow, not an edge case. Only a node whose text appears nowhere in any parsed file (neither as a subject, a ditto, nor an arrow target) is truly unresolvable.
+
+### Edit Card: Truly Unresolvable Node Warns
+
+**Steps:**
+1. With the explorer open, pin a node whose text does not appear anywhere in the loaded `.n4l` files (e.g. a synthesized node with no on-disk source)
+2. Press Enter
+
+**Expected result:** A warning-level log message appears ("no editable source line for ...") in the log panel. The edit card does NOT open and the existing pin is unchanged.
 
 ### Edit Card: Esc Closes Card, Not Explorer
 
