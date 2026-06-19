@@ -120,3 +120,6 @@ bench.txt
 
 # Local Claude Code artifacts
 .claude/plans/
+
+# Visual brainstorming companion (superpowers)
+.superpowers/
