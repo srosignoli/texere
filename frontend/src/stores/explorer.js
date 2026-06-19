@@ -61,6 +61,23 @@ export const anchorHistory = writable({ back: [], forward: [], current: null })
 export const pendingReanchorID = writable(/** @type {string|null} */(null))
 
 /**
+ * editCardOpen — true while the in-explorer source edit card is mounted.
+ * While true, GraphExplorer hands all keyboard input to the card.
+ */
+export const editCardOpen = writable(false)
+
+/**
+ * editCardTarget — the resolved source location the card opens on, or null.
+ * Shape: { filePath, chapterTitle, line, label, anchorId, matchCount }.
+ * `anchorId` is the explorer node id the user pinned; `label` is its display
+ * label; `matchCount` drives the card's "1 of N" header hint.
+ */
+export const editCardTarget = writable(/** @type {null | {
+  filePath: string, chapterTitle: string, line: number,
+  label: string, anchorId: string, matchCount: number
+}} */(null))
+
+/**
  * layoutMode — 'extended' (default; all nodes share a single Y=0 plane
  * with contexts arranged as clusters in a centered X-row) or 'stacked'
  * (per-context floors stacked along Y). Changes go through ExplorerReanchor
@@ -136,5 +153,7 @@ export function resetExplorerState() {
   hiddenLayers.set(new Set())
   hiddenMetas.set(new Set())
   layoutMode.set('extended')
+  editCardOpen.set(false)
+  editCardTarget.set(null)
   // layerSpacing and planeOpacity persist across closes (user preference).
 }
