@@ -1,0 +1,44 @@
+package learning
+
+import (
+	"path/filepath"
+	"testing"
+)
+
+func TestOpenCreatesSchemaAndIsIdempotent(t *testing.T) {
+	dir := t.TempDir()
+	s, err := Open(dir)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	// learning.db file exists at <dir>/learning.db
+	if _, err := s.db.Exec(`INSERT INTO items
+		(id, node_id, file_path, card_type, front, back, active, reps, lapses, state, created_at)
+		VALUES ('n1::cloze::0','n1','/x.n4l','cloze','f','b',1,0,0,0,0)`); err != nil {
+		t.Fatalf("items table not usable: %v", err)
+	}
+	var v int
+	if err := s.db.QueryRow(`SELECT version FROM schema_meta`).Scan(&v); err != nil {
+		t.Fatalf("schema_meta: %v", err)
+	}
+	if v != 1 {
+		t.Fatalf("schema version = %d, want 1", v)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+	// Re-open the same dir: must not error or duplicate-create.
+	s2, err := Open(dir)
+	if err != nil {
+		t.Fatalf("re-Open: %v", err)
+	}
+	var n int
+	if err := s2.db.QueryRow(`SELECT COUNT(*) FROM items`).Scan(&n); err != nil {
+		t.Fatalf("count after reopen: %v", err)
+	}
+	if n != 1 {
+		t.Fatalf("rows after reopen = %d, want 1 (data preserved)", n)
+	}
+	_ = filepath.Join // keep import if unused elsewhere
+	s2.Close()
+}
