@@ -34,6 +34,7 @@
 
   let cancelCollectionChange = () => {}
   let cancelFileModified = () => {}
+  let cancelIdsInjected = () => {}
   let startupError = ''
   let bottomBandRef = null   // bind:this on BottomBand
 
@@ -306,6 +307,25 @@
       workbenchStore.update((s) => ({ ...s, externalModification: path }))
     })
 
+    // Subscribe to # @id injection events from Build Graph / SyncStudyItems.
+    // When the open file had IDs injected by the backend, either silently
+    // reload (buffer clean) or fall back to the external-modification banner
+    // (buffer dirty — must not clobber unsaved edits).
+    cancelIdsInjected = EventsOn('file:ids-injected', ({ path }) => {
+      const store = $workbenchStore
+      const openPath = store.selectedChapterKey?.filePath ?? null
+      if (path !== openPath) return  // not the open file; nothing to do
+      if (!store.isDirty) {
+        // Buffer is clean: silently reload from disk so the injected # @id
+        // lines land in the editor without any user-visible prompt.
+        workbenchStore.update((s) => ({ ...s, silentReloadNonce: (s.silentReloadNonce ?? 0) + 1 }))
+      } else {
+        // Buffer is dirty: fall back to the existing external-modification
+        // banner so the user decides whether to reload or keep their edits.
+        workbenchStore.update((s) => ({ ...s, externalModification: path }))
+      }
+    })
+
     // App close guard: check isDirty before allowing quit (T038)
     EventsOn('app:close-requested', () => {
       const store = $workbenchStore
@@ -319,6 +339,7 @@
   onDestroy(() => {
     cancelCollectionChange()
     cancelFileModified()
+    cancelIdsInjected()
     window.removeEventListener('keydown', handleKeydown, true)
     window.removeEventListener('resize', onResize)
   })

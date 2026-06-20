@@ -69,8 +69,23 @@ func (a *App) BuildGraph() *BuildGraphResult {
 	}
 
 	if a.learnStore != nil {
-		if _, err := learning.Sync(a.learnStore, a.collectionN4LFiles(), a.registry); err != nil {
+		// Suppress spurious file:modified-externally for the open file during
+		// sync writeback (mirrors how SaveFile uses savingPath).
+		a.savingPath = a.openFilePath
+		syncRes, err := learning.Sync(a.learnStore, a.collectionN4LFiles(), a.registry)
+		a.savingPath = ""
+		if err != nil {
 			log.Printf("learning: sync after build: %v", err)
+		}
+		// If the open file had # @id markers injected, notify the frontend so it
+		// can silently reload the buffer and pick up the new IDs.
+		if a.ctx != nil && a.openFilePath != "" {
+			for _, injPath := range syncRes.InjectedPaths {
+				if injPath == a.openFilePath {
+					runtime.EventsEmit(a.ctx, "file:ids-injected", map[string]string{"path": a.openFilePath})
+					break
+				}
+			}
 		}
 	}
 

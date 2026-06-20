@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"texere/internal/content"
 	"texere/internal/learning"
 )
@@ -30,9 +31,23 @@ func (a *App) SyncStudyItems() (*learning.SyncResult, error) {
 	if a.learnStore == nil {
 		return nil, errNoStore
 	}
+	// Suppress spurious file:modified-externally for the open file during
+	// sync writeback (mirrors how SaveFile uses savingPath).
+	a.savingPath = a.openFilePath
 	res, err := learning.Sync(a.learnStore, a.collectionN4LFiles(), a.registry)
+	a.savingPath = ""
 	if err != nil {
 		return nil, err
+	}
+	// If the open file had # @id markers injected, notify the frontend so it
+	// can silently reload the buffer and pick up the new IDs.
+	if a.ctx != nil && a.openFilePath != "" {
+		for _, injPath := range res.InjectedPaths {
+			if injPath == a.openFilePath {
+				runtime.EventsEmit(a.ctx, "file:ids-injected", map[string]string{"path": a.openFilePath})
+				break
+			}
+		}
 	}
 	return &res, nil
 }

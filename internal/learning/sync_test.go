@@ -37,10 +37,18 @@ func TestSyncAssignsIDsUpsertsAndRetires(t *testing.T) {
 	if !strings.Contains(string(after), "# @id ") {
 		t.Fatalf("expected an injected # @id in file:\n%s", after)
 	}
+	// InjectedPaths must list the file on the first sync.
+	if len(res.InjectedPaths) != 1 || res.InjectedPaths[0] != p {
+		t.Fatalf("res.InjectedPaths=%v want [%s]", res.InjectedPaths, p)
+	}
 	// Re-syncing the same file adds nothing.
 	res2, _ := Sync(store, []string{p}, reg)
 	if res2.Added != 0 || res2.Total != 1 {
 		t.Fatalf("res2=%+v want Added=0 Total=1", res2)
+	}
+	// InjectedPaths must be empty on re-sync (ids already present).
+	if len(res2.InjectedPaths) != 0 {
+		t.Fatalf("res2.InjectedPaths=%v want empty", res2.InjectedPaths)
 	}
 	// Removing the cloze marker retires the card on next sync.
 	if err := os.WriteFile(p, []byte("- Ch\nSystem 1 is fast\n"), 0o644); err != nil {

@@ -20,8 +20,17 @@ func Sync(store *Store, files []string, reg *content.SSTRegistry) (SyncResult, e
 			continue
 		}
 		// Assign # @id to study-marked nodes missing one (mutates pf in place).
-		if _, err := content.InjectMissingIDs(pf); err != nil {
+		injected, err := content.InjectMissingIDs(pf)
+		if err != nil {
 			return res, err
+		}
+		// Only record the path when at least one ID was newly written (i.e. the
+		// injection was not already present); AlreadyHad entries mean no disk write.
+		for _, inj := range injected {
+			if !inj.AlreadyHad {
+				res.InjectedPaths = append(res.InjectedPaths, path)
+				break
+			}
 		}
 		cards := GenerateCards(pf, reg)
 		keep := make(map[string]bool, len(cards))

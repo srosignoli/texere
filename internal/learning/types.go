@@ -63,9 +63,10 @@ type CardView struct {
 
 // SyncResult summarizes one discovery pass.
 type SyncResult struct {
-	Added   int `json:"added"`
-	Retired int `json:"retired"`
-	Total   int `json:"total"`
+	Added         int      `json:"added"`
+	Retired       int      `json:"retired"`
+	Total         int      `json:"total"`
+	InjectedPaths []string `json:"injectedPaths,omitempty"` // paths where # @id markers were written
 }
 
 // Stats are minimal counts for the Study entry badge.

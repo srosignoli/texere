@@ -111,6 +111,19 @@
     externalBanner = null
   }
 
+  // Silent reload when the backend has injected # @id markers into the open
+  // file and the buffer was clean (App.svelte already guards the dirty case).
+  let _silentReloadNonce = 0
+  $: if ($workbenchStore.silentReloadNonce !== _silentReloadNonce && openFilePath) {
+    _silentReloadNonce = $workbenchStore.silentReloadNonce
+    GetFileContent(openFilePath)
+      .then((text) => {
+        setContent(text ?? '')
+        workbenchStore.update((s) => ({ ...s, isDirty: false }))
+      })
+      .catch((e) => console.error('silent reload after # @id injection failed:', e))
+  }
+
   // ----- Public API (called by parent via bind:this) -----
 
   export function setContent(text) {
