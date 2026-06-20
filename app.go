@@ -185,8 +185,8 @@ func (a *App) OpenCollection(dir string) ([]content.ChapterSummary, error) {
 		a.learnStore.Close()
 		a.learnStore = nil
 	}
-	if a.collectionDir != "" {
-		if ls, err := learning.Open(a.collectionDir); err != nil {
+	if dir != "" {
+		if ls, err := learning.Open(dir); err != nil {
 			log.Printf("learning: open store: %v", err)
 		} else {
 			a.learnStore = ls
