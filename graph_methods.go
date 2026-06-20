@@ -1,10 +1,13 @@
 package main
 
 import (
+	"log"
+
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"texere/internal/content"
 	"texere/internal/explorer"
 	"texere/internal/graph"
+	"texere/internal/learning"
 	"texere/internal/search"
 )
 
@@ -63,6 +66,12 @@ func (a *App) BuildGraph() *BuildGraphResult {
 		a.explorerSvc.SetSearchService(a.searchSvc)
 	} else {
 		a.explorerSvc = explorer.NewExplorerService(a.searchSvc, a.registry)
+	}
+
+	if a.learnStore != nil {
+		if _, err := learning.Sync(a.learnStore, a.collectionN4LFiles(), a.registry); err != nil {
+			log.Printf("learning: sync after build: %v", err)
+		}
 	}
 
 	if a.ctx != nil {

@@ -9,6 +9,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"texere/internal/content"
 	"texere/internal/explorer"
+	"texere/internal/learning"
 	"texere/internal/search"
 )
 
@@ -39,6 +40,7 @@ type App struct {
 	quitConfirmed bool                     // set by ConfirmQuit so beforeClose lets the second Quit() through
 	searchSvc     *search.SearchService    // graph search; nil until a collection is loaded
 	explorerSvc   *explorer.ExplorerService // 2.5D isometric explorer; lifetime mirrors searchSvc
+	learnStore    *learning.Store          // spaced-repetition store; nil until a collection is loaded
 }
 
 // NewApp creates a new App instance.
@@ -84,6 +86,18 @@ func (a *App) startup(ctx context.Context) {
 	a.initialSums = summaries
 	a.searchSvc = search.NewSearchService(cfg.CollectionDir, a.registry)
 	a.explorerSvc = explorer.NewExplorerService(a.searchSvc, a.registry)
+
+	if a.learnStore != nil {
+		a.learnStore.Close()
+		a.learnStore = nil
+	}
+	if a.collectionDir != "" {
+		if ls, err := learning.Open(a.collectionDir); err != nil {
+			log.Printf("learning: open store: %v", err)
+		} else {
+			a.learnStore = ls
+		}
+	}
 
 	watcher, err := content.WatchCollection(cfg.CollectionDir)
 	if err != nil {
@@ -132,6 +146,9 @@ func (a *App) shutdown(_ context.Context) {
 	if a.searchSvc != nil {
 		a.searchSvc.Close()
 	}
+	if a.learnStore != nil {
+		a.learnStore.Close()
+	}
 }
 
 // OpenCollection scans a directory of .n4l files, starts the filesystem watcher,
@@ -162,6 +179,18 @@ func (a *App) OpenCollection(dir string) ([]content.ChapterSummary, error) {
 		a.explorerSvc = explorer.NewExplorerService(a.searchSvc, a.registry)
 	} else {
 		a.explorerSvc.SetSearchService(a.searchSvc)
+	}
+
+	if a.learnStore != nil {
+		a.learnStore.Close()
+		a.learnStore = nil
+	}
+	if a.collectionDir != "" {
+		if ls, err := learning.Open(a.collectionDir); err != nil {
+			log.Printf("learning: open store: %v", err)
+		} else {
+			a.learnStore = ls
+		}
 	}
 
 	// Start watcher (replace any existing one)
