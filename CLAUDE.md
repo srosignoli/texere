@@ -13,7 +13,7 @@ Auto-generated from all feature plans. Last updated: 2026-05-04
 - Go 1.22 (backend, layout engine + Wails bindings); JavaScript/Svelte 3.49 (frontend); pinned via existing `go.mod` and `frontend/package.json`. (006-isometric-graph-explorer)
 - None added. Read-only consumer of the SSTorytime-KV BadgerDB store (`<collectionDir>/sst_data/`) populated by feature 004's Build Graph (Ctrl+G). No new files, no new tables, no persisted layout state. (006-isometric-graph-explorer)
 
-- Go 1.21 (minimum enforced via `go.mod` directive) + Wails v2, Svelte + Vite (frontend), golangci-lint (dev tooling) (001-project-scaffold)
+- Go 1.25 (minimum enforced via `go.mod` directive) + Wails v2, Svelte + Vite (frontend), golangci-lint (dev tooling) (001-project-scaffold)
 
 ## Project Structure
 
