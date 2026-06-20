@@ -59,10 +59,10 @@ func (s *Store) migrate() error {
 		return fmt.Errorf("learning: apply v1: %w", err)
 	}
 	if _, err := s.db.Exec(`DELETE FROM schema_meta`); err != nil {
-		return err
+		return fmt.Errorf("learning: reset schema_meta: %w", err)
 	}
 	if _, err := s.db.Exec(`INSERT INTO schema_meta(version) VALUES (?)`, schemaVersion); err != nil {
-		return err
+		return fmt.Errorf("learning: write schema_meta: %w", err)
 	}
 	return nil
 }

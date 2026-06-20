@@ -1,7 +1,6 @@
 package learning
 
 import (
-	"path/filepath"
 	"testing"
 )
 
@@ -39,6 +38,5 @@ func TestOpenCreatesSchemaAndIsIdempotent(t *testing.T) {
 	if n != 1 {
 		t.Fatalf("rows after reopen = %d, want 1 (data preserved)", n)
 	}
-	_ = filepath.Join // keep import if unused elsewhere
 	s2.Close()
 }
