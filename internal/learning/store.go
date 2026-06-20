@@ -126,7 +126,9 @@ func (s *Store) ApplyReview(itemID string, st SchedState, grade Grade, elapsedMs
 		return fmt.Errorf("learning: apply review update: %w", err)
 	}
 	var cardType string
-	_ = s.db.QueryRow(`SELECT card_type FROM items WHERE id=?`, itemID).Scan(&cardType)
+	if err := s.db.QueryRow(`SELECT card_type FROM items WHERE id=?`, itemID).Scan(&cardType); err != nil {
+		return fmt.Errorf("learning: review log card_type lookup: %w", err)
+	}
 	_, err := s.db.Exec(`INSERT INTO review_logs
 		(item_id, reviewed_at, grade, elapsed_ms, old_state, new_stability, card_type)
 		VALUES (?,?,?,?,?,?,?)`,
