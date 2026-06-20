@@ -14,8 +14,10 @@
   import LogPanel from './components/LogPanel.svelte'
   import GraphExplorer from './components/GraphExplorer.svelte'
   import QueryHelpPanel from './components/QueryHelpPanel.svelte'
+  import StudyMode from './components/StudyMode.svelte'
   import { explorerOpen } from './stores/explorer.js'
   import { refreshQueryHints } from './stores/queryHints.js'
+  import { studyOpen } from './stores/study.js'
 
   // Track viewport height so the top-band drag handle can clamp to a value
   // that always leaves the editor with at least EDITOR_FLOOR_PX of room.
@@ -107,6 +109,13 @@
       e.preventDefault()
       e.stopPropagation()
       toggleLogPanel()
+    }
+    // Ctrl/Cmd+Shift+R toggles the Recall (Study) overlay.
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'r' || e.key === 'R')) {
+      e.preventDefault()
+      e.stopPropagation()
+      studyOpen.update((v) => !v)
+      return
     }
     // Esc closes the log panel when it's open (and the omnibar isn't already eating Esc).
     if (e.key === 'Escape' && $logPanelOpen) {
@@ -353,6 +362,9 @@
     <OmniBar />
     {#if $explorerOpen}
       <GraphExplorer onClose={() => explorerOpen.set(false)} />
+    {/if}
+    {#if $studyOpen}
+      <StudyMode onClose={() => studyOpen.set(false)} />
     {/if}
     <QueryHelpPanel />
   {:else}
