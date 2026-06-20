@@ -31,8 +31,8 @@
     } finally {
       loading = false
       revealed = false
-      shownAt = Date.now()
     }
+    if (card) shownAt = Date.now()
   }
 
   async function grade(n) {
@@ -46,7 +46,7 @@
       error = String(e?.message ?? e)
     }
     revealed = false
-    shownAt = Date.now()
+    if (card) shownAt = Date.now()
   }
 
   function onKey(e) {
