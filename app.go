@@ -32,15 +32,15 @@ type App struct {
 	ctx           context.Context
 	registry      *content.SSTRegistry
 	collectionDir string                   // abs path of the open collection; "" when none
-	savingPath    string // path currently being written by SaveFile; suppresses false external-mod events
-	openFilePath  string // path of the file currently open in the Source tab
+	savingPath    string                   // path currently being written by SaveFile; suppresses false external-mod events
+	openFilePath  string                   // path of the file currently open in the Source tab
 	initialSums   []content.ChapterSummary // summaries loaded at startup from saved config
 	startupError  string                   // non-empty when auto-load failed (dir missing)
 	watcher       *content.CollectionWatcher
-	quitConfirmed bool                     // set by ConfirmQuit so beforeClose lets the second Quit() through
-	searchSvc     *search.SearchService    // graph search; nil until a collection is loaded
+	quitConfirmed bool                      // set by ConfirmQuit so beforeClose lets the second Quit() through
+	searchSvc     *search.SearchService     // graph search; nil until a collection is loaded
 	explorerSvc   *explorer.ExplorerService // 2.5D isometric explorer; lifetime mirrors searchSvc
-	learnStore    *learning.Store          // spaced-repetition store; nil until a collection is loaded
+	learnStore    *learning.Store           // spaced-repetition store; nil until a collection is loaded
 }
 
 // NewApp creates a new App instance.
