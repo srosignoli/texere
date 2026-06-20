@@ -1,6 +1,7 @@
 package learning
 
 import (
+	"fmt"
 	"time"
 
 	"texere/internal/content"
@@ -11,9 +12,11 @@ import (
 // new cards are inserted, cards no longer generated for a file are retired.
 func Sync(store *Store, files []string, reg *content.SSTRegistry) (SyncResult, error) {
 	var res SyncResult
+	var skipped []string
 	for _, path := range files {
 		pf, _ := content.ParseFile(path, reg)
 		if pf == nil {
+			skipped = append(skipped, path)
 			continue
 		}
 		// Assign # @id to study-marked nodes missing one (mutates pf in place).
@@ -43,5 +46,8 @@ func Sync(store *Store, files []string, reg *content.SSTRegistry) (SyncResult, e
 		return res, err
 	}
 	res.Total = st.Total
+	if len(skipped) > 0 {
+		return res, fmt.Errorf("learning: sync skipped %d unparseable file(s): %v", len(skipped), skipped)
+	}
 	return res, nil
 }
