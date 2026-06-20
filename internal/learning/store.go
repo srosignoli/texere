@@ -96,9 +96,9 @@ func (s *Store) DueQueue(now time.Time, limit int) ([]CardView, error) {
 // LoadSched returns the scheduling state for an item.
 func (s *Store) LoadSched(itemID string) (SchedState, bool, error) {
 	var (
-		st                    SchedState
-		stab, diff            sql.NullFloat64
-		due, last             sql.NullInt64
+		st         SchedState
+		stab, diff sql.NullFloat64
+		due, last  sql.NullInt64
 	)
 	err := s.db.QueryRow(`SELECT stability, difficulty, due, last_review, reps, lapses, state
 		FROM items WHERE id=?`, itemID).

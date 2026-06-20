@@ -54,7 +54,7 @@ func stripBraces(text string) string {
 func clozeCards(nodeID, filePath, text string) []GeneratedCard {
 	groups := braceGroups(text)
 	var out []GeneratedCard
-	for idx, g := range groups {
+	for idx := range groups {
 		// Build the front: the chosen group becomes […], others lose their braces.
 		var b strings.Builder
 		last := 0
@@ -72,7 +72,6 @@ func clozeCards(nodeID, filePath, text string) []GeneratedCard {
 			NodeID: nodeID, FilePath: filePath, CardType: CardTypeCloze,
 			Front: b.String(), Back: stripBraces(text), Discriminator: strconv.Itoa(idx),
 		})
-		_ = g
 	}
 	return out
 }
