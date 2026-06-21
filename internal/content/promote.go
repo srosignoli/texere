@@ -50,6 +50,10 @@ func nodeHasFromArrow(n *Node) bool {
 // InjectMissingExtractIDs injects a "# @id <shortid>" for every non-study-marked
 // node that carries a (from) arrow and lacks an id. Mutates parsed in place via a
 // single atomic rewrite (mirrors InjectMissingIDs for extract nodes).
+//
+// Note: after injection the in-memory parsed nodes' line numbers (Line /
+// IDMarkerLine) are NOT shifted to reflect the inserted "# @id" lines. Callers
+// that need line-accurate positions after the rewrite should re-parse the file.
 func InjectMissingExtractIDs(parsed *ParsedFile) ([]IDInjection, error) {
 	lines, err := readLines(parsed.Path)
 	if err != nil {
@@ -82,43 +86,53 @@ func InjectMissingExtractIDs(parsed *ParsedFile) ([]IDInjection, error) {
 		return nil, nil
 	}
 
-	// Build ops and injections; process bottom-up so earlier line numbers stay valid.
-	var ops []writeBackOp
-	var injections []IDInjection
-
-	for i := len(todo) - 1; i >= 0; i-- {
+	// Assign IDs to all pending nodes (forward order, top-to-bottom).
+	type assigned struct {
+		p        pending
+		shortID  string
+		insertAt int
+	}
+	assigns := make([]assigned, len(todo))
+	for i := 0; i < len(todo); i++ {
 		p := todo[i]
 		n := p.node
-
 		shortID, err := generateUniqueID(existing, 10)
 		if err != nil {
 			return nil, err
 		}
 		existing[shortID] = true
+		assigns[i] = assigned{p: p, shortID: shortID, insertAt: n.Line}
+	}
 
-		insertAt := n.Line // insert # @id directly above the node
-
+	// Build insertion ops bottom-up so earlier line numbers remain valid after each insert.
+	var ops []writeBackOp
+	for i := len(assigns) - 1; i >= 0; i-- {
+		a := assigns[i]
+		n := a.p.node
 		ops = append(ops, writeBackOp{
-			LineNumber:   insertAt,
+			LineNumber:   a.insertAt,
 			Kind:         opInsert,
-			Content:      "# @id " + shortID,
+			Content:      "# @id " + a.shortID,
 			InsertBefore: true,
 		})
-
-		n.IDMarkerLine = insertAt
-		n.ID = NodeID(parsed.Path, p.chTitle, shortID)
-
-		injections = append(injections, IDInjection{
-			FilePath:   parsed.Path,
-			NodeLine:   n.Line,
-			InsertedAt: insertAt,
-			ShortID:    shortID,
-		})
+		n.IDMarkerLine = a.insertAt
+		n.ID = NodeID(parsed.Path, a.p.chTitle, a.shortID)
 	}
 
 	newLines := applyOps(lines, ops)
 	if err := writeLines(parsed.Path, newLines); err != nil {
 		return nil, err
+	}
+
+	// Build the returned slice in forward (top-to-bottom) document order.
+	injections := make([]IDInjection, len(assigns))
+	for i, a := range assigns {
+		injections[i] = IDInjection{
+			FilePath:   parsed.Path,
+			NodeLine:   a.p.node.Line,
+			InsertedAt: a.insertAt,
+			ShortID:    a.shortID,
+		}
 	}
 
 	return injections, nil

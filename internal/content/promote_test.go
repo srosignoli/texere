@@ -46,3 +46,20 @@ func TestInjectMissingExtractIDs(t *testing.T) {
 		t.Fatalf("expected an injected # @id:\n%s", out)
 	}
 }
+
+func TestInjectMissingExtractIDsForwardOrder(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "f.n4l")
+	body := "- Ch\nfirst extract\n    (from) \"sources/f.txt char=0\"\nsecond extract\n    (from) \"sources/f.txt char=10\"\n"
+	os.WriteFile(p, []byte(body), 0o644)
+	reg := &SSTRegistry{Arrows: map[string]ArrowDef{"from": {Code: "from", LongName: "from"}}}
+	pf, _ := ParseFile(p, reg)
+	injs, err := InjectMissingExtractIDs(pf)
+	if err != nil || len(injs) != 2 {
+		t.Fatalf("len=%d err=%v want 2", len(injs), err)
+	}
+	// forward order: first injection's node line < second's
+	if injs[0].NodeLine >= injs[1].NodeLine {
+		t.Fatalf("injections not in forward order: %d then %d", injs[0].NodeLine, injs[1].NodeLine)
+	}
+}
