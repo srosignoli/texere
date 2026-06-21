@@ -106,11 +106,11 @@ type scanner interface {
 
 func scanReading(sc scanner) (ReadingElement, error) {
 	var (
-		r           ReadingElement
-		pos         sql.NullString
-		projLen     sql.NullInt64
-		due, last   sql.NullInt64
-		done        int
+		r         ReadingElement
+		pos       sql.NullString
+		projLen   sql.NullInt64
+		due, last sql.NullInt64
+		done      int
 	)
 	if err := sc.Scan(&r.ID, &r.RefPath, &r.NotesPath, &r.Title, &pos, &projLen, &due, &r.IntervalDays, &last, &done); err != nil {
 		return ReadingElement{}, err
