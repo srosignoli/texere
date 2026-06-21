@@ -28,7 +28,7 @@
   }
 
   async function flush() {
-    if (!view) return
+    if (!view || !target) return
     const cur = view.state.doc.toString()
     if (cur !== savedContent) {
       const res = await SaveFile(target.filePath, cur)
@@ -72,7 +72,7 @@
           extensions: [
             lineNumbers(), history(), n4lLanguage, n4lHighlighting,
             autocompletion({ override: [(ctx) => arrowCompletion(arrowDefsRef, recentCodesRef, handleArrowSelected)(ctx)] }),
-            keymap.of([{ key: 'Mod-s', run: () => { flush(); return true }, preventDefault: true }, ...defaultKeymap, ...historyKeymap]),
+            keymap.of([{ key: 'Mod-s', run: () => { flush().catch(() => {}); return true }, preventDefault: true }, ...defaultKeymap, ...historyKeymap]),
             EditorView.lineWrapping,
             EditorView.theme({ '&': { height: '100%', background: '#1b2636' }, '.cm-content': { fontFamily: 'monospace', fontSize: '0.85rem', color: '#e8eaf0' } }),
           ],
