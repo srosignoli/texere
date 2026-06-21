@@ -25,19 +25,25 @@
   }
 
   async function loadProcess() {
-    const q = await GetExtractQueue(1)
-    processId = q && q.length ? q[0].id : null
+    try {
+      const q = await GetExtractQueue(1)
+      processId = q && q.length ? q[0].id : null
+    } catch (e) { error = String(e?.message ?? e) }
   }
   async function loadRecall() {
-    const q = await GetDueQueue(1)
-    recallCard = q && q.length ? q[0] : null
-    recallShownAt = Date.now()
+    try {
+      const q = await GetDueQueue(1)
+      recallCard = q && q.length ? q[0] : null
+      recallShownAt = Date.now()
+    } catch (e) { error = String(e?.message ?? e) }
   }
   async function loadRead() {
-    if ($activeReading) return
-    const list = await GetReadingList()
-    const due = (list ?? []).find((r) => !r.done && (r.due === 0 || r.due * 1000 <= Date.now()))
-    if (due) activeReading.set(due) // open the next due source; else SourcesPanel shows the library
+    try {
+      if ($activeReading) return
+      const list = await GetReadingList()
+      const due = (list ?? []).find((r) => !r.done && (r.due === 0 || r.due * 1000 <= Date.now()))
+      if (due) activeReading.set(due) // open the next due source; else SourcesPanel shows the library
+    } catch (e) { error = String(e?.message ?? e) }
   }
 
   // Drive the active focus.
