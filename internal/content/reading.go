@@ -63,6 +63,9 @@ func UpdateProgressMarker(notesPath, newValue string) error {
 // established by CreateReadingNotes. Internal newlines in text collapse to
 // single spaces so the node stays single-line.
 func AppendExtract(notesPath, text, fromAnchor string) (string, error) {
+	if strings.ContainsRune(fromAnchor, '"') {
+		return "", fmt.Errorf("content: AppendExtract: fromAnchor must not contain a double-quote")
+	}
 	id, err := GenerateShortID()
 	if err != nil {
 		return "", err

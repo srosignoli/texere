@@ -96,3 +96,14 @@ func TestAppendExtract(t *testing.T) {
 		t.Fatal("extract was not appended under the _sequence_ context")
 	}
 }
+
+func TestAppendExtractRejectsQuoteInAnchor(t *testing.T) {
+	dir := t.TempDir()
+	notes := filepath.Join(dir, "q.n4l")
+	if _, err := CreateReadingNotes(notes, "sources/q.txt", "Q"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := AppendExtract(notes, "text", `sources/q.txt char=1 "x`); err == nil {
+		t.Fatal("expected error for fromAnchor containing a double-quote")
+	}
+}
