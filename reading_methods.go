@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -37,7 +38,7 @@ func toReadingView(r learning.ReadingElement) ReadingView {
 	pct := 0
 	if r.ProjLen > 0 {
 		if off := parseCharAnchor(r.Position); off > 0 {
-			pct = int(float64(off) / float64(r.ProjLen) * 100)
+			pct = int(math.Round(float64(off) / float64(r.ProjLen) * 100))
 			if pct > 100 {
 				pct = 100
 			}
@@ -92,8 +93,7 @@ func (a *App) ImportTextSource() (*ReadingView, error) {
 		return nil, fmt.Errorf("ImportTextSource: copy: %w", err)
 	}
 	title := strings.TrimSuffix(filepath.Base(srcRel), filepath.Ext(srcRel))
-	notesRel, notesAbs := uniqueDest(a.collectionDir, "reading", title+".n4l")
-	_ = notesRel
+	_, notesAbs := uniqueDest(a.collectionDir, "reading", title+".n4l")
 	refID, err := content.CreateReadingNotes(notesAbs, srcRel, title)
 	if err != nil {
 		return nil, fmt.Errorf("ImportTextSource: notes: %w", err)
@@ -157,7 +157,7 @@ func (a *App) GetReadingList() ([]ReadingView, error) {
 }
 
 func (a *App) GetSourceProjection(refPath string) (string, error) {
-	if a.collectionDir == "" {
+	if a.learnStore == nil || a.collectionDir == "" {
 		return "", errors.New("no collection open")
 	}
 	return source.Projection(filepath.Join(a.collectionDir, filepath.FromSlash(refPath)))
