@@ -50,11 +50,20 @@ func Sync(store *Store, files []string, reg *content.SSTRegistry) (SyncResult, e
 		}
 		res.Retired += retired
 
+		// InjectMissingIDs rewrote the file without shifting in-memory line
+		// numbers; re-parse so the extract id-injection uses fresh offsets.
+		pf, _ = content.ParseFile(path, reg)
+		if pf == nil {
+			skipped = append(skipped, path)
+			continue
+		}
+
 		// Extract ids for hand-authored (from) nodes lacking one (writes back).
 		exInjected, err := content.InjectMissingExtractIDs(pf)
 		if err != nil {
 			return res, err
 		}
+		// extract injections are always genuine writes (AlreadyHad is never set)
 		for _, inj := range exInjected {
 			if !inj.AlreadyHad {
 				res.InjectedPaths = append(res.InjectedPaths, path)

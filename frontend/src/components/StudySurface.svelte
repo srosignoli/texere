@@ -58,8 +58,7 @@
 
   // "Next": rotate read → process → recall, picking the first non-empty.
   function nextKind() {
-    if (counts.read > 0 && !$activeReading) return 'read'
-    if ($activeReading) return 'read'
+    if (counts.read > 0 || $activeReading) return 'read'
     if (counts.process > 0) return 'process'
     if (counts.recall > 0) return 'recall'
     return 'empty'
@@ -75,7 +74,7 @@
     await refresh()
     if ($studyFocus === 'next' && !recallCard) await advanceNext()
   }
-  async function advanceNext() { await refresh(); studyFocus.set('next') }
+  async function advanceNext() { await enter('next') }
 
   function onKey(e) { if (e.key === 'Escape') onClose?.() }
   onMount(() => enter($studyFocus))

@@ -98,6 +98,41 @@ func TestSyncDiscoversAndRetiresExtracts(t *testing.T) {
 	}
 }
 
+func TestSyncMixedCardAndExtractFileIdempotent(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "mix.n4l")
+	// An un-ID'd # @card node ABOVE an un-ID'd (from) extract node.
+	body := "- Ch\n# @card\nitem front (means) \"item back\"\nextracted sentence (from) \"sources/x.txt char=0\"\n"
+	os.WriteFile(p, []byte(body), 0o644)
+	reg := &content.SSTRegistry{Arrows: map[string]content.ArrowDef{
+		"means": {Code: "means", LongName: "means", Studyable: true},
+		"from":  {Code: "from", LongName: "from"},
+	}}
+	store, _ := Open(dir)
+	defer store.Close()
+
+	if _, err := Sync(store, []string{p}, reg); err != nil {
+		t.Fatal(err)
+	}
+	// Exactly two # @id lines (one per node), no double-IDs.
+	after1, _ := os.ReadFile(p)
+	if n := strings.Count(string(after1), "# @id "); n != 2 {
+		t.Fatalf("after sync 1: %d '# @id' lines want 2:\n%s", n, after1)
+	}
+	// Second sync is idempotent: no new ids added, no new extract.
+	res2, err := Sync(store, []string{p}, reg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	after2, _ := os.ReadFile(p)
+	if string(after1) != string(after2) {
+		t.Fatalf("Sync not idempotent — file changed on 2nd sync:\n--- after1 ---\n%s\n--- after2 ---\n%s", after1, after2)
+	}
+	if res2.ExtractsAdded != 0 {
+		t.Fatalf("2nd sync ExtractsAdded=%d want 0", res2.ExtractsAdded)
+	}
+}
+
 func TestSyncDiscoversRealAppendExtract(t *testing.T) {
 	dir := t.TempDir()
 	notes := filepath.Join(dir, "k.n4l")
