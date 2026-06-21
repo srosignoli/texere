@@ -6,11 +6,23 @@
   import { autocompletion } from '@codemirror/autocomplete'
   import { n4lLanguage } from '../lib/n4l-language.js'
   import { n4lHighlighting } from '../lib/n4l-highlight.js'
-  import { GetSourceProjection, CreateExtract, UpdateReadingProgress, RescheduleReading, GetFileContent, SaveFile } from '../../wailsjs/go/main/App'
+  import { arrowCompletion } from '../lib/arrow-autocomplete.js'
+  import { workbenchStore } from '../stores/workbench.js'
+  import { GetSourceProjection, CreateExtract, RescheduleReading, GetFileContent, SaveFile, GetRecentArrows, UpdateRecentArrows } from '../../wailsjs/go/main/App'
   import { activeReading } from '../stores/reading.js'
 
   export let reading            // ReadingView object
   export let onClose = null
+
+  let arrowDefsRef = []
+  let recentCodesRef = []
+
+  $: arrowDefsRef = $workbenchStore.arrowDefs ?? []
+
+  function handleArrowSelected(code) {
+    recentCodesRef = [code, ...recentCodesRef.filter((c) => c !== code)].slice(0, 10)
+    UpdateRecentArrows(recentCodesRef).catch((e) => console.warn('UpdateRecentArrows failed:', e))
+  }
 
   let projection = ''
   let srcEl                     // the source-pane element (for selection offset)
@@ -19,7 +31,7 @@
   let savedNotes = ''
   let error = ''
 
-  function charOffset(node) {
+  function charOffset() {
     // Offset of the selection start within the rendered projection text.
     const sel = window.getSelection()
     if (!sel || sel.rangeCount === 0 || !srcEl.contains(sel.anchorNode)) return null
@@ -63,7 +75,6 @@
   }
 
   async function done() {
-    await flushNotes()
     await RescheduleReading(reading.id, 'done')
     close('done')
   }
@@ -85,6 +96,12 @@
 
   onMount(async () => {
     try {
+      const saved = await GetRecentArrows()
+      if (saved?.length) recentCodesRef = saved
+    } catch (e) {
+      console.warn('GetRecentArrows failed:', e)
+    }
+    try {
       projection = (await GetSourceProjection(reading.refPath)) ?? ''
     } catch (e) {
       error = String(e?.message ?? e)
@@ -97,7 +114,7 @@
         doc: text,
         extensions: [
           lineNumbers(), history(), n4lLanguage, n4lHighlighting,
-          autocompletion(),
+          autocompletion({ override: [(ctx) => arrowCompletion(arrowDefsRef, recentCodesRef, handleArrowSelected)(ctx)] }),
           keymap.of([...defaultKeymap, ...historyKeymap]),
           EditorView.lineWrapping,
           EditorView.theme({ '&': { height: '100%', background: '#1b2636' },
