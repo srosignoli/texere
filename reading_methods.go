@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
@@ -51,6 +52,10 @@ func toReadingView(r learning.ReadingElement) ReadingView {
 	return ReadingView{ID: r.ID, RefPath: r.RefPath, NotesPath: r.NotesPath, Title: r.Title,
 		Position: r.Position, Percent: pct, Due: due, Done: r.Done}
 }
+
+// char=N anchors are 0-based Unicode code-point (rune) offsets into the source's text projection —
+// the same unit the frontend computes from a DOM Range ([...str].length) and Go measures with
+// utf8.RuneCountInString. Phase 2b relocation indexes the projection with []rune(proj)[:N].
 
 // parseCharAnchor pulls N from "char=N" (0 if absent/malformed).
 func parseCharAnchor(s string) int {
@@ -96,12 +101,14 @@ func (a *App) ImportTextSource() (*ReadingView, error) {
 	_, notesAbs := uniqueDest(a.collectionDir, "reading", title+".n4l")
 	refID, err := content.CreateReadingNotes(notesAbs, srcRel, title)
 	if err != nil {
+		os.Remove(srcAbs) // best-effort: don't litter sources/ on a failed import
 		return nil, fmt.Errorf("ImportTextSource: notes: %w", err)
 	}
 	proj, _ := source.Projection(srcAbs)
 	r := learning.ReadingElement{ID: refID, RefPath: srcRel, NotesPath: notesAbs, Title: title,
-		Position: "char=0", ProjLen: len(proj), IntervalDays: 1}
+		Position: "char=0", ProjLen: utf8.RuneCountInString(proj), IntervalDays: 1}
 	if err := a.learnStore.UpsertReading(r); err != nil {
+		os.Remove(srcAbs) // best-effort: don't litter sources/ on a failed import
 		return nil, fmt.Errorf("ImportTextSource: register: %w", err)
 	}
 	v := toReadingView(r)
@@ -174,6 +181,9 @@ func (a *App) CreateExtract(id, text string, anchorChar int) (*ExtractView, erro
 		return nil, fmt.Errorf("CreateExtract: reading element %q not found", id)
 	}
 	anchor := fmt.Sprintf("%s char=%d", r.RefPath, anchorChar)
+	// reading/ is an unwatched subtree (the collection watcher is non-recursive), so this
+	// savingPath bracketing is defensive only — no external-mod event fires for notes files.
+	// ReadingView refreshes its own buffer via reloadNotes().
 	a.savingPath = r.NotesPath
 	exID, err := content.AppendExtract(r.NotesPath, text, anchor)
 	if err == nil {

@@ -39,7 +39,7 @@
     const pre = range.cloneRange()
     pre.selectNodeContents(srcEl)
     pre.setEnd(range.startContainer, range.startOffset)
-    return { offset: pre.toString().length, text: sel.toString() }
+    return { offset: [...pre.toString()].length, text: sel.toString() }
   }
 
   async function extract() {

@@ -108,6 +108,7 @@ CREATE INDEX idx_reading_due ON reading_elements(due) WHERE done = 0;
 - **`.html` with no extractable text:** projection is empty; the reader shows an empty state; import still succeeds.
 - **Schema v2 on an existing v1 DB:** additive migration; no data loss; idempotent re-open.
 - **Anchor past end of projection** (source shrank): clamp to projection length when resolving/scrolling.
+- **Dual-open:** reading notes (reading/*.n4l) are intended to be edited only in the ReadingView. Opening the same notes file simultaneously in the main editor is an unhandled edge in 2a (the two buffers can diverge); 2b's unified Study surface removes the separate panel. Treat reading notes as ReadingView-owned for now.
 
 ## 10. Testing
 
