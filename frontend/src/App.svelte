@@ -19,7 +19,8 @@
   import { refreshQueryHints } from './stores/queryHints.js'
   import { studyOpen } from './stores/study.js'
   import SourcesPanel from './components/SourcesPanel.svelte'
-  import { readingOpen } from './stores/reading.js'
+  import ReadingView from './components/ReadingView.svelte'
+  import { readingOpen, activeReading } from './stores/reading.js'
 
   // Track viewport height so the top-band drag handle can clamp to a value
   // that always leaves the editor with at least EDITOR_FLOOR_PX of room.
@@ -398,6 +399,9 @@
     {/if}
     {#if $readingOpen}
       <SourcesPanel onClose={() => readingOpen.set(false)} />
+    {/if}
+    {#if $activeReading}
+      <ReadingView reading={$activeReading} />
     {/if}
     <QueryHelpPanel />
   {:else}
