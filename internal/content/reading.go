@@ -12,6 +12,9 @@ import (
 // explicit # @id (these nodes are not study-marked, so InjectMissingIDs would
 // not key them). Extracts are appended later under the _sequence_ context.
 func CreateReadingNotes(notesPath, sourceRel, title string) (string, error) {
+	if strings.ContainsRune(title, '"') || strings.ContainsRune(sourceRel, '"') {
+		return "", fmt.Errorf("content: CreateReadingNotes: title/sourceRel must not contain a double-quote")
+	}
 	if _, err := os.Stat(notesPath); err == nil {
 		return "", fmt.Errorf("content: CreateReadingNotes: file exists: %s", notesPath)
 	} else if !os.IsNotExist(err) {

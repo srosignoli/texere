@@ -37,6 +37,17 @@ func TestCreateReadingNotesScaffold(t *testing.T) {
 	}
 }
 
+func TestCreateReadingNotesRejectsQuotes(t *testing.T) {
+	dir := t.TempDir()
+	notes := filepath.Join(dir, "q.n4l")
+	if _, err := CreateReadingNotes(notes, "sources/q.txt", `Bad "title"`); err == nil {
+		t.Fatal("expected error for title containing a double-quote")
+	}
+	if _, err := CreateReadingNotes(notes, `sources/q"x.txt`, "ok"); err == nil {
+		t.Fatal("expected error for sourceRel containing a double-quote")
+	}
+}
+
 func TestUpdateProgressMarker(t *testing.T) {
 	dir := t.TempDir()
 	notes := filepath.Join(dir, "k.n4l")
