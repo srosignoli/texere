@@ -13,7 +13,7 @@ type Store struct {
 	db *sql.DB
 }
 
-const schemaVersion = 1
+const schemaVersion = 2
 
 // Open opens (creating if needed) <collectionDir>/learning.db and migrates it
 // to the current schema version.
@@ -55,8 +55,18 @@ func (s *Store) migrate() error {
 	if v >= schemaVersion {
 		return nil
 	}
-	if _, err := s.db.Exec(ddlV1); err != nil {
-		return fmt.Errorf("learning: apply v1: %w", err)
+	for v < schemaVersion {
+		switch v {
+		case 0:
+			if _, err := s.db.Exec(ddlV1); err != nil {
+				return fmt.Errorf("learning: apply v1: %w", err)
+			}
+		case 1:
+			if _, err := s.db.Exec(ddlV2); err != nil {
+				return fmt.Errorf("learning: apply v2: %w", err)
+			}
+		}
+		v++
 	}
 	if _, err := s.db.Exec(`DELETE FROM schema_meta`); err != nil {
 		return fmt.Errorf("learning: reset schema_meta: %w", err)
@@ -97,4 +107,21 @@ CREATE TABLE IF NOT EXISTS review_logs (
   card_type     TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_logs_item ON review_logs(item_id);
+`
+
+const ddlV2 = `
+CREATE TABLE IF NOT EXISTS reading_elements (
+  id            TEXT PRIMARY KEY,
+  ref_path      TEXT NOT NULL,
+  notes_path    TEXT NOT NULL,
+  title         TEXT NOT NULL,
+  position      TEXT,
+  proj_len      INTEGER,
+  due           INTEGER,
+  interval_days INTEGER NOT NULL DEFAULT 1,
+  last_read     INTEGER,
+  done          INTEGER NOT NULL DEFAULT 0,
+  created_at    INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_reading_due ON reading_elements(due) WHERE done = 0;
 `

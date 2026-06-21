@@ -20,8 +20,8 @@ func TestOpenCreatesSchemaAndIsIdempotent(t *testing.T) {
 	if err := s.db.QueryRow(`SELECT version FROM schema_meta`).Scan(&v); err != nil {
 		t.Fatalf("schema_meta: %v", err)
 	}
-	if v != 1 {
-		t.Fatalf("schema version = %d, want 1", v)
+	if v != schemaVersion {
+		t.Fatalf("schema version = %d, want %d", v, schemaVersion)
 	}
 	if err := s.Close(); err != nil {
 		t.Fatalf("Close: %v", err)
