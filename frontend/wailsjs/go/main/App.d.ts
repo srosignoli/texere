@@ -54,3 +54,15 @@ export function SearchGraph(arg1:string):Promise<search.SearchResult>;
 export function SyncStudyItems():Promise<any>;
 
 export function UpdateRecentArrows(arg1:Array<string>):Promise<void>;
+
+export function ImportTextSource():Promise<any>;
+
+export function GetReadingList():Promise<Array<any>>;
+
+export function GetSourceProjection(arg1:string):Promise<string>;
+
+export function CreateExtract(arg1:string,arg2:string,arg3:number):Promise<any>;
+
+export function UpdateReadingProgress(arg1:string,arg2:string):Promise<void>;
+
+export function RescheduleReading(arg1:string,arg2:string):Promise<any>;

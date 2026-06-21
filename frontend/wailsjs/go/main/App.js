@@ -101,3 +101,27 @@ export function SyncStudyItems() {
 export function UpdateRecentArrows(arg1) {
   return window['go']['main']['App']['UpdateRecentArrows'](arg1);
 }
+
+export function ImportTextSource() {
+  return window['go']['main']['App']['ImportTextSource']();
+}
+
+export function GetReadingList() {
+  return window['go']['main']['App']['GetReadingList']();
+}
+
+export function GetSourceProjection(arg1) {
+  return window['go']['main']['App']['GetSourceProjection'](arg1);
+}
+
+export function CreateExtract(arg1, arg2, arg3) {
+  return window['go']['main']['App']['CreateExtract'](arg1, arg2, arg3);
+}
+
+export function UpdateReadingProgress(arg1, arg2) {
+  return window['go']['main']['App']['UpdateReadingProgress'](arg1, arg2);
+}
+
+export function RescheduleReading(arg1, arg2) {
+  return window['go']['main']['App']['RescheduleReading'](arg1, arg2);
+}
