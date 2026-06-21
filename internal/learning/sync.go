@@ -49,6 +49,35 @@ func Sync(store *Store, files []string, reg *content.SSTRegistry) (SyncResult, e
 			return res, err
 		}
 		res.Retired += retired
+
+		// Extract ids for hand-authored (from) nodes lacking one (writes back).
+		exInjected, err := content.InjectMissingExtractIDs(pf)
+		if err != nil {
+			return res, err
+		}
+		for _, inj := range exInjected {
+			if !inj.AlreadyHad {
+				res.InjectedPaths = append(res.InjectedPaths, path)
+				break
+			}
+		}
+		exs := GenerateExtracts(pf)
+		keepEx := make(map[string]bool, len(exs))
+		for _, e := range exs {
+			added, err := store.UpsertExtract(e)
+			if err != nil {
+				return res, err
+			}
+			if added {
+				res.ExtractsAdded++
+			}
+			keepEx[e.ID] = true
+		}
+		retiredEx, err := store.RetireMissingExtracts(path, keepEx)
+		if err != nil {
+			return res, err
+		}
+		res.ExtractsRetired += retiredEx
 	}
 	st, err := store.CountStats(time.Now())
 	if err != nil {

@@ -62,3 +62,38 @@ func TestSyncAssignsIDsUpsertsAndRetires(t *testing.T) {
 		t.Fatalf("active total=%d want 0 after retire", st.Total)
 	}
 }
+
+func TestSyncDiscoversAndRetiresExtracts(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "f.n4l")
+	// A (from) extract node WITH an id, no card markers.
+	// The (from) arrow is inline on the same node line so GenerateExtracts
+	// finds a node with ID != "", StudyMeta == nil, and a from-arrow.
+	body := "- Ch\n# @id e1\nSystem 1 is fast (from) \"sources/f.txt char=0\"\n"
+	os.WriteFile(p, []byte(body), 0o644)
+	reg := &content.SSTRegistry{Arrows: map[string]content.ArrowDef{"from": {Code: "from", LongName: "from"}}}
+	store, _ := Open(dir)
+	defer store.Close()
+
+	res, err := Sync(store, []string{p}, reg)
+	if err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	if res.ExtractsAdded != 1 {
+		t.Fatalf("ExtractsAdded=%d want 1", res.ExtractsAdded)
+	}
+	if n, _ := store.CountDueExtracts(time.Now()); n != 1 {
+		t.Fatalf("due extracts=%d want 1", n)
+	}
+
+	// Promote it: add # @card → on next sync the extract retires and an item appears.
+	body2 := "- Ch\n# @id e1\n# @card\nSystem 1 is fast (from) \"sources/f.txt char=0\"\n"
+	os.WriteFile(p, []byte(body2), 0o644)
+	res2, _ := Sync(store, []string{p}, reg)
+	if res2.ExtractsRetired != 1 {
+		t.Fatalf("ExtractsRetired=%d want 1", res2.ExtractsRetired)
+	}
+	if n, _ := store.CountDueExtracts(time.Now()); n != 0 {
+		t.Fatalf("due extracts after promote=%d want 0", n)
+	}
+}
