@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -29,6 +30,8 @@ type ReadingView struct {
 	Percent   int    `json:"percent"`
 	Due       int64  `json:"due"`
 	Done      bool   `json:"done"`
+	Medium    string `json:"medium"`
+	SourceURL string `json:"sourceUrl"`
 }
 
 // CreateExtractView is returned after appending an extract.
@@ -51,7 +54,8 @@ func toReadingView(r learning.ReadingElement) ReadingView {
 		due = r.Due.Unix()
 	}
 	return ReadingView{ID: r.ID, RefPath: r.RefPath, NotesPath: r.NotesPath, Title: r.Title,
-		Position: r.Position, Percent: pct, Due: due, Done: r.Done}
+		Position: r.Position, Percent: pct, Due: due, Done: r.Done,
+		Medium: r.Medium, SourceURL: r.SourceURL}
 }
 
 // char=N anchors are 0-based Unicode code-point (rune) offsets into the source's text projection —
@@ -173,7 +177,7 @@ func (a *App) GetSourceProjection(refPath string) (string, error) {
 
 // CreateExtract appends a verbatim extract, advances # @progress + DB position,
 // and signals the notes editor to reload (clean buffer only).
-func (a *App) CreateExtract(id, text string, anchorChar int) (*CreateExtractView, error) {
+func (a *App) CreateExtract(id, text, position string) (*CreateExtractView, error) {
 	if a.learnStore == nil {
 		return nil, errors.New("no collection open")
 	}
@@ -181,20 +185,20 @@ func (a *App) CreateExtract(id, text string, anchorChar int) (*CreateExtractView
 	if err != nil || !ok {
 		return nil, fmt.Errorf("CreateExtract: reading element %q not found", id)
 	}
-	anchor := fmt.Sprintf("%s char=%d", r.RefPath, anchorChar)
+	anchor := fmt.Sprintf("%s %s", r.RefPath, position)
 	// reading/ is an unwatched subtree (the collection watcher is non-recursive), so this
 	// savingPath bracketing is defensive only — no external-mod event fires for notes files.
 	// ReadingView refreshes its own buffer via reloadNotes().
 	a.savingPath = r.NotesPath
 	exID, err := content.AppendExtract(r.NotesPath, text, anchor)
 	if err == nil {
-		err = content.UpdateProgressMarker(r.NotesPath, fmt.Sprintf("char=%d", anchorChar))
+		err = content.UpdateProgressMarker(r.NotesPath, position)
 	}
 	a.savingPath = ""
 	if err != nil {
 		return nil, fmt.Errorf("CreateExtract: %w", err)
 	}
-	_ = a.learnStore.SetReadingProgress(id, fmt.Sprintf("char=%d", anchorChar), r.ProjLen)
+	_ = a.learnStore.SetReadingProgress(id, position, r.ProjLen)
 	// Register the new extract in the queue immediately (reuses the classify pass).
 	if _, err := learning.Sync(a.learnStore, []string{r.NotesPath}, a.registry); err != nil {
 		// Non-fatal: it will be picked up on the next Build Graph.
@@ -204,6 +208,142 @@ func (a *App) CreateExtract(id, text string, anchorChar int) (*CreateExtractView
 		runtime.EventsEmit(a.ctx, "file:ids-injected", map[string]string{"path": r.NotesPath})
 	}
 	return &CreateExtractView{ID: exID}, nil
+}
+
+// ImportPdfSource copies a chosen PDF into sources/ and registers a reading element.
+func (a *App) ImportPdfSource() (*ReadingView, error) {
+	if a.learnStore == nil || a.collectionDir == "" {
+		return nil, errors.New("no collection open")
+	}
+	picked, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title:   "Import a PDF source",
+		Filters: []runtime.FileFilter{{DisplayName: "PDF", Pattern: "*.pdf"}},
+	})
+	if err != nil || picked == "" {
+		return nil, err
+	}
+	base := filepath.Base(picked)
+	srcRel, srcAbs := uniqueDest(a.collectionDir, "sources", base)
+	if err := copyFile(picked, srcAbs); err != nil {
+		return nil, fmt.Errorf("ImportPdfSource: copy: %w", err)
+	}
+	title := strings.TrimSuffix(filepath.Base(srcRel), filepath.Ext(srcRel))
+	_, notesAbs := uniqueDest(a.collectionDir, "reading", title+".n4l")
+	refID, err := content.CreateReadingNotes(notesAbs, srcRel, title)
+	if err != nil {
+		os.Remove(srcAbs)
+		return nil, fmt.Errorf("ImportPdfSource: notes: %w", err)
+	}
+	r := learning.ReadingElement{ID: refID, RefPath: srcRel, NotesPath: notesAbs, Title: title,
+		Position: "page=1", IntervalDays: 1, Medium: "pdf"}
+	if err := a.learnStore.UpsertReading(r); err != nil {
+		os.Remove(srcAbs)
+		return nil, fmt.Errorf("ImportPdfSource: register: %w", err)
+	}
+	v := toReadingView(r)
+	return &v, nil
+}
+
+// ImportWebSource fetches a URL, saves a sanitized self-contained article, and registers it.
+func (a *App) ImportWebSource(srcURL string) (*ReadingView, error) {
+	if a.learnStore == nil || a.collectionDir == "" {
+		return nil, errors.New("no collection open")
+	}
+	art, err := source.FetchAndExtract(srcURL)
+	if err != nil {
+		return nil, fmt.Errorf("ImportWebSource: %w", err)
+	}
+	title := art.Title
+	if title == "" {
+		title = "web article"
+	}
+	slug := slugify(title)
+	srcRel, srcAbs := uniqueDest(a.collectionDir, "sources", slug+".html")
+	if err := os.WriteFile(srcAbs, []byte(art.HTML), 0o644); err != nil {
+		return nil, fmt.Errorf("ImportWebSource: save: %w", err)
+	}
+	_, notesAbs := uniqueDest(a.collectionDir, "reading", slug+".n4l")
+	refID, err := content.CreateReadingNotes(notesAbs, srcRel, title)
+	if err != nil {
+		os.Remove(srcAbs)
+		return nil, fmt.Errorf("ImportWebSource: notes: %w", err)
+	}
+	proj, _ := source.Projection(srcAbs) // article text length for % progress
+	r := learning.ReadingElement{ID: refID, RefPath: srcRel, NotesPath: notesAbs, Title: title,
+		Position: "char=0", ProjLen: len([]rune(proj)), IntervalDays: 1, Medium: "web", SourceURL: art.URL}
+	if err := a.learnStore.UpsertReading(r); err != nil {
+		os.Remove(srcAbs)
+		return nil, fmt.Errorf("ImportWebSource: register: %w", err)
+	}
+	v := toReadingView(r)
+	return &v, nil
+}
+
+// slugify makes a filesystem-safe lowercase slug from a title.
+func slugify(s string) string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	var b strings.Builder
+	prevDash := false
+	for _, r := range s {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
+			b.WriteRune(r)
+			prevDash = false
+		default:
+			if !prevDash {
+				b.WriteByte('-')
+				prevDash = true
+			}
+		}
+	}
+	out := strings.Trim(b.String(), "-")
+	if out == "" {
+		out = "article"
+	}
+	if len(out) > 60 {
+		out = out[:60]
+	}
+	return out
+}
+
+// GetSourceBytes returns the base64 of a source file (for pdf.js).
+func (a *App) GetSourceBytes(refPath string) (string, error) {
+	if a.collectionDir == "" {
+		return "", errors.New("no collection open")
+	}
+	data, err := os.ReadFile(filepath.Join(a.collectionDir, filepath.FromSlash(refPath)))
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(data), nil
+}
+
+// OpenSourceURL opens the reading element's original URL in the system browser.
+func (a *App) OpenSourceURL(id string) error {
+	if a.learnStore == nil {
+		return errors.New("no collection open")
+	}
+	r, ok, err := a.learnStore.GetReading(id)
+	if err != nil || !ok {
+		return fmt.Errorf("OpenSourceURL: %q not found", id)
+	}
+	if r.SourceURL == "" {
+		return errors.New("no original URL")
+	}
+	runtime.BrowserOpenURL(a.ctx, r.SourceURL)
+	return nil
+}
+
+// SetReadingProjLen stores a reader-reported total length / page count.
+func (a *App) SetReadingProjLen(id string, n int) error {
+	if a.learnStore == nil {
+		return errors.New("no collection open")
+	}
+	r, ok, err := a.learnStore.GetReading(id)
+	if err != nil || !ok {
+		return fmt.Errorf("SetReadingProjLen: %q not found", id)
+	}
+	return a.learnStore.SetReadingProgress(id, r.Position, n)
 }
 
 func (a *App) UpdateReadingProgress(id, position string) error {

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -30,7 +32,7 @@ func TestCreateExtractAppendsAndAdvances(t *testing.T) {
 	a := &App{collectionDir: dir, learnStore: store, registry: &content.SSTRegistry{Arrows: map[string]content.ArrowDef{}}}
 	defer store.Close()
 
-	ev, err := a.CreateExtract(refID, "System 1 is fast", 0)
+	ev, err := a.CreateExtract(refID, "System 1 is fast", "char=0")
 	if err != nil || ev == nil || ev.ID == "" {
 		t.Fatalf("CreateExtract ev=%+v err=%v", ev, err)
 	}
@@ -45,5 +47,44 @@ func TestCreateExtractAppendsAndAdvances(t *testing.T) {
 	list, _ := a.GetReadingList()
 	if len(list) != 1 || !list[0].Done {
 		t.Fatalf("list=%+v want 1 done", list)
+	}
+}
+
+func TestImportWebAndCreateExtractPosition(t *testing.T) {
+	// Local server with a small article.
+	mux := http.NewServeMux()
+	mux.HandleFunc("/a", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(`<html><head><title>WT</title></head><body><article><h1>WT</h1>
+			<p>A sufficiently long paragraph of article text so readability keeps it as the main content of this page here.</p>
+			</article></body></html>`))
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	dir := t.TempDir()
+	store, _ := learning.Open(dir)
+	defer store.Close()
+	a := &App{collectionDir: dir, learnStore: store, registry: &content.SSTRegistry{Arrows: map[string]content.ArrowDef{"from": {Code: "from", LongName: "from"}}}}
+
+	rv, err := a.ImportWebSource(srv.URL + "/a")
+	if err != nil || rv == nil {
+		t.Fatalf("ImportWebSource rv=%v err=%v", rv, err)
+	}
+	if rv.Medium != "web" || rv.SourceURL != srv.URL+"/a" {
+		t.Fatalf("medium=%q sourceUrl=%q", rv.Medium, rv.SourceURL)
+	}
+	// The saved html file exists and is script-free.
+	html, _ := os.ReadFile(filepath.Join(dir, filepath.FromSlash(rv.RefPath)))
+	if strings.Contains(string(html), "<script") {
+		t.Fatalf("saved web html not sanitized")
+	}
+	// CreateExtract with a position string writes that exact anchor.
+	if _, err := a.CreateExtract(rv.ID, "A long paragraph", "char=5"); err != nil {
+		t.Fatalf("CreateExtract: %v", err)
+	}
+	notes, _ := os.ReadFile(rv.NotesPath)
+	if !strings.Contains(string(notes), `char=5`) {
+		t.Fatalf("extract anchor missing char=5:\n%s", notes)
 	}
 }

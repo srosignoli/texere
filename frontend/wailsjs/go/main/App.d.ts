@@ -61,7 +61,7 @@ export function GetReadingList():Promise<Array<any>>;
 
 export function GetSourceProjection(arg1:string):Promise<string>;
 
-export function CreateExtract(arg1:string,arg2:string,arg3:number):Promise<any>;
+export function CreateExtract(arg1:string,arg2:string,arg3:string):Promise<any>;
 
 export function UpdateReadingProgress(arg1:string,arg2:string):Promise<void>;
 
@@ -78,3 +78,13 @@ export function PromoteExtract(arg1:string,arg2:string):Promise<void>;
 export function DeferExtract(arg1:string):Promise<void>;
 
 export function DismissExtract(arg1:string):Promise<void>;
+
+export function ImportPdfSource():Promise<any>;
+
+export function ImportWebSource(arg1:string):Promise<any>;
+
+export function GetSourceBytes(arg1:string):Promise<string>;
+
+export function OpenSourceURL(arg1:string):Promise<void>;
+
+export function SetReadingProjLen(arg1:string,arg2:number):Promise<void>;

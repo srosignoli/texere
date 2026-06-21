@@ -47,7 +47,7 @@
     if (!sel || !sel.text.trim()) return
     try {
       await flushNotes() // never lose an unsaved notes edit
-      await CreateExtract(reading.id, sel.text, sel.offset)
+      await CreateExtract(reading.id, sel.text, 'char=' + sel.offset)
       await reloadNotes() // pick up the appended extract
     } catch (e) {
       error = String(e?.message ?? e)

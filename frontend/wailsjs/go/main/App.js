@@ -149,3 +149,23 @@ export function DeferExtract(arg1) {
 export function DismissExtract(arg1) {
   return window['go']['main']['App']['DismissExtract'](arg1);
 }
+
+export function ImportPdfSource() {
+  return window['go']['main']['App']['ImportPdfSource']();
+}
+
+export function ImportWebSource(arg1) {
+  return window['go']['main']['App']['ImportWebSource'](arg1);
+}
+
+export function GetSourceBytes(arg1) {
+  return window['go']['main']['App']['GetSourceBytes'](arg1);
+}
+
+export function OpenSourceURL(arg1) {
+  return window['go']['main']['App']['OpenSourceURL'](arg1);
+}
+
+export function SetReadingProjLen(arg1, arg2) {
+  return window['go']['main']['App']['SetReadingProjLen'](arg1, arg2);
+}
