@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte'
-  import { ImportTextSource, GetReadingList } from '../../wailsjs/go/main/App'
+  import { ImportTextSource, ImportPdfSource, ImportWebSource, GetReadingList } from '../../wailsjs/go/main/App'
   import { activeReading } from '../stores/reading.js'
 
   export let onClose = null
@@ -29,6 +29,24 @@
     }
   }
 
+  async function importPdf() {
+    error = ''
+    try {
+      const v = await ImportPdfSource()
+      if (v) { await load(); activeReading.set(v) }
+    } catch (e) { error = String(e?.message ?? e) }
+  }
+
+  async function importWeb() {
+    error = ''
+    const url = window.prompt('Article URL:')
+    if (!url) return
+    try {
+      const v = await ImportWebSource(url.trim())
+      if (v) { await load(); activeReading.set(v) }
+    } catch (e) { error = String(e?.message ?? e) }
+  }
+
   function open(v) { activeReading.set(v) }
 
   const dueNow = (v) => !v.done && v.due !== 0 && v.due * 1000 <= Date.now()
@@ -39,7 +57,9 @@
 <div class="sources-root" role="dialog" aria-label="Sources">
   <div class="sources-bar">
     <span class="sources-title">Sources</span>
-    <button class="sources-import" on:click={importSource}>+ Import</button>
+    <button class="sources-import" on:click={importSource}>+ Text</button>
+    <button class="sources-import" on:click={importPdf}>+ PDF</button>
+    <button class="sources-import" on:click={importWeb}>+ Web</button>
     <button class="sources-close" on:click={() => onClose?.()} title="Close">×</button>
   </div>
   {#if error}<div class="sources-error">{error}</div>{/if}
