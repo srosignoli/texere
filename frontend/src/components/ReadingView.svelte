@@ -8,8 +8,11 @@
   import { n4lHighlighting } from '../lib/n4l-highlight.js'
   import { arrowCompletion } from '../lib/arrow-autocomplete.js'
   import { workbenchStore } from '../stores/workbench.js'
-  import { GetSourceProjection, CreateExtract, RescheduleReading, GetFileContent, SaveFile, GetRecentArrows, UpdateRecentArrows } from '../../wailsjs/go/main/App'
+  import { CreateExtract, RescheduleReading, GetFileContent, SaveFile, GetRecentArrows, UpdateRecentArrows, UpdateReadingProgress } from '../../wailsjs/go/main/App'
   import { activeReading } from '../stores/reading.js'
+  import TextSourcePane from './TextSourcePane.svelte'
+  import PdfSourcePane from './PdfSourcePane.svelte'
+  import WebSourcePane from './WebSourcePane.svelte'
 
   export let reading            // ReadingView object
   export let onClose = null
@@ -24,35 +27,26 @@
     UpdateRecentArrows(recentCodesRef).catch((e) => console.warn('UpdateRecentArrows failed:', e))
   }
 
-  let projection = ''
-  let srcEl                     // the source-pane element (for selection offset)
+  let pane
   let notesContainer
   let notesView
   let savedNotes = ''
   let error = ''
 
-  function charOffset() {
-    // Offset of the selection start within the rendered projection text.
-    const sel = window.getSelection()
-    if (!sel || sel.rangeCount === 0 || !srcEl.contains(sel.anchorNode)) return null
-    const range = sel.getRangeAt(0)
-    const pre = range.cloneRange()
-    pre.selectNodeContents(srcEl)
-    pre.setEnd(range.startContainer, range.startOffset)
-    return { offset: [...pre.toString()].length, text: sel.toString() }
+  async function onPaneExtract(e) {
+    const { text, position } = e.detail
+    try {
+      await flushNotes()
+      await CreateExtract(reading.id, text, position)
+      await reloadNotes()
+    } catch (err) { error = String(err?.message ?? err) }
   }
 
-  async function extract() {
-    const sel = charOffset()
-    if (!sel || !sel.text.trim()) return
-    try {
-      await flushNotes() // never lose an unsaved notes edit
-      await CreateExtract(reading.id, sel.text, 'char=' + sel.offset)
-      await reloadNotes() // pick up the appended extract
-    } catch (e) {
-      error = String(e?.message ?? e)
-    }
+  async function onPaneProgress(e) {
+    try { await UpdateReadingProgress(reading.id, e.detail.position) } catch { /* best-effort */ }
   }
+
+  function triggerExtract() { pane?.requestExtract?.() }
 
   async function flushNotes() {
     if (!notesView) return
@@ -90,7 +84,7 @@
 
   function onKey(e) {
     if (e.key === 'Escape') { close('continue'); return }
-    if ((e.ctrlKey || e.metaKey) && (e.key === 'e' || e.key === 'E')) { e.preventDefault(); extract() }
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'e' || e.key === 'E')) { e.preventDefault(); triggerExtract() }
     if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) { e.preventDefault(); flushNotes() }
   }
 
@@ -100,11 +94,6 @@
       if (saved?.length) recentCodesRef = saved
     } catch (e) {
       console.warn('GetRecentArrows failed:', e)
-    }
-    try {
-      projection = (await GetSourceProjection(reading.refPath)) ?? ''
-    } catch (e) {
-      error = String(e?.message ?? e)
     }
     const text = (await GetFileContent(reading.notesPath)) ?? ''
     savedNotes = text
@@ -132,7 +121,7 @@
 <div class="reading-root" role="dialog" aria-label="Reading">
   <div class="reading-bar">
     <span class="reading-title">{reading.title}</span>
-    <button class="rb-btn" on:click={extract} title="Extract selection (Ctrl+E)">✂ Extract</button>
+    <button class="rb-btn" on:click={triggerExtract} title="Extract selection (Ctrl+E)">✂ Extract</button>
     <button class="rb-btn" on:click={() => close('later')}>⏳ Later</button>
     <button class="rb-btn" on:click={done}>✓ Done</button>
     <span class="rb-spacer"></span>
@@ -140,7 +129,15 @@
   </div>
   {#if error}<div class="reading-error">{error}</div>{/if}
   <div class="reading-body">
-    <div class="reading-source" bind:this={srcEl}>{projection}</div>
+    <div class="reading-source">
+      {#if reading.medium === 'pdf'}
+        <PdfSourcePane bind:this={pane} {reading} on:extract={onPaneExtract} on:progress={onPaneProgress} />
+      {:else if reading.medium === 'web'}
+        <WebSourcePane bind:this={pane} {reading} on:extract={onPaneExtract} on:progress={onPaneProgress} />
+      {:else}
+        <TextSourcePane bind:this={pane} {reading} on:extract={onPaneExtract} on:progress={onPaneProgress} />
+      {/if}
+    </div>
     <div class="reading-notes" bind:this={notesContainer}></div>
   </div>
 </div>
@@ -157,8 +154,6 @@
   .rb-close { background: none; border: none; color: #8899aa; font-size: 18px; cursor: pointer; }
   .reading-error { color: #ff8080; padding: 6px 12px; font-size: 12px; }
   .reading-body { flex: 1; min-height: 0; display: flex; }
-  .reading-source { flex: 1; overflow: auto; padding: 16px 20px; white-space: pre-wrap;
-    color: #cdd6e0; font-size: 14px; line-height: 1.6; border-right: 1px solid #2a3a4a;
-    user-select: text; }
+  .reading-source { flex: 1; min-width: 0; display: flex; border-right: 1px solid #2a3a4a; }
   .reading-notes { flex: 1; min-width: 0; overflow: hidden; }
 </style>
