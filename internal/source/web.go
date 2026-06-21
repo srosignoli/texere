@@ -55,7 +55,7 @@ func FetchAndExtract(rawURL string) (WebArticle, error) {
 		return WebArticle{}, fmt.Errorf("source: readability: %w", err)
 	}
 
-	inlined := inlineImages(article.Content, client)
+	inlined := inlineImages(article.Content)
 	policy := bluemonday.UGCPolicy()
 	policy.AllowDataURIImages()
 	safe := policy.Sanitize(inlined)
@@ -65,7 +65,7 @@ func FetchAndExtract(rawURL string) (WebArticle, error) {
 
 // inlineImages downloads each <img src> and rewrites it to a data: URI; on any
 // failure (or oversize) it drops the src so sanitization removes the <img>.
-func inlineImages(htmlStr string, client *http.Client) string {
+func inlineImages(htmlStr string) string {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlStr))
 	if err != nil {
 		return htmlStr
@@ -95,7 +95,7 @@ func fetchImage(client *http.Client, src string) ([]byte, string, error) {
 		return nil, "", err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, "", fmt.Errorf("status %d", resp.StatusCode)
 	}
 	data, err := io.ReadAll(io.LimitReader(resp.Body, imgMaxBytes+1))

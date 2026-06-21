@@ -53,3 +53,35 @@ func TestFetchAndExtract(t *testing.T) {
 		t.Fatalf("article body missing:\n%s", art.HTML)
 	}
 }
+
+func TestFetchAndExtractDropsFailedImageKeepsArticle(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/img404", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNotFound) })
+	mux.HandleFunc("/article", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(`<html><head><title>T</title></head><body><article><h1>T</h1>
+			<p>A long article paragraph that readability keeps as the main content of this page for sure here now.</p>
+			<p>More body text with a broken image: <img src="/img404" alt="x"></p>
+			</article></body></html>`))
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	art, err := FetchAndExtract(srv.URL + "/article")
+	if err != nil {
+		t.Fatalf("FetchAndExtract: %v", err)
+	}
+	if !strings.Contains(art.HTML, "More body text") {
+		t.Fatalf("article body lost when image failed:\n%s", art.HTML)
+	}
+	if strings.Contains(art.HTML, "/img404") {
+		t.Fatalf("failed image's remote src should have been dropped:\n%s", art.HTML)
+	}
+}
+
+func TestFetchAndExtractNon2xxErrors(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNotFound) }))
+	defer srv.Close()
+	if _, err := FetchAndExtract(srv.URL); err == nil {
+		t.Fatal("expected an error for a non-2xx article fetch")
+	}
+}
