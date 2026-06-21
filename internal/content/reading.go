@@ -57,3 +57,29 @@ func UpdateProgressMarker(notesPath, newValue string) error {
 	}
 	return fmt.Errorf("content: UpdateProgressMarker: no # @progress line in %s", notesPath)
 }
+
+// AppendExtract appends a verbatim extract node (with a (from) anchor and a
+// generated # @id) to the end of the notes file, under the _sequence_ context
+// established by CreateReadingNotes. Internal newlines in text collapse to
+// single spaces so the node stays single-line.
+func AppendExtract(notesPath, text, fromAnchor string) (string, error) {
+	id, err := GenerateShortID()
+	if err != nil {
+		return "", err
+	}
+	lines, err := readLines(notesPath)
+	if err != nil {
+		return "", fmt.Errorf("content: AppendExtract: %w", err)
+	}
+	oneLine := strings.Join(strings.Fields(text), " ")
+	lines = append(lines,
+		"# @id "+id,
+		oneLine,
+		`    (from) "`+fromAnchor+`"`,
+		"",
+	)
+	if err := writeLines(notesPath, lines); err != nil {
+		return "", fmt.Errorf("content: AppendExtract: write: %w", err)
+	}
+	return id, nil
+}

@@ -65,3 +65,34 @@ func TestUpdateProgressMarker(t *testing.T) {
 		t.Fatal("old progress value still present")
 	}
 }
+
+func TestAppendExtract(t *testing.T) {
+	dir := t.TempDir()
+	notes := filepath.Join(dir, "k.n4l")
+	if _, err := CreateReadingNotes(notes, "sources/k.txt", "K"); err != nil {
+		t.Fatal(err)
+	}
+	id, err := AppendExtract(notes, "System 1 is\nfast and automatic", "sources/k.txt char=1200")
+	if err != nil {
+		t.Fatalf("AppendExtract: %v", err)
+	}
+	if id == "" {
+		t.Fatal("expected a non-empty extract id")
+	}
+	body, _ := os.ReadFile(notes)
+	s := string(body)
+	// Newlines in the selection collapse to a single space.
+	for _, want := range []string{
+		"# @id " + id,
+		"System 1 is fast and automatic",
+		`(from) "sources/k.txt char=1200"`,
+	} {
+		if !strings.Contains(s, want) {
+			t.Fatalf("append missing %q in:\n%s", want, s)
+		}
+	}
+	// The extract must come after the _sequence_ context line.
+	if strings.Index(s, "_sequence_") > strings.Index(s, "# @id "+id) {
+		t.Fatal("extract was not appended under the _sequence_ context")
+	}
+}
