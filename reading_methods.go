@@ -42,7 +42,7 @@ type CreateExtractView struct {
 func toReadingView(r learning.ReadingElement) ReadingView {
 	pct := 0
 	if r.ProjLen > 0 {
-		if off := parseCharAnchor(r.Position); off > 0 {
+		if off := parsePositionValue(r.Position); off > 0 {
 			pct = int(math.Round(float64(off) / float64(r.ProjLen) * 100))
 			if pct > 100 {
 				pct = 100
@@ -62,14 +62,15 @@ func toReadingView(r learning.ReadingElement) ReadingView {
 // the same unit the frontend computes from a DOM Range ([...str].length) and Go measures with
 // utf8.RuneCountInString. Phase 2b relocation indexes the projection with []rune(proj)[:N].
 
-// parseCharAnchor pulls N from "char=N" (0 if absent/malformed).
-func parseCharAnchor(s string) int {
-	i := strings.Index(s, "char=")
+// parsePositionValue pulls the integer N from a position/anchor string of the
+// form "<unit>=N" (e.g. "char=4180" or "page=12"); 0 if absent/malformed.
+func parsePositionValue(s string) int {
+	i := strings.IndexByte(s, '=')
 	if i < 0 {
 		return 0
 	}
 	n := 0
-	for _, c := range s[i+5:] {
+	for _, c := range s[i+1:] {
 		if c < '0' || c > '9' {
 			break
 		}

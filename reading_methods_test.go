@@ -50,6 +50,14 @@ func TestCreateExtractAppendsAndAdvances(t *testing.T) {
 	}
 }
 
+func TestToReadingViewPdfPercent(t *testing.T) {
+	r := learning.ReadingElement{ID: "p1", Medium: "pdf", Position: "page=5", ProjLen: 10}
+	v := toReadingView(r)
+	if v.Percent != 50 {
+		t.Fatalf("PDF percent=%d want 50", v.Percent)
+	}
+}
+
 func TestImportWebAndCreateExtractPosition(t *testing.T) {
 	// Local server with a small article.
 	mux := http.NewServeMux()

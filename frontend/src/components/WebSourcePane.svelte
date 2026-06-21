@@ -1,6 +1,6 @@
 <script>
-  import { onMount, createEventDispatcher } from 'svelte'
-  import { GetFileContent, OpenSourceURL } from '../../wailsjs/go/main/App'
+  import { onMount, tick, createEventDispatcher } from 'svelte'
+  import { GetFileContent, OpenSourceURL, SetReadingProjLen } from '../../wailsjs/go/main/App'
 
   export let reading
   const dispatch = createEventDispatcher()
@@ -9,6 +9,8 @@
   let articleEl
   let error = ''
 
+  // web char=N offsets are rune offsets into the RENDERED article text (this pane's coordinate
+  // space), distinct from text-medium source.Projection offsets; cross-medium relocation is Phase 3.
   function runeOffset() {
     const sel = window.getSelection()
     if (!sel || sel.rangeCount === 0 || !articleEl.contains(sel.anchorNode)) return null
@@ -32,6 +34,10 @@
   onMount(async () => {
     try { html = (await GetFileContent(reading.refPath)) ?? '' }
     catch (e) { error = String(e?.message ?? e) }
+    await tick()
+    if (articleEl) {
+      try { await SetReadingProjLen(reading.id, [...(articleEl.textContent ?? '')].length) } catch { /* best-effort */ }
+    }
   })
 </script>
 

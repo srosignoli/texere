@@ -51,6 +51,8 @@ func (s *Store) UpsertReading(r ReadingElement) error {
 		return err
 	}
 	if exists > 0 {
+		// Intentionally updates only display fields: imports always insert a fresh id,
+		// so medium/source_url/position are set once at insert and never overwritten here.
 		_, err := s.db.Exec(`UPDATE reading_elements SET ref_path=?, notes_path=?, title=? WHERE id=?`,
 			r.RefPath, r.NotesPath, r.Title, r.ID)
 		return err
