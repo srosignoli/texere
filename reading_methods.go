@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"os"
 	"path/filepath"
@@ -30,8 +31,8 @@ type ReadingView struct {
 	Done      bool   `json:"done"`
 }
 
-// ExtractView is returned after appending an extract.
-type ExtractView struct {
+// CreateExtractView is returned after appending an extract.
+type CreateExtractView struct {
 	ID string `json:"id"`
 }
 
@@ -172,7 +173,7 @@ func (a *App) GetSourceProjection(refPath string) (string, error) {
 
 // CreateExtract appends a verbatim extract, advances # @progress + DB position,
 // and signals the notes editor to reload (clean buffer only).
-func (a *App) CreateExtract(id, text string, anchorChar int) (*ExtractView, error) {
+func (a *App) CreateExtract(id, text string, anchorChar int) (*CreateExtractView, error) {
 	if a.learnStore == nil {
 		return nil, errors.New("no collection open")
 	}
@@ -194,10 +195,15 @@ func (a *App) CreateExtract(id, text string, anchorChar int) (*ExtractView, erro
 		return nil, fmt.Errorf("CreateExtract: %w", err)
 	}
 	_ = a.learnStore.SetReadingProgress(id, fmt.Sprintf("char=%d", anchorChar), r.ProjLen)
+	// Register the new extract in the queue immediately (reuses the classify pass).
+	if _, err := learning.Sync(a.learnStore, []string{r.NotesPath}, a.registry); err != nil {
+		// Non-fatal: it will be picked up on the next Build Graph.
+		log.Printf("CreateExtract: register sync: %v", err)
+	}
 	if a.ctx != nil {
 		runtime.EventsEmit(a.ctx, "file:ids-injected", map[string]string{"path": r.NotesPath})
 	}
-	return &ExtractView{ID: exID}, nil
+	return &CreateExtractView{ID: exID}, nil
 }
 
 func (a *App) UpdateReadingProgress(id, position string) error {

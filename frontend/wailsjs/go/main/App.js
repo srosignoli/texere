@@ -125,3 +125,27 @@ export function UpdateReadingProgress(arg1, arg2) {
 export function RescheduleReading(arg1, arg2) {
   return window['go']['main']['App']['RescheduleReading'](arg1, arg2);
 }
+
+export function GetStudyCounts() {
+  return window['go']['main']['App']['GetStudyCounts']();
+}
+
+export function GetExtractQueue(arg1) {
+  return window['go']['main']['App']['GetExtractQueue'](arg1);
+}
+
+export function GetExtractTarget(arg1) {
+  return window['go']['main']['App']['GetExtractTarget'](arg1);
+}
+
+export function PromoteExtract(arg1, arg2) {
+  return window['go']['main']['App']['PromoteExtract'](arg1, arg2);
+}
+
+export function DeferExtract(arg1) {
+  return window['go']['main']['App']['DeferExtract'](arg1);
+}
+
+export function DismissExtract(arg1) {
+  return window['go']['main']['App']['DismissExtract'](arg1);
+}

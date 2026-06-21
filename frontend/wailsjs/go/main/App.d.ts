@@ -66,3 +66,15 @@ export function CreateExtract(arg1:string,arg2:string,arg3:number):Promise<any>;
 export function UpdateReadingProgress(arg1:string,arg2:string):Promise<void>;
 
 export function RescheduleReading(arg1:string,arg2:string):Promise<any>;
+
+export function GetStudyCounts():Promise<any>;
+
+export function GetExtractQueue(arg1:number):Promise<Array<any>>;
+
+export function GetExtractTarget(arg1:string):Promise<any>;
+
+export function PromoteExtract(arg1:string,arg2:string):Promise<void>;
+
+export function DeferExtract(arg1:string):Promise<void>;
+
+export function DismissExtract(arg1:string):Promise<void>;
