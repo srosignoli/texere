@@ -40,7 +40,7 @@
   <div class="sources-bar">
     <span class="sources-title">Sources</span>
     <button class="sources-import" on:click={importSource}>+ Import</button>
-    <button class="sources-close" on:click={() => onClose?.()} title="Close (Esc)">×</button>
+    <button class="sources-close" on:click={() => onClose?.()} title="Close">×</button>
   </div>
   {#if error}<div class="sources-error">{error}</div>{/if}
   {#if items.length === 0}
