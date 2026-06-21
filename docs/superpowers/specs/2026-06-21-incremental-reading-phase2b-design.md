@@ -16,7 +16,7 @@ Phase 2 is cut into three slices: 2a (read & extract, done), **2b (this doc) —
 | # | Decision |
 |---|---|
 | 1 | **Extract discovery = register at creation + reconcile on sync.** 2a's `CreateExtract` registers the extract immediately (by running the classify pass on that one file); Build-Graph `Sync` reconciles (picks up hand-authored `(from)` nodes; retires promoted/deleted ones). |
-| 2 | **One Study surface; the Sources library folds into the Read focus.** A single entry opens a surface whose default ("Next") serves the next due element of any kind; Read/Process/Recall are filters. Both old shortcuts map into it. |
+| 2 | **One unified Study surface; the Sources library folds into its Read focus.** A surface whose default ("Next") serves the next due element of any kind; Read/Process/Recall are filters. **`StudyMode` stays callable on its own** as a quick recall-only entry (rebuilt on the shared `RecallCard`); reading folds into the surface. |
 | 3 | **Promotion is immediate.** Process "Make card"/"Cloze" writes the marker, saves, and re-syncs that one file so the recall item exists in the same session; the extract retires. |
 | 4 | **Split is deferred.** 2b Process actions = Make card / Cloze / Refine (edit) / Later / Dismiss. |
 
@@ -80,11 +80,12 @@ An extract's PK is the node's **qualified NodeID** (`filepath:chapter:id:shortid
 | `internal/content/writeback.go` | `InsertMarkerAboveNode(path, nodeLine, marker)`. | extend |
 | `reading_methods.go` / new `study_methods.go` | Bindings: `GetStudyCounts`, `GetNextElement`, `GetExtractQueue`, `PromoteExtract`, `DeferExtract`, `DismissExtract`; `CreateExtract` gains register-at-creation. | extend/new |
 | `frontend` `components/ProcessView.svelte` | Process face: focused N4L editor on the extract (reused arrow autocomplete, EditCard-style) + action bar (Make card/Cloze/Refine/Later/Dismiss) + `(from)` peek + "Open in explorer". | **new** |
-| `frontend` `components/RecallCard.svelte` | The card front→reveal→grade UI refactored out of `StudyMode` for reuse. | **new** (refactor) |
+| `frontend` `components/RecallCard.svelte` | The card front→reveal→grade UI refactored out of `StudyMode` for reuse by BOTH the standalone `StudyMode` and the unified surface's Recall focus. | **new** (refactor) |
+| `frontend` `components/StudyMode.svelte` | **Kept** as the standalone recall-only overlay, rebuilt as a thin wrapper around `RecallCard` (same item queue/grade logic). | modify (refactor onto `RecallCard`) |
 | `frontend` `components/StudySurface.svelte` + `stores/study.js` | The unified overlay: focus switch (Next/Read/Process/Recall) composing `ReadingView` + `SourcesPanel` (Read), `ProcessView` (Process), `RecallCard` (Recall); drives `GetNextElement`/`GetStudyCounts`. | **new** + store extend |
-| `frontend` `App.svelte` | `Ctrl+Shift+R` → `StudySurface` (Next); `Ctrl+Shift+E` → `StudySurface` on Read. Remove the three standalone overlay mounts (folded in). | modify |
+| `frontend` `App.svelte` | `Ctrl+Shift+S` → `StudySurface` (Next); `Ctrl+Shift+R` → standalone `StudyMode` (Recall only, kept); `Ctrl+Shift+E` → `StudySurface` on Read. The standalone `SourcesPanel`/`ReadingView` mounts fold into `StudySurface`; `StudyMode` keeps its own mount. | modify |
 
-**Reuse:** `ReadingView` (2a) and `SourcesPanel` (2a) embed unchanged; `StudyMode`'s grading UI moves into `RecallCard` (StudyMode is retired as a standalone). `ProcessView` reuses the EditCard editor pattern + arrow autocomplete. Promotion reuses the Phase-1 dirty-buffer invariant (`savingPath` + `file:ids-injected` clean-reload).
+**Reuse:** `ReadingView` (2a) and `SourcesPanel` (2a) embed in `StudySurface`'s Read focus; `StudyMode`'s grading UI moves into the shared `RecallCard`, and `StudyMode` stays a standalone entry built on it. `ProcessView` reuses the EditCard editor pattern + arrow autocomplete. Promotion reuses the Phase-1 dirty-buffer invariant (`savingPath` + `file:ids-injected` clean-reload).
 
 ## 7. Error handling / edge cases
 
@@ -98,7 +99,7 @@ An extract's PK is the node's **qualified NodeID** (`filepath:chapter:id:shortid
 ## 8. Testing
 
 - **Go unit:** `extracts` schema-v3 migrate-from-v2 + CRUD + `ScheduleExtract` (deferral growth, cap 90, Later/Dismiss/promote-retire); discovery classification (`(from)` node → extract; node that gains `# @card` → extract retired + item created); `InsertMarkerAboveNode` (marker lands directly above the target node line); `NextElement` interleave ordering + `StudyCounts`.
-- **Manual quickstart matrix:** read → extract (appears in Process queue immediately) → Process "Make card" → it leaves Process and is recallable in Recall the same session; Later defers; Dismiss retires; the Next default rotates across kinds; Ctrl+Shift+R opens Next, Ctrl+Shift+E opens Read; the Sources library is reachable within Read.
+- **Manual quickstart matrix:** read → extract (appears in Process queue immediately) → Process "Make card" → it leaves Process and is recallable in Recall the same session; Later defers; Dismiss retires; the Next default rotates across kinds; **Ctrl+Shift+S** opens the unified surface (Next), **Ctrl+Shift+R** opens standalone `StudyMode` (Recall only), **Ctrl+Shift+E** opens the unified surface on Read; the Sources library is reachable within Read.
 
 ## 9. Deferred to 2c / Phase 3 (recorded)
 
