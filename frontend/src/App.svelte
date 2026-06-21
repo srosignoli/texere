@@ -15,12 +15,11 @@
   import GraphExplorer from './components/GraphExplorer.svelte'
   import QueryHelpPanel from './components/QueryHelpPanel.svelte'
   import StudyMode from './components/StudyMode.svelte'
+  import StudySurface from './components/StudySurface.svelte'
   import { explorerOpen } from './stores/explorer.js'
   import { refreshQueryHints } from './stores/queryHints.js'
-  import { studyOpen } from './stores/study.js'
-  import SourcesPanel from './components/SourcesPanel.svelte'
-  import ReadingView from './components/ReadingView.svelte'
-  import { readingOpen, activeReading } from './stores/reading.js'
+  import { studyOpen, studySurfaceOpen, studyFocus } from './stores/study.js'
+  import { activeReading } from './stores/reading.js'
 
   // Track viewport height so the top-band drag handle can clamp to a value
   // that always leaves the editor with at least EDITOR_FLOOR_PX of room.
@@ -121,12 +120,15 @@
       studyOpen.update((v) => !v)
       return
     }
-    // Ctrl/Cmd+Shift+E toggles the Sources (Reading) overlay.
+    // Ctrl/Cmd+Shift+S toggles the unified Study surface (Next queue).
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 's' || e.key === 'S')) {
+      e.preventDefault(); e.stopPropagation()
+      studyFocus.set('next'); studySurfaceOpen.update((v) => !v); return
+    }
+    // Ctrl/Cmd+Shift+E opens the Study surface on the Read focus.
     if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'e' || e.key === 'E')) {
-      e.preventDefault()
-      e.stopPropagation()
-      readingOpen.update((v) => !v)
-      return
+      e.preventDefault(); e.stopPropagation()
+      studyFocus.set('read'); studySurfaceOpen.set(true); return
     }
     // Esc closes the log panel when it's open (and the omnibar isn't already eating Esc).
     if (e.key === 'Escape' && $logPanelOpen) {
@@ -397,11 +399,8 @@
     {#if $studyOpen}
       <StudyMode onClose={() => studyOpen.set(false)} />
     {/if}
-    {#if $readingOpen}
-      <SourcesPanel onClose={() => readingOpen.set(false)} />
-    {/if}
-    {#if $activeReading}
-      <ReadingView reading={$activeReading} />
+    {#if $studySurfaceOpen}
+      <StudySurface onClose={() => { studySurfaceOpen.set(false); activeReading.set(null) }} />
     {/if}
     <QueryHelpPanel />
   {:else}

@@ -1,0 +1,126 @@
+<script>
+  import { onMount } from 'svelte'
+  import { GetStudyCounts, GetExtractQueue, GetReadingList, GetDueQueue, GradeItem } from '../../wailsjs/go/main/App'
+  import { studyFocus } from '../stores/study.js'
+  import { activeReading } from '../stores/reading.js'
+  import ReadingView from './ReadingView.svelte'
+  import SourcesPanel from './SourcesPanel.svelte'
+  import ProcessView from './ProcessView.svelte'
+  import RecallCard from './RecallCard.svelte'
+
+  export let onClose = null
+
+  let counts = { read: 0, process: 0, recall: 0 }
+  let error = ''
+
+  // Process state
+  let processId = null
+  // Recall state
+  let recallCard = null
+  let recallShownAt = 0
+  // Read state: activeReading store + library fallback
+
+  async function refresh() {
+    try { counts = (await GetStudyCounts()) ?? counts } catch (e) { error = String(e?.message ?? e) }
+  }
+
+  async function loadProcess() {
+    const q = await GetExtractQueue(1)
+    processId = q && q.length ? q[0].id : null
+  }
+  async function loadRecall() {
+    const q = await GetDueQueue(1)
+    recallCard = q && q.length ? q[0] : null
+    recallShownAt = Date.now()
+  }
+  async function loadRead() {
+    if ($activeReading) return
+    const list = await GetReadingList()
+    const due = (list ?? []).find((r) => !r.done && (r.due === 0 || r.due * 1000 <= Date.now()))
+    if (due) activeReading.set(due) // open the next due source; else SourcesPanel shows the library
+  }
+
+  // Drive the active focus.
+  async function enter(focus) {
+    error = ''
+    studyFocus.set(focus)
+    await refresh()
+    if (focus === 'process' || focus === 'next') await loadProcess()
+    if (focus === 'recall' || focus === 'next') await loadRecall()
+    if (focus === 'read' || focus === 'next') await loadRead()
+  }
+
+  // "Next": rotate read → process → recall, picking the first non-empty.
+  function nextKind() {
+    if (counts.read > 0 && !$activeReading) return 'read'
+    if ($activeReading) return 'read'
+    if (counts.process > 0) return 'process'
+    if (counts.recall > 0) return 'recall'
+    return 'empty'
+  }
+
+  async function onProcessAdvance() { await refresh(); await loadProcess(); if ($studyFocus === 'next' && !processId) await advanceNext() }
+  async function onRecallGrade(n) {
+    if (!recallCard) return
+    try {
+      recallCard = (await GradeItem(recallCard.id, n, Date.now() - recallShownAt)) ?? null
+      recallShownAt = Date.now()
+    } catch (e) { error = String(e?.message ?? e) }
+    await refresh()
+    if ($studyFocus === 'next' && !recallCard) await advanceNext()
+  }
+  async function advanceNext() { await refresh(); studyFocus.set('next') }
+
+  function onKey(e) { if (e.key === 'Escape') onClose?.() }
+  onMount(() => enter($studyFocus))
+</script>
+
+<svelte:window on:keydown={onKey} />
+
+<div class="ss-root" role="dialog" aria-label="Study">
+  <div class="ss-bar">
+    <span class="ss-title">Study</span>
+    {#each [['next','Next'],['read','Read'],['process','Process'],['recall','Recall']] as [k, label]}
+      <button class="ss-tab" class:active={$studyFocus === k} on:click={() => enter(k)}>
+        {label}{#if k === 'read' && counts.read}<sup>{counts.read}</sup>{:else if k === 'process' && counts.process}<sup>{counts.process}</sup>{:else if k === 'recall' && counts.recall}<sup>{counts.recall}</sup>{/if}
+      </button>
+    {/each}
+    <span class="ss-spacer"></span>
+    <button class="ss-close" on:click={() => onClose?.()} title="Close (Esc)">×</button>
+  </div>
+  {#if error}<div class="ss-error">{error}</div>{/if}
+
+  <div class="ss-body">
+    {#if $studyFocus === 'read' || ($studyFocus === 'next' && nextKind() === 'read')}
+      {#if $activeReading}
+        <ReadingView reading={$activeReading} onClose={() => { activeReading.set(null); enter('next') }} />
+      {:else}
+        <SourcesPanel onClose={() => onClose?.()} />
+      {/if}
+    {:else if $studyFocus === 'process' || ($studyFocus === 'next' && nextKind() === 'process')}
+      {#if processId}
+        {#key processId}<ProcessView extractId={processId} onAdvance={onProcessAdvance} />{/key}
+      {:else}
+        <div class="ss-empty">No extracts to process.</div>
+      {/if}
+    {:else if $studyFocus === 'recall' || ($studyFocus === 'next' && nextKind() === 'recall')}
+      <RecallCard card={recallCard} onGrade={onRecallGrade} />
+    {:else}
+      <div class="ss-empty">Nothing due. 🎉</div>
+    {/if}
+  </div>
+</div>
+
+<style>
+  .ss-root { position: absolute; inset: 0; z-index: 60; display: flex; flex-direction: column; background: #131c29; }
+  .ss-bar { display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-bottom: 1px solid #2a3a4a; background: #161f2e; }
+  .ss-title { color: #7dd3fc; font-weight: 600; margin-right: 8px; }
+  .ss-tab { background: none; border: 1px solid transparent; color: #8aa; border-radius: 6px; padding: 3px 10px; cursor: pointer; font-size: 12px; }
+  .ss-tab.active { background: #1e3a5a; color: #e8eaf0; border-color: #2a3a4a; }
+  .ss-tab sup { color: #7ecfa0; margin-left: 2px; }
+  .ss-spacer { flex: 1; }
+  .ss-close { background: none; border: none; color: #8899aa; font-size: 18px; cursor: pointer; }
+  .ss-error { color: #ff8080; padding: 6px 12px; font-size: 12px; }
+  .ss-body { flex: 1; min-height: 0; position: relative; }
+  .ss-empty { display: flex; align-items: center; justify-content: center; height: 100%; color: #8aa; }
+</style>
