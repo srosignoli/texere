@@ -260,6 +260,7 @@ func (a *App) ImportWebSource(srcURL string) (*ReadingView, error) {
 	slug := slugify(title)
 	srcRel, srcAbs := uniqueDest(a.collectionDir, "sources", slug+".html")
 	if err := os.WriteFile(srcAbs, []byte(art.HTML), 0o644); err != nil {
+		os.Remove(srcAbs)
 		return nil, fmt.Errorf("ImportWebSource: save: %w", err)
 	}
 	_, notesAbs := uniqueDest(a.collectionDir, "reading", slug+".n4l")
@@ -270,7 +271,7 @@ func (a *App) ImportWebSource(srcURL string) (*ReadingView, error) {
 	}
 	proj, _ := source.Projection(srcAbs) // article text length for % progress
 	r := learning.ReadingElement{ID: refID, RefPath: srcRel, NotesPath: notesAbs, Title: title,
-		Position: "char=0", ProjLen: len([]rune(proj)), IntervalDays: 1, Medium: "web", SourceURL: art.URL}
+		Position: "char=0", ProjLen: utf8.RuneCountInString(proj), IntervalDays: 1, Medium: "web", SourceURL: art.URL}
 	if err := a.learnStore.UpsertReading(r); err != nil {
 		os.Remove(srcAbs)
 		return nil, fmt.Errorf("ImportWebSource: register: %w", err)

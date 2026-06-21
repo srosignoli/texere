@@ -74,6 +74,9 @@ func TestImportWebAndCreateExtractPosition(t *testing.T) {
 	if rv.Medium != "web" || rv.SourceURL != srv.URL+"/a" {
 		t.Fatalf("medium=%q sourceUrl=%q", rv.Medium, rv.SourceURL)
 	}
+	if rv.Percent < 0 {
+		t.Fatalf("Percent should be >= 0, got %d", rv.Percent)
+	}
 	// The saved html file exists and is script-free.
 	html, _ := os.ReadFile(filepath.Join(dir, filepath.FromSlash(rv.RefPath)))
 	if strings.Contains(string(html), "<script") {
