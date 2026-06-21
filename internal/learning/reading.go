@@ -18,6 +18,8 @@ type ReadingElement struct {
 	LastRead     time.Time
 	IntervalDays int
 	Done         bool
+	Medium       string // 'text' | 'web' | 'pdf'
+	SourceURL    string // original URL for web; "" otherwise
 }
 
 const readingIntervalCap = 30
@@ -54,10 +56,11 @@ func (s *Store) UpsertReading(r ReadingElement) error {
 		return err
 	}
 	_, err := s.db.Exec(`INSERT INTO reading_elements
-		(id, ref_path, notes_path, title, position, proj_len, due, interval_days, last_read, done, created_at)
-		VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+		(id, ref_path, notes_path, title, position, proj_len, due, interval_days, last_read, done, created_at, medium, source_url)
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 		r.ID, r.RefPath, r.NotesPath, r.Title, r.Position, r.ProjLen,
-		nullableUnix(r.Due), maxInt(r.IntervalDays, 1), nullableUnix(r.LastRead), boolToInt(r.Done), time.Now().Unix())
+		nullableUnix(r.Due), maxInt(r.IntervalDays, 1), nullableUnix(r.LastRead), boolToInt(r.Done), time.Now().Unix(),
+		defaultStr(r.Medium, "text"), r.SourceURL)
 	return err
 }
 
@@ -73,7 +76,7 @@ func (s *Store) ApplyReadingSchedule(id string, r ReadingElement) error {
 }
 
 func (s *Store) GetReading(id string) (ReadingElement, bool, error) {
-	row := s.db.QueryRow(`SELECT id, ref_path, notes_path, title, position, proj_len, due, interval_days, last_read, done
+	row := s.db.QueryRow(`SELECT id, ref_path, notes_path, title, position, proj_len, due, interval_days, last_read, done, medium, source_url
 		FROM reading_elements WHERE id=?`, id)
 	r, err := scanReading(row)
 	if err == sql.ErrNoRows {
@@ -83,7 +86,7 @@ func (s *Store) GetReading(id string) (ReadingElement, bool, error) {
 }
 
 func (s *Store) ListReading() ([]ReadingElement, error) {
-	rows, err := s.db.Query(`SELECT id, ref_path, notes_path, title, position, proj_len, due, interval_days, last_read, done
+	rows, err := s.db.Query(`SELECT id, ref_path, notes_path, title, position, proj_len, due, interval_days, last_read, done, medium, source_url
 		FROM reading_elements ORDER BY created_at DESC`)
 	if err != nil {
 		return nil, err
@@ -106,13 +109,15 @@ type scanner interface {
 
 func scanReading(sc scanner) (ReadingElement, error) {
 	var (
-		r         ReadingElement
-		pos       sql.NullString
-		projLen   sql.NullInt64
-		due, last sql.NullInt64
-		done      int
+		r          ReadingElement
+		pos        sql.NullString
+		projLen    sql.NullInt64
+		due, last  sql.NullInt64
+		done       int
+		medium     sql.NullString
+		srcURL     sql.NullString
 	)
-	if err := sc.Scan(&r.ID, &r.RefPath, &r.NotesPath, &r.Title, &pos, &projLen, &due, &r.IntervalDays, &last, &done); err != nil {
+	if err := sc.Scan(&r.ID, &r.RefPath, &r.NotesPath, &r.Title, &pos, &projLen, &due, &r.IntervalDays, &last, &done, &medium, &srcURL); err != nil {
 		return ReadingElement{}, err
 	}
 	r.Position = pos.String
@@ -120,7 +125,16 @@ func scanReading(sc scanner) (ReadingElement, error) {
 	r.Due = unixToTime(due)
 	r.LastRead = unixToTime(last)
 	r.Done = done != 0
+	r.Medium = medium.String
+	r.SourceURL = srcURL.String
 	return r, nil
+}
+
+func defaultStr(v, def string) string {
+	if v == "" {
+		return def
+	}
+	return v
 }
 
 func boolToInt(b bool) int {

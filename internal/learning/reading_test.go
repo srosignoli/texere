@@ -56,6 +56,33 @@ func TestReadingCRUDAndSchedule(t *testing.T) {
 	}
 }
 
+func TestReadingMediumAndSourceURLRoundTrip(t *testing.T) {
+	s, err := Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	r := ReadingElement{ID: "w1", RefPath: "sources/a.html", NotesPath: "/c/reading/a.n4l",
+		Title: "A", IntervalDays: 1, Medium: "web", SourceURL: "https://example.com/a"}
+	if err := s.UpsertReading(r); err != nil {
+		t.Fatalf("UpsertReading: %v", err)
+	}
+	got, ok, err := s.GetReading("w1")
+	if err != nil || !ok {
+		t.Fatalf("GetReading ok=%v err=%v", ok, err)
+	}
+	if got.Medium != "web" || got.SourceURL != "https://example.com/a" {
+		t.Fatalf("got Medium=%q SourceURL=%q", got.Medium, got.SourceURL)
+	}
+	// A row inserted without a medium defaults to 'text'.
+	r2 := ReadingElement{ID: "t1", RefPath: "sources/b.txt", NotesPath: "/c/reading/b.n4l", Title: "B", IntervalDays: 1}
+	s.UpsertReading(r2)
+	g2, _, _ := s.GetReading("t1")
+	if g2.Medium != "text" {
+		t.Fatalf("default medium=%q want text", g2.Medium)
+	}
+}
+
 func TestMigrationV1toV2Additive(t *testing.T) {
 	dir := t.TempDir()
 	s, err := Open(dir) // fresh open creates v2 directly

@@ -13,7 +13,7 @@ type Store struct {
 	db *sql.DB
 }
 
-const schemaVersion = 3
+const schemaVersion = 4
 
 // Open opens (creating if needed) <collectionDir>/learning.db and migrates it
 // to the current schema version.
@@ -68,6 +68,10 @@ func (s *Store) migrate() error {
 		case 2:
 			if _, err := s.db.Exec(ddlV3); err != nil {
 				return fmt.Errorf("learning: apply v3: %w", err)
+			}
+		case 3:
+			if _, err := s.db.Exec(ddlV4); err != nil {
+				return fmt.Errorf("learning: apply v4: %w", err)
 			}
 		}
 		v++
@@ -128,6 +132,11 @@ CREATE TABLE IF NOT EXISTS reading_elements (
   created_at    INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_reading_due ON reading_elements(due) WHERE done = 0;
+`
+
+const ddlV4 = `
+ALTER TABLE reading_elements ADD COLUMN medium TEXT NOT NULL DEFAULT 'text';
+ALTER TABLE reading_elements ADD COLUMN source_url TEXT NOT NULL DEFAULT '';
 `
 
 const ddlV3 = `

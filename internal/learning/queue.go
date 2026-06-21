@@ -28,7 +28,7 @@ func (s *Store) StudyCounts(now time.Time) (StudyStats3, error) {
 }
 
 func (s *Store) DueReading(now time.Time, limit int) ([]ReadingElement, error) {
-	rows, err := s.db.Query(`SELECT id, ref_path, notes_path, title, position, proj_len, due, interval_days, last_read, done
+	rows, err := s.db.Query(`SELECT id, ref_path, notes_path, title, position, proj_len, due, interval_days, last_read, done, medium, source_url
 		FROM reading_elements
 		WHERE done=0 AND (due IS NULL OR due <= ?)
 		ORDER BY (due IS NULL), due ASC
