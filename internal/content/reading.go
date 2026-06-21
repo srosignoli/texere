@@ -77,8 +77,7 @@ func AppendExtract(notesPath, text, fromAnchor string) (string, error) {
 	oneLine := strings.Join(strings.Fields(text), " ")
 	lines = append(lines,
 		"# @id "+id,
-		oneLine,
-		`    (from) "`+fromAnchor+`"`,
+		oneLine+` (from) "`+fromAnchor+`"`,
 		"",
 	)
 	if err := writeLines(notesPath, lines); err != nil {

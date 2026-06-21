@@ -97,3 +97,27 @@ func TestSyncDiscoversAndRetiresExtracts(t *testing.T) {
 		t.Fatalf("due extracts after promote=%d want 0", n)
 	}
 }
+
+func TestSyncDiscoversRealAppendExtract(t *testing.T) {
+	dir := t.TempDir()
+	notes := filepath.Join(dir, "k.n4l")
+	if _, err := content.CreateReadingNotes(notes, "sources/k.txt", "K"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := content.AppendExtract(notes, "System 1 is fast and automatic", "sources/k.txt char=10"); err != nil {
+		t.Fatal(err)
+	}
+	reg := &content.SSTRegistry{Arrows: map[string]content.ArrowDef{"from": {Code: "from", LongName: "from"}}}
+	store, _ := Open(dir)
+	defer store.Close()
+	res, err := Sync(store, []string{notes}, reg)
+	if err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	if res.ExtractsAdded != 1 {
+		t.Fatalf("ExtractsAdded=%d want 1 (real AppendExtract output must be discoverable)", res.ExtractsAdded)
+	}
+	if n, _ := store.CountDueExtracts(time.Now()); n != 1 {
+		t.Fatalf("due extracts=%d want 1", n)
+	}
+}
