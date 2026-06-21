@@ -175,6 +175,8 @@ Project convention = Go unit tests + a manual quickstart matrix.
 - **Phase 2 — Reading & extracts (headline loop):** `internal/source/` adapters (PDF / local text-HTML / web URL); reading-element + extract scheduling; the Read face (source pane + notes, Extract → `(from)` node) and Process face (focused editor + study-action bar); the Study surface with the Read/Process/Recall focus control and the interleaved queue; explorer "Study this" bridge.
 - **Phase 3+ (later):** audio/video transcript adapters; orbit peek in Process; reverse + sequence cards; topic/curation scheduling (spec §6.2); priority management + `priority_history` transparency; FSRS optimizer; advanced stats dashboard; "import as N4L reading-doc"; portability/sync of scheduling state.
 
+**Review checkpoint (do not skip):** each slice (2a/2b/2c) gets its own opus final whole-branch review at its end. Those are scoped per-slice and CANNOT see cross-slice seams. So **at the end of 2c (before merging the Phase-1→2 stack), run an additional opus cross-slice (a+b+c) coherence review** scoped to `main..HEAD`, explicitly checking the integration seams: 2b's Process face operating on 2a-created extracts; the unified Study surface folding the reading queue into the FSRS item queue; and whether 2b/2c relocation honors the 2a rune-offset `char=` anchor contract. (Optionally `/code-review ultra` for a deeper multi-agent pass.)
+
 ## 9. Error handling & edge cases (Phase 1)
 
 - **DB open/migrate failure:** surface via the existing log-panel/error-toast channel; Study mode shows an error state rather than crashing.
