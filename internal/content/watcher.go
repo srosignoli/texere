@@ -96,7 +96,13 @@ func translateEvent(fw *fsnotify.Watcher, ev fsnotify.Event, root string) []Coll
 			if isExcludedDir(filepath.Base(ev.Name)) {
 				return nil
 			}
+			// Best-effort: the dir may vanish before we watch it, or watches
+			// may be exhausted; its existing files are still surfaced below.
 			_ = addWatchRecursive(fw, root, ev.Name)
+			// A .n4l landing in the new dir between the walk snapshot and the
+			// watch taking effect may be surfaced both here and by its own
+			// Create event; that duplicate EventAdded is tolerated because the
+			// frontend upserts by FilePath.
 			return scanSubtreeAdded(root, ev.Name)
 		}
 	}
