@@ -11,27 +11,27 @@ type ParsedFile struct {
 // Chapter is a named section within a file. Begins at a "- title" line and ends
 // at the next "- title" line or EOF.
 type Chapter struct {
-	Title     string            // Text after "- " on the chapter line
-	LineStart int               // 1-indexed line number of the "- title" line
-	Nodes     []Node            // In file order, root nodes only
-	Labels    map[string]*Node  // @label → node pointer (resolved within this chapter)
+	Title     string           // Text after "- " on the chapter line
+	LineStart int              // 1-indexed line number of the "- title" line
+	Nodes     []Node           // In file order, root nodes only
+	Labels    map[string]*Node // @label → node pointer (resolved within this chapter)
 }
 
 // Node is a root-level knowledge statement. Ditto continuations are embedded in
 // Dittos, not in Chapter.Nodes.
 type Node struct {
-	ID           string     // Stable identifier; "" if node has no # @id marker
-	Text         string     // Raw node text (leading whitespace stripped, trailing comment excluded)
-	Line         int        // 1-indexed line number of this node line
-	EffectiveCtx []string   // Snapshot of context tags active at this node (sorted, deterministic)
-	IsSequence   bool       // true if _sequence_ was in EffectiveCtx at this line
-	Arrows       []Arrow    // Outgoing arrows declared on this node line
+	ID           string      // Stable identifier; "" if node has no # @id marker
+	Text         string      // Raw node text (leading whitespace stripped, trailing comment excluded)
+	Line         int         // 1-indexed line number of this node line
+	EffectiveCtx []string    // Snapshot of context tags active at this node (sorted, deterministic)
+	IsSequence   bool        // true if _sequence_ was in EffectiveCtx at this line
+	Arrows       []Arrow     // Outgoing arrows declared on this node line
 	Dittos       []DittoLine // Continuation lines (in file order)
-	StudyMeta    *StudyMeta // nil if not studyable
-	Priority     *int       // nil if no @priority marker; value 0–100
+	StudyMeta    *StudyMeta  // nil if not studyable
+	Priority     *int        // nil if no @priority marker; value 0–100
 	Provenance   *Provenance // nil if no @source / @ref / @progress markers
-	Label        string     // The @label value if this node was labeled; "" otherwise
-	IDMarkerLine int        // 1-indexed line number of the "# @id" line above this node; 0 if absent
+	Label        string      // The @label value if this node was labeled; "" otherwise
+	IDMarkerLine int         // 1-indexed line number of the "# @id" line above this node; 0 if absent
 }
 
 // Arrow is a typed relationship declared on a node or ditto line.
@@ -100,15 +100,16 @@ type Reminder struct {
 type ChapterSummary struct {
 	FilePath  string   // Absolute path
 	FileName  string   // Base name (for display)
+	RelPath   string   // Collection-relative, slash-normalized path (e.g. "reading/Foo.n4l")
 	Chapters  []string // Chapter titles in file order; empty if no "- title" found
 	ScanError error    // Non-nil if file could not be read
 }
 
 // SSTRegistry is loaded from the SSTconfig directory at startup.
 type SSTRegistry struct {
-	Arrows      map[string]ArrowDef  // Short code → definition
-	Annotations map[string]AnnotDef  // Symbol (">>", "%>", "=", "***", "**") → definition
-	LoadErrors  []error              // Non-fatal load errors
+	Arrows      map[string]ArrowDef // Short code → definition
+	Annotations map[string]AnnotDef // Symbol (">>", "%>", "=", "***", "**") → definition
+	LoadErrors  []error             // Non-fatal load errors
 }
 
 // ArrowDef describes one arrow type from the SSTconfig.
@@ -138,7 +139,7 @@ type AnnotDef struct {
 type EventKind int
 
 const (
-	EventAdded    EventKind = iota
+	EventAdded EventKind = iota
 	EventRemoved
 	EventRenamed
 	EventModified

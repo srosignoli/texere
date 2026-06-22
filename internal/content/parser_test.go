@@ -163,6 +163,63 @@ func TestScanCollectionUnreadable(t *testing.T) {
 	}
 }
 
+func TestScanCollectionRecursive(t *testing.T) {
+	dir := t.TempDir()
+
+	// Top-level file.
+	if err := os.WriteFile(filepath.Join(dir, "top.n4l"), []byte("- a\nnode\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// reading/ subdir file — must be discovered.
+	if err := os.MkdirAll(filepath.Join(dir, "reading"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "reading", "deep.n4l"), []byte("- b\nnode\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Denylisted + hidden dirs containing .n4l — must be ignored.
+	for _, d := range []string{"sst_data", "bleve", "sources", ".hidden"} {
+		if err := os.MkdirAll(filepath.Join(dir, d), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, d, "x.n4l"), []byte("- c\nnode\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	summaries, err := ScanCollection(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got := map[string]bool{}
+	for _, s := range summaries {
+		got[s.RelPath] = true
+	}
+	if len(summaries) != 2 {
+		t.Fatalf("want 2 summaries, got %d: %v", len(summaries), got)
+	}
+	if !got["top.n4l"] {
+		t.Errorf("missing top-level file; got %v", got)
+	}
+	if !got["reading/deep.n4l"] {
+		t.Errorf("missing subdir file; got %v", got)
+	}
+	// Top-level RelPath is the bare base name (no slash); subdir RelPath is slashed.
+	for _, s := range summaries {
+		switch s.FileName {
+		case "top.n4l":
+			if s.RelPath != "top.n4l" {
+				t.Errorf("top-level RelPath = %q, want %q", s.RelPath, "top.n4l")
+			}
+		case "deep.n4l":
+			if s.RelPath != "reading/deep.n4l" {
+				t.Errorf("subdir RelPath = %q, want %q", s.RelPath, "reading/deep.n4l")
+			}
+		}
+	}
+}
+
 func BenchmarkScanCollection(b *testing.B) {
 	dir := b.TempDir()
 	src := testdataPath(b, "simple.n4l")
