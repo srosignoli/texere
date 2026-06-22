@@ -59,7 +59,7 @@
             on:click={() => toggleCollapse(summary.FilePath)}
           >
             <span class="chevron">{isCollapsed ? '▶' : '▼'}</span>
-            <span class="file-name">{summary.FileName}</span>
+            <span class="file-name">{summary.RelPath?.includes('/') ? summary.RelPath : summary.FileName}</span>
           </button>
 
           <!-- Chapter children -->
