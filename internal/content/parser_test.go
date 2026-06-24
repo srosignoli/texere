@@ -1500,3 +1500,41 @@ func BenchmarkScanCollection500(b *testing.B) {
 		}
 	}
 }
+
+func TestCardNodeKeepsLiteralTextNoArrows(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "card.n4l")
+	body := "- Ch\n# @card\nWhat is the capital (city) of France? >> Paris\n"
+	if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	pf, _ := ParseFile(p, emptyRegistry())
+	n := pf.Chapters[0].Nodes[0]
+	if n.Text != "What is the capital (city) of France? >> Paris" {
+		t.Fatalf("card text=%q want literal line", n.Text)
+	}
+	if len(n.Arrows) != 0 {
+		t.Fatalf("card node should have no arrows, got %v", n.Arrows)
+	}
+	if len(pf.Errors) != 0 {
+		t.Fatalf("card node should not log unknown-arrow errors, got %v", pf.Errors)
+	}
+}
+
+func TestClozeExtractNodeKeepsFromAnchorSeparate(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "ex.n4l")
+	// A cloze-promoted extract: study-marked AND carries a (from) anchor.
+	body := "- Ch\n# @cloze\nextracted sentence (from) \"sources/x.txt char=0\"\n"
+	if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	pf, _ := ParseFile(p, &SSTRegistry{Arrows: map[string]ArrowDef{"from": {Code: "from", LongName: "from"}}})
+	n := pf.Chapters[0].Nodes[0]
+	if n.Text != "extracted sentence" {
+		t.Fatalf("cloze-extract text=%q want passage with anchor stripped", n.Text)
+	}
+	if !nodeHasFromArrow(&n) {
+		t.Fatalf("cloze-extract node should retain its (from) arrow")
+	}
+}

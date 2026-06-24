@@ -152,30 +152,30 @@ func ParseFile(path string, registry *SSTRegistry) (*ParsedFile, []ParseError) {
 // ---------------------------------------------------------------------------
 
 type studyBlockState struct {
-	kind          BlockType
-	forceReverse  bool
+	kind         BlockType
+	forceReverse bool
 }
 
 type pendingRef struct {
-	refStr     string  // e.g., "$anchor1.1" or "$PREV.3"
-	targetNode *Node   // the node that contains the reference token in its Text
+	refStr     string // e.g., "$anchor1.1" or "$PREV.3"
+	targetNode *Node  // the node that contains the reference token in its Text
 	chapter    *Chapter
 }
 
 type parserState struct {
-	currentChapter      *Chapter
-	effectiveCtx        map[string]struct{}
-	dittoParent         *Node
+	currentChapter       *Chapter
+	effectiveCtx         map[string]struct{}
+	dittoParent          *Node
 	dittoParentFromQuote bool // true when dittoParent was created from a `"` line
 	dittoParentIndent    int  // leading-space count of the `"` line that created dittoParent
-	studyBlock          studyBlockState
-	pendingStudy    *StudyMeta
-	pendingIDMarker string // shortid from "# @id <shortid>"
-	pendingIDLine   int    // line number of the "# @id" marker
-	pendingPriority *int
-	pendingProv     Provenance
-	labelMap        map[string]*Node
-	pendingRefs     []pendingRef
+	studyBlock           studyBlockState
+	pendingStudy         *StudyMeta
+	pendingIDMarker      string // shortid from "# @id <shortid>"
+	pendingIDLine        int    // line number of the "# @id" marker
+	pendingPriority      *int
+	pendingProv          Provenance
+	labelMap             map[string]*Node
+	pendingRefs          []pendingRef
 	// prevObject holds the most recent real (non-ditto) arrow target seen, so a
 	// lone `"` in object position — N4L object-ditto, e.g. `tram (fwd) "` meaning
 	// `tram (fwd) target 3` — resolves to the line above's object instead of
@@ -443,6 +443,18 @@ func parseMarker(pf *ParsedFile, state *parserState, path, line string, lineNum 
 var labelPrefixRe = regexp.MustCompile(`^@([A-Za-z][A-Za-z0-9_-]*)\s+`)
 var refTokenRe = regexp.MustCompile(`\$([A-Za-z][A-Za-z0-9_-]*)\.(\d+)|\$(PREV)\.(\d+)`)
 
+// hasFromArrowToken reports whether text contains a "(from)" extract-anchor arrow
+// with a non-empty target. Cheap read-only check (no error logging) used to decide
+// whether a study-marked node should retain arrow extraction so its (from) anchor
+// stays separate from the card text.
+func hasFromArrowToken(text string) bool {
+	i := strings.Index(text, "(from)")
+	if i < 0 {
+		return false
+	}
+	return strings.TrimSpace(text[i+len("(from)"):]) != ""
+}
+
 func parseNode(pf *ParsedFile, state *parserState, path, line string, lineNum int, reg *SSTRegistry) {
 	if state.currentChapter == nil {
 		return
@@ -462,17 +474,26 @@ func parseNode(pf *ParsedFile, state *parserState, path, line string, lineNum in
 		nodeText = strings.TrimSpace(nodeText)
 	}
 
-	// Extract arrows from node text
-	cleanText, arrows := extractArrows(nodeText, lineNum, false, reg, path, pf)
-	resolveObjectDittos(state, arrows)
-
-	// Build study meta from pending or block
+	// Build study meta first — a study marker (without a (from) anchor) means this
+	// line is a card, not a relationship, so its text is taken literally and arrows
+	// are NOT parsed from it.
 	var sm *StudyMeta
 	if state.pendingStudy != nil {
 		sm = state.pendingStudy
 		state.pendingStudy = nil
 	} else if state.studyBlock.kind != BlockTypeNone {
 		sm = studyMetaFromBlock(state.studyBlock)
+	}
+
+	var cleanText string
+	var arrows []Arrow
+	if sm != nil && !hasFromArrowToken(nodeText) {
+		// Card/cloze/study node without a (from) anchor: the whole line is literal
+		// card text (with ">>" kept literal for the generator to split).
+		cleanText = nodeText
+	} else {
+		cleanText, arrows = extractArrows(nodeText, lineNum, false, reg, path, pf)
+		resolveObjectDittos(state, arrows)
 	}
 
 	// Extract cloze targets from node text
