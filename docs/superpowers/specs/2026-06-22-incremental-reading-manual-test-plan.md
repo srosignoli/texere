@@ -171,17 +171,16 @@ Each case lists **Steps** and **Expected**. A case **passes** only if every Expe
 2. Switch to the **Recall** tab (or Ctrl+Shift+R).
 
 **Expected**
-- `# @card` is inserted directly above the node and the file saved; that one file re-syncs.
-- The `extracts` row for that id has `active=0` (retired).
-- A new `items` row (keyed off the same NodeID base) exists with `active=1` and is recallable **this session**.
+- Clicking **→ Make card** rewrites the extract node to `<passage> >> ` with `# @card` above it and keeps the Process editor open for the author to type the back.
+- Clicking **✓ Create card** saves and runs `SyncStudyItems()`; the `extracts` row for that id has `active=0` (retired) and a new `items` row (same NodeID base) exists with `active=1` and is recallable **this session**.
 
 ### TC-2b.4 Promote → Cloze with no braces (soft hint)
 **Steps**
 1. On an extract whose text has no `{braces}`, click **{ } Cloze**.
 
 **Expected**
-- The `# @cloze` marker is written and the extract retires (`active=0`), but `GenerateCards` yields no item.
-- A soft hint surfaces (e.g. "add `{braces}` to cloze") — not a hard error.
+- The `# @cloze` marker is written and the extract retires (`active=0`), but with no `{{braces}}` `GenerateCards` yields no item.
+- A soft hint surfaces (e.g. "add `{{braces}}` to cloze") — not a hard error.
 
 ### TC-2b.5 Later defers (geometric backoff)
 **Steps**
