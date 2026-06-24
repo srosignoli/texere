@@ -77,7 +77,7 @@ type StudyMeta struct {
 	CardType        CardType  // Derived card type
 	ForceReverse    bool      // # @card reverse
 	SuppressReverse bool      // # @card no-reverse
-	ClozeTargets    []string  // Text inside {braces} for cloze cards
+	ClozeTargets    []string  // Text inside {{braces}} for cloze cards
 	FromBlock       bool      // true if inherited from a @study block
 	BlockType       BlockType // Block kind (None if individual marker)
 }
@@ -119,7 +119,6 @@ type ArrowDef struct {
 	Reverse       string // Reverse code; "" if one-way
 	MetaType      string // SST meta-type (e.g., "contains", "properties")
 	Context       string // SSTconfig section header (":: label ::") the pair was declared under; "" if none
-	Studyable     bool   // From SSTconfig comment metadata
 	ClozeEligible bool
 	// Unknown marks an arrow that was NOT declared in any SSTconfig but was
 	// encountered in the source notes. Such arrows are synthesized into the
