@@ -47,6 +47,24 @@ func TestInjectMissingExtractIDs(t *testing.T) {
 	}
 }
 
+func TestSeedBasicCardNode(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "ex.n4l")
+	body := "- Ch\n# @id e1\n  extracted sentence (from) \"sources/x.txt char=0\"\n"
+	if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// The extract node is on line 3.
+	if err := SeedBasicCardNode(p, 3, "extracted sentence"); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(p)
+	want := "- Ch\n# @id e1\n# @card\n  extracted sentence >> \n"
+	if string(got) != want {
+		t.Fatalf("seeded file:\n%q\nwant:\n%q", got, want)
+	}
+}
+
 func TestInjectMissingExtractIDsForwardOrder(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "f.n4l")

@@ -29,6 +29,33 @@ func InsertMarkerAboveNode(path string, nodeLine int, marker string) error {
 	return nil
 }
 
+// SeedBasicCardNode rewrites the node at the 1-indexed nodeLine into a seeded
+// basic card: the line becomes "<front> >> " (back left empty for the author),
+// preserving the original line's leading indentation, and a "# @card" marker is
+// inserted directly above it — in a single atomic rewrite. Used when promoting an
+// extract to a basic card; the caller passes the extract's passage text as front
+// and the original (from) anchor is intentionally dropped from the file.
+func SeedBasicCardNode(path string, nodeLine int, front string) error {
+	lines, err := readLines(path)
+	if err != nil {
+		return fmt.Errorf("content: SeedBasicCardNode: %w", err)
+	}
+	if nodeLine < 1 || nodeLine > len(lines) {
+		return fmt.Errorf("content: SeedBasicCardNode: line %d out of range (1..%d)", nodeLine, len(lines))
+	}
+	idx := nodeLine - 1
+	indent := lines[idx][:len(lines[idx])-len(strings.TrimLeft(lines[idx], " \t"))]
+	out := make([]string, 0, len(lines)+1)
+	out = append(out, lines[:idx]...)
+	out = append(out, "# @card")
+	out = append(out, indent+front+" >> ")
+	out = append(out, lines[idx+1:]...)
+	if err := writeLines(path, out); err != nil {
+		return fmt.Errorf("content: SeedBasicCardNode: write: %w", err)
+	}
+	return nil
+}
+
 // nodeHasFromArrow reports whether the node (or one of its ditto lines) carries
 // a (from) arrow.
 func nodeHasFromArrow(n *Node) bool {
