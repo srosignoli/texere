@@ -32,7 +32,7 @@ func Sync(store *Store, files []string, reg *content.SSTRegistry) (SyncResult, e
 				break
 			}
 		}
-		cards := GenerateCards(pf, reg)
+		cards := GenerateCards(pf)
 		keep := make(map[string]bool, len(cards))
 		for _, c := range cards {
 			added, err := store.UpsertItem(c)

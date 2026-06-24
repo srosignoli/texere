@@ -7,9 +7,10 @@ import (
 	"texere/internal/content"
 )
 
-// GenerateCards derives Phase-1 study cards (cloze + basic forward arrow) from a
-// parsed file. Nodes without a # @id are skipped (they cannot be keyed).
-func GenerateCards(pf *content.ParsedFile, reg *content.SSTRegistry) []GeneratedCard {
+// GenerateCards derives Phase-1 study cards from a parsed file. Basic and reverse
+// cards split the node's literal text on the first ">>"; cloze cards blank each
+// {{double-brace}} group. Nodes without a # @id are skipped (they cannot be keyed).
+func GenerateCards(pf *content.ParsedFile) []GeneratedCard {
 	var out []GeneratedCard
 	if pf == nil {
 		return out
@@ -23,31 +24,63 @@ func GenerateCards(pf *content.ParsedFile, reg *content.SSTRegistry) []Generated
 			case content.CardTypeCloze:
 				out = append(out, clozeCards(node.ID, pf.Path, node.Text)...)
 			case content.CardTypeBasic:
-				out = append(out, basicCards(node.ID, pf.Path, node.Text, node.Arrows, reg)...)
+				out = append(out, basicCards(node.ID, pf.Path, node.Text, false)...)
+			case content.CardTypeReverse:
+				out = append(out, basicCards(node.ID, pf.Path, node.Text, true)...)
 			}
 		}
 	}
 	return out
 }
 
-// braceGroups returns the [start,end) byte ranges of each {...} group, in order.
+// basicCards splits text on the first ">>" into front/back. A line without ">>"
+// (or with an empty side after trimming) yields no card. With reverse, the swapped
+// card is emitted too (Discriminator "1").
+func basicCards(nodeID, filePath, text string, reverse bool) []GeneratedCard {
+	front, back, ok := strings.Cut(text, ">>")
+	if !ok {
+		return nil
+	}
+	front = strings.TrimSpace(front)
+	back = strings.TrimSpace(back)
+	if front == "" || back == "" {
+		return nil
+	}
+	out := []GeneratedCard{{
+		NodeID: nodeID, FilePath: filePath, CardType: CardTypeBasic,
+		Front: front, Back: back, Discriminator: "0",
+	}}
+	if reverse {
+		out = append(out, GeneratedCard{
+			NodeID: nodeID, FilePath: filePath, CardType: CardTypeBasic,
+			Front: back, Back: front, Discriminator: "1",
+		})
+	}
+	return out
+}
+
+// braceGroups returns the [start,end) byte ranges of each {{...}} group, in order.
 func braceGroups(text string) [][2]int {
 	var groups [][2]int
-	for i := 0; i < len(text); i++ {
-		if text[i] != '{' {
-			continue
+	i := 0
+	for i+1 < len(text) {
+		if text[i] == '{' && text[i+1] == '{' {
+			if j := strings.Index(text[i+2:], "}}"); j >= 0 {
+				end := i + 2 + j + 2
+				groups = append(groups, [2]int{i, end})
+				i = end
+				continue
+			}
+			break
 		}
-		if j := strings.IndexByte(text[i:], '}'); j >= 0 {
-			groups = append(groups, [2]int{i, i + j + 1})
-			i += j
-		}
+		i++
 	}
 	return groups
 }
 
-// stripBraces removes every { and } from text (the "back" rendering).
+// stripBraces removes every {{ and }} from text (the "back" rendering).
 func stripBraces(text string) string {
-	r := strings.NewReplacer("{", "", "}", "")
+	r := strings.NewReplacer("{{", "", "}}", "")
 	return r.Replace(text)
 }
 
@@ -55,7 +88,6 @@ func clozeCards(nodeID, filePath, text string) []GeneratedCard {
 	groups := braceGroups(text)
 	var out []GeneratedCard
 	for idx := range groups {
-		// Build the front: the chosen group becomes […], others lose their braces.
 		var b strings.Builder
 		last := 0
 		for k, gg := range groups {
@@ -71,22 +103,6 @@ func clozeCards(nodeID, filePath, text string) []GeneratedCard {
 		out = append(out, GeneratedCard{
 			NodeID: nodeID, FilePath: filePath, CardType: CardTypeCloze,
 			Front: b.String(), Back: stripBraces(text), Discriminator: strconv.Itoa(idx),
-		})
-	}
-	return out
-}
-
-func basicCards(nodeID, filePath, text string, arrows []content.Arrow, reg *content.SSTRegistry) []GeneratedCard {
-	var out []GeneratedCard
-	for i, a := range arrows {
-		def, ok := reg.Arrows[a.Code]
-		if !ok || !def.Studyable {
-			continue
-		}
-		out = append(out, GeneratedCard{
-			NodeID: nodeID, FilePath: filePath, CardType: CardTypeBasic,
-			Front: text + " — " + def.LongName + "?", Back: a.Target,
-			Discriminator: strconv.Itoa(i),
 		})
 	}
 	return out
