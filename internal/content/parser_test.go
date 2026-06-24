@@ -1538,3 +1538,26 @@ func TestClozeExtractNodeKeepsFromAnchorSeparate(t *testing.T) {
 		t.Fatalf("cloze-extract node should retain its (from) arrow")
 	}
 }
+
+func TestExtractClozeTargetsDoubleBraceOnly(t *testing.T) {
+	cases := []struct {
+		in   string
+		want []string
+	}{
+		{"The {{capital}} of {{France}}", []string{"capital", "France"}},
+		{"single {brace} is literal", nil},
+		{"mixed {x} and {{y}}", []string{"y"}},
+		{"no braces here", nil},
+	}
+	for _, c := range cases {
+		got := extractClozeTargets(c.in)
+		if len(got) != len(c.want) {
+			t.Fatalf("%q: got %v want %v", c.in, got, c.want)
+		}
+		for i := range got {
+			if got[i] != c.want[i] {
+				t.Fatalf("%q: got[%d]=%q want %q", c.in, i, got[i], c.want[i])
+			}
+		}
+	}
+}

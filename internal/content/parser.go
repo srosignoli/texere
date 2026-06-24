@@ -1060,17 +1060,21 @@ func studyMetaFromBlock(block studyBlockState) *StudyMeta {
 	return sm
 }
 
-// extractClozeTargets finds all {braces} content in text.
+// extractClozeTargets finds the contents of each {{double-brace}} group in text,
+// in order. A single {brace} is literal text and is ignored.
 func extractClozeTargets(text string) []string {
 	var targets []string
-	start := -1
-	for i, ch := range text {
-		if ch == '{' {
-			start = i
-		} else if ch == '}' && start >= 0 {
-			targets = append(targets, text[start+1:i])
-			start = -1
+	i := 0
+	for i+1 < len(text) {
+		if text[i] == '{' && text[i+1] == '{' {
+			if j := strings.Index(text[i+2:], "}}"); j >= 0 {
+				targets = append(targets, text[i+2:i+2+j])
+				i = i + 2 + j + 2
+				continue
+			}
+			break // unmatched "{{" — no further groups
 		}
+		i++
 	}
 	return targets
 }
