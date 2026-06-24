@@ -8,7 +8,7 @@
   import { n4lLanguage } from '../lib/n4l-language.js'
   import { n4lHighlighting } from '../lib/n4l-highlight.js'
   import { arrowCompletion } from '../lib/arrow-autocomplete.js'
-  import { GetExtractTarget, PromoteExtract, DeferExtract, DismissExtract, GetFileContent, SaveFile, GetRecentArrows, UpdateRecentArrows } from '../../wailsjs/go/main/App'
+  import { GetExtractTarget, PromoteExtract, DeferExtract, DismissExtract, GetFileContent, SaveFile, SyncStudyItems, GetRecentArrows, UpdateRecentArrows } from '../../wailsjs/go/main/App'
 
   export let extractId
   export let onAdvance = null
@@ -18,6 +18,7 @@
   let view
   let savedContent = ''
   let error = ''
+  let seeding = false   // true after "Make card": author is filling in the back
   let arrowDefsRef = []
   let recentCodesRef = []
   $: arrowDefsRef = $workbenchStore.arrowDefs ?? []
@@ -45,7 +46,44 @@
     } catch (e) { error = String(e?.message ?? e) }
   }
 
-  const makeCard = () => act(() => PromoteExtract(extractId, 'card'))
+  async function makeCard() {
+    error = ''
+    try {
+      await flush()
+      await PromoteExtract(extractId, 'card')   // seeds "<passage> >> " + # @card
+      const text = (await GetFileContent(target.filePath)) ?? ''
+      savedContent = text
+      view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text } })
+      seeding = true
+      focusSeedLine()
+    } catch (e) { error = String(e?.message ?? e) }
+  }
+
+  // Place the cursor at the end of the seeded "... >> " line so the author types the back.
+  function focusSeedLine() {
+    if (!view) return
+    const doc = view.state.doc
+    for (let n = 1; n <= doc.lines; n++) {
+      const line = doc.line(n)
+      if (line.text.trimEnd().endsWith('>>')) {
+        view.dispatch({ selection: { anchor: line.to }, effects: EditorView.scrollIntoView(line.to, { y: 'center' }) })
+        view.focus()
+        return
+      }
+    }
+    view.focus()
+  }
+
+  async function createCard() {
+    error = ''
+    try {
+      await flush()             // persist the filled-in back
+      await SyncStudyItems()    // SaveFile does not sync; materialize the card now
+      seeding = false
+      onAdvance?.()
+    } catch (e) { error = String(e?.message ?? e) }
+  }
+
   const makeCloze = () => act(() => PromoteExtract(extractId, 'cloze'))
   const later = () => act(() => DeferExtract(extractId))
   const dismiss = () => act(() => DismissExtract(extractId))
@@ -90,10 +128,15 @@
     <span class="pv-title">Process</span>
     {#if target}<span class="pv-anchor" title={target.fromAnchor}>▸ {target.fromAnchor}</span>{/if}
     <span class="pv-spacer"></span>
-    <button class="pv-btn" on:click={makeCard}>→ Make card</button>
-    <button class="pv-btn" on:click={makeCloze}>{'{ }'} Cloze</button>
-    <button class="pv-btn" on:click={later}>⏳ Later</button>
-    <button class="pv-btn" on:click={dismiss}>✕ Dismiss</button>
+    {#if seeding}
+      <span class="pv-anchor">Fill in the back after "&gt;&gt;", then:</span>
+      <button class="pv-btn" on:click={createCard}>✓ Create card</button>
+    {:else}
+      <button class="pv-btn" on:click={makeCard}>→ Make card</button>
+      <button class="pv-btn" on:click={makeCloze}>{'{ }'} Cloze</button>
+      <button class="pv-btn" on:click={later}>⏳ Later</button>
+      <button class="pv-btn" on:click={dismiss}>✕ Dismiss</button>
+    {/if}
   </div>
   {#if error}<div class="pv-error">{error}</div>{/if}
   <div class="pv-editor" bind:this={container}></div>
