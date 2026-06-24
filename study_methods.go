@@ -104,7 +104,14 @@ func (a *App) PromoteExtract(id, kind string) error {
 		return err
 	}
 	a.savingPath = e.FilePath
-	wErr := content.InsertMarkerAboveNode(e.FilePath, line, "# @"+kind)
+	var wErr error
+	if kind == "card" {
+		// Seed a basic card stub "<passage> >> " for the author to complete; the
+		// (from) anchor is dropped (provenance stays in the retired extract row).
+		wErr = content.SeedBasicCardNode(e.FilePath, line, e.Text)
+	} else {
+		wErr = content.InsertMarkerAboveNode(e.FilePath, line, "# @cloze")
+	}
 	a.savingPath = ""
 	if wErr != nil {
 		return wErr
