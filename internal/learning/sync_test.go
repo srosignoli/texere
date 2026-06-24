@@ -14,7 +14,7 @@ func TestSyncAssignsIDsUpsertsAndRetires(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "f.n4l")
 	// A cloze node with NO # @id — Sync must inject one and create a card.
-	body := "- Ch\n# @cloze\nSystem 1 is {fast}\n"
+	body := "- Ch\n# @cloze\nSystem 1 is {{fast}}\n"
 	if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func TestSyncDiscoversAndRetiresExtracts(t *testing.T) {
 	}
 
 	// Promote it: add # @card → on next sync the extract retires and an item appears.
-	body2 := "- Ch\n# @id e1\n# @card\nSystem 1 is fast (from) \"sources/f.txt char=0\"\n"
+	body2 := "- Ch\n# @id e1\n# @cloze\nSystem 1 is fast (from) \"sources/f.txt char=0\"\n"
 	os.WriteFile(p, []byte(body2), 0o644)
 	res2, _ := Sync(store, []string{p}, reg)
 	if res2.ExtractsRetired != 1 {
@@ -102,11 +102,10 @@ func TestSyncMixedCardAndExtractFileIdempotent(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "mix.n4l")
 	// An un-ID'd # @card node ABOVE an un-ID'd (from) extract node.
-	body := "- Ch\n# @card\nitem front (means) \"item back\"\nextracted sentence (from) \"sources/x.txt char=0\"\n"
+	body := "- Ch\n# @card\nitem front >> item back\nextracted sentence (from) \"sources/x.txt char=0\"\n"
 	os.WriteFile(p, []byte(body), 0o644)
 	reg := &content.SSTRegistry{Arrows: map[string]content.ArrowDef{
-		"means": {Code: "means", LongName: "means", Studyable: true},
-		"from":  {Code: "from", LongName: "from"},
+		"from": {Code: "from", LongName: "from"},
 	}}
 	store, _ := Open(dir)
 	defer store.Close()
