@@ -444,15 +444,21 @@ var labelPrefixRe = regexp.MustCompile(`^@([A-Za-z][A-Za-z0-9_-]*)\s+`)
 var refTokenRe = regexp.MustCompile(`\$([A-Za-z][A-Za-z0-9_-]*)\.(\d+)|\$(PREV)\.(\d+)`)
 
 // hasFromArrowToken reports whether text contains a "(from)" extract-anchor arrow
-// with a non-empty target. Cheap read-only check (no error logging) used to decide
-// whether a study-marked node should retain arrow extraction so its (from) anchor
-// stays separate from the card text.
+// whose target is a quoted string — i.e. (from) followed (after optional spaces/tabs)
+// by a double-quote. This is the format AppendExtract always emits:
+//
+//	<text> (from) "<anchor>"
+//
+// A card whose front text contains a bare "(from)" without a quoted target (e.g.
+// "Where does rain come (from)? >> clouds") must NOT match, so that the ">>"
+// remains literal card text instead of being swallowed as an arrow target.
 func hasFromArrowToken(text string) bool {
 	i := strings.Index(text, "(from)")
 	if i < 0 {
 		return false
 	}
-	return strings.TrimSpace(text[i+len("(from)"):]) != ""
+	rest := strings.TrimLeft(text[i+len("(from)"):], " \t")
+	return strings.HasPrefix(rest, `"`)
 }
 
 func parseNode(pf *ParsedFile, state *parserState, path, line string, lineNum int, reg *SSTRegistry) {

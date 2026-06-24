@@ -1539,6 +1539,25 @@ func TestClozeExtractNodeKeepsFromAnchorSeparate(t *testing.T) {
 	}
 }
 
+func TestCardWithLiteralFromParenStillGeneratesCard(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "card.n4l")
+	// A card whose front legitimately contains "(from)" — NOT an extract anchor
+	// (no quoted target). It must stay literal so the ">>" survives.
+	body := "- Ch\n# @card\nWhere does rain come (from)? >> clouds\n"
+	if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	pf, _ := ParseFile(p, emptyRegistry())
+	n := pf.Chapters[0].Nodes[0]
+	if n.Text != "Where does rain come (from)? >> clouds" {
+		t.Fatalf("card text=%q want full literal line (>> preserved)", n.Text)
+	}
+	if len(n.Arrows) != 0 {
+		t.Fatalf("card node should have no arrows, got %v", n.Arrows)
+	}
+}
+
 func TestExtractClozeTargetsDoubleBraceOnly(t *testing.T) {
 	cases := []struct {
 		in   string
