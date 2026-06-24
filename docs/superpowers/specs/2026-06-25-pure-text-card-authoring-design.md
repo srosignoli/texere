@@ -61,23 +61,31 @@ Rules:
 
 ## 3. Parser changes (`internal/content`)
 
-### 3.1 Skip arrow extraction on card/cloze nodes
+### 3.1 Skip arrow extraction on card/cloze nodes (narrowed for `(from)` anchors)
 
 Card text must not pass through `extractArrows`, or parenthetical prose
 (`What is the capital (city) of France?`) gets consumed as a bogus `(city)` arrow with the
 rest of the line as its target — breaking the card.
 
 In `parseNode`, **before** calling `extractArrows`, inspect the pending study meta
-(`state.pendingStudy` / `state.studyBlock`). If the node carries a `# @card` / `# @cloze`
-marker, or sits inside a `# @study*` block, treat the **whole trimmed line** as literal
-card text:
+(`state.pendingStudy` / `state.studyBlock`). Skip arrow extraction — taking the **whole
+trimmed line** as literal card text — when the node is study-marked **and does not carry a
+`(from)` arrow**:
 
 - `node.Text` = full trimmed line (with `>>` kept literal — see §3.3).
 - `node.Arrows` = empty.
 
-A study marker on a line means "this is a card, not a relationship." Consequence: such a
-node ingests into the graph as a lone node with no edges — already true for cloze today,
-and intended under the new philosophy.
+**Why the `(from)` exception:** an extract node anchors to its source via a `(from)` arrow
+(`passage (from) "<refPath> char=N"`). That anchor must stay parsed/separate even when the
+node also gains a `# @cloze` marker during promotion, so the anchor text never leaks into
+the cloze passage. Concretely: a study node *with* a `(from)` arrow keeps arrow extraction
+(anchor separated, `node.Text` = passage); a study node *without* one skips it (literal card
+text). Basic-card promotion (§8) explicitly strips the `(from)` anchor so the seeded `>>`
+card falls into the "no `(from)`" branch.
+
+A study marker (without `from`) on a line means "this is a card, not a relationship."
+Consequence: such a node ingests into the graph as a lone node with no edges — already true
+for cloze today, and intended under the new philosophy.
 
 ### 3.2 Cloze: `{ }` → `{{ }}`
 
@@ -168,11 +176,37 @@ idempotent and reverse's two cards get stable, distinct ids.
 
 ---
 
-## 7. Out of scope (unchanged)
+## 8. Promote-extract interaction (seed `>>` on Make card)
+
+A raw extract is a single anchored passage with no front/back, so "promote → Make card"
+cannot produce a basic `>>` card directly. Behavior:
+
+- **Promote → Cloze** (`# @cloze`): unchanged. Insert the marker; the node keeps its
+  `(from)` anchor (so arrow extraction is retained per §3.1) and `node.Text` stays the clean
+  passage. The author adds `{{ }}` in the Process editor; the cloze card generates on the
+  next sync.
+- **Promote → Make card** (`# @card`): the node is **rewritten** to seed a basic card —
+  the `(from) "<anchor>"` portion is dropped and the line becomes `<passage> >> ` (back
+  empty), with `# @card` inserted above. The extract's `# @id` is preserved, so the eventual
+  item keys off the **same NodeID base**. The `(from)` anchor is dropped from the file
+  (its provenance remains in the now-retired `extracts` row). With the back empty, **no item
+  is generated yet**; the Process editor stays open with the cursor after `>> ` for the
+  author to type the back. On save **plus a sync** the card materializes.
+  - `SaveFile` does **not** sync learning items, so the Process view triggers
+    `SyncStudyItems()` after the author confirms the filled-in card (a new "✓ Create card"
+    action), then advances.
+
+New backend surface: `content.SeedBasicCardNode(path, nodeLine, front)` — atomic rewrite
+that replaces the node line with `front + " >> "` (preserving indentation) and inserts
+`# @card` above it. `PromoteExtract(id, "card")` calls it with the extract's stored text;
+`PromoteExtract(id, "cloze")` keeps using `InsertMarkerAboveNode`.
+
+This supersedes the prior "promote buttons unchanged" assumption. TC-2b.3 changes: promote →
+Make card now seeds an editable card rather than immediately creating a recallable item.
+
+## 9. Out of scope (unchanged)
 
 - FSRS scheduling and the recall/grading spine.
 - Sequence-card generation (still parsed, still dormant).
-- Process/promote UI buttons — they still write `# @card` / `# @cloze` markers; only the
-  *node-text convention* changed.
-- Reading / extract / import flows.
-- Any user-facing soft-hint channel for malformed cards.
+- Reading / extract / import flows (other than the promote rewrite in §8).
+- Any user-facing soft-hint channel for malformed (no-`>>`) cards.
