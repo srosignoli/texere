@@ -18,7 +18,7 @@ func TestPromoteExtractCreatesItemRetiresExtract(t *testing.T) {
 	// The (from) arrow must be inline on the same node line — separate-line (from)
 	// is parsed as a root node with empty text and cannot produce a cloze card.
 	// This matches the format produced by content.AppendExtract.
-	os.WriteFile(p, []byte("- K\n# @id e1\nSystem 1 is {fast} (from) \"sources/k.txt char=0\"\n"), 0o644)
+	os.WriteFile(p, []byte("- K\n# @id e1\nSystem 1 is {{fast}} (from) \"sources/k.txt char=0\"\n"), 0o644)
 	store, _ := learning.Open(dir)
 	defer store.Close()
 	reg := &content.SSTRegistry{Arrows: map[string]content.ArrowDef{"from": {Code: "from", LongName: "from"}}}

@@ -12,7 +12,7 @@ import (
 func TestGradeItemAdvancesQueue(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "f.n4l")
-	if err := os.WriteFile(p, []byte("- Ch\n# @cloze\nSystem 1 is {fast}\n"), 0o644); err != nil {
+	if err := os.WriteFile(p, []byte("- Ch\n# @cloze\nSystem 1 is {{fast}}\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	store, err := learning.Open(dir)
