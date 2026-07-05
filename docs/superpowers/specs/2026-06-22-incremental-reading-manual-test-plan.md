@@ -40,7 +40,7 @@ Each case lists **Steps** and **Expected**. A case **passes** only if every Expe
 
 ## Phase 1 — Recall spine (FSRS)
 
-### TC-1.1 Card discovery via Build Graph
+### TC-1.1 Card discovery via Build Graph => OK
 **Steps**
 1. In a `.n4l` file add a card:
    ```
@@ -55,7 +55,7 @@ Each case lists **Steps** and **Expected**. A case **passes** only if every Expe
 - `SELECT count(*) FROM items;` increased by 1 (a basic card split on `>>`).
 - The new `items` row has `active=1` and `due IS NULL` (a new card).
 
-### TC-1.2 Cloze card generation
+### TC-1.2 Cloze card generation => OK
 **Steps**
 1. Add a cloze:
    ```
@@ -68,7 +68,7 @@ Each case lists **Steps** and **Expected**. A case **passes** only if every Expe
 - Items are created for the cloze (one per blanked span per Phase-1 behavior).
 - A cloze with **no** `{{braces}}` (or only single `{ }`) creates **no** item (negative check — add one and confirm count does not rise).
 
-### TC-1.3 Recall overlay shows a card + reveal
+### TC-1.3 Recall overlay shows a card + reveal => OK
 **Steps**
 1. Press **Ctrl+Shift+R**.
 
@@ -77,7 +77,7 @@ Each case lists **Steps** and **Expected**. A case **passes** only if every Expe
 - Pressing **Space** reveals the back; the four grade buttons (Again/Hard/Good/Easy) appear.
 - If nothing is due, an explicit empty state ("nothing due") shows — not a blank panel.
 
-### TC-1.4 Grading advances FSRS and persists (core)
+### TC-1.4 Grading advances FSRS and persists (core) => OK
 **Steps**
 1. With a new card shown, note its `id` (Appendix A.2 — newest item).
 2. Reveal (Space) and press **3** (Good).
@@ -88,7 +88,7 @@ Each case lists **Steps** and **Expected**. A case **passes** only if every Expe
 - `items` row now has: `reps=1`, `due` set to a **future** unix time, `stability>0`, `state` advanced, `last_review` set.
 - A new `review_logs` row exists for that `item_id` with `grade=3`, non-null `elapsed_ms`, an `old_state`, and `new_stability`.
 
-### TC-1.5 Grade differentiation (Again < Easy)
+### TC-1.5 Grade differentiation (Again < Easy) => OK
 **Steps**
 1. Create two fresh identical new cards, grade one **Again (1)** and one **Easy (4)**.
 2. Compare their `due` values.
@@ -96,7 +96,7 @@ Each case lists **Steps** and **Expected**. A case **passes** only if every Expe
 **Expected**
 - `due(Again) < due(Easy)` — Again reschedules sooner; Easy pushes further out.
 
-### TC-1.6 Second review carries prior state forward (not reset)
+### TC-1.6 Second review carries prior state forward (not reset) => OK
 **Steps**
 1. Take the card from TC-1.4 (now `reps=1`). Force it due: `UPDATE items SET due=strftime('%s','now')-1 WHERE id='<id>';`
 2. Reopen Recall (Ctrl+Shift+R), grade **Good** again.
@@ -106,7 +106,7 @@ Each case lists **Steps** and **Expected**. A case **passes** only if every Expe
 - New `due` interval is **longer** than the TC-1.4 interval (stability accumulated — confirms FSRS reconstructs prior card state rather than treating each review as new).
 - A second `review_logs` row exists for that `id`.
 
-### TC-1.7 Build-Graph dirty-buffer invariant
+### TC-1.7 Build-Graph dirty-buffer invariant => Not sure
 **Steps**
 1. Open a reading/card file, make an **unsaved** edit, then press **Ctrl+G**.
 
@@ -117,7 +117,7 @@ Each case lists **Steps** and **Expected**. A case **passes** only if every Expe
 
 ## Phase 2a — Read & extract (text/markdown)
 
-### TC-2a.1 Import a text/markdown source
+### TC-2a.1 Import a text/markdown source => OK
 **Steps**
 1. Open Sources (it appears inside the Study surface Read focus; or Ctrl+Shift+E). Click **+ Text**, pick a `.txt`/`.md` file.
 
@@ -126,7 +126,7 @@ Each case lists **Steps** and **Expected**. A case **passes** only if every Expe
 - A row appears in `reading_elements` with `medium='text'` (Appendix A.4).
 - The source opens immediately in `ReadingView` via the `TextSourcePane`; `0%` progress initially.
 
-### TC-2a.2 Create an extract from a selection
+### TC-2a.2 Create an extract from a selection => OK
 **Steps**
 1. In the open text source, select a passage. Trigger Extract.
 
@@ -135,7 +135,7 @@ Each case lists **Steps** and **Expected**. A case **passes** only if every Expe
 - The extract is registered immediately (register-at-creation): it appears in the **Process** queue this session without a full Build Graph.
 - `SELECT * FROM extracts WHERE active=1;` shows the new row with `from_anchor` like `"<refPath> char=<N>"` (Appendix A.5).
 
-### TC-2a.3 Progress + resume
+### TC-2a.3 Progress + resume => NO
 **Steps**
 1. Scroll/advance in the source, then close it (Read focus → close).
 2. Reopen the same source.
@@ -148,7 +148,7 @@ Each case lists **Steps** and **Expected**. A case **passes** only if every Expe
 
 ## Phase 2b — Process & unify
 
-### TC-2b.1 Unified surface focus switch
+### TC-2b.1 Unified surface focus switch => OK, but no badge for Read
 **Steps**
 1. Press **Ctrl+Shift+S**.
 
@@ -157,7 +157,7 @@ Each case lists **Steps** and **Expected**. A case **passes** only if every Expe
 - Each tab shows a count badge from `GetStudyCounts` (read/process/recall due counts).
 - **Next** auto-rotates: it serves Read if reading is due, else Process, else Recall; empty → "nothing due".
 
-### TC-2b.2 Extract appears in Process immediately after creation
+### TC-2b.2 Extract appears in Process immediately after creation => OK
 **Steps**
 1. Create an extract (TC-2a.2), then switch to the **Process** tab.
 
@@ -165,7 +165,7 @@ Each case lists **Steps** and **Expected**. A case **passes** only if every Expe
 - The just-created extract is the/an item in the Process queue (no Build Graph needed).
 - `ProcessView` shows the extract text in an editable N4L editor plus the action bar: **→ Make card**, **{ } Cloze**, **⏳ Later**, **✕ Dismiss**.
 
-### TC-2b.3 Promote → Make card (immediate, recallable same session)
+### TC-2b.3 Promote → Make card (immediate, recallable same session) => OK
 **Steps**
 1. In Process on an extract, click **→ Make card**.
 2. Switch to the **Recall** tab (or Ctrl+Shift+R).
@@ -216,12 +216,12 @@ Each case lists **Steps** and **Expected**. A case **passes** only if every Expe
 
 ## Phase 2c — PDF & web adapters
 
-### TC-2c.1 Import a PDF
+### TC-2c.1 Import a PDF  => OK
 **Steps**
 1. Sources panel → **+ PDF**, choose a `.pdf`.
 
 **Expected**
-- PDF copied into `sources/` (suffix on name collision); notes scaffold + `reading_elements` row with `medium='pdf'`, `# @progress page=1`.
+- PDF copied into `sources/` (suffix on name collision); notes scaffold + `reading_elements` row with `medium='pdf'`, `# @progress page=1`. => no page, but char=
 - `PdfSourcePane` renders page 1 (pdf.js canvas + selectable text layer); page nav (prev/next/jump) works.
 - On first load total pages reported via `SetReadingProjLen` so `percent` is sane (page 1 of N ≈ low %, not always 0%).
 
@@ -240,7 +240,7 @@ Each case lists **Steps** and **Expected**. A case **passes** only if every Expe
 **Expected**
 - `# @progress page=K` written on leave; reopen resumes at page K. Out-of-range page clamps into range.
 
-### TC-2c.4 Import a web article (security-critical)
+### TC-2c.4 Import a web article (security-critical) => NO, error 403
 **Steps**
 1. Sources panel → **+ Web**, paste an article URL at the prompt.
 

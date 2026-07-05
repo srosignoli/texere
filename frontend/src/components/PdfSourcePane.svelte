@@ -37,8 +37,12 @@
     canvas.height = viewport.height
     const ctx = canvas.getContext('2d')
     await page.render({ canvasContext: ctx, viewport }).promise
-    // Selectable text layer aligned over the canvas.
+    // Selectable text layer aligned over the canvas. pdf.js v5 sizes and
+    // positions every span via calc(...px * var(--total-scale-factor)); without
+    // this variable the spans collapse to zero size and nothing is selectable.
     textLayerEl.innerHTML = ''
+    textLayerEl.style.setProperty('--total-scale-factor', String(viewport.scale))
+    textLayerEl.style.setProperty('--scale-factor', String(viewport.scale))
     textLayerEl.style.width = viewport.width + 'px'
     textLayerEl.style.height = viewport.height + 'px'
     const textContent = await page.getTextContent()
@@ -96,7 +100,26 @@
   .pdf-err { color: #ff8080; padding: 8px 12px; font-size: 12px; }
   .pdf-scroll { flex: 1; overflow: auto; display: flex; justify-content: center; padding: 12px; }
   .pdf-page-wrap { position: relative; }
-  .pdf-textlayer { position: absolute; top: 0; left: 0; overflow: hidden; opacity: 0.25; line-height: 1; }
-  .pdf-textlayer :global(span) { color: transparent; position: absolute; white-space: pre; cursor: text; }
+  /* Text layer sizing/positioning must match what pdf.js v5's TextLayer.render()
+     emits: spans carry a per-span --font-height and percentage left/top, but the
+     font-size rule + scale vars live in pdf.js's own stylesheet (not bundled here),
+     so we reproduce the essential rules. Without the font-size rule every span
+     inherits the body font size and the layer is misaligned → nothing selectable. */
+  .pdf-textlayer { position: absolute; top: 0; left: 0; overflow: hidden; opacity: 0.25;
+    line-height: 1; text-align: initial; transform-origin: 0 0; forced-color-adjust: none;
+    user-select: text; -webkit-user-select: text;
+    --min-font-size: 1;
+    --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+    --min-font-size-inv: calc(1 / var(--min-font-size));
+    /* pdf.js sizes the layer with round(down, …, var(--scale-round-x)); without these
+       the round() is invalid and the layer collapses to 0 width → nothing to select. */
+    --scale-round-x: 1px; --scale-round-y: 1px; }
+  .pdf-textlayer :global(span) { color: transparent; position: absolute; white-space: pre; cursor: text;
+    transform-origin: 0% 0%; z-index: 1;
+    user-select: text; -webkit-user-select: text;
+    --font-height: 0; --scale-x: 1; --rotate: 0deg;
+    font-size: calc(var(--text-scale-factor) * var(--font-height));
+    transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv)); }
+  .pdf-textlayer :global(.markedContent) { display: contents; }
   .pdf-textlayer :global(::selection) { background: #7dd3fc; }
 </style>

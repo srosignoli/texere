@@ -75,6 +75,10 @@
 
   async function close(action) {
     try {
+      // Persist reading progress on leave for panes that report it on demand
+      // (text/markdown). PDF/web push progress as the user navigates.
+      const pos = pane?.getProgress?.()
+      if (pos) await UpdateReadingProgress(reading.id, pos)
       await flushNotes()
       if (action !== 'done') await RescheduleReading(reading.id, action || 'continue')
     } catch (e) { /* best-effort on close */ }

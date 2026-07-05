@@ -31,7 +31,7 @@ func CreateReadingNotes(notesPath, sourceRel, title string) (string, error) {
 		`# @source "` + title + `"`,
 		"# @progress char=0",
 		title,
-		":: " + title + " _sequence_",
+		":: " + title + ", _sequence_::",
 		"",
 	}
 	if err := writeLines(notesPath, lines); err != nil {

@@ -1,6 +1,7 @@
 <script>
   import { onMount, tick, createEventDispatcher } from 'svelte'
-  import { GetFileContent, OpenSourceURL, SetReadingProjLen } from '../../wailsjs/go/main/App'
+  import { GetSourceHTML, OpenSourceURL, SetReadingProjLen } from '../../wailsjs/go/main/App'
+  import { BrowserOpenURL } from '../../wailsjs/runtime/runtime'
 
   export let reading
   const dispatch = createEventDispatcher()
@@ -27,16 +28,59 @@
     dispatch('extract', { text: sel.text, position: 'char=' + sel.offset })
   }
 
+  function parseChar(pos) {
+    const m = /char=(\d+)/.exec(pos || '')
+    return m ? parseInt(m[1], 10) : 0
+  }
+
+  // Scroll the article so the rune at runeIdx (char=N, same coordinate space as
+  // runeOffset()) sits at the top of the viewport. The rendered article spans many
+  // text nodes, so walk them in document order accumulating rune counts to find the
+  // node + UTF-16 offset for runeIdx, then align that range's top to the container's.
+  function scrollToRune(runeIdx) {
+    if (!articleEl || runeIdx <= 0) return
+    const walker = document.createTreeWalker(articleEl, NodeFilter.SHOW_TEXT)
+    let acc = 0
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const arr = [...node.textContent]
+      if (acc + arr.length > runeIdx) {
+        const within = runeIdx - acc
+        const u = arr.slice(0, within).join('').length     // UTF-16 start offset
+        const end = arr.slice(0, within + 1).join('').length // spans the full rune
+        const range = document.createRange()
+        range.setStart(node, u)
+        range.setEnd(node, end)
+        const rects = range.getClientRects()
+        const top = (rects.length ? rects[0] : range.getBoundingClientRect()).top
+        articleEl.scrollTop += top - articleEl.getBoundingClientRect().top
+        return
+      }
+      acc += arr.length
+    }
+  }
+
   async function openOriginal() {
     try { await OpenSourceURL(reading.id) } catch (e) { error = String(e?.message ?? e) }
   }
 
+  // Anchors in the {@html} article would otherwise navigate the whole Wails webview
+  // away from the app (no back, and it can strip the window chrome). Intercept clicks
+  // and hand http(s) links to the system browser; swallow the rest.
+  function onArticleClick(ev) {
+    const a = ev.target.closest && ev.target.closest('a[href]')
+    if (!a) return
+    ev.preventDefault()
+    const href = a.getAttribute('href') || ''
+    if (/^https?:\/\//i.test(href)) BrowserOpenURL(href)
+  }
+
   onMount(async () => {
-    try { html = (await GetFileContent(reading.refPath)) ?? '' }
+    try { html = (await GetSourceHTML(reading.refPath)) ?? '' }
     catch (e) { error = String(e?.message ?? e) }
     await tick()
     if (articleEl) {
       try { await SetReadingProjLen(reading.id, [...(articleEl.textContent ?? '')].length) } catch { /* best-effort */ }
+      scrollToRune(parseChar(reading.position))
     }
   })
 </script>
@@ -47,7 +91,7 @@
   </div>
   {#if error}<div class="web-err">{error}</div>{/if}
   <!-- html is pre-sanitized at import (no script/handlers/remote refs); rendered inert. -->
-  <div class="web-article" bind:this={articleEl}>{@html html}</div>
+  <div class="web-article" bind:this={articleEl} on:click={onArticleClick}>{@html html}</div>
 </div>
 
 <style>

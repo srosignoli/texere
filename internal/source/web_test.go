@@ -54,6 +54,30 @@ func TestFetchAndExtract(t *testing.T) {
 	}
 }
 
+// Wikipedia and many other sites reject the default Go http User-Agent with a
+// 403. FetchAndExtract must send a real User-Agent so these fetches succeed.
+func TestFetchAndExtractSendsUserAgent(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ua := r.Header.Get("User-Agent")
+		if ua == "" || strings.HasPrefix(ua, "Go-http-client") {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(`<html><head><title>UA Title</title></head><body><article><h1>UA Title</h1>
+			<p>A sufficiently long article paragraph so readability keeps it as the main content of this page here now.</p>
+			</article></body></html>`))
+	}))
+	defer srv.Close()
+	art, err := FetchAndExtract(srv.URL + "/article")
+	if err != nil {
+		t.Fatalf("FetchAndExtract with UA-gating server: %v", err)
+	}
+	if !strings.Contains(art.Title, "UA Title") {
+		t.Fatalf("title=%q", art.Title)
+	}
+}
+
 func TestFetchAndExtractDropsFailedImageKeepsArticle(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/img404", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNotFound) })

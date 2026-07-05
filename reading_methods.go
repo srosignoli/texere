@@ -176,6 +176,21 @@ func (a *App) GetSourceProjection(refPath string) (string, error) {
 	return source.Projection(filepath.Join(a.collectionDir, filepath.FromSlash(refPath)))
 }
 
+// GetSourceHTML returns the raw contents of a source file (e.g. an imported web
+// article) resolved against the collection dir. refPath is stored relative to
+// the collection, so — unlike GetFileContent, which takes absolute paths — it
+// must be joined here rather than read CWD-relative.
+func (a *App) GetSourceHTML(refPath string) (string, error) {
+	if a.learnStore == nil || a.collectionDir == "" {
+		return "", errors.New("no collection open")
+	}
+	data, err := os.ReadFile(filepath.Join(a.collectionDir, filepath.FromSlash(refPath)))
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
 // CreateExtract appends a verbatim extract, advances # @progress + DB position,
 // and signals the notes editor to reload (clean buffer only).
 func (a *App) CreateExtract(id, text, position string) (*CreateExtractView, error) {

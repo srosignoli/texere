@@ -98,4 +98,15 @@ func TestImportWebAndCreateExtractPosition(t *testing.T) {
 	if !strings.Contains(string(notes), `char=5`) {
 		t.Fatalf("extract anchor missing char=5:\n%s", notes)
 	}
+
+	// The web pane loads the saved article via GetSourceHTML(refPath). refPath is
+	// stored relative to the collection dir, so the method must join collectionDir
+	// rather than reading it CWD-relative (regression: bare os.ReadFile fails here).
+	got, err := a.GetSourceHTML(rv.RefPath)
+	if err != nil {
+		t.Fatalf("GetSourceHTML(%q): %v", rv.RefPath, err)
+	}
+	if !strings.Contains(got, "sufficiently long paragraph") {
+		t.Fatalf("GetSourceHTML did not return saved article html:\n%s", got)
+	}
 }

@@ -3,13 +3,20 @@
 import {main} from '../models';
 import {content} from '../models';
 import {explorer} from '../models';
+import {learning} from '../models';
 import {search} from '../models';
 
 export function BuildGraph():Promise<main.BuildGraphResult>;
 
 export function ConfirmQuit():Promise<void>;
 
+export function CreateExtract(arg1:string,arg2:string,arg3:string):Promise<main.CreateExtractView>;
+
 export function CreateNewFile(arg1:string):Promise<content.ChapterSummary>;
+
+export function DeferExtract(arg1:string):Promise<void>;
+
+export function DismissExtract(arg1:string):Promise<void>;
 
 export function ExplorerClose():Promise<void>;
 
@@ -17,21 +24,41 @@ export function ExplorerOpen(arg1:string,arg2:string):Promise<explorer.LayoutRes
 
 export function ExplorerReanchor(arg1:string,arg2:string,arg3:string):Promise<explorer.LayoutResult>;
 
-export function GradeItem(arg1:string,arg2:number,arg3:number):Promise<any>;
-
 export function GetArrowRegistry():Promise<Array<content.ArrowDef>>;
+
+export function GetDueQueue(arg1:number):Promise<Array<learning.CardView>>;
+
+export function GetExtractQueue(arg1:number):Promise<Array<main.ExtractView>>;
+
+export function GetExtractTarget(arg1:string):Promise<main.ExtractTarget>;
 
 export function GetFileContent(arg1:string):Promise<string>;
 
-export function GetDueQueue(arg1:number):Promise<Array<any>>;
-
 export function GetInitialSummaries():Promise<Array<content.ChapterSummary>>;
+
+export function GetReadingList():Promise<Array<main.ReadingView>>;
 
 export function GetRecentArrows():Promise<Array<string>>;
 
-export function GetStudyStats():Promise<any>;
+export function GetSourceBytes(arg1:string):Promise<string>;
+
+export function GetSourceHTML(arg1:string):Promise<string>;
+
+export function GetSourceProjection(arg1:string):Promise<string>;
 
 export function GetStartupError():Promise<string>;
+
+export function GetStudyCounts():Promise<learning.StudyStats3>;
+
+export function GetStudyStats():Promise<learning.Stats>;
+
+export function GradeItem(arg1:string,arg2:number,arg3:number):Promise<learning.CardView>;
+
+export function ImportPdfSource():Promise<main.ReadingView>;
+
+export function ImportTextSource():Promise<main.ReadingView>;
+
+export function ImportWebSource(arg1:string):Promise<main.ReadingView>;
 
 export function ListArrowCodes():Promise<Array<string>>;
 
@@ -41,9 +68,15 @@ export function ListContextTags():Promise<Array<string>>;
 
 export function OpenCollection(arg1:string):Promise<Array<content.ChapterSummary>>;
 
+export function OpenSourceURL(arg1:string):Promise<void>;
+
 export function ParseFileForUI(arg1:string):Promise<content.ParsedFile|Array<content.ParseError>>;
 
 export function PickCollectionDir():Promise<string>;
+
+export function PromoteExtract(arg1:string,arg2:string):Promise<void>;
+
+export function RescheduleReading(arg1:string,arg2:string):Promise<main.ReadingView>;
 
 export function ResolveReminder(arg1:string,arg2:number):Promise<content.WriteBackResult>;
 
@@ -51,40 +84,10 @@ export function SaveFile(arg1:string,arg2:string):Promise<main.SaveFileResult>;
 
 export function SearchGraph(arg1:string):Promise<search.SearchResult>;
 
-export function SyncStudyItems():Promise<any>;
+export function SetReadingProjLen(arg1:string,arg2:number):Promise<void>;
 
-export function UpdateRecentArrows(arg1:Array<string>):Promise<void>;
-
-export function ImportTextSource():Promise<any>;
-
-export function GetReadingList():Promise<Array<any>>;
-
-export function GetSourceProjection(arg1:string):Promise<string>;
-
-export function CreateExtract(arg1:string,arg2:string,arg3:string):Promise<any>;
+export function SyncStudyItems():Promise<learning.SyncResult>;
 
 export function UpdateReadingProgress(arg1:string,arg2:string):Promise<void>;
 
-export function RescheduleReading(arg1:string,arg2:string):Promise<any>;
-
-export function GetStudyCounts():Promise<any>;
-
-export function GetExtractQueue(arg1:number):Promise<Array<any>>;
-
-export function GetExtractTarget(arg1:string):Promise<any>;
-
-export function PromoteExtract(arg1:string,arg2:string):Promise<void>;
-
-export function DeferExtract(arg1:string):Promise<void>;
-
-export function DismissExtract(arg1:string):Promise<void>;
-
-export function ImportPdfSource():Promise<any>;
-
-export function ImportWebSource(arg1:string):Promise<any>;
-
-export function GetSourceBytes(arg1:string):Promise<string>;
-
-export function OpenSourceURL(arg1:string):Promise<void>;
-
-export function SetReadingProjLen(arg1:string,arg2:number):Promise<void>;
+export function UpdateRecentArrows(arg1:Array<string>):Promise<void>;

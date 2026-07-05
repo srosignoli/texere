@@ -10,8 +10,20 @@ export function ConfirmQuit() {
   return window['go']['main']['App']['ConfirmQuit']();
 }
 
+export function CreateExtract(arg1, arg2, arg3) {
+  return window['go']['main']['App']['CreateExtract'](arg1, arg2, arg3);
+}
+
 export function CreateNewFile(arg1) {
   return window['go']['main']['App']['CreateNewFile'](arg1);
+}
+
+export function DeferExtract(arg1) {
+  return window['go']['main']['App']['DeferExtract'](arg1);
+}
+
+export function DismissExtract(arg1) {
+  return window['go']['main']['App']['DismissExtract'](arg1);
 }
 
 export function ExplorerClose() {
@@ -26,36 +38,76 @@ export function ExplorerReanchor(arg1, arg2, arg3) {
   return window['go']['main']['App']['ExplorerReanchor'](arg1, arg2, arg3);
 }
 
-export function GradeItem(arg1, arg2, arg3) {
-  return window['go']['main']['App']['GradeItem'](arg1, arg2, arg3);
-}
-
 export function GetArrowRegistry() {
   return window['go']['main']['App']['GetArrowRegistry']();
-}
-
-export function GetFileContent(arg1) {
-  return window['go']['main']['App']['GetFileContent'](arg1);
 }
 
 export function GetDueQueue(arg1) {
   return window['go']['main']['App']['GetDueQueue'](arg1);
 }
 
+export function GetExtractQueue(arg1) {
+  return window['go']['main']['App']['GetExtractQueue'](arg1);
+}
+
+export function GetExtractTarget(arg1) {
+  return window['go']['main']['App']['GetExtractTarget'](arg1);
+}
+
+export function GetFileContent(arg1) {
+  return window['go']['main']['App']['GetFileContent'](arg1);
+}
+
 export function GetInitialSummaries() {
   return window['go']['main']['App']['GetInitialSummaries']();
+}
+
+export function GetReadingList() {
+  return window['go']['main']['App']['GetReadingList']();
 }
 
 export function GetRecentArrows() {
   return window['go']['main']['App']['GetRecentArrows']();
 }
 
-export function GetStudyStats() {
-  return window['go']['main']['App']['GetStudyStats']();
+export function GetSourceBytes(arg1) {
+  return window['go']['main']['App']['GetSourceBytes'](arg1);
+}
+
+export function GetSourceHTML(arg1) {
+  return window['go']['main']['App']['GetSourceHTML'](arg1);
+}
+
+export function GetSourceProjection(arg1) {
+  return window['go']['main']['App']['GetSourceProjection'](arg1);
 }
 
 export function GetStartupError() {
   return window['go']['main']['App']['GetStartupError']();
+}
+
+export function GetStudyCounts() {
+  return window['go']['main']['App']['GetStudyCounts']();
+}
+
+export function GetStudyStats() {
+  return window['go']['main']['App']['GetStudyStats']();
+}
+
+export function GradeItem(arg1, arg2, arg3) {
+  return window['go']['main']['App']['GradeItem'](arg1, arg2, arg3);
+}
+
+export function ImportPdfSource() {
+  return window['go']['main']['App']['ImportPdfSource']();
+}
+
+export function ImportTextSource() {
+  return window['go']['main']['App']['ImportTextSource']();
+}
+
+export function ImportWebSource(arg1) {
+  return window['go']['main']['App']['ImportWebSource'](arg1);
 }
 
 export function ListArrowCodes() {
@@ -74,12 +126,24 @@ export function OpenCollection(arg1) {
   return window['go']['main']['App']['OpenCollection'](arg1);
 }
 
+export function OpenSourceURL(arg1) {
+  return window['go']['main']['App']['OpenSourceURL'](arg1);
+}
+
 export function ParseFileForUI(arg1) {
   return window['go']['main']['App']['ParseFileForUI'](arg1);
 }
 
 export function PickCollectionDir() {
   return window['go']['main']['App']['PickCollectionDir']();
+}
+
+export function PromoteExtract(arg1, arg2) {
+  return window['go']['main']['App']['PromoteExtract'](arg1, arg2);
+}
+
+export function RescheduleReading(arg1, arg2) {
+  return window['go']['main']['App']['RescheduleReading'](arg1, arg2);
 }
 
 export function ResolveReminder(arg1, arg2) {
@@ -94,78 +158,18 @@ export function SearchGraph(arg1) {
   return window['go']['main']['App']['SearchGraph'](arg1);
 }
 
+export function SetReadingProjLen(arg1, arg2) {
+  return window['go']['main']['App']['SetReadingProjLen'](arg1, arg2);
+}
+
 export function SyncStudyItems() {
   return window['go']['main']['App']['SyncStudyItems']();
-}
-
-export function UpdateRecentArrows(arg1) {
-  return window['go']['main']['App']['UpdateRecentArrows'](arg1);
-}
-
-export function ImportTextSource() {
-  return window['go']['main']['App']['ImportTextSource']();
-}
-
-export function GetReadingList() {
-  return window['go']['main']['App']['GetReadingList']();
-}
-
-export function GetSourceProjection(arg1) {
-  return window['go']['main']['App']['GetSourceProjection'](arg1);
-}
-
-export function CreateExtract(arg1, arg2, arg3) {
-  return window['go']['main']['App']['CreateExtract'](arg1, arg2, arg3);
 }
 
 export function UpdateReadingProgress(arg1, arg2) {
   return window['go']['main']['App']['UpdateReadingProgress'](arg1, arg2);
 }
 
-export function RescheduleReading(arg1, arg2) {
-  return window['go']['main']['App']['RescheduleReading'](arg1, arg2);
-}
-
-export function GetStudyCounts() {
-  return window['go']['main']['App']['GetStudyCounts']();
-}
-
-export function GetExtractQueue(arg1) {
-  return window['go']['main']['App']['GetExtractQueue'](arg1);
-}
-
-export function GetExtractTarget(arg1) {
-  return window['go']['main']['App']['GetExtractTarget'](arg1);
-}
-
-export function PromoteExtract(arg1, arg2) {
-  return window['go']['main']['App']['PromoteExtract'](arg1, arg2);
-}
-
-export function DeferExtract(arg1) {
-  return window['go']['main']['App']['DeferExtract'](arg1);
-}
-
-export function DismissExtract(arg1) {
-  return window['go']['main']['App']['DismissExtract'](arg1);
-}
-
-export function ImportPdfSource() {
-  return window['go']['main']['App']['ImportPdfSource']();
-}
-
-export function ImportWebSource(arg1) {
-  return window['go']['main']['App']['ImportWebSource'](arg1);
-}
-
-export function GetSourceBytes(arg1) {
-  return window['go']['main']['App']['GetSourceBytes'](arg1);
-}
-
-export function OpenSourceURL(arg1) {
-  return window['go']['main']['App']['OpenSourceURL'](arg1);
-}
-
-export function SetReadingProjLen(arg1, arg2) {
-  return window['go']['main']['App']['SetReadingProjLen'](arg1, arg2);
+export function UpdateRecentArrows(arg1) {
+  return window['go']['main']['App']['UpdateRecentArrows'](arg1);
 }

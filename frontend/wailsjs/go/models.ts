@@ -26,7 +26,6 @@ export namespace content {
 	    Reverse: string;
 	    MetaType: string;
 	    Context: string;
-	    Studyable: boolean;
 	    ClozeEligible: boolean;
 	    Unknown: boolean;
 	
@@ -41,7 +40,6 @@ export namespace content {
 	        this.Reverse = source["Reverse"];
 	        this.MetaType = source["MetaType"];
 	        this.Context = source["Context"];
-	        this.Studyable = source["Studyable"];
 	        this.ClozeEligible = source["ClozeEligible"];
 	        this.Unknown = source["Unknown"];
 	    }

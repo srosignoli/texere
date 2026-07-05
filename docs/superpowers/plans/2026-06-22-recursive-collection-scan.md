@@ -94,9 +94,18 @@ func TestScanCollectionRecursive(t *testing.T) {
 	if !got["reading/deep.n4l"] {
 		t.Errorf("missing subdir file; got %v", got)
 	}
-	// Top-level RelPath is the bare base name (no slash).
-	if got["reading/deep.n4l"] && strings.Contains("top.n4l", "/") {
-		t.Errorf("top-level RelPath should have no slash")
+	// Top-level RelPath is the bare base name (no slash); subdir RelPath is slashed.
+	for _, s := range summaries {
+		switch s.FileName {
+		case "top.n4l":
+			if s.RelPath != "top.n4l" {
+				t.Errorf("top-level RelPath = %q, want %q", s.RelPath, "top.n4l")
+			}
+		case "deep.n4l":
+			if s.RelPath != "reading/deep.n4l" {
+				t.Errorf("subdir RelPath = %q, want %q", s.RelPath, "reading/deep.n4l")
+			}
+		}
 	}
 }
 ```

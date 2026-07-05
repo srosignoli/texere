@@ -27,7 +27,21 @@ const (
 	webMaxBytes     = 10 << 20 // 10 MB
 	imgFetchTimeout = 2 * time.Second
 	imgMaxBytes     = 2 << 20 // 2 MB per image
+	// userAgent identifies texere to remote servers. The default Go
+	// User-Agent ("Go-http-client/...") is rejected with 403 by Wikipedia and
+	// many other sites, so we send a descriptive one instead.
+	userAgent = "texere/1.0 (+https://github.com/srosignoli/texere) reading-importer"
 )
+
+// getWithUA performs a GET with the texere User-Agent header set.
+func getWithUA(client *http.Client, rawURL string) (*http.Response, error) {
+	req, err := http.NewRequest(http.MethodGet, rawURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", userAgent)
+	return client.Do(req)
+}
 
 // FetchAndExtract fetches url, extracts the readable article, sanitizes it, and
 // inlines images as data: URIs so the result references no remote resources.
@@ -37,7 +51,7 @@ func FetchAndExtract(rawURL string) (WebArticle, error) {
 		return WebArticle{}, fmt.Errorf("source: bad url: %w", err)
 	}
 	client := &http.Client{Timeout: webFetchTimeout}
-	resp, err := client.Get(rawURL)
+	resp, err := getWithUA(client, rawURL)
 	if err != nil {
 		return WebArticle{}, fmt.Errorf("source: fetch: %w", err)
 	}
@@ -90,7 +104,7 @@ func inlineImages(htmlStr string) string {
 }
 
 func fetchImage(client *http.Client, src string) ([]byte, string, error) {
-	resp, err := client.Get(src)
+	resp, err := getWithUA(client, src)
 	if err != nil {
 		return nil, "", err
 	}
