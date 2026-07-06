@@ -27,6 +27,14 @@ func Projection(path string) (string, error) {
 	}
 }
 
+// TextFromHTML returns the reader projection for in-memory HTML, identical to
+// Projection over a saved .html file. Lets a caller that already holds the HTML
+// (the web importer) avoid re-reading and re-tokenizing the file it just wrote.
+func TextFromHTML(htmlStr string) string {
+	s, _ := htmlToText([]byte(htmlStr))
+	return s
+}
+
 // htmlToText extracts visible text, dropping <script>/<style> content and
 // collapsing all whitespace to single spaces (deterministic so char anchors are
 // stable).

@@ -285,7 +285,9 @@ func (a *App) ImportWebSource(srcURL string) (*ReadingView, error) {
 		os.Remove(srcAbs)
 		return nil, fmt.Errorf("ImportWebSource: notes: %w", err)
 	}
-	proj, _ := source.Projection(srcAbs) // article text length for % progress
+	// article text length for % progress — derived from the in-memory HTML we just
+	// saved, avoiding a redundant read+tokenize of srcAbs.
+	proj := source.TextFromHTML(art.HTML)
 	r := learning.ReadingElement{ID: refID, RefPath: srcRel, NotesPath: notesAbs, Title: title,
 		Position: "char=0", ProjLen: utf8.RuneCountInString(proj), IntervalDays: 1, Medium: "web", SourceURL: art.URL}
 	if err := a.learnStore.UpsertReading(r); err != nil {

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -77,26 +78,60 @@ func FetchAndExtract(rawURL string) (WebArticle, error) {
 	return WebArticle{Title: strings.TrimSpace(article.Title), HTML: safe, URL: rawURL}, nil
 }
 
+// imgConcurrency bounds how many images are fetched in parallel during inlining.
+const imgConcurrency = 6
+
 // inlineImages downloads each <img src> and rewrites it to a data: URI; on any
-// failure (or oversize) it drops the src so sanitization removes the <img>.
+// failure (or oversize) it drops the src so sanitization removes the <img>. The
+// downloads are independent, so they run concurrently (bounded) — otherwise an
+// N-image article blocks for up to N*imgFetchTimeout serially. goquery is not
+// safe for concurrent mutation, so fetches run in parallel but the results are
+// applied to the DOM on this goroutine.
 func inlineImages(htmlStr string) string {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlStr))
 	if err != nil {
 		return htmlStr
 	}
 	imgClient := &http.Client{Timeout: imgFetchTimeout}
+
+	var sels []*goquery.Selection
+	var srcs []string
 	doc.Find("img").Each(func(_ int, s *goquery.Selection) {
 		src, ok := s.Attr("src")
 		if !ok || strings.HasPrefix(src, "data:") {
 			return
 		}
-		data, mime, err := fetchImage(imgClient, src)
-		if err != nil {
-			s.RemoveAttr("src")
-			return
-		}
-		s.SetAttr("src", "data:"+mime+";base64,"+base64.StdEncoding.EncodeToString(data))
+		sels = append(sels, s)
+		srcs = append(srcs, src)
 	})
+
+	type fetched struct {
+		data []byte
+		mime string
+		err  error
+	}
+	results := make([]fetched, len(srcs))
+	sem := make(chan struct{}, imgConcurrency)
+	var wg sync.WaitGroup
+	for i, src := range srcs {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(i int, src string) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			data, mime, err := fetchImage(imgClient, src)
+			results[i] = fetched{data, mime, err}
+		}(i, src)
+	}
+	wg.Wait()
+
+	for i, s := range sels {
+		if r := results[i]; r.err != nil {
+			s.RemoveAttr("src")
+		} else {
+			s.SetAttr("src", "data:"+r.mime+";base64,"+base64.StdEncoding.EncodeToString(r.data))
+		}
+	}
 	if h, err := doc.Find("body").Html(); err == nil {
 		return h
 	}

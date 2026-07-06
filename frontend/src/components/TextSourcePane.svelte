@@ -24,11 +24,20 @@
     return null
   }
 
+  // Prefix sums of per-rune UTF-16 code-unit lengths, so mapping a rune index to a
+  // UTF-16 offset is an O(1) lookup instead of an O(n) slice+join. Built once per
+  // measurement pass; getProgress's binary search would otherwise be O(n log n).
+  function u16Prefix(arr) {
+    const pfx = new Int32Array(arr.length + 1)
+    for (let i = 0; i < arr.length; i++) pfx[i + 1] = pfx[i] + arr[i].length
+    return pfx
+  }
+
   // Visual top (viewport px) of the rune at runeIdx. Range offsets are UTF-16
-  // code units, but our char=N anchors are rune offsets, so convert first.
-  function runeTop(node, arr, runeIdx) {
-    const clamped = Math.max(0, Math.min(runeIdx, arr.length))
-    let u = arr.slice(0, clamped).join('').length
+  // code units, but our char=N anchors are rune offsets; pfx converts between them.
+  function runeTop(node, pfx, runeIdx) {
+    const clamped = Math.max(0, Math.min(runeIdx, pfx.length - 1))
+    let u = pfx[clamped]
     let end = u + 1
     if (end > node.length) { end = node.length; u = Math.max(0, end - 1) }
     const range = document.createRange()
@@ -61,12 +70,13 @@
     if (!node) return null
     const arr = [...node.textContent]
     if (arr.length === 0) return 'char=0'
+    const pfx = u16Prefix(arr)
     const top = srcEl.getBoundingClientRect().top
     // Largest offset whose visual top is still at/above the viewport top edge.
     let lo = 0, hi = arr.length
     while (lo < hi) {
       const mid = (lo + hi + 1) >> 1
-      if (runeTop(node, arr, mid) <= top + 1) lo = mid
+      if (runeTop(node, pfx, mid) <= top + 1) lo = mid
       else hi = mid - 1
     }
     return 'char=' + lo
@@ -75,9 +85,9 @@
   function scrollToOffset(runeIdx) {
     const node = textNode()
     if (!node || runeIdx <= 0) return
-    const arr = [...node.textContent]
+    const pfx = u16Prefix([...node.textContent])
     const containerTop = srcEl.getBoundingClientRect().top
-    srcEl.scrollTop += runeTop(node, arr, runeIdx) - containerTop
+    srcEl.scrollTop += runeTop(node, pfx, runeIdx) - containerTop
   }
 
   onMount(async () => {

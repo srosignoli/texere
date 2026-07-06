@@ -26,9 +26,11 @@ func Sync(store *Store, files []string, reg *content.SSTRegistry) (SyncResult, e
 		}
 		// Only record the path when at least one ID was newly written (i.e. the
 		// injection was not already present); AlreadyHad entries mean no disk write.
+		wroteIDs := false
 		for _, inj := range injected {
 			if !inj.AlreadyHad {
 				res.InjectedPaths = append(res.InjectedPaths, path)
+				wroteIDs = true
 				break
 			}
 		}
@@ -50,12 +52,17 @@ func Sync(store *Store, files []string, reg *content.SSTRegistry) (SyncResult, e
 		}
 		res.Retired += retired
 
-		// InjectMissingIDs rewrote the file without shifting in-memory line
-		// numbers; re-parse so the extract id-injection uses fresh offsets.
-		pf, _ = content.ParseFile(path, reg)
-		if pf == nil {
-			skipped = append(skipped, path)
-			continue
+		// Only re-parse when InjectMissingIDs actually wrote to disk: a write shifts
+		// on-disk line numbers (# @id lines added above nodes) so the extract
+		// id-injection below needs fresh offsets. When nothing was written the file
+		// is unchanged and pf (already mutated in place) is still valid — the common
+		// steady-state path, so skip the second full parse.
+		if wroteIDs {
+			pf, _ = content.ParseFile(path, reg)
+			if pf == nil {
+				skipped = append(skipped, path)
+				continue
+			}
 		}
 
 		// Extract ids for hand-authored (from) nodes lacking one (writes back).
