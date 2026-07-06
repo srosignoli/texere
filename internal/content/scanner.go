@@ -32,7 +32,7 @@ func ScanCollection(dir string) ([]ChapterSummary, error) {
 			return fs.SkipDir // unreadable subtree → skip it, keep going
 		}
 		if d.IsDir() {
-			if path != dir && isExcludedDir(d.Name()) {
+			if path != dir && isExcludedDir(dir, path) {
 				return fs.SkipDir
 			}
 			return nil
@@ -64,16 +64,25 @@ func ScanCollection(dir string) ([]ChapterSummary, error) {
 	return results, nil
 }
 
-// isExcludedDir reports whether a directory (by base name) is a non-content
-// directory that the scan and watch must not descend into: the BadgerDB graph
-// store, the full-text index, the imported-binary assets dir, or any hidden
-// directory. Shared by ScanCollection and the collection watcher.
-func isExcludedDir(name string) bool {
-	switch name {
-	case "sst_data", "bleve", "sources":
+// isExcludedDir reports whether the directory at path (under collection root)
+// must not be descended into by the scan and watch. Hidden directories (name
+// beginning with ".") are excluded at any depth. The reserved app directories —
+// the BadgerDB graph store, the full-text index, and the imported-binary assets
+// dir — are created only at the collection root, so they are excluded only when
+// they sit directly under root; a user is free to name a nested folder e.g.
+// "sources". Shared by ScanCollection and the collection watcher.
+func isExcludedDir(root, path string) bool {
+	name := filepath.Base(path)
+	if strings.HasPrefix(name, ".") {
 		return true
 	}
-	return strings.HasPrefix(name, ".")
+	if filepath.Dir(path) == root {
+		switch name {
+		case "sst_data", "bleve", "sources":
+			return true
+		}
+	}
+	return false
 }
 
 // scanChapterTitles reads a single .n4l file and returns its chapter titles.

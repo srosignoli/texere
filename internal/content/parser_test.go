@@ -220,6 +220,52 @@ func TestScanCollectionRecursive(t *testing.T) {
 	}
 }
 
+// The reserved app directories are only reserved at the collection root; a
+// user-created folder with the same name nested deeper is ordinary content and
+// must be scanned. Hidden dirs remain excluded at any depth.
+func TestScanCollectionReservedDirRootOnly(t *testing.T) {
+	dir := t.TempDir()
+	// Root-level reserved dir: excluded.
+	if err := os.MkdirAll(filepath.Join(dir, "sources"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "sources", "root.n4l"), []byte("- a\nn\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Nested folder that happens to be named "sources": included.
+	if err := os.MkdirAll(filepath.Join(dir, "notes", "sources"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "notes", "sources", "nested.n4l"), []byte("- b\nn\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Nested hidden dir: still excluded at any depth.
+	if err := os.MkdirAll(filepath.Join(dir, "notes", ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "notes", ".git", "h.n4l"), []byte("- c\nn\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	summaries, err := ScanCollection(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]bool{}
+	for _, s := range summaries {
+		got[s.RelPath] = true
+	}
+	if !got["notes/sources/nested.n4l"] {
+		t.Errorf("nested sources/ folder should be scanned; got %v", got)
+	}
+	if got["sources/root.n4l"] {
+		t.Errorf("root-level sources/ must stay excluded; got %v", got)
+	}
+	if got["notes/.git/h.n4l"] {
+		t.Errorf("hidden dir must stay excluded at any depth; got %v", got)
+	}
+}
+
 func BenchmarkScanCollection(b *testing.B) {
 	dir := b.TempDir()
 	src := testdataPath(b, "simple.n4l")

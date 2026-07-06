@@ -102,6 +102,38 @@ func TestFetchAndExtractDropsFailedImageKeepsArticle(t *testing.T) {
 	}
 }
 
+// Defense-in-depth: the sanitized article HTML is rendered via {@html} inside the
+// privileged Wails webview, so it must never carry executable vectors even when a
+// source page includes them. Locks in the sanitizer's guarantees (script, iframe,
+// event-handler attributes, and javascript: URLs are all stripped).
+func TestFetchAndExtractStripsActiveContent(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(`<html><head><title>Sec</title></head><body><article><h1>Sec</h1>
+			<p>A sufficiently long paragraph of article text so readability keeps this as the main content of the page for sure now.
+			<a href="javascript:alert(1)">bad link</a>
+			<img src="x" onerror="alert(2)" alt="i">
+			<span onclick="steal()">click</span></p>
+			<iframe src="https://evil.example/x"></iframe>
+			<script>window.pwned = 1</script>
+			</article></body></html>`))
+	}))
+	defer srv.Close()
+	art, err := FetchAndExtract(srv.URL + "/a")
+	if err != nil {
+		t.Fatalf("FetchAndExtract: %v", err)
+	}
+	lower := strings.ToLower(art.HTML)
+	for _, bad := range []string{"<script", "<iframe", "javascript:", "onerror", "onclick", "window.pwned"} {
+		if strings.Contains(lower, bad) {
+			t.Fatalf("sanitized HTML still contains %q:\n%s", bad, art.HTML)
+		}
+	}
+	if !strings.Contains(art.HTML, "long paragraph of article text") {
+		t.Fatalf("article body missing:\n%s", art.HTML)
+	}
+}
+
 func TestFetchAndExtractNon2xxErrors(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNotFound) }))
 	defer srv.Close()

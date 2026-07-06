@@ -36,6 +36,11 @@ func WatchCollection(dir string) (*CollectionWatcher, error) {
 	events := make(chan CollectionEvent, 16)
 	errors := make(chan error, 4)
 
+	// Inventory of .n4l files, owned solely by the goroutine below (no locking).
+	// Lets us emit EventRemoved for a directory that is renamed or deleted, which
+	// fsnotify reports as one directory-level event with no per-file events.
+	known := collectN4LFiles(dir)
+
 	go func() {
 		defer close(events)
 		defer close(errors)
@@ -45,7 +50,7 @@ func WatchCollection(dir string) (*CollectionWatcher, error) {
 				if !ok {
 					return
 				}
-				for _, ce := range translateEvent(fw, ev, dir) {
+				for _, ce := range translateEvent(fw, ev, dir, known) {
 					events <- ce
 				}
 			case err, ok := <-fw.Errors:
@@ -78,22 +83,25 @@ func addWatchRecursive(fw *fsnotify.Watcher, root, dir string) error {
 		if !d.IsDir() {
 			return nil
 		}
-		if path != root && isExcludedDir(d.Name()) {
+		if path != root && isExcludedDir(root, path) {
 			return fs.SkipDir
 		}
 		return fw.Add(path)
 	})
 }
 
-// translateEvent maps one fsnotify.Event to zero or more CollectionEvents.
+// translateEvent maps one fsnotify.Event to zero or more CollectionEvents and
+// keeps the known-file inventory current.
 //
 // A directory-create self-heals: the new subtree is watched and its existing
-// .n4l files are surfaced as EventAdded (which may be several events). All other
+// .n4l files are surfaced as EventAdded. A directory-remove/rename emits
+// EventRemoved for every tracked .n4l file beneath it (inotify reports the
+// directory going away as a single event with no per-file events). All other
 // events concern a single .n4l file.
-func translateEvent(fw *fsnotify.Watcher, ev fsnotify.Event, root string) []CollectionEvent {
+func translateEvent(fw *fsnotify.Watcher, ev fsnotify.Event, root string, known map[string]struct{}) []CollectionEvent {
 	if ev.Has(fsnotify.Create) {
 		if info, err := os.Stat(ev.Name); err == nil && info.IsDir() {
-			if isExcludedDir(filepath.Base(ev.Name)) {
+			if isExcludedDir(root, ev.Name) {
 				return nil
 			}
 			// Best-effort: the dir may vanish before we watch it, or watches
@@ -103,7 +111,29 @@ func translateEvent(fw *fsnotify.Watcher, ev fsnotify.Event, root string) []Coll
 			// watch taking effect may be surfaced both here and by its own
 			// Create event; that duplicate EventAdded is tolerated because the
 			// frontend upserts by FilePath.
-			return scanSubtreeAdded(root, ev.Name)
+			added := scanSubtreeAdded(root, ev.Name)
+			for _, ce := range added {
+				known[ce.Path] = struct{}{}
+			}
+			return added
+		}
+	}
+
+	// A watched directory renamed or deleted: emit EventRemoved for every tracked
+	// .n4l file under it. Runs before the .n4l-extension gate below because the
+	// event's path is the directory (no .n4l suffix). A file event won't match
+	// here — no tracked file sits under "<somefile>.n4l/".
+	if ev.Has(fsnotify.Remove) || ev.Has(fsnotify.Rename) {
+		prefix := ev.Name + string(filepath.Separator)
+		var out []CollectionEvent
+		for f := range known {
+			if strings.HasPrefix(f, prefix) {
+				out = append(out, CollectionEvent{Kind: EventRemoved, Path: f})
+				delete(known, f)
+			}
+		}
+		if len(out) > 0 {
+			return out
 		}
 	}
 
@@ -113,10 +143,13 @@ func translateEvent(fw *fsnotify.Watcher, ev fsnotify.Event, root string) []Coll
 
 	switch {
 	case ev.Has(fsnotify.Create):
+		known[ev.Name] = struct{}{}
 		return []CollectionEvent{{Kind: EventAdded, Path: ev.Name, Chapters: summaryFor(root, ev.Name)}}
 	case ev.Has(fsnotify.Remove):
+		delete(known, ev.Name)
 		return []CollectionEvent{{Kind: EventRemoved, Path: ev.Name}}
 	case ev.Has(fsnotify.Rename):
+		delete(known, ev.Name)
 		return []CollectionEvent{{Kind: EventRenamed, Path: ev.Name, Chapters: summaryFor(root, ev.Name)}}
 	case ev.Has(fsnotify.Write):
 		// Re-scan chapter titles so the file tree updates when chapters are
@@ -125,6 +158,31 @@ func translateEvent(fw *fsnotify.Watcher, ev fsnotify.Event, root string) []Coll
 		return []CollectionEvent{{Kind: EventModified, Path: ev.Name, Chapters: summaryFor(root, ev.Name)}}
 	}
 	return nil
+}
+
+// collectN4LFiles returns the set of .n4l file paths under root, using the same
+// directory exclusions as the watch. Seeds the watcher's known-file inventory.
+func collectN4LFiles(root string) map[string]struct{} {
+	known := make(map[string]struct{})
+	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			if path == root {
+				return err
+			}
+			return fs.SkipDir
+		}
+		if d.IsDir() {
+			if path != root && isExcludedDir(root, path) {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		if strings.EqualFold(filepath.Ext(d.Name()), ".n4l") {
+			known[path] = struct{}{}
+		}
+		return nil
+	})
+	return known
 }
 
 // summaryFor builds the single-element Chapters slice attached to an Added /
@@ -159,7 +217,7 @@ func scanSubtreeAdded(root, dir string) []CollectionEvent {
 			return fs.SkipDir
 		}
 		if d.IsDir() {
-			if path != dir && isExcludedDir(d.Name()) {
+			if path != dir && isExcludedDir(root, path) {
 				return fs.SkipDir
 			}
 			return nil
