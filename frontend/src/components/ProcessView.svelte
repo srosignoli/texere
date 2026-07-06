@@ -168,7 +168,13 @@
     } catch (e) { error = String(e?.message ?? e) }
   })
 
-  onDestroy(() => view?.destroy())
+  // Persist any unsaved edits (e.g. a card back typed after "Make card") before
+  // teardown, so dismissing the Study surface without Create card / Later doesn't
+  // drop them. flush() captures the doc synchronously and is a no-op when clean.
+  onDestroy(() => {
+    flush().catch(() => {})
+    view?.destroy()
+  })
 </script>
 
 <div class="pv-root">

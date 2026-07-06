@@ -49,7 +49,9 @@
 
   function open(v) { activeReading.set(v) }
 
-  const dueNow = (v) => !v.done && v.due !== 0 && v.due * 1000 <= Date.now()
+  // A never-scheduled source has due===0 (NULL); the backend StudyCounts and
+  // StudySurface.loadRead both count that as due, so the badge must too.
+  const dueNow = (v) => !v.done && (v.due === 0 || v.due * 1000 <= Date.now())
 
   onMount(load)
 </script>

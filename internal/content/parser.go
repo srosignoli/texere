@@ -1066,6 +1066,13 @@ func studyMetaFromBlock(block studyBlockState) *StudyMeta {
 	return sm
 }
 
+// HasClozeTargets reports whether text contains at least one {{double-brace}}
+// cloze group. Used to refuse promoting an extract to a cloze card when the
+// passage has no deletion marked (which would produce zero cards).
+func HasClozeTargets(text string) bool {
+	return len(extractClozeTargets(text)) > 0
+}
+
 // extractClozeTargets finds the contents of each {{double-brace}} group in text,
 // in order. A single {brace} is literal text and is ignored.
 func extractClozeTargets(text string) []string {

@@ -34,6 +34,8 @@ export function GetExtractTarget(arg1:string):Promise<main.ExtractTarget>;
 
 export function GetFileContent(arg1:string):Promise<string>;
 
+export function GetInitialCollectionDir():Promise<string>;
+
 export function GetInitialSummaries():Promise<Array<content.ChapterSummary>>;
 
 export function GetReadingList():Promise<Array<main.ReadingView>>;

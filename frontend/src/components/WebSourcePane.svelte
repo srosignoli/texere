@@ -28,6 +28,29 @@
     dispatch('extract', { text: sel.text, position: 'char=' + sel.offset })
   }
 
+  // Rune offset of the first character at the top of the scroll viewport, in the
+  // same coordinate space as runeOffset()/scrollToRune(). ReadingView pulls this on
+  // leave to persist "# @progress char=N" so a web article reopens where you left it.
+  export function getProgress() {
+    if (!articleEl) return null
+    const box = articleEl.getBoundingClientRect()
+    const x = box.left + 8
+    const y = box.top + 2
+    let node = null, offset = 0
+    if (document.caretRangeFromPoint) {
+      const r = document.caretRangeFromPoint(x, y)
+      if (r) { node = r.startContainer; offset = r.startOffset }
+    } else if (document.caretPositionFromPoint) {
+      const p = document.caretPositionFromPoint(x, y)
+      if (p) { node = p.offsetNode; offset = p.offset }
+    }
+    if (!node || !articleEl.contains(node)) return 'char=0'
+    const pre = document.createRange()
+    pre.selectNodeContents(articleEl)
+    pre.setEnd(node, offset)
+    return 'char=' + [...pre.toString()].length
+  }
+
   function parseChar(pos) {
     const m = /char=(\d+)/.exec(pos || '')
     return m ? parseInt(m[1], 10) : 0

@@ -165,17 +165,50 @@ func atomicWriteText(path, text string) error {
 	return nil
 }
 
+// beginSelfWrite marks path as being written by the app so the collection
+// watcher does not surface a false "modified externally" toast. It is
+// reference-counted and mutex-guarded so concurrent or nested self-writes
+// (SaveFile, sync writeback, reading/study operations) don't clobber each
+// other's suppression. Pair every call with endSelfWrite (via defer).
+func (a *App) beginSelfWrite(path string) {
+	a.savingMu.Lock()
+	if a.savingPaths == nil {
+		a.savingPaths = make(map[string]int)
+	}
+	a.savingPaths[path]++
+	a.savingMu.Unlock()
+}
+
+// endSelfWrite releases one self-write hold on path (see beginSelfWrite).
+func (a *App) endSelfWrite(path string) {
+	a.savingMu.Lock()
+	if n := a.savingPaths[path]; n > 1 {
+		a.savingPaths[path] = n - 1
+	} else {
+		delete(a.savingPaths, path)
+	}
+	a.savingMu.Unlock()
+}
+
+// isSelfWriting reports whether the app currently holds a self-write on path.
+func (a *App) isSelfWriting(path string) bool {
+	a.savingMu.Lock()
+	_, ok := a.savingPaths[path]
+	a.savingMu.Unlock()
+	return ok
+}
+
 // SaveFile atomically writes fileContent to path, then injects missing # @id
 // markers for any # @card nodes. Returns the final on-disk content and the
 // list of injections performed.
 //
-// savingPath is set before any write and cleared after to suppress false
+// The path is registered as a self-write for the duration to suppress false
 // file:modified-externally events from consumeWatchEvents.
 func (a *App) SaveFile(path, fileContent string) (*SaveFileResult, error) {
-	a.savingPath = path
+	a.beginSelfWrite(path)
+	defer a.endSelfWrite(path)
 
 	if err := atomicWriteText(path, fileContent); err != nil {
-		a.savingPath = ""
 		return nil, fmt.Errorf("SaveFile: %w", err)
 	}
 
@@ -186,14 +219,12 @@ func (a *App) SaveFile(path, fileContent string) (*SaveFileResult, error) {
 		var err error
 		injections, err = content.InjectMissingIDs(parsed)
 		if err != nil {
-			a.savingPath = ""
 			return nil, fmt.Errorf("SaveFile: inject IDs: %w", err)
 		}
 	}
 
 	// Read final on-disk content (may differ if IDs were injected)
 	finalData, err := os.ReadFile(path)
-	a.savingPath = ""
 	if err != nil {
 		return nil, fmt.Errorf("SaveFile: read final: %w", err)
 	}
@@ -230,7 +261,7 @@ func (a *App) consumeWatchEvents() {
 				runtime.EventsEmit(a.ctx, "collection:change", ev)
 				// Only surface the "external mod" toast when *another*
 				// process changed the currently-open file.
-				if ev.Path == a.openFilePath && ev.Path != a.savingPath {
+				if ev.Path == a.openFilePath && !a.isSelfWriting(ev.Path) {
 					runtime.EventsEmit(a.ctx, "file:modified-externally", map[string]string{"path": ev.Path})
 				}
 			}
@@ -281,6 +312,14 @@ func (a *App) GetInitialSummaries() []content.ChapterSummary {
 	return a.initialSums
 }
 
+// GetInitialCollectionDir returns the absolute path of the collection auto-loaded
+// at startup, or "" if none. The frontend must use this rather than deriving the
+// root from a summary's FilePath: ScanCollection is recursive, so the first
+// summary (sorted by collection-relative path) can live in a subdirectory.
+func (a *App) GetInitialCollectionDir() string {
+	return a.collectionDir
+}
+
 // ---------------------------------------------------------------------------
 // GetStartupError — returns error message if startup auto-load failed
 // ---------------------------------------------------------------------------
@@ -322,12 +361,12 @@ func (a *App) CreateNewFile(name string) (*content.ChapterSummary, error) {
 		return nil, fmt.Errorf("CreateNewFile: stat: %w", err)
 	}
 
-	a.savingPath = path
-	if err := atomicWriteText(path, ""); err != nil {
-		a.savingPath = ""
+	a.beginSelfWrite(path)
+	err := atomicWriteText(path, "")
+	a.endSelfWrite(path)
+	if err != nil {
 		return nil, fmt.Errorf("CreateNewFile: %w", err)
 	}
-	a.savingPath = ""
 
 	return &content.ChapterSummary{
 		FilePath: path,

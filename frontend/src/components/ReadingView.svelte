@@ -32,6 +32,7 @@
   let notesView
   let savedNotes = ''
   let error = ''
+  let closed = false   // set once close()/onDestroy has persisted, to avoid double-saving
 
   async function onPaneExtract(e) {
     const { text, position } = e.detail
@@ -54,7 +55,9 @@
     if (cur !== savedNotes) {
       const res = await SaveFile(reading.notesPath, cur)
       savedNotes = res?.finalContent ?? cur
-      if (res?.finalContent) setNotes(res.finalContent)
+      // Only rewrite the buffer when the backend actually normalized/injected
+      // something; rewriting on every save reset the caret to the top.
+      if (res?.finalContent && res.finalContent !== cur) setNotes(res.finalContent)
     }
   }
 
@@ -65,7 +68,11 @@
 
   function setNotes(text) {
     savedNotes = text
-    notesView?.dispatch({ changes: { from: 0, to: notesView.state.doc.length, insert: text } })
+    if (!notesView) return
+    // Preserve the caret (clamped to the new length) across a full-document
+    // replace so a writeback/reload doesn't jump the cursor to offset 0.
+    const head = Math.min(notesView.state.selection.main.head, text.length)
+    notesView.dispatch({ changes: { from: 0, to: notesView.state.doc.length, insert: text }, selection: { anchor: head } })
   }
 
   async function done() {
@@ -74,6 +81,7 @@
   }
 
   async function close(action) {
+    closed = true
     try {
       // Persist reading progress on leave for panes that report it on demand
       // (text/markdown). PDF/web push progress as the user navigates.
@@ -117,7 +125,21 @@
     })
   })
 
-  onDestroy(() => notesView?.destroy())
+  // If the component is torn down without close() running — e.g. the Study
+  // surface is dismissed via its own × or the Ctrl+Shift+S toggle, which unmount
+  // ReadingView directly — persist notes + progress before the editor is gone.
+  // Capture the doc synchronously and fire the writes best-effort (no writeback
+  // dispatch, since notesView is about to be destroyed).
+  onDestroy(() => {
+    if (!closed) {
+      const cur = notesView?.state.doc.toString()
+      if (cur != null && cur !== savedNotes) SaveFile(reading.notesPath, cur).catch(() => {})
+      const pos = pane?.getProgress?.()
+      if (pos) UpdateReadingProgress(reading.id, pos).catch(() => {})
+      RescheduleReading(reading.id, 'continue').catch(() => {})
+    }
+    notesView?.destroy()
+  })
 </script>
 
 <svelte:window on:keydown={onKey} />

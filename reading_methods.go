@@ -202,15 +202,15 @@ func (a *App) CreateExtract(id, text, position string) (*CreateExtractView, erro
 		return nil, fmt.Errorf("CreateExtract: reading element %q not found", id)
 	}
 	anchor := fmt.Sprintf("%s %s", r.RefPath, position)
-	// reading/ is an unwatched subtree (the collection watcher is non-recursive), so this
-	// savingPath bracketing is defensive only — no external-mod event fires for notes files.
-	// ReadingView refreshes its own buffer via reloadNotes().
-	a.savingPath = r.NotesPath
+	// The collection watcher is now recursive, so reading/ writes do fire events;
+	// bracket them as self-writes to suppress a false external-mod toast if this
+	// notes file also happens to be open in the main editor.
+	a.beginSelfWrite(r.NotesPath)
 	exID, err := content.AppendExtract(r.NotesPath, text, anchor)
 	if err == nil {
 		err = content.UpdateProgressMarker(r.NotesPath, position)
 	}
-	a.savingPath = ""
+	a.endSelfWrite(r.NotesPath)
 	if err != nil {
 		return nil, fmt.Errorf("CreateExtract: %w", err)
 	}
@@ -371,9 +371,9 @@ func (a *App) UpdateReadingProgress(id, position string) error {
 	if err != nil || !ok {
 		return fmt.Errorf("UpdateReadingProgress: %q not found", id)
 	}
-	a.savingPath = r.NotesPath
+	a.beginSelfWrite(r.NotesPath)
 	wErr := content.UpdateProgressMarker(r.NotesPath, position)
-	a.savingPath = ""
+	a.endSelfWrite(r.NotesPath)
 	if wErr != nil {
 		return wErr
 	}

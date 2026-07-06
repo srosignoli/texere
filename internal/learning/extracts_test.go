@@ -71,3 +71,36 @@ func TestExtractScheduleAndCRUD(t *testing.T) {
 		t.Fatalf("RetireMissingExtracts n=%d err=%v want 1", n, err)
 	}
 }
+
+// A dismissed extract whose (from) node is still in the .n4l must not be
+// resurrected when the file is re-synced (GenerateExtracts → UpsertExtract).
+func TestUpsertExtractDoesNotResurrectDismissed(t *testing.T) {
+	s, err := Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	now := time.Unix(1_000_000, 0)
+
+	e := Extract{ID: "f.n4l:Ch:id:z", FilePath: "/c/reading/f.n4l", Text: "passage",
+		FromAnchor: "sources/f.txt char=0", Active: true}
+	if _, err := s.UpsertExtract(e); err != nil {
+		t.Fatal(err)
+	}
+	// User dismisses it.
+	got, _, _ := s.GetExtract(e.ID)
+	if err := s.ApplyExtractSchedule(e.ID, ScheduleExtract(got, "dismiss", now)); err != nil {
+		t.Fatal(err)
+	}
+	// Re-sync re-finds the still-present (from) node and upserts it again.
+	if _, err := s.UpsertExtract(e); err != nil {
+		t.Fatal(err)
+	}
+	after, _, _ := s.GetExtract(e.ID)
+	if after.Active {
+		t.Fatal("re-upsert resurrected a dismissed extract (active flipped back to true)")
+	}
+	if d, _ := s.DueExtracts(now, 10); len(d) != 0 {
+		t.Fatalf("dismissed extract reappeared in due queue: len=%d want 0", len(d))
+	}
+}

@@ -1,7 +1,7 @@
 <script>
   import { onMount, onDestroy } from 'svelte'
   import { EventsOn } from '../wailsjs/runtime/runtime'
-  import { GetArrowRegistry, GetInitialSummaries, GetStartupError, ConfirmQuit, ParseFileForUI, BuildGraph } from '../wailsjs/go/main/App'
+  import { GetArrowRegistry, GetInitialSummaries, GetInitialCollectionDir, GetStartupError, ConfirmQuit, ParseFileForUI, BuildGraph } from '../wailsjs/go/main/App'
   import { workbenchStore } from './stores/workbench.js'
   import { uiLayout } from './stores/uiLayout.js'
   import { logPanelOpen, appendLog, toggleLogPanel } from './stores/logPanel.js'
@@ -123,6 +123,9 @@
     // Ctrl/Cmd+Shift+S toggles the unified Study surface (Next queue).
     if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 's' || e.key === 'S')) {
       e.preventDefault(); e.stopPropagation()
+      // Toggling the surface closed must drop the active reading too (mirrors the
+      // × onClose); otherwise reopening remounts on a stale reading object.
+      if ($studySurfaceOpen) activeReading.set(null)
       studyFocus.set('next'); studySurfaceOpen.update((v) => !v); return
     }
     // Ctrl/Cmd+Shift+E opens the Study surface on the Read focus.
@@ -261,19 +264,19 @@
 
     // Retrieve any auto-loaded collection from startup()
     try {
-      const [summaries, errMsg] = await Promise.all([
+      const [summaries, errMsg, dir] = await Promise.all([
         GetInitialSummaries(),
         GetStartupError(),
+        GetInitialCollectionDir(),
       ])
       startupError = errMsg ?? ''
       if (summaries?.length) {
-        // Derive collectionDir from first summary's FilePath (best available)
-        const dir = summaries[0]?.FilePath
-          ? summaries[0].FilePath.replace(/[\\/][^\\/]+$/, '')
-          : null
+        // Use the backend's real collection root. Deriving it from a summary's
+        // FilePath is wrong now that ScanCollection recurses — the first summary
+        // (sorted by relative path) may sit in a subdirectory.
         workbenchStore.update((s) => ({
           ...s,
-          collectionDir: dir,
+          collectionDir: dir || null,
           summaries: summaries,
         }))
       }

@@ -32,10 +32,10 @@ func (a *App) SyncStudyItems() (*learning.SyncResult, error) {
 		return nil, errNoStore
 	}
 	// Suppress spurious file:modified-externally for the open file during
-	// sync writeback (mirrors how SaveFile uses savingPath).
-	a.savingPath = a.openFilePath
+	// sync writeback (mirrors how SaveFile brackets self-writes).
+	a.beginSelfWrite(a.openFilePath)
 	res, err := learning.Sync(a.learnStore, a.collectionN4LFiles(), a.registry)
-	a.savingPath = ""
+	a.endSelfWrite(a.openFilePath)
 	if err != nil {
 		return nil, err
 	}

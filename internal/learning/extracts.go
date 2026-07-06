@@ -46,7 +46,10 @@ func (s *Store) UpsertExtract(e Extract) (bool, error) {
 		return false, err
 	}
 	if exists > 0 {
-		_, err := s.db.Exec(`UPDATE extracts SET file_path=?, text=?, from_anchor=?, active=1 WHERE id=?`,
+		// Update only the mutable content fields; preserve active/due/deferral so a
+		// re-sync of a file that still contains a dismissed extract's (from) node
+		// does not resurrect it into the due queue.
+		_, err := s.db.Exec(`UPDATE extracts SET file_path=?, text=?, from_anchor=? WHERE id=?`,
 			e.FilePath, e.Text, e.FromAnchor, e.ID)
 		return false, err
 	}

@@ -58,6 +58,10 @@ export function GetFileContent(arg1) {
   return window['go']['main']['App']['GetFileContent'](arg1);
 }
 
+export function GetInitialCollectionDir() {
+  return window['go']['main']['App']['GetInitialCollectionDir']();
+}
+
 export function GetInitialSummaries() {
   return window['go']['main']['App']['GetInitialSummaries']();
 }

@@ -57,20 +57,21 @@ func (a *App) GetExtractQueue(limit int) ([]ExtractView, error) {
 	return out, nil
 }
 
-// nodeLineByID parses file and returns the 1-indexed line of the node whose ID==id.
-func (a *App) nodeLineByID(filePath, id string) (int, error) {
+// nodeByID parses file and returns the 1-indexed line and raw text of the node
+// whose ID==id.
+func (a *App) nodeByID(filePath, id string) (int, string, error) {
 	pf, _ := content.ParseFile(filePath, a.registry)
 	if pf == nil {
-		return 0, fmt.Errorf("parse %s failed", filePath)
+		return 0, "", fmt.Errorf("parse %s failed", filePath)
 	}
 	for _, ch := range pf.Chapters {
 		for _, n := range ch.Nodes {
 			if n.ID == id {
-				return n.Line, nil
+				return n.Line, n.Text, nil
 			}
 		}
 	}
-	return 0, fmt.Errorf("node %q not found in %s", id, filePath)
+	return 0, "", fmt.Errorf("node %q not found in %s", id, filePath)
 }
 
 func (a *App) GetExtractTarget(id string) (*ExtractTarget, error) {
@@ -81,7 +82,7 @@ func (a *App) GetExtractTarget(id string) (*ExtractTarget, error) {
 	if err != nil || !ok {
 		return nil, fmt.Errorf("GetExtractTarget: %q not found", id)
 	}
-	line, err := a.nodeLineByID(e.FilePath, id)
+	line, _, err := a.nodeByID(e.FilePath, id)
 	if err != nil {
 		return nil, err
 	}
@@ -99,11 +100,17 @@ func (a *App) PromoteExtract(id, kind string) error {
 	if err != nil || !ok {
 		return fmt.Errorf("PromoteExtract: %q not found", id)
 	}
-	line, err := a.nodeLineByID(e.FilePath, id)
+	line, nodeText, err := a.nodeByID(e.FilePath, id)
 	if err != nil {
 		return err
 	}
-	a.savingPath = e.FilePath
+	// A cloze card needs at least one {{deletion}}; promoting without one would
+	// retire the extract and generate nothing recallable. Refuse so the author can
+	// mark a deletion in the editor first.
+	if kind == "cloze" && !content.HasClozeTargets(nodeText) {
+		return errors.New("mark a deletion with {{double braces}} before making a cloze")
+	}
+	a.beginSelfWrite(e.FilePath)
 	var wErr error
 	if kind == "card" {
 		// Seed a basic card stub "<passage> >> " for the author to complete; the
@@ -112,7 +119,7 @@ func (a *App) PromoteExtract(id, kind string) error {
 	} else {
 		wErr = content.InsertMarkerAboveNode(e.FilePath, line, "# @cloze")
 	}
-	a.savingPath = ""
+	a.endSelfWrite(e.FilePath)
 	if wErr != nil {
 		return wErr
 	}

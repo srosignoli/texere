@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"texere/internal/content"
@@ -32,7 +33,8 @@ type App struct {
 	ctx           context.Context
 	registry      *content.SSTRegistry
 	collectionDir string                   // abs path of the open collection; "" when none
-	savingPath    string                   // path currently being written by SaveFile; suppresses false external-mod events
+	savingMu      sync.Mutex               // guards savingPaths
+	savingPaths   map[string]int           // ref-counted set of paths the app is writing; suppresses false external-mod events
 	openFilePath  string                   // path of the file currently open in the Source tab
 	initialSums   []content.ChapterSummary // summaries loaded at startup from saved config
 	startupError  string                   // non-empty when auto-load failed (dir missing)
