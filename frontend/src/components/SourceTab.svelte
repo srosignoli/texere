@@ -1,17 +1,14 @@
 <script>
   import { onMount, onDestroy, createEventDispatcher } from 'svelte'
   import { editorAPI } from '../stores/workbench.js'
-  import { EditorView, keymap, lineNumbers, drawSelection, highlightActiveLine, highlightActiveLineGutter } from '@codemirror/view'
+  import { EditorView } from '@codemirror/view'
   import { EditorState } from '@codemirror/state'
-  import { defaultKeymap, historyKeymap, history, undo } from '@codemirror/commands'
-  import { autocompletion, startCompletion } from '@codemirror/autocomplete'
+  import { undo } from '@codemirror/commands'
+  import { startCompletion } from '@codemirror/autocomplete'
   import { search, openSearchPanel, searchKeymap } from '@codemirror/search'
-  import { vim } from '@replit/codemirror-vim'
   import { get } from 'svelte/store'
   import { workbenchStore, filteredNodes } from '../stores/workbench.js'
-  import { n4lLanguage } from '../lib/n4l-language.js'
-  import { n4lHighlighting } from '../lib/n4l-highlight.js'
-  import { arrowCompletion } from '../lib/arrow-autocomplete.js'
+  import { n4lBaseExtensions, pushRecentArrow } from '../lib/n4l-editor.js'
   import { SaveFile, GetFileContent, GetRecentArrows, UpdateRecentArrows } from '../../wailsjs/go/main/App'
 
   const dispatch = createEventDispatcher()
@@ -244,61 +241,30 @@
   // ----- CM6 setup -----
 
   function buildExtensions() {
-    return [
-      ...(vimMode ? [vim()] : []),
-      lineNumbers(),
-      drawSelection(),
-      highlightActiveLine(),
-      highlightActiveLineGutter(),
-      EditorView.lineWrapping,
-      history(),
-      n4lLanguage,
-      n4lHighlighting,
-      autocompletion({
-        override: [(ctx) => arrowCompletion(arrowDefsRef, recentCodesRef, handleArrowSelected)(ctx)],
-      }),
-      search({ top: false }),
-      keymap.of([
-        {
-          key: 'Mod-s',
-          run: () => { handleSave(); return true },
-          preventDefault: true,
-        },
-        ...defaultKeymap,
-        ...historyKeymap,
+    return n4lBaseExtensions({
+      getArrowDefs: () => arrowDefsRef,
+      getRecent: () => recentCodesRef,
+      onArrowSelected: handleArrowSelected,
+      vim: vimMode,
+      fontSize: '0.88rem',
+      keymap: [
+        { key: 'Mod-s', run: () => { handleSave(); return true }, preventDefault: true },
         ...searchKeymap,
-      ]),
-      EditorView.updateListener.of((update) => {
-        if (update.docChanged) {
-          const clean = update.state.doc.toString() === savedContent
-          workbenchStore.update((s) => ({ ...s, isDirty: !clean }))
-        }
-        if (update.selectionSet) {
-          const line = update.state.doc.lineAt(update.state.selection.main.head).number
-          workbenchStore.update((s) => ({ ...s, editorCursorLine: line }))
-        }
-      }),
-      EditorView.theme({
-        '&': { height: '100%', background: '#1b2636' },
-        '.cm-content': { fontFamily: 'monospace', fontSize: '0.88rem', color: '#e8eaf0', textAlign: 'left' },
-        '.cm-gutters': { background: '#161f2e', borderRight: '1px solid #2a3a4a', color: '#4a5a6a' },
-        '.cm-cursor': { borderLeftColor: '#7dd3fc' },
-        '.cm-selectionBackground': { background: '#1e3a5a !important' },
-        '.cm-activeLineGutter': { background: '#1d2e42' },
-        '.cm-activeLine': { background: '#1d2e42' },
-        '.cm-searchMatch': { background: '#854d0e', borderRadius: '2px' },
-        '.cm-vim-panel': { background: '#1a2535', color: '#e8eaf0', borderTop: '1px solid #2a3a4a' },
-        '.cm-vim-panel input': { background: 'transparent', color: '#e8eaf0', outline: 'none' },
-        // Autocomplete tooltip
-        '.cm-tooltip.cm-tooltip-autocomplete': { background: '#1a2535', border: '1px solid #2a3a4a', borderRadius: '6px', boxShadow: '0 6px 24px rgba(0,0,0,0.55)' },
-        '.cm-tooltip-autocomplete ul': { fontFamily: 'monospace', fontSize: '0.82rem' },
-        '.cm-tooltip-autocomplete ul li': { color: '#b0bec5', padding: '3px 10px' },
-        '.cm-tooltip-autocomplete ul li[aria-selected]': { background: '#1e3a5a !important', color: '#e8eaf0' },
-        '.cm-completionLabel': { color: '#67e8f9' },
-        '.cm-completionDetail': { color: '#8899aa', fontStyle: 'normal', marginLeft: '8px' },
-        '.cm-completionSectionHeader': { color: '#5a7a9a', fontSize: '0.68rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '4px 10px 2px', background: '#141d2b' },
-      }),
-    ]
+      ],
+      extra: [
+        search({ top: false }),
+        EditorView.updateListener.of((update) => {
+          if (update.docChanged) {
+            const clean = update.state.doc.toString() === savedContent
+            workbenchStore.update((s) => ({ ...s, isDirty: !clean }))
+          }
+          if (update.selectionSet) {
+            const line = update.state.doc.lineAt(update.state.selection.main.head).number
+            workbenchStore.update((s) => ({ ...s, editorCursorLine: line }))
+          }
+        }),
+      ],
+    })
   }
 
   function rebuildEditor() {
@@ -312,7 +278,7 @@
 
   // Called by arrowCompletion when a completion is applied — updates LRU list
   function handleArrowSelected(code) {
-    recentCodesRef = [code, ...recentCodesRef.filter((c) => c !== code)].slice(0, 10)
+    recentCodesRef = pushRecentArrow(recentCodesRef, code)
     UpdateRecentArrows(recentCodesRef).catch((e) => console.warn('UpdateRecentArrows failed:', e))
   }
 

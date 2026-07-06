@@ -1,12 +1,8 @@
 <script>
   import { onMount, onDestroy } from 'svelte'
-  import { EditorView, keymap, lineNumbers } from '@codemirror/view'
+  import { EditorView } from '@codemirror/view'
   import { EditorState } from '@codemirror/state'
-  import { defaultKeymap, historyKeymap, history } from '@codemirror/commands'
-  import { autocompletion } from '@codemirror/autocomplete'
-  import { n4lLanguage } from '../lib/n4l-language.js'
-  import { n4lHighlighting } from '../lib/n4l-highlight.js'
-  import { arrowCompletion } from '../lib/arrow-autocomplete.js'
+  import { n4lBaseExtensions, pushRecentArrow } from '../lib/n4l-editor.js'
   import { workbenchStore } from '../stores/workbench.js'
   import { CreateExtract, RescheduleReading, GetFileContent, SaveFile, GetRecentArrows, UpdateRecentArrows, UpdateReadingProgress } from '../../wailsjs/go/main/App'
   import { activeReading } from '../stores/reading.js'
@@ -23,7 +19,7 @@
   $: arrowDefsRef = $workbenchStore.arrowDefs ?? []
 
   function handleArrowSelected(code) {
-    recentCodesRef = [code, ...recentCodesRef.filter((c) => c !== code)].slice(0, 10)
+    recentCodesRef = pushRecentArrow(recentCodesRef, code)
     UpdateRecentArrows(recentCodesRef).catch((e) => console.warn('UpdateRecentArrows failed:', e))
   }
 
@@ -113,14 +109,11 @@
       parent: notesContainer,
       state: EditorState.create({
         doc: text,
-        extensions: [
-          lineNumbers(), history(), n4lLanguage, n4lHighlighting,
-          autocompletion({ override: [(ctx) => arrowCompletion(arrowDefsRef, recentCodesRef, handleArrowSelected)(ctx)] }),
-          keymap.of([...defaultKeymap, ...historyKeymap]),
-          EditorView.lineWrapping,
-          EditorView.theme({ '&': { height: '100%', background: '#1b2636' },
-            '.cm-content': { fontFamily: 'monospace', fontSize: '0.85rem', color: '#e8eaf0' } }),
-        ],
+        extensions: n4lBaseExtensions({
+          getArrowDefs: () => arrowDefsRef,
+          getRecent: () => recentCodesRef,
+          onArrowSelected: handleArrowSelected,
+        }),
       }),
     })
   })

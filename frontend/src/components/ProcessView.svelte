@@ -1,14 +1,9 @@
 <script>
   import { onMount, onDestroy } from 'svelte'
-  import { EditorView, keymap, lineNumbers, drawSelection, highlightActiveLine, highlightActiveLineGutter } from '@codemirror/view'
+  import { EditorView } from '@codemirror/view'
   import { EditorState } from '@codemirror/state'
-  import { defaultKeymap, historyKeymap, history } from '@codemirror/commands'
-  import { autocompletion } from '@codemirror/autocomplete'
-  import { vim } from '@replit/codemirror-vim'
   import { workbenchStore } from '../stores/workbench.js'
-  import { n4lLanguage } from '../lib/n4l-language.js'
-  import { n4lHighlighting } from '../lib/n4l-highlight.js'
-  import { arrowCompletion } from '../lib/arrow-autocomplete.js'
+  import { n4lBaseExtensions, pushRecentArrow } from '../lib/n4l-editor.js'
   import { GetExtractTarget, PromoteExtract, DeferExtract, DismissExtract, GetFileContent, SaveFile, SyncStudyItems, GetRecentArrows, UpdateRecentArrows } from '../../wailsjs/go/main/App'
 
   export let extractId
@@ -26,7 +21,7 @@
   $: arrowDefsRef = $workbenchStore.arrowDefs ?? []
 
   function handleArrowSelected(code) {
-    recentCodesRef = [code, ...recentCodesRef.filter((c) => c !== code)].slice(0, 10)
+    recentCodesRef = pushRecentArrow(recentCodesRef, code)
     UpdateRecentArrows(recentCodesRef).catch(() => {})
   }
 
@@ -118,25 +113,13 @@
   }
 
   function buildExtensions() {
-    return [
-      ...(vimMode ? [vim()] : []),
-      lineNumbers(), drawSelection(), highlightActiveLine(), highlightActiveLineGutter(),
-      history(), n4lLanguage, n4lHighlighting,
-      autocompletion({ override: [(ctx) => arrowCompletion(arrowDefsRef, recentCodesRef, handleArrowSelected)(ctx)] }),
-      keymap.of([{ key: 'Mod-s', run: () => { flush().catch(() => {}); return true }, preventDefault: true }, ...defaultKeymap, ...historyKeymap]),
-      EditorView.lineWrapping,
-      EditorView.theme({
-        '&': { height: '100%', background: '#1b2636' },
-        '.cm-content': { fontFamily: 'monospace', fontSize: '0.85rem', color: '#e8eaf0', textAlign: 'left' },
-        '.cm-gutters': { background: '#161f2e', borderRight: '1px solid #2a3a4a', color: '#4a5a6a' },
-        '.cm-cursor': { borderLeftColor: '#7dd3fc' },
-        '.cm-selectionBackground': { background: '#1e3a5a !important' },
-        '.cm-activeLine': { background: '#1d2e42' },
-        '.cm-activeLineGutter': { background: '#1d2e42' },
-        '.cm-vim-panel': { background: '#1a2535', color: '#e8eaf0', borderTop: '1px solid #2a3a4a' },
-        '.cm-vim-panel input': { background: 'transparent', color: '#e8eaf0', outline: 'none' },
-      }),
-    ]
+    return n4lBaseExtensions({
+      getArrowDefs: () => arrowDefsRef,
+      getRecent: () => recentCodesRef,
+      onArrowSelected: handleArrowSelected,
+      vim: vimMode,
+      keymap: [{ key: 'Mod-s', run: () => { flush().catch(() => {}); return true }, preventDefault: true }],
+    })
   }
 
   // Recreate the view with the current extension set (preserving unsaved content),
