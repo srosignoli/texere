@@ -1,10 +1,13 @@
 package main
 
 import (
+	"log"
+
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"texere/internal/content"
 	"texere/internal/explorer"
 	"texere/internal/graph"
+	"texere/internal/learning"
 	"texere/internal/search"
 )
 
@@ -63,6 +66,27 @@ func (a *App) BuildGraph() *BuildGraphResult {
 		a.explorerSvc.SetSearchService(a.searchSvc)
 	} else {
 		a.explorerSvc = explorer.NewExplorerService(a.searchSvc, a.registry)
+	}
+
+	if a.learnStore != nil {
+		// Suppress spurious file:modified-externally for the open file during
+		// sync writeback (mirrors how SaveFile brackets self-writes).
+		a.beginSelfWrite(a.openFilePath)
+		syncRes, err := learning.Sync(a.learnStore, a.collectionN4LFiles(), a.registry)
+		a.endSelfWrite(a.openFilePath)
+		if err != nil {
+			log.Printf("learning: sync after build: %v", err)
+		}
+		// If the open file had # @id markers injected, notify the frontend so it
+		// can silently reload the buffer and pick up the new IDs.
+		if a.ctx != nil && a.openFilePath != "" {
+			for _, injPath := range syncRes.InjectedPaths {
+				if injPath == a.openFilePath {
+					runtime.EventsEmit(a.ctx, "file:ids-injected", map[string]string{"path": a.openFilePath})
+					break
+				}
+			}
+		}
 	}
 
 	if a.ctx != nil {

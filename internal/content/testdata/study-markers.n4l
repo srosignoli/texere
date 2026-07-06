@@ -12,7 +12,7 @@ Individual reverse card node
 Individual no-reverse card node
 
 # @cloze
-Cloze deletion {target word} in a sentence with {another target}
+Cloze deletion {{target word}} in a sentence with {{another target}}
 
 Unmarked node one
 "  (note) this should not appear in study output

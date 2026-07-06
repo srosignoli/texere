@@ -328,7 +328,7 @@ my-notes/
 
 ### 5.7 Version control layer
 
-A git repository (managed via go-git) tracks the evolution of .n4l files, SSTconfig/, and media/. The `badger/` directory and `learning.db` are .gitignored because they are binary, machine-specific, and rebuildable. Version control is tightly integrated with the Build graph action — see Section 14 for full details.
+A git repository (managed via go-git) tracks the evolution of .n4l files, SSTconfig/, and media/. The `badger/` directory is .gitignored because it is binary, machine-specific, and rebuildable from the `.n4l` files. `learning.db` is also .gitignored because it is binary and machine-specific, but it is NOT rebuildable — it holds earned review history; back it up with the collection if you want to preserve scheduling progress. Version control is tightly integrated with the Build graph action — see Section 14 for full details.
 
 ---
 

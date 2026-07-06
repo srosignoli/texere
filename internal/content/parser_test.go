@@ -163,6 +163,109 @@ func TestScanCollectionUnreadable(t *testing.T) {
 	}
 }
 
+func TestScanCollectionRecursive(t *testing.T) {
+	dir := t.TempDir()
+
+	// Top-level file.
+	if err := os.WriteFile(filepath.Join(dir, "top.n4l"), []byte("- a\nnode\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// reading/ subdir file — must be discovered.
+	if err := os.MkdirAll(filepath.Join(dir, "reading"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "reading", "deep.n4l"), []byte("- b\nnode\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Denylisted + hidden dirs containing .n4l — must be ignored.
+	for _, d := range []string{"sst_data", "bleve", "sources", ".hidden"} {
+		if err := os.MkdirAll(filepath.Join(dir, d), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, d, "x.n4l"), []byte("- c\nnode\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	summaries, err := ScanCollection(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got := map[string]bool{}
+	for _, s := range summaries {
+		got[s.RelPath] = true
+	}
+	if len(summaries) != 2 {
+		t.Fatalf("want 2 summaries, got %d: %v", len(summaries), got)
+	}
+	if !got["top.n4l"] {
+		t.Errorf("missing top-level file; got %v", got)
+	}
+	if !got["reading/deep.n4l"] {
+		t.Errorf("missing subdir file; got %v", got)
+	}
+	// Top-level RelPath is the bare base name (no slash); subdir RelPath is slashed.
+	for _, s := range summaries {
+		switch s.FileName {
+		case "top.n4l":
+			if s.RelPath != "top.n4l" {
+				t.Errorf("top-level RelPath = %q, want %q", s.RelPath, "top.n4l")
+			}
+		case "deep.n4l":
+			if s.RelPath != "reading/deep.n4l" {
+				t.Errorf("subdir RelPath = %q, want %q", s.RelPath, "reading/deep.n4l")
+			}
+		}
+	}
+}
+
+// The reserved app directories are only reserved at the collection root; a
+// user-created folder with the same name nested deeper is ordinary content and
+// must be scanned. Hidden dirs remain excluded at any depth.
+func TestScanCollectionReservedDirRootOnly(t *testing.T) {
+	dir := t.TempDir()
+	// Root-level reserved dir: excluded.
+	if err := os.MkdirAll(filepath.Join(dir, "sources"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "sources", "root.n4l"), []byte("- a\nn\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Nested folder that happens to be named "sources": included.
+	if err := os.MkdirAll(filepath.Join(dir, "notes", "sources"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "notes", "sources", "nested.n4l"), []byte("- b\nn\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Nested hidden dir: still excluded at any depth.
+	if err := os.MkdirAll(filepath.Join(dir, "notes", ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "notes", ".git", "h.n4l"), []byte("- c\nn\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	summaries, err := ScanCollection(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]bool{}
+	for _, s := range summaries {
+		got[s.RelPath] = true
+	}
+	if !got["notes/sources/nested.n4l"] {
+		t.Errorf("nested sources/ folder should be scanned; got %v", got)
+	}
+	if got["sources/root.n4l"] {
+		t.Errorf("root-level sources/ must stay excluded; got %v", got)
+	}
+	if got["notes/.git/h.n4l"] {
+		t.Errorf("hidden dir must stay excluded at any depth; got %v", got)
+	}
+}
+
 func BenchmarkScanCollection(b *testing.B) {
 	dir := b.TempDir()
 	src := testdataPath(b, "simple.n4l")
@@ -1440,6 +1543,86 @@ func BenchmarkScanCollection500(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		if _, err := ScanCollection(dir); err != nil {
 			b.Fatal(err)
+		}
+	}
+}
+
+func TestCardNodeKeepsLiteralTextNoArrows(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "card.n4l")
+	body := "- Ch\n# @card\nWhat is the capital (city) of France? >> Paris\n"
+	if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	pf, _ := ParseFile(p, emptyRegistry())
+	n := pf.Chapters[0].Nodes[0]
+	if n.Text != "What is the capital (city) of France? >> Paris" {
+		t.Fatalf("card text=%q want literal line", n.Text)
+	}
+	if len(n.Arrows) != 0 {
+		t.Fatalf("card node should have no arrows, got %v", n.Arrows)
+	}
+	if len(pf.Errors) != 0 {
+		t.Fatalf("card node should not log unknown-arrow errors, got %v", pf.Errors)
+	}
+}
+
+func TestClozeExtractNodeKeepsFromAnchorSeparate(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "ex.n4l")
+	// A cloze-promoted extract: study-marked AND carries a (from) anchor.
+	body := "- Ch\n# @cloze\nextracted sentence (from) \"sources/x.txt char=0\"\n"
+	if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	pf, _ := ParseFile(p, &SSTRegistry{Arrows: map[string]ArrowDef{"from": {Code: "from", LongName: "from"}}})
+	n := pf.Chapters[0].Nodes[0]
+	if n.Text != "extracted sentence" {
+		t.Fatalf("cloze-extract text=%q want passage with anchor stripped", n.Text)
+	}
+	if !nodeHasFromArrow(&n) {
+		t.Fatalf("cloze-extract node should retain its (from) arrow")
+	}
+}
+
+func TestCardWithLiteralFromParenStillGeneratesCard(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "card.n4l")
+	// A card whose front legitimately contains "(from)" — NOT an extract anchor
+	// (no quoted target). It must stay literal so the ">>" survives.
+	body := "- Ch\n# @card\nWhere does rain come (from)? >> clouds\n"
+	if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	pf, _ := ParseFile(p, emptyRegistry())
+	n := pf.Chapters[0].Nodes[0]
+	if n.Text != "Where does rain come (from)? >> clouds" {
+		t.Fatalf("card text=%q want full literal line (>> preserved)", n.Text)
+	}
+	if len(n.Arrows) != 0 {
+		t.Fatalf("card node should have no arrows, got %v", n.Arrows)
+	}
+}
+
+func TestExtractClozeTargetsDoubleBraceOnly(t *testing.T) {
+	cases := []struct {
+		in   string
+		want []string
+	}{
+		{"The {{capital}} of {{France}}", []string{"capital", "France"}},
+		{"single {brace} is literal", nil},
+		{"mixed {x} and {{y}}", []string{"y"}},
+		{"no braces here", nil},
+	}
+	for _, c := range cases {
+		got := extractClozeTargets(c.in)
+		if len(got) != len(c.want) {
+			t.Fatalf("%q: got %v want %v", c.in, got, c.want)
+		}
+		for i := range got {
+			if got[i] != c.want[i] {
+				t.Fatalf("%q: got[%d]=%q want %q", c.in, i, got[i], c.want[i])
+			}
 		}
 	}
 }

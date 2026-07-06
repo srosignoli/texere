@@ -1,7 +1,7 @@
 <script>
   import { onMount, onDestroy } from 'svelte'
   import { EventsOn } from '../wailsjs/runtime/runtime'
-  import { GetArrowRegistry, GetInitialSummaries, GetStartupError, ConfirmQuit, ParseFileForUI, BuildGraph } from '../wailsjs/go/main/App'
+  import { GetArrowRegistry, GetInitialSummaries, GetInitialCollectionDir, GetStartupError, ConfirmQuit, ParseFileForUI, BuildGraph } from '../wailsjs/go/main/App'
   import { workbenchStore } from './stores/workbench.js'
   import { uiLayout } from './stores/uiLayout.js'
   import { logPanelOpen, appendLog, toggleLogPanel } from './stores/logPanel.js'
@@ -14,8 +14,12 @@
   import LogPanel from './components/LogPanel.svelte'
   import GraphExplorer from './components/GraphExplorer.svelte'
   import QueryHelpPanel from './components/QueryHelpPanel.svelte'
+  import StudyMode from './components/StudyMode.svelte'
+  import StudySurface from './components/StudySurface.svelte'
   import { explorerOpen } from './stores/explorer.js'
   import { refreshQueryHints } from './stores/queryHints.js'
+  import { studyOpen, studySurfaceOpen, studyFocus } from './stores/study.js'
+  import { activeReading } from './stores/reading.js'
 
   // Track viewport height so the top-band drag handle can clamp to a value
   // that always leaves the editor with at least EDITOR_FLOOR_PX of room.
@@ -32,6 +36,7 @@
 
   let cancelCollectionChange = () => {}
   let cancelFileModified = () => {}
+  let cancelIdsInjected = () => {}
   let startupError = ''
   let bottomBandRef = null   // bind:this on BottomBand
 
@@ -107,6 +112,26 @@
       e.preventDefault()
       e.stopPropagation()
       toggleLogPanel()
+    }
+    // Ctrl/Cmd+Shift+R toggles the Recall (Study) overlay.
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'r' || e.key === 'R')) {
+      e.preventDefault()
+      e.stopPropagation()
+      studyOpen.update((v) => !v)
+      return
+    }
+    // Ctrl/Cmd+Shift+S toggles the unified Study surface (Next queue).
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 's' || e.key === 'S')) {
+      e.preventDefault(); e.stopPropagation()
+      // Toggling the surface closed must drop the active reading too (mirrors the
+      // × onClose); otherwise reopening remounts on a stale reading object.
+      if ($studySurfaceOpen) activeReading.set(null)
+      studyFocus.set('next'); studySurfaceOpen.update((v) => !v); return
+    }
+    // Ctrl/Cmd+Shift+E opens the Study surface on the Read focus.
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'e' || e.key === 'E')) {
+      e.preventDefault(); e.stopPropagation()
+      studyFocus.set('read'); studySurfaceOpen.set(true); return
     }
     // Esc closes the log panel when it's open (and the omnibar isn't already eating Esc).
     if (e.key === 'Escape' && $logPanelOpen) {
@@ -239,19 +264,19 @@
 
     // Retrieve any auto-loaded collection from startup()
     try {
-      const [summaries, errMsg] = await Promise.all([
+      const [summaries, errMsg, dir] = await Promise.all([
         GetInitialSummaries(),
         GetStartupError(),
+        GetInitialCollectionDir(),
       ])
       startupError = errMsg ?? ''
       if (summaries?.length) {
-        // Derive collectionDir from first summary's FilePath (best available)
-        const dir = summaries[0]?.FilePath
-          ? summaries[0].FilePath.replace(/[\\/][^\\/]+$/, '')
-          : null
+        // Use the backend's real collection root. Deriving it from a summary's
+        // FilePath is wrong now that ScanCollection recurses — the first summary
+        // (sorted by relative path) may sit in a subdirectory.
         workbenchStore.update((s) => ({
           ...s,
-          collectionDir: dir,
+          collectionDir: dir || null,
           summaries: summaries,
         }))
       }
@@ -297,6 +322,25 @@
       workbenchStore.update((s) => ({ ...s, externalModification: path }))
     })
 
+    // Subscribe to # @id injection events from Build Graph / SyncStudyItems.
+    // When the open file had IDs injected by the backend, either silently
+    // reload (buffer clean) or fall back to the external-modification banner
+    // (buffer dirty — must not clobber unsaved edits).
+    cancelIdsInjected = EventsOn('file:ids-injected', ({ path }) => {
+      const store = $workbenchStore
+      const openPath = store.selectedChapterKey?.filePath ?? null
+      if (path !== openPath) return  // not the open file; nothing to do
+      if (!store.isDirty) {
+        // Buffer is clean: silently reload from disk so the injected # @id
+        // lines land in the editor without any user-visible prompt.
+        workbenchStore.update((s) => ({ ...s, silentReloadNonce: (s.silentReloadNonce ?? 0) + 1 }))
+      } else {
+        // Buffer is dirty: fall back to the existing external-modification
+        // banner so the user decides whether to reload or keep their edits.
+        workbenchStore.update((s) => ({ ...s, externalModification: path }))
+      }
+    })
+
     // App close guard: check isDirty before allowing quit (T038)
     EventsOn('app:close-requested', () => {
       const store = $workbenchStore
@@ -310,6 +354,7 @@
   onDestroy(() => {
     cancelCollectionChange()
     cancelFileModified()
+    cancelIdsInjected()
     window.removeEventListener('keydown', handleKeydown, true)
     window.removeEventListener('resize', onResize)
   })
@@ -353,6 +398,12 @@
     <OmniBar />
     {#if $explorerOpen}
       <GraphExplorer onClose={() => explorerOpen.set(false)} />
+    {/if}
+    {#if $studyOpen}
+      <StudyMode onClose={() => studyOpen.set(false)} />
+    {/if}
+    {#if $studySurfaceOpen}
+      <StudySurface onClose={() => { studySurfaceOpen.set(false); activeReading.set(null) }} />
     {/if}
     <QueryHelpPanel />
   {:else}

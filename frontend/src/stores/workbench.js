@@ -26,6 +26,10 @@ export const workbenchStore = writable({
   isParsing: false,
   nodeListScrollTarget: /** @type {number|null} */ (null),
   graphVersion: 0,
+  // Monotonically increasing nonce bumped when the backend has injected # @id
+  // markers into the open file and the buffer should silently reload from disk
+  // (no banner, only when buffer is clean). SourceTab watches this field.
+  silentReloadNonce: 0,
 })
 
 /**
