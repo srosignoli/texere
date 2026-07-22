@@ -34,7 +34,13 @@
     clearTimeout(saveTimer)
     saveTimer = setTimeout(() => { SaveNotebook(nbId, JSON.stringify(cells)).catch(() => {}) }, 600)
   }
-  onDestroy(() => clearTimeout(saveTimer))
+  onDestroy(() => {
+    const pending = saveTimer != null
+    clearTimeout(saveTimer)
+    if (pending && !readOnly && nbId) {
+      SaveNotebook(nbId, JSON.stringify(cells)).catch(() => {})
+    }
+  })
 
   function addDraft() { cells = [...cells, newDraftCell('')]; scheduleSave() }
   function updateCell(i, text) { cells[i].text = text; scheduleSave() }
