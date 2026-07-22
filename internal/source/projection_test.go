@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"unicode/utf8"
 )
 
 func write(t *testing.T, name, body string) string {
@@ -55,5 +56,18 @@ func TestExcerpt(t *testing.T) {
 	}
 	if Excerpt(full, "not-present-anywhere") != "" {
 		t.Fatalf("missing needle must yield empty excerpt")
+	}
+
+	// Multi-byte runes on both sides of the needle: a raw byte-offset window can
+	// land mid-rune, so the result must be snapped to rune boundaries. The
+	// "é€€" unit is 8 bytes and window/2 (300) ≡ 4 mod 8, so start/end fall on a
+	// continuation byte here — producing invalid UTF-8 without the boundary snap.
+	utf8Full := strings.Repeat("é€€", 100) + "quick brown fox" + strings.Repeat("é€€", 100)
+	utf8Got := Excerpt(utf8Full, "quick brown fox")
+	if !utf8.ValidString(utf8Got) {
+		t.Fatalf("excerpt must be valid UTF-8, got: %q", utf8Got)
+	}
+	if !strings.Contains(utf8Got, "quick brown fox") {
+		t.Fatalf("utf8 excerpt should contain the needle window, got: %q", utf8Got)
 	}
 }

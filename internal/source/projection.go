@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"unicode/utf8"
 
 	"golang.org/x/net/html"
 )
@@ -89,6 +90,14 @@ func Excerpt(full, needle string) string {
 	end := idx + len(cneedle) + window/2
 	if end > len(cfull) {
 		end = len(cfull)
+	}
+	// Snap both ends to rune boundaries so a byte-offset window never slices a
+	// multi-byte rune in half (which would yield invalid UTF-8 at the edges).
+	for start > 0 && start < len(cfull) && !utf8.RuneStart(cfull[start]) {
+		start++
+	}
+	for end < len(cfull) && !utf8.RuneStart(cfull[end]) {
+		end++
 	}
 	return cfull[start:end]
 }
