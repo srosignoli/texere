@@ -20,6 +20,7 @@
 
   onMount(load)
   async function load() {
+    error = ''
     try { const c = await GetLLMConfig(); profiles = c.profiles ?? []; activeId = c.activeProfileId ?? '' }
     catch (e) { error = String(e?.message ?? e) }
   }
@@ -29,11 +30,12 @@
   }
   function edit(p) { editing = { ...p } }
   async function save() {
+    error = ''
     try { await SaveLLMProfile(editing); editing = null; await load() }
     catch (e) { error = String(e?.message ?? e) }
   }
-  async function del(id) { try { await DeleteLLMProfile(id); await load() } catch (e) { error = String(e?.message ?? e) } }
-  async function setActive(id) { try { await SetActiveProfile(id); activeId = id } catch (e) { error = String(e?.message ?? e) } }
+  async function del(id) { error = ''; try { await DeleteLLMProfile(id); await load() } catch (e) { error = String(e?.message ?? e) } }
+  async function setActive(id) { error = ''; try { await SetActiveProfile(id); activeId = id } catch (e) { error = String(e?.message ?? e) } }
   async function test(id) {
     testMsg = { ...testMsg, [id]: 'testing…' }
     try { await TestLLMProfile(id); testMsg = { ...testMsg, [id]: '✓ ok' } }
