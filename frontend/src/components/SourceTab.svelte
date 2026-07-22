@@ -11,6 +11,7 @@
   import { n4lBaseExtensions, pushRecentArrow, notebookDotsGutter, applyDots } from '../lib/n4l-editor.js'
   import { SaveFile, GetFileContent, GetRecentArrows, UpdateRecentArrows, GetNotebookLinks } from '../../wailsjs/go/main/App'
   import { EventsOn } from '../../wailsjs/runtime/runtime'
+  import NotebookPane from './notebook/NotebookPane.svelte'
 
   const dispatch = createEventDispatcher()
 
@@ -41,8 +42,12 @@
     } catch { /* best-effort */ }
   }
 
-  // Stub — fully implemented in Task 12 (read-only notebook viewer).
-  function openNotebookReadOnly() {}
+  // Reopen-notebook overlay state (Task 12: read-only notebook viewer, Resume to edit).
+  let reopenId = null
+  let reopenReadOnly = true
+  function openNotebookReadOnly(id) { reopenId = id; reopenReadOnly = true }
+  function closeReopen() { reopenId = null }
+  function resumeReopen() { reopenReadOnly = false }
 
   // Keep mutable refs that the CM6 completion source can close over
   let arrowDefsRef = []
@@ -347,6 +352,20 @@
     </div>
   {/if}
   <div class="editor-container" bind:this={container} />
+  {#if reopenId}
+    <div class="nb-overlay">
+      <div class="nb-overlay-bar">
+        <span>Notebook</span>
+        {#if reopenReadOnly}<button on:click={resumeReopen}>Resume (edit)</button>{/if}
+        <button on:click={closeReopen}>✕ Close</button>
+      </div>
+      <div class="nb-overlay-body">
+        {#key reopenId + reopenReadOnly}
+          <NotebookPane notebookId={reopenId} readOnly={reopenReadOnly} onPush={() => {}} />
+        {/key}
+      </div>
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -355,7 +374,14 @@
     flex-direction: column;
     height: 100%;
     overflow: hidden;
+    position: relative;
   }
+
+  .nb-overlay { position: absolute; top: 0; right: 0; bottom: 0; width: 42%; min-width: 360px; display: flex; flex-direction: column; background: #0b1220; border-left: 1px solid #2a3a4a; z-index: 20; }
+  .nb-overlay-bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid #2a3a4a; background: #101826; color: #7dd3fc; }
+  .nb-overlay-bar button { margin-left: auto; background: #1e3a5a; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px; padding: 3px 10px; cursor: pointer; font-size: 12px; }
+  .nb-overlay-bar button + button { margin-left: 6px; }
+  .nb-overlay-body { position: relative; flex: 1; min-height: 0; }
 
   .editor-toolbar {
     display: flex;
