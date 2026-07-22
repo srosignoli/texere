@@ -1,9 +1,8 @@
 <script>
   import { createEventDispatcher, onDestroy } from 'svelte'
   import { OpenNotebook, GetNotebook, SaveNotebook } from '../../../wailsjs/go/main/App'
-  import { newDraftCell } from '../../lib/notebook.js'
+  import { newDraftCell, cellRegistry } from '../../lib/notebook.js'
   import ContextCell from './ContextCell.svelte'
-  import N4LDraftCell from './N4LDraftCell.svelte'
 
   export let nodeID
   export let notebookId = null      // when set, reopen this notebook read-only
@@ -32,7 +31,10 @@
   function scheduleSave() {
     if (readOnly) return
     clearTimeout(saveTimer)
-    saveTimer = setTimeout(() => { SaveNotebook(nbId, JSON.stringify(cells)).catch(() => {}) }, 600)
+    saveTimer = setTimeout(() => {
+      saveTimer = null
+      SaveNotebook(nbId, JSON.stringify(cells)).catch(() => {})
+    }, 600)
   }
   onDestroy(() => {
     const pending = saveTimer != null
@@ -69,7 +71,7 @@
           </div>
         {/if}
         <div class="nb-cell">
-          <N4LDraftCell {cell} {readOnly}
+          <svelte:component this={cellRegistry[cell.type]} {cell} {readOnly}
             onChange={(t) => updateCell(i, t)}
             onPush={(t) => onPush(t)}
             onDelete={() => deleteCell(i)} />
