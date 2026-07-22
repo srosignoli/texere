@@ -13,7 +13,7 @@ type Store struct {
 	db *sql.DB
 }
 
-const schemaVersion = 4
+const schemaVersion = 5
 
 // Open opens (creating if needed) <collectionDir>/learning.db and migrates it
 // to the current schema version.
@@ -72,6 +72,10 @@ func (s *Store) migrate() error {
 		case 3:
 			if _, err := s.db.Exec(ddlV4); err != nil {
 				return fmt.Errorf("learning: apply v4: %w", err)
+			}
+		case 4:
+			if _, err := s.db.Exec(ddlV5); err != nil {
+				return fmt.Errorf("learning: apply v5: %w", err)
 			}
 		}
 		v++
@@ -151,4 +155,27 @@ CREATE TABLE IF NOT EXISTS extracts (
   created_at      INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_extracts_due ON extracts(due) WHERE active = 1;
+`
+
+const ddlV5 = `
+CREATE TABLE IF NOT EXISTS notebooks (
+  notebook_id     TEXT PRIMARY KEY,
+  extract_node_id TEXT NOT NULL,
+  chapter         TEXT NOT NULL DEFAULT '',
+  context_tags    TEXT NOT NULL DEFAULT '',
+  cells_json      TEXT NOT NULL DEFAULT '[]',
+  created_at      INTEGER NOT NULL,
+  updated_at      INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_notebooks_node ON notebooks(extract_node_id);
+
+CREATE TABLE IF NOT EXISTS notebook_links (
+  file_path   TEXT NOT NULL,
+  chapter     TEXT NOT NULL,
+  node_text   TEXT NOT NULL,
+  notebook_id TEXT NOT NULL,
+  created_at  INTEGER NOT NULL,
+  PRIMARY KEY (file_path, chapter, node_text, notebook_id)
+);
+CREATE INDEX IF NOT EXISTS idx_nblinks_file ON notebook_links(file_path);
 `
