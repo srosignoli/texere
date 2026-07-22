@@ -71,3 +71,46 @@ func scanNotebook(row *sql.Row) (Notebook, bool, error) {
 	nb.UpdatedAt = time.Unix(updated, 0)
 	return nb, true, nil
 }
+
+// NotebookLink ties a produced node (identified by the stable
+// file+chapter+text tuple, since most nodes have no # @id) to its notebook.
+type NotebookLink struct {
+	FilePath   string
+	Chapter    string
+	NodeText   string
+	NotebookID string
+}
+
+// AddNotebookLinks inserts links, ignoring exact duplicates.
+func (s *Store) AddNotebookLinks(links []NotebookLink, created time.Time) error {
+	for _, l := range links {
+		if _, err := s.db.Exec(
+			`INSERT OR IGNORE INTO notebook_links
+			   (file_path, chapter, node_text, notebook_id, created_at)
+			 VALUES (?,?,?,?,?)`,
+			l.FilePath, l.Chapter, l.NodeText, l.NotebookID, created.Unix()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// LinksForFile returns every link whose file_path matches.
+func (s *Store) LinksForFile(filePath string) ([]NotebookLink, error) {
+	rows, err := s.db.Query(
+		`SELECT file_path, chapter, node_text, notebook_id
+		 FROM notebook_links WHERE file_path=?`, filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []NotebookLink
+	for rows.Next() {
+		var l NotebookLink
+		if err := rows.Scan(&l.FilePath, &l.Chapter, &l.NodeText, &l.NotebookID); err != nil {
+			return nil, err
+		}
+		out = append(out, l)
+	}
+	return out, rows.Err()
+}
