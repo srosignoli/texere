@@ -56,7 +56,7 @@ func saveConfig(cfg *AppConfig) error {
 	if err != nil {
 		return fmt.Errorf("methods: saveConfig: marshal: %w", err)
 	}
-	if err := os.WriteFile(p, data, 0o644); err != nil {
+	if err := os.WriteFile(p, data, 0o600); err != nil {
 		return fmt.Errorf("methods: saveConfig: write: %w", err)
 	}
 	return nil
