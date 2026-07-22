@@ -1498,12 +1498,14 @@ Add `RecordPush` is **not** imported here (the container calls it). No other cha
 
 Replace the entire contents of `frontend/src/components/ProcessView.svelte`:
 
+**Splitter contract (verified):** `Splitter.svelte` is NOT a two-slot wrapper — it is a bare drag *handle*. It takes `orientation` / `size` / `min` / `max` props and dispatches a `resize` CustomEvent whose `event.detail` is the new pixel size; the **parent owns the layout and pane widths** (see `TopBand.svelte` for the canonical usage: sized flex slots on each side of a `<Splitter>` handle, width tracked in parent state and fed back via `size`). The container below follows that pattern, tracking `leftWidth` locally and feeding it back to `size`.
+
 ```svelte
 <script>
   import Splitter from './Splitter.svelte'
   import ProcessEditor from './ProcessEditor.svelte'
   import NotebookPane from './notebook/NotebookPane.svelte'
-  import { RecordPush } from '../wailsjs/go/main/App'
+  import { RecordPush } from '../../wailsjs/go/main/App'
 
   export let extractId
   export let onAdvance = null
@@ -1511,6 +1513,7 @@ Replace the entire contents of `frontend/src/components/ProcessView.svelte`:
   let editorRef            // bound ProcessEditor instance
   let notebookId = null
   let filePath = null
+  let leftWidth = 520      // px width of the left (editor) pane; user-resizable
 
   function onReady(e) { notebookId = e.detail.notebookId }
   function onEditorReady(e) { filePath = e.detail?.filePath ?? filePath }
@@ -1525,23 +1528,25 @@ Replace the entire contents of `frontend/src/components/ProcessView.svelte`:
 </script>
 
 <div class="pv-split">
-  <Splitter>
-    <div slot="a" class="pv-pane">
-      <ProcessEditor bind:this={editorRef} {extractId} {onAdvance} on:ready={onEditorReady} />
-    </div>
-    <div slot="b" class="pv-pane">
-      <NotebookPane nodeID={extractId} onPush={handlePush} on:ready={onReady} />
-    </div>
-  </Splitter>
+  <div class="pv-pane pv-left" style="width: {leftWidth}px;">
+    <ProcessEditor bind:this={editorRef} {extractId} {onAdvance} on:ready={onEditorReady} />
+  </div>
+  <Splitter orientation="vertical" size={leftWidth} min={340} max={1000}
+            on:resize={(e) => (leftWidth = e.detail)} />
+  <div class="pv-pane pv-right">
+    <NotebookPane nodeID={extractId} onPush={handlePush} on:ready={onReady} />
+  </div>
 </div>
 
 <style>
-  .pv-split { position: absolute; inset: 0; }
+  .pv-split { position: absolute; inset: 0; display: flex; flex-direction: row; }
   .pv-pane { position: relative; height: 100%; }
+  .pv-left { flex: 0 0 auto; }
+  .pv-right { flex: 1 1 0; min-width: 0; }
 </style>
 ```
 
-> **Splitter contract:** confirm `Splitter.svelte` renders two horizontally-arranged slots. Read `frontend/src/components/Splitter.svelte` first. If it uses named slots other than `a`/`b` (e.g. `left`/`right`) or a props API, adapt the slot names above to match — do **not** change `Splitter.svelte`.
+Note: both child panes root themselves with `position: absolute; inset: 0` (`.pv-root`, `.nb-pane`), so each `.pv-pane` slot is `position: relative` with a real size for the children to fill. The `size={leftWidth}` feedback is required — `Splitter` reads `size` as the drag's starting value.
 
 - [ ] **Step 3: Emit filePath from ProcessEditor**
 
@@ -1670,7 +1675,7 @@ Read `frontend/src/components/SourceTab.svelte` to find where it builds its Code
 
 ```js
   import { notebookDotsGutter, applyDots } from '../lib/n4l-editor.js'
-  import { GetNotebookLinks } from '../wailsjs/go/main/App'
+  import { GetNotebookLinks } from '../../wailsjs/go/main/App'
   import { EventsOn } from '../../wailsjs/runtime/runtime'
 
   let dotMarks = []      // [{line, notebookIds}]
