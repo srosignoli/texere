@@ -44,6 +44,48 @@ func TestNotebookUpsertAndGet(t *testing.T) {
 	}
 }
 
+func TestNotebookUpsertConflictUpdate(t *testing.T) {
+	s, err := Open(t.TempDir())
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer s.Close()
+
+	created := time.Unix(1000, 0)
+	first := Notebook{
+		NotebookID: "nb-1", ExtractNodeID: "file.n4l:Chap:id:abc",
+		Chapter: "Chap", ContextTags: `["a"]`, CellsJSON: `[{"id":"c1"}]`,
+		CreatedAt: created, UpdatedAt: created,
+	}
+	if err := s.UpsertNotebook(first); err != nil {
+		t.Fatalf("UpsertNotebook (insert): %v", err)
+	}
+
+	updatedAt := time.Unix(2000, 0)
+	second := first
+	second.Chapter = "Chap2"
+	second.CellsJSON = `[{"id":"c2"}]`
+	second.CreatedAt = time.Unix(9999, 0) // must be ignored on conflict-update
+	second.UpdatedAt = updatedAt
+	if err := s.UpsertNotebook(second); err != nil {
+		t.Fatalf("UpsertNotebook (conflict-update): %v", err)
+	}
+
+	got, ok, err := s.GetNotebook("nb-1")
+	if err != nil || !ok {
+		t.Fatalf("GetNotebook: ok=%v err=%v", ok, err)
+	}
+	if got.Chapter != "Chap2" || got.CellsJSON != `[{"id":"c2"}]` {
+		t.Fatalf("changed fields not persisted: %+v", got)
+	}
+	if !got.CreatedAt.Equal(created) {
+		t.Fatalf("CreatedAt should be preserved: got %v want %v", got.CreatedAt, created)
+	}
+	if !got.UpdatedAt.Equal(updatedAt) {
+		t.Fatalf("UpdatedAt should reflect new value: got %v want %v", got.UpdatedAt, updatedAt)
+	}
+}
+
 func TestGetNotebookMissing(t *testing.T) {
 	s, _ := Open(t.TempDir())
 	defer s.Close()
