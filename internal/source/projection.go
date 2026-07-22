@@ -66,3 +66,29 @@ func htmlToText(data []byte) (string, error) {
 	}
 	return strings.Join(strings.Fields(b.String()), " "), nil
 }
+
+// Excerpt returns a whitespace-collapsed window of full (about 600 chars)
+// centered on the first occurrence of needle (also collapsed). It returns ""
+// when needle is empty or not found, so callers can fall back to the anchor.
+func Excerpt(full, needle string) string {
+	const window = 600
+	collapse := func(s string) string { return strings.Join(strings.Fields(s), " ") }
+	cfull := collapse(full)
+	cneedle := collapse(needle)
+	if cneedle == "" {
+		return ""
+	}
+	idx := strings.Index(cfull, cneedle)
+	if idx < 0 {
+		return ""
+	}
+	start := idx - window/2
+	if start < 0 {
+		start = 0
+	}
+	end := idx + len(cneedle) + window/2
+	if end > len(cfull) {
+		end = len(cfull)
+	}
+	return cfull[start:end]
+}

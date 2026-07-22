@@ -3,6 +3,7 @@ package source
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -36,5 +37,23 @@ func TestProjectionHTMLStripsToText(t *testing.T) {
 	got, err := Projection(p)
 	if err != nil || got != "Hello world" {
 		t.Fatalf("got %q err %v", got, err)
+	}
+}
+
+func TestExcerpt(t *testing.T) {
+	full := "Intro paragraph. " + strings.Repeat("x ", 400) +
+		"The quick brown fox jumps. " + strings.Repeat("y ", 400) + "End."
+	got := Excerpt(full, "quick   brown\nfox")
+	if !strings.Contains(got, "quick brown fox") {
+		t.Fatalf("excerpt should contain the needle window, got: %q", got)
+	}
+	if len(got) > 800 {
+		t.Fatalf("excerpt too long: %d", len(got))
+	}
+	if Excerpt(full, "") != "" {
+		t.Fatalf("empty needle must yield empty excerpt")
+	}
+	if Excerpt(full, "not-present-anywhere") != "" {
+		t.Fatalf("missing needle must yield empty excerpt")
 	}
 }
