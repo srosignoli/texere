@@ -201,6 +201,12 @@ export function notebookDotsGutter(onClick) {
         const ln = view.state.doc.lineAt(line.from).number
         return view.state.field(dotsField).includes(ln) ? dotMarker : null
       },
+      // Without this, the gutter only recomputes markers on doc/viewport
+      // changes — a setDots effect (applyDots) would update dotsField silently
+      // and the dot wouldn't paint until the next unrelated update (e.g. the
+      // user selecting the line). This makes applyDots repaint immediately.
+      lineMarkerChange: (update) =>
+        update.transactions.some((tr) => tr.effects.some((e) => e.is(setDots))),
       initialSpacer: () => dotMarker,
       domEventHandlers: {
         click(view, line) {
