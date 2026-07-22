@@ -127,6 +127,9 @@ export function arrowLint(getArrowDefs) {
       const code = m[1].trim()
       const codes = (getArrowDefs() ?? []).map((d) => d.Code)
       if (!code || codes.includes(code)) return null
+      const after = line.text.slice(e)
+      const target = after.split(/\(|\n/)[0].trim()
+      if (!target) continue // parenthetical prose, not an arrow — no tooltip
       const from = line.from + s
       const to = line.from + e
       const suggestions = nearestArrows(code, getArrowDefs()).slice(0, 5)
