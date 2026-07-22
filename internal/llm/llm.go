@@ -43,12 +43,6 @@ func New(kind, baseURL, apiKey string) (Provider, error) {
 	}
 }
 
-type openaiProvider struct{ baseURL, apiKey string }
-
-func (p *openaiProvider) Stream(ctx context.Context, req Request, onDelta func(string) error) error {
-	return errors.New("not implemented")
-}
-
 type anthropicProvider struct{ baseURL, apiKey string }
 
 func (p *anthropicProvider) Stream(ctx context.Context, req Request, onDelta func(string) error) error {
