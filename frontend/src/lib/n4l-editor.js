@@ -4,7 +4,7 @@
 // this module is the single source of truth. Callers supply only their
 // differences (extra keymap bindings, extra extensions, vim on/off).
 
-import { EditorView, keymap, lineNumbers, drawSelection, highlightActiveLine, highlightActiveLineGutter } from '@codemirror/view'
+import { EditorView, keymap, lineNumbers, drawSelection, highlightActiveLine, highlightActiveLineGutter, Decoration, ViewPlugin, hoverTooltip } from '@codemirror/view'
 import { defaultKeymap, historyKeymap, history } from '@codemirror/commands'
 import { autocompletion } from '@codemirror/autocomplete'
 import { vim } from '@replit/codemirror-vim'
@@ -71,4 +71,96 @@ export function n4lBaseExtensions(opts) {
     n4lTheme(fontSize),
     ...extra,
   ]
+}
+
+// Mark every (code) arrow whose code is unregistered and that has a target.
+function unregisteredArrowDeco(view, getArrowDefs) {
+  const codes = new Set((getArrowDefs() ?? []).map((d) => d.Code))
+  const marks = []
+  const re = /\(([^()\n]+)\)/g
+  for (const { from, to } of view.visibleRanges) {
+    const text = view.state.doc.sliceString(from, to)
+    let m
+    while ((m = re.exec(text))) {
+      const code = m[1].trim()
+      if (!code || codes.has(code)) continue
+      const after = text.slice(m.index + m[0].length)
+      const target = after.split(/\(|\n/)[0].trim() // arrow needs a non-empty target
+      if (!target) continue
+      const start = from + m.index
+      marks.push(Decoration.mark({ class: 'cm-arrow-unreg' }).range(start, start + m[0].length))
+    }
+  }
+  return Decoration.set(marks, true)
+}
+
+// Rank registered arrows by shared-prefix length, then closeness in length.
+function nearestArrows(code, defs) {
+  const score = (c) => {
+    let p = 0
+    const n = Math.min(c.length, code.length)
+    while (p < n && c[p] === code[p]) p++
+    return p * 100 - Math.abs(c.length - code.length)
+  }
+  return [...(defs ?? [])].sort((a, b) => score(b.Code) - score(a.Code))
+}
+
+// arrowLint underlines unregistered arrows and offers replacement suggestions.
+export function arrowLint(getArrowDefs) {
+  const decoPlugin = ViewPlugin.fromClass(
+    class {
+      constructor(view) { this.decorations = unregisteredArrowDeco(view, getArrowDefs) }
+      update(u) { if (u.docChanged || u.viewportChanged) this.decorations = unregisteredArrowDeco(u.view, getArrowDefs) }
+    },
+    { decorations: (v) => v.decorations },
+  )
+
+  const tip = hoverTooltip((view, pos) => {
+    const line = view.state.doc.lineAt(pos)
+    const rel = pos - line.from
+    const re = /\(([^()\n]+)\)/g
+    let m
+    while ((m = re.exec(line.text))) {
+      const s = m.index
+      const e = m.index + m[0].length
+      if (rel < s || rel > e) continue
+      const code = m[1].trim()
+      const codes = (getArrowDefs() ?? []).map((d) => d.Code)
+      if (!code || codes.includes(code)) return null
+      const from = line.from + s
+      const to = line.from + e
+      const suggestions = nearestArrows(code, getArrowDefs()).slice(0, 5)
+      return {
+        pos: from,
+        end: to,
+        above: true,
+        create() {
+          const dom = document.createElement('div')
+          dom.className = 'cm-arrow-fix'
+          const h = document.createElement('div')
+          h.className = 'cm-arrow-fix-h'
+          h.textContent = `Unregistered arrow "${code}"`
+          dom.appendChild(h)
+          for (const sug of suggestions) {
+            const b = document.createElement('button')
+            b.textContent = `(${sug.Code}) ${sug.LongName || ''}`.trim()
+            b.onclick = () => view.dispatch({ changes: { from, to, insert: `(${sug.Code})` } })
+            dom.appendChild(b)
+          }
+          return { dom }
+        },
+      }
+    }
+    return null
+  })
+
+  const theme = EditorView.theme({
+    '.cm-arrow-unreg': { textDecoration: 'underline wavy #f59e0b' },
+    '.cm-arrow-fix': { background: '#1a2537', border: '1px solid #2a3a4a', borderRadius: '6px', padding: '6px', maxWidth: '260px' },
+    '.cm-arrow-fix-h': { color: '#f59e0b', fontSize: '11px', marginBottom: '4px' },
+    '.cm-arrow-fix button': { display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', color: '#cdd6e2', cursor: 'pointer', fontSize: '12px', padding: '2px 4px' },
+    '.cm-arrow-fix button:hover': { background: '#24374d' },
+  })
+
+  return [decoPlugin, tip, theme]
 }

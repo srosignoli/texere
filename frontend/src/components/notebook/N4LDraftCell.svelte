@@ -3,7 +3,7 @@
   import { EditorView } from '@codemirror/view'
   import { EditorState } from '@codemirror/state'
   import { workbenchStore } from '../../stores/workbench.js'
-  import { n4lBaseExtensions } from '../../lib/n4l-editor.js'
+  import { n4lBaseExtensions, arrowLint } from '../../lib/n4l-editor.js'
 
   export let cell
   export let onChange = () => {}
@@ -22,6 +22,7 @@
         doc: cell.text ?? '',
         extensions: [
           ...n4lBaseExtensions({ getArrowDefs: () => arrowDefsRef, getRecent: () => [], onArrowSelected: () => {}, fontSize: '0.8rem' }),
+          arrowLint(() => arrowDefsRef),
           EditorView.editable.of(!readOnly),
           EditorView.updateListener.of((u) => { if (u.docChanged) onChange(u.state.doc.toString()) }),
         ],
