@@ -6,6 +6,10 @@ export function BuildGraph() {
   return window['go']['main']['App']['BuildGraph']();
 }
 
+export function CancelLLMTurn(arg1) {
+  return window['go']['main']['App']['CancelLLMTurn'](arg1);
+}
+
 export function ConfirmQuit() {
   return window['go']['main']['App']['ConfirmQuit']();
 }
@@ -20,6 +24,10 @@ export function CreateNewFile(arg1) {
 
 export function DeferExtract(arg1) {
   return window['go']['main']['App']['DeferExtract'](arg1);
+}
+
+export function DeleteLLMProfile(arg1) {
+  return window['go']['main']['App']['DeleteLLMProfile'](arg1);
 }
 
 export function DismissExtract(arg1) {
@@ -64,6 +72,10 @@ export function GetInitialCollectionDir() {
 
 export function GetInitialSummaries() {
   return window['go']['main']['App']['GetInitialSummaries']();
+}
+
+export function GetLLMConfig() {
+  return window['go']['main']['App']['GetLLMConfig']();
 }
 
 export function GetNotebook(arg1) {
@@ -174,6 +186,10 @@ export function SaveFile(arg1, arg2) {
   return window['go']['main']['App']['SaveFile'](arg1, arg2);
 }
 
+export function SaveLLMProfile(arg1) {
+  return window['go']['main']['App']['SaveLLMProfile'](arg1);
+}
+
 export function SaveNotebook(arg1, arg2) {
   return window['go']['main']['App']['SaveNotebook'](arg1, arg2);
 }
@@ -182,12 +198,24 @@ export function SearchGraph(arg1) {
   return window['go']['main']['App']['SearchGraph'](arg1);
 }
 
+export function SetActiveProfile(arg1) {
+  return window['go']['main']['App']['SetActiveProfile'](arg1);
+}
+
 export function SetReadingProjLen(arg1, arg2) {
   return window['go']['main']['App']['SetReadingProjLen'](arg1, arg2);
 }
 
+export function StartLLMTurn(arg1) {
+  return window['go']['main']['App']['StartLLMTurn'](arg1);
+}
+
 export function SyncStudyItems() {
   return window['go']['main']['App']['SyncStudyItems']();
+}
+
+export function TestLLMProfile(arg1) {
+  return window['go']['main']['App']['TestLLMProfile'](arg1);
 }
 
 export function UpdateReadingProgress(arg1, arg2) {

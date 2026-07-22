@@ -642,6 +642,25 @@ export namespace learning {
 
 }
 
+export namespace llm {
+	
+	export class Message {
+	    role: string;
+	    content: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Message(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.role = source["role"];
+	        this.content = source["content"];
+	    }
+	}
+
+}
+
 export namespace main {
 	
 	export class BuildGraphResult {
@@ -806,6 +825,63 @@ export namespace main {
 	        this.filePath = source["filePath"];
 	    }
 	}
+	export class LLMProfile {
+	    id: string;
+	    name: string;
+	    kind: string;
+	    baseUrl: string;
+	    model: string;
+	    apiKey?: string;
+	    apiKeyEnv?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new LLMProfile(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.kind = source["kind"];
+	        this.baseUrl = source["baseUrl"];
+	        this.model = source["model"];
+	        this.apiKey = source["apiKey"];
+	        this.apiKeyEnv = source["apiKeyEnv"];
+	    }
+	}
+	export class LLMConfig {
+	    profiles: LLMProfile[];
+	    activeProfileId: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new LLMConfig(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.profiles = this.convertValues(source["profiles"], LLMProfile);
+	        this.activeProfileId = source["activeProfileId"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
 	export class NotebookLinkMark {
 	    line: number;
 	    notebookIds: string[];
@@ -901,6 +977,41 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.injections = this.convertValues(source["injections"], content.IDInjection);
 	        this.finalContent = source["finalContent"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	export class StartTurnReq {
+	    profileId: string;
+	    system: string;
+	    messages: llm.Message[];
+	
+	    static createFrom(source: any = {}) {
+	        return new StartTurnReq(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.profileId = source["profileId"];
+	        this.system = source["system"];
+	        this.messages = this.convertValues(source["messages"], llm.Message);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
