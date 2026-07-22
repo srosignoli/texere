@@ -8,8 +8,10 @@
   import { search, openSearchPanel, searchKeymap } from '@codemirror/search'
   import { get } from 'svelte/store'
   import { workbenchStore, filteredNodes } from '../stores/workbench.js'
-  import { n4lBaseExtensions, pushRecentArrow } from '../lib/n4l-editor.js'
-  import { SaveFile, GetFileContent, GetRecentArrows, UpdateRecentArrows } from '../../wailsjs/go/main/App'
+  import { n4lBaseExtensions, pushRecentArrow, notebookDotsGutter, applyDots } from '../lib/n4l-editor.js'
+  import { SaveFile, GetFileContent, GetRecentArrows, UpdateRecentArrows, GetNotebookLinks } from '../../wailsjs/go/main/App'
+  import { EventsOn } from '../../wailsjs/runtime/runtime'
+  import NotebookPane from './notebook/NotebookPane.svelte'
 
   const dispatch = createEventDispatcher()
 
@@ -17,9 +19,35 @@
   let view
   let externalBanner = null
   let vimMode = false
+  let cancelLinksChanged = null
   let loadedFilePath = null  // tracks which FILE is currently in the editor
   let _prevContextFilter = null
   let savedContent = ''      // text at last save/load — used to derive isDirty
+
+  // Provenance gutter dots (purple dots marking lines pushed from Process notebooks)
+  let dotMarks = []      // [{line, notebookIds}]
+
+  function onDotClick(line) {
+    const m = dotMarks.find((x) => x.line === line)
+    if (m && m.notebookIds?.length) {
+      // Slice 1: open the first linked notebook read-only (see Task 12).
+      openNotebookReadOnly(m.notebookIds[0])
+    }
+  }
+
+  async function refreshDots(path) {
+    try {
+      dotMarks = (await GetNotebookLinks(path)) ?? []
+      if (view) applyDots(view, dotMarks.map((m) => m.line))
+    } catch { /* best-effort */ }
+  }
+
+  // Reopen-notebook overlay state (Task 12: read-only notebook viewer, Resume to edit).
+  let reopenId = null
+  let reopenReadOnly = true
+  function openNotebookReadOnly(id) { reopenId = id; reopenReadOnly = true }
+  function closeReopen() { reopenId = null }
+  function resumeReopen() { reopenReadOnly = false }
 
   // Keep mutable refs that the CM6 completion source can close over
   let arrowDefsRef = []
@@ -50,6 +78,7 @@
         .then((text) => {
           setContent(text ?? '')
           workbenchStore.update((s) => ({ ...s, isDirty: false }))
+          refreshDots(loadedFilePath)
           // Case A: navigateToLine() already set pendingScrollLine; honour
           // the scroll synchronously after content lands and sync the local
           // _scrollNonce so the Case B reactive doesn't double-fire on the
@@ -252,6 +281,7 @@
         ...searchKeymap,
       ],
       extra: [
+        notebookDotsGutter(onDotClick),
         search({ top: false }),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
@@ -274,6 +304,7 @@
     const state = EditorState.create({ doc, extensions: buildExtensions() })
     view = new EditorView({ state, parent: container })
     view.focus()
+    refreshDots(loadedFilePath)
   }
 
   // Called by arrowCompletion when a completion is applied — updates LRU list
@@ -290,6 +321,10 @@
     view = new EditorView({ state: startState, parent: container })
     editorAPI.set({ triggerSave, triggerUndo, insertAtCursor, insertAtLineEnd, openArrowPicker })
 
+    cancelLinksChanged = EventsOn('notebook:links-changed', (p) => {
+      if (p?.path === loadedFilePath) refreshDots(loadedFilePath)
+    })
+
     try {
       const saved = await GetRecentArrows()
       if (saved?.length) recentCodesRef = saved
@@ -300,6 +335,7 @@
 
   onDestroy(() => {
     editorAPI.set(null)
+    cancelLinksChanged?.()
     view?.destroy()
   })
 </script>
@@ -316,6 +352,20 @@
     </div>
   {/if}
   <div class="editor-container" bind:this={container} />
+  {#if reopenId}
+    <div class="nb-overlay">
+      <div class="nb-overlay-bar">
+        <span>Notebook</span>
+        {#if reopenReadOnly}<button on:click={resumeReopen}>Resume (edit)</button>{/if}
+        <button on:click={closeReopen}>✕ Close</button>
+      </div>
+      <div class="nb-overlay-body">
+        {#key reopenId + reopenReadOnly}
+          <NotebookPane notebookId={reopenId} readOnly={reopenReadOnly} onPush={() => {}} />
+        {/key}
+      </div>
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -324,7 +374,14 @@
     flex-direction: column;
     height: 100%;
     overflow: hidden;
+    position: relative;
   }
+
+  .nb-overlay { position: absolute; top: 0; right: 0; bottom: 0; width: 42%; min-width: 360px; display: flex; flex-direction: column; background: #0b1220; border-left: 1px solid #2a3a4a; z-index: 20; }
+  .nb-overlay-bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid #2a3a4a; background: #101826; color: #7dd3fc; }
+  .nb-overlay-bar button { margin-left: auto; background: #1e3a5a; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px; padding: 3px 10px; cursor: pointer; font-size: 12px; }
+  .nb-overlay-bar button + button { margin-left: 6px; }
+  .nb-overlay-body { position: relative; flex: 1; min-height: 0; }
 
   .editor-toolbar {
     display: flex;

@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"unicode/utf8"
 
 	"golang.org/x/net/html"
 )
@@ -65,4 +66,38 @@ func htmlToText(data []byte) (string, error) {
 		}
 	}
 	return strings.Join(strings.Fields(b.String()), " "), nil
+}
+
+// Excerpt returns a whitespace-collapsed window of full (about 600 chars)
+// centered on the first occurrence of needle (also collapsed). It returns ""
+// when needle is empty or not found, so callers can fall back to the anchor.
+func Excerpt(full, needle string) string {
+	const window = 600
+	collapse := func(s string) string { return strings.Join(strings.Fields(s), " ") }
+	cfull := collapse(full)
+	cneedle := collapse(needle)
+	if cneedle == "" {
+		return ""
+	}
+	idx := strings.Index(cfull, cneedle)
+	if idx < 0 {
+		return ""
+	}
+	start := idx - window/2
+	if start < 0 {
+		start = 0
+	}
+	end := idx + len(cneedle) + window/2
+	if end > len(cfull) {
+		end = len(cfull)
+	}
+	// Snap both ends to rune boundaries so a byte-offset window never slices a
+	// multi-byte rune in half (which would yield invalid UTF-8 at the edges).
+	for start > 0 && start < len(cfull) && !utf8.RuneStart(cfull[start]) {
+		start++
+	}
+	for end < len(cfull) && !utf8.RuneStart(cfull[end]) {
+		end++
+	}
+	return cfull[start:end]
 }

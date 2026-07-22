@@ -40,3 +40,29 @@ func TestOpenCreatesSchemaAndIsIdempotent(t *testing.T) {
 	}
 	s2.Close()
 }
+
+func TestMigrate_V5_NotebookTables(t *testing.T) {
+	dir := t.TempDir()
+	s, err := Open(dir)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer s.Close()
+
+	for _, tbl := range []string{"notebooks", "notebook_links"} {
+		var name string
+		err := s.db.QueryRow(
+			`SELECT name FROM sqlite_master WHERE type='table' AND name=?`, tbl,
+		).Scan(&name)
+		if err != nil {
+			t.Fatalf("table %q missing after migrate: %v", tbl, err)
+		}
+	}
+	var v int
+	if err := s.db.QueryRow(`SELECT version FROM schema_meta`).Scan(&v); err != nil {
+		t.Fatalf("read version: %v", err)
+	}
+	if v != 5 {
+		t.Fatalf("schema version = %d, want 5", v)
+	}
+}
