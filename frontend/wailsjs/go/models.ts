@@ -688,6 +688,74 @@ export namespace main {
 		    return a;
 		}
 	}
+	export class SourceInfo {
+	    kind: string;
+	    anchor: string;
+	    passage: string;
+	    refPath: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SourceInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.anchor = source["anchor"];
+	        this.passage = source["passage"];
+	        this.refPath = source["refPath"];
+	    }
+	}
+	export class OrbitItem {
+	    arrowLong: string;
+	    neighborText: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new OrbitItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.arrowLong = source["arrowLong"];
+	        this.neighborText = source["neighborText"];
+	    }
+	}
+	export class ContextPayload {
+	    extractText: string;
+	    tags: string[];
+	    orbit: OrbitItem[];
+	    source: SourceInfo;
+	
+	    static createFrom(source: any = {}) {
+	        return new ContextPayload(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.extractText = source["extractText"];
+	        this.tags = source["tags"];
+	        this.orbit = this.convertValues(source["orbit"], OrbitItem);
+	        this.source = this.convertValues(source["source"], SourceInfo);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class CreateExtractView {
 	    id: string;
 	
@@ -738,6 +806,59 @@ export namespace main {
 	        this.filePath = source["filePath"];
 	    }
 	}
+	export class NotebookLinkMark {
+	    line: number;
+	    notebookIds: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new NotebookLinkMark(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.line = source["line"];
+	        this.notebookIds = source["notebookIds"];
+	    }
+	}
+	export class NotebookView {
+	    notebookId: string;
+	    nodeId: string;
+	    chapter: string;
+	    cells: number[];
+	    context: ContextPayload;
+	
+	    static createFrom(source: any = {}) {
+	        return new NotebookView(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.notebookId = source["notebookId"];
+	        this.nodeId = source["nodeId"];
+	        this.chapter = source["chapter"];
+	        this.cells = source["cells"];
+	        this.context = this.convertValues(source["context"], ContextPayload);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
 	export class ReadingView {
 	    id: string;
 	    refPath: string;

@@ -66,6 +66,14 @@ export function GetInitialSummaries() {
   return window['go']['main']['App']['GetInitialSummaries']();
 }
 
+export function GetNotebook(arg1) {
+  return window['go']['main']['App']['GetNotebook'](arg1);
+}
+
+export function GetNotebookLinks(arg1) {
+  return window['go']['main']['App']['GetNotebookLinks'](arg1);
+}
+
 export function GetReadingList() {
   return window['go']['main']['App']['GetReadingList']();
 }
@@ -130,6 +138,10 @@ export function OpenCollection(arg1) {
   return window['go']['main']['App']['OpenCollection'](arg1);
 }
 
+export function OpenNotebook(arg1) {
+  return window['go']['main']['App']['OpenNotebook'](arg1);
+}
+
 export function OpenSourceURL(arg1) {
   return window['go']['main']['App']['OpenSourceURL'](arg1);
 }
@@ -146,6 +158,10 @@ export function PromoteExtract(arg1, arg2) {
   return window['go']['main']['App']['PromoteExtract'](arg1, arg2);
 }
 
+export function RecordPush(arg1, arg2, arg3) {
+  return window['go']['main']['App']['RecordPush'](arg1, arg2, arg3);
+}
+
 export function RescheduleReading(arg1, arg2) {
   return window['go']['main']['App']['RescheduleReading'](arg1, arg2);
 }
@@ -156,6 +172,10 @@ export function ResolveReminder(arg1, arg2) {
 
 export function SaveFile(arg1, arg2) {
   return window['go']['main']['App']['SaveFile'](arg1, arg2);
+}
+
+export function SaveNotebook(arg1, arg2) {
+  return window['go']['main']['App']['SaveNotebook'](arg1, arg2);
 }
 
 export function SearchGraph(arg1) {

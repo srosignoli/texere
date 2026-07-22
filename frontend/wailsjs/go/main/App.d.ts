@@ -38,6 +38,10 @@ export function GetInitialCollectionDir():Promise<string>;
 
 export function GetInitialSummaries():Promise<Array<content.ChapterSummary>>;
 
+export function GetNotebook(arg1:string):Promise<main.NotebookView>;
+
+export function GetNotebookLinks(arg1:string):Promise<Array<main.NotebookLinkMark>>;
+
 export function GetReadingList():Promise<Array<main.ReadingView>>;
 
 export function GetRecentArrows():Promise<Array<string>>;
@@ -70,6 +74,8 @@ export function ListContextTags():Promise<Array<string>>;
 
 export function OpenCollection(arg1:string):Promise<Array<content.ChapterSummary>>;
 
+export function OpenNotebook(arg1:string):Promise<main.NotebookView>;
+
 export function OpenSourceURL(arg1:string):Promise<void>;
 
 export function ParseFileForUI(arg1:string):Promise<content.ParsedFile|Array<content.ParseError>>;
@@ -78,11 +84,15 @@ export function PickCollectionDir():Promise<string>;
 
 export function PromoteExtract(arg1:string,arg2:string):Promise<void>;
 
+export function RecordPush(arg1:string,arg2:string,arg3:string):Promise<Array<string>>;
+
 export function RescheduleReading(arg1:string,arg2:string):Promise<main.ReadingView>;
 
 export function ResolveReminder(arg1:string,arg2:number):Promise<content.WriteBackResult>;
 
 export function SaveFile(arg1:string,arg2:string):Promise<main.SaveFileResult>;
+
+export function SaveNotebook(arg1:string,arg2:string):Promise<void>;
 
 export function SearchGraph(arg1:string):Promise<search.SearchResult>;
 
