@@ -212,8 +212,12 @@ func pushedNodeKeys(pf *content.ParsedFile, insertedText string) [][2]string {
 			if n.Text == "" {
 				continue
 			}
+			// Collapse node text the same way as the inserted lines so internal
+			// double-spaces/tabs (which the parser only trims at the edges) do
+			// not defeat the match. The stored key keeps the raw n.Text.
+			nt := strings.Join(strings.Fields(n.Text), " ")
 			for _, c := range lines {
-				if c == n.Text || strings.HasPrefix(c, n.Text+" ") {
+				if c == nt || strings.HasPrefix(c, nt+" ") {
 					key := [2]string{ch.Title, n.Text}
 					if !seen[key] {
 						seen[key] = true
