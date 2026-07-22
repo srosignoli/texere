@@ -43,8 +43,3 @@ func New(kind, baseURL, apiKey string) (Provider, error) {
 	}
 }
 
-type anthropicProvider struct{ baseURL, apiKey string }
-
-func (p *anthropicProvider) Stream(ctx context.Context, req Request, onDelta func(string) error) error {
-	return errors.New("not implemented")
-}
