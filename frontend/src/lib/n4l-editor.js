@@ -4,7 +4,8 @@
 // this module is the single source of truth. Callers supply only their
 // differences (extra keymap bindings, extra extensions, vim on/off).
 
-import { EditorView, keymap, lineNumbers, drawSelection, highlightActiveLine, highlightActiveLineGutter, Decoration, ViewPlugin, hoverTooltip } from '@codemirror/view'
+import { EditorView, keymap, lineNumbers, drawSelection, highlightActiveLine, highlightActiveLineGutter, Decoration, ViewPlugin, hoverTooltip, gutter, GutterMarker } from '@codemirror/view'
+import { StateField, StateEffect } from '@codemirror/state'
 import { defaultKeymap, historyKeymap, history } from '@codemirror/commands'
 import { autocompletion } from '@codemirror/autocomplete'
 import { vim } from '@replit/codemirror-vim'
@@ -166,4 +167,56 @@ export function arrowLint(getArrowDefs) {
   })
 
   return [decoPlugin, tip, theme]
+}
+
+// ----- Provenance gutter dots (notebook links) -----
+
+const setDots = StateEffect.define() // payload: number[] of 1-indexed lines with dots
+const dotsField = StateField.define({
+  create() { return [] },
+  update(val, tr) {
+    for (const e of tr.effects) if (e.is(setDots)) return e.value
+    return val
+  },
+})
+
+class DotMarker extends GutterMarker {
+  toDOM() {
+    const el = document.createElement('span')
+    el.className = 'cm-nb-dot'
+    el.textContent = '●'
+    return el
+  }
+}
+const dotMarker = new DotMarker()
+
+// notebookDotsGutter renders a purple dot in the gutter for each line in the
+// dotsField. onClick receives the 1-indexed line number.
+export function notebookDotsGutter(onClick) {
+  return [
+    dotsField,
+    gutter({
+      class: 'cm-nb-gutter',
+      lineMarker(view, line) {
+        const ln = view.state.doc.lineAt(line.from).number
+        return view.state.field(dotsField).includes(ln) ? dotMarker : null
+      },
+      initialSpacer: () => dotMarker,
+      domEventHandlers: {
+        click(view, line) {
+          const ln = view.state.doc.lineAt(line.from).number
+          if (view.state.field(dotsField).includes(ln)) { onClick(ln); return true }
+          return false
+        },
+      },
+    }),
+    EditorView.theme({
+      '.cm-nb-dot': { color: '#a855f7', cursor: 'pointer', fontSize: '10px' },
+    }),
+  ]
+}
+
+// applyDots dispatches new dot lines onto an existing view.
+export function applyDots(view, lines) {
+  view.dispatch({ effects: setDots.of(lines) })
 }

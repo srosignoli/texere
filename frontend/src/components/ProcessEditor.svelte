@@ -3,8 +3,8 @@
   import { EditorView } from '@codemirror/view'
   import { EditorState } from '@codemirror/state'
   import { workbenchStore } from '../stores/workbench.js'
-  import { n4lBaseExtensions, pushRecentArrow } from '../lib/n4l-editor.js'
-  import { GetExtractTarget, PromoteExtract, DeferExtract, DismissExtract, GetFileContent, SaveFile, SyncStudyItems, GetRecentArrows, UpdateRecentArrows } from '../../wailsjs/go/main/App'
+  import { n4lBaseExtensions, pushRecentArrow, notebookDotsGutter, applyDots } from '../lib/n4l-editor.js'
+  import { GetExtractTarget, PromoteExtract, DeferExtract, DismissExtract, GetFileContent, SaveFile, SyncStudyItems, GetRecentArrows, UpdateRecentArrows, GetNotebookLinks } from '../../wailsjs/go/main/App'
 
   export let extractId
   export let onAdvance = null
@@ -25,6 +25,14 @@
   function handleArrowSelected(code) {
     recentCodesRef = pushRecentArrow(recentCodesRef, code)
     UpdateRecentArrows(recentCodesRef).catch(() => {})
+  }
+
+  async function refreshDots() {
+    if (!view || !target) return
+    try {
+      const marks = await GetNotebookLinks(target.filePath)
+      applyDots(view, (marks ?? []).map((m) => m.line))
+    } catch { /* best-effort */ }
   }
 
   async function flush() {
@@ -55,6 +63,7 @@
     } else {
       savedContent = final
     }
+    await refreshDots()
     return block
   }
 
@@ -143,6 +152,7 @@
       onArrowSelected: handleArrowSelected,
       vim: vimMode,
       keymap: [{ key: 'Mod-s', run: () => { flush().catch(() => {}); return true }, preventDefault: true }],
+      extra: [notebookDotsGutter(() => {})],
     })
   }
 
@@ -154,6 +164,7 @@
     view.destroy()
     view = new EditorView({ parent: container, state: EditorState.create({ doc, extensions: buildExtensions() }) })
     view.focus()
+    refreshDots()
   }
 
   function toggleVim() {
@@ -173,6 +184,7 @@
         state: EditorState.create({ doc: text, extensions: buildExtensions() }),
       })
       selectExtract(target)
+      await refreshDots()
     } catch (e) { error = String(e?.message ?? e) }
   })
 

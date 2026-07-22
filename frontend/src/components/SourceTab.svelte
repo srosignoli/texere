@@ -8,8 +8,9 @@
   import { search, openSearchPanel, searchKeymap } from '@codemirror/search'
   import { get } from 'svelte/store'
   import { workbenchStore, filteredNodes } from '../stores/workbench.js'
-  import { n4lBaseExtensions, pushRecentArrow } from '../lib/n4l-editor.js'
-  import { SaveFile, GetFileContent, GetRecentArrows, UpdateRecentArrows } from '../../wailsjs/go/main/App'
+  import { n4lBaseExtensions, pushRecentArrow, notebookDotsGutter, applyDots } from '../lib/n4l-editor.js'
+  import { SaveFile, GetFileContent, GetRecentArrows, UpdateRecentArrows, GetNotebookLinks } from '../../wailsjs/go/main/App'
+  import { EventsOn } from '../../wailsjs/runtime/runtime'
 
   const dispatch = createEventDispatcher()
 
@@ -17,9 +18,31 @@
   let view
   let externalBanner = null
   let vimMode = false
+  let cancelLinksChanged = null
   let loadedFilePath = null  // tracks which FILE is currently in the editor
   let _prevContextFilter = null
   let savedContent = ''      // text at last save/load — used to derive isDirty
+
+  // Provenance gutter dots (purple dots marking lines pushed from Process notebooks)
+  let dotMarks = []      // [{line, notebookIds}]
+
+  function onDotClick(line) {
+    const m = dotMarks.find((x) => x.line === line)
+    if (m && m.notebookIds?.length) {
+      // Slice 1: open the first linked notebook read-only (see Task 12).
+      openNotebookReadOnly(m.notebookIds[0])
+    }
+  }
+
+  async function refreshDots(path) {
+    try {
+      dotMarks = (await GetNotebookLinks(path)) ?? []
+      if (view) applyDots(view, dotMarks.map((m) => m.line))
+    } catch { /* best-effort */ }
+  }
+
+  // Stub — fully implemented in Task 12 (read-only notebook viewer).
+  function openNotebookReadOnly() {}
 
   // Keep mutable refs that the CM6 completion source can close over
   let arrowDefsRef = []
@@ -50,6 +73,7 @@
         .then((text) => {
           setContent(text ?? '')
           workbenchStore.update((s) => ({ ...s, isDirty: false }))
+          refreshDots(loadedFilePath)
           // Case A: navigateToLine() already set pendingScrollLine; honour
           // the scroll synchronously after content lands and sync the local
           // _scrollNonce so the Case B reactive doesn't double-fire on the
@@ -252,6 +276,7 @@
         ...searchKeymap,
       ],
       extra: [
+        notebookDotsGutter(onDotClick),
         search({ top: false }),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
@@ -274,6 +299,7 @@
     const state = EditorState.create({ doc, extensions: buildExtensions() })
     view = new EditorView({ state, parent: container })
     view.focus()
+    refreshDots(loadedFilePath)
   }
 
   // Called by arrowCompletion when a completion is applied — updates LRU list
@@ -290,6 +316,10 @@
     view = new EditorView({ state: startState, parent: container })
     editorAPI.set({ triggerSave, triggerUndo, insertAtCursor, insertAtLineEnd, openArrowPicker })
 
+    cancelLinksChanged = EventsOn('notebook:links-changed', (p) => {
+      if (p?.path === loadedFilePath) refreshDots(loadedFilePath)
+    })
+
     try {
       const saved = await GetRecentArrows()
       if (saved?.length) recentCodesRef = saved
@@ -300,6 +330,7 @@
 
   onDestroy(() => {
     editorAPI.set(null)
+    cancelLinksChanged?.()
     view?.destroy()
   })
 </script>
