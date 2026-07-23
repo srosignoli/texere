@@ -128,6 +128,9 @@
   .modes button { background: #14233a; color: #93c5fd; border: 1px solid #2a3a4a; border-radius: 6px; padding: 2px 10px; cursor: pointer; font-size: 12px; }
   .modes button.active { background: #244a72; color: #e8eaf0; }
   .prof { background: #0b1220; border: 1px solid #2a3a4a; border-radius: 6px; color: #cdd6e2; font-size: 12px; padding: 2px 6px; }
+  /* Native dropdown popup options need explicit dark styling on WebKitGTK,
+     otherwise the light option text renders on a white system background. */
+  .prof option { background: #0b1220; color: #cdd6e2; }
   .spacer { flex: 1; }
   .del { background: none; border: none; color: #6b7a8a; cursor: pointer; }
   .del:hover { color: #ff8080; }

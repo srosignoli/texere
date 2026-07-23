@@ -100,5 +100,8 @@
   .ov-form { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; }
   .ov-form label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: #93c5fd; }
   .ov-form input, .ov-form select { background: #0b1220; border: 1px solid #2a3a4a; border-radius: 6px; color: #e8eaf0; padding: 5px 8px; font-size: 13px; }
+  /* Style the native dropdown popup options too — WebKitGTK renders them on a
+     white system background otherwise, hiding the light select text. */
+  .ov-form select option { background: #0b1220; color: #e8eaf0; }
   .ov-actions { flex-direction: row; display: flex; gap: 8px; }
 </style>
