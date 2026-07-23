@@ -49,10 +49,12 @@ export function streamTurn({ profileId, system, messages, onDelta, onDone, onErr
   let offDone = () => {}
   let offError = () => {}
   let sid = null
+  let cancelled = false
 
   StartLLMTurn({ profileId: profileId || '', system, messages })
     .then((streamId) => {
       sid = streamId
+      if (cancelled) { CancelLLMTurn(sid); return }
       offDelta = EventsOn('llm:delta', (p) => { if (p?.streamId === sid) onDelta(p.text) })
       offDone = EventsOn('llm:done', (p) => { if (p?.streamId === sid) { cleanup(); onDone() } })
       offError = EventsOn('llm:error', (p) => { if (p?.streamId === sid) { cleanup(); onError(p.message) } })
@@ -60,6 +62,6 @@ export function streamTurn({ profileId, system, messages, onDelta, onDone, onErr
     .catch((e) => onError(String(e?.message ?? e)))
 
   function cleanup() { offDelta(); offDone(); offError() }
-  function cancel() { if (sid) CancelLLMTurn(sid); cleanup() }
+  function cancel() { cancelled = true; if (sid) CancelLLMTurn(sid); cleanup() }
   return { cancel }
 }
