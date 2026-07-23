@@ -1,5 +1,5 @@
 <script>
-  import { onMount, onDestroy } from 'svelte'
+  import { onMount, onDestroy, tick } from 'svelte'
   import { renderStrokes, fitTransform } from '../../lib/sketch-render.js'
 
   export let cell
@@ -24,6 +24,8 @@
   // 'pen'/'touch' correctly (e.g. Windows/WebView2 touchscreens).
   let mouseDraw = true
 
+  let expanded = false // in-window fullscreen overlay for drawing with the whole tablet
+
   // Live stroke list; undo/redo hold invertible ops.
   let strokes = (cell.strokes ?? []).map((s) => ({ ...s, points: s.points.slice() }))
   let undoStack = []
@@ -43,7 +45,11 @@
     ro.observe(wrap)
     render()
   })
-  onDestroy(() => { ro?.disconnect(); if (rafPending) cancelAnimationFrame(rafId) })
+  onDestroy(() => {
+    ro?.disconnect()
+    if (rafPending) cancelAnimationFrame(rafId)
+    window.removeEventListener('keydown', onKey)
+  })
 
   function render() {
     if (!ctx) return
@@ -59,8 +65,11 @@
     rafId = requestAnimationFrame(() => { rafPending = false; render() })
   }
   function onResize() {
-    const h = Math.round(wrap.clientHeight)
-    if (h && h !== cell.height) { cell.height = h; onChange(cell) }
+    // Never persist the fullscreen container height as the cell's inline height.
+    if (!expanded) {
+      const h = Math.round(wrap.clientHeight)
+      if (h && h !== cell.height) { cell.height = h; onChange(cell) }
+    }
     render()
   }
 
@@ -152,9 +161,18 @@
   }
 
   function setTool(t) { tool = t; if (SIZES[t]) size = SIZES[t] }
+
+  function onKey(e) { if (e.key === 'Escape' && expanded) toggleExpand() }
+  async function toggleExpand() {
+    expanded = !expanded
+    if (expanded) window.addEventListener('keydown', onKey)
+    else window.removeEventListener('keydown', onKey)
+    await tick() // let the overlay resize the wrap before we re-fit
+    render()
+  }
 </script>
 
-<div class="sk-cell">
+<div class="sk-cell" class:expanded>
   {#if !readOnly}
     <div class="sk-bar">
       <button class:active={tool === 'pen'} on:click={() => setTool('pen')}>✎ Pen</button>
@@ -168,6 +186,7 @@
       <button on:click={redo} disabled={!redoStack.length} title="Redo">↷</button>
       <button on:click={clearAll} title="Clear">Clear</button>
       <label class="sk-mouse" title="Allow mouse/pen to draw. Turn off for pen-only palm rejection (only effective where the platform reports a real pen — not Linux/WebKitGTK)."><input type="checkbox" bind:checked={mouseDraw} /> mouse/pen</label>
+      <button class="sk-expand" on:click={toggleExpand} title="Expand to fill the window (Esc to exit)">{expanded ? '🗕 Collapse' : '⛶ Expand'}</button>
       <span class="sk-spacer"></span>
       <button class="sk-del" on:click={onDelete} title="Delete cell">✕</button>
     </div>
@@ -194,4 +213,6 @@
   .sk-del:hover { color: #ff8080 !important; }
   .sk-wrap { position: relative; height: 240px; min-height: 80px; resize: vertical; overflow: hidden; background: #0b1220; }
   .sk-wrap canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+  .sk-cell.expanded { position: fixed; inset: 0; z-index: 1000; margin: 0; border-radius: 0; display: flex; flex-direction: column; }
+  .sk-cell.expanded .sk-wrap { flex: 1; height: auto !important; resize: none; }
 </style>
