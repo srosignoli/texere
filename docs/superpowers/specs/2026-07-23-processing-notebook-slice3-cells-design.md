@@ -9,11 +9,15 @@
 
 Add two new notebook cell types:
 
-- **Graph query cell** — a searchN4L query editor that runs against the
-  SSTorytime-KV graph (via the existing `SearchGraph`) and renders results
-  inline: matched nodes with their radius-1 orbit for text queries, path chains
-  for `\from`/`\to`/`\paths`/`\sequence` queries, and listings. Results attach
-  into LLM cells as context.
+- **Graph query cell** — a searchN4L query editor with the **full query
+  capability of the unified graph search (Ctrl+Shift+K)**: it runs any
+  searchN4L query against the SSTorytime-KV graph (via the existing
+  `SearchGraph`) — text queries with orbits at whatever `\radius N` the query
+  asks for, `\from`/`\to`/`\paths`/`\sequence` path/sequence chains, `\context`,
+  `\chapter`, `\notes`, etc. — and renders the complete `SearchResult` inline.
+  There is no artificial radius-1 limit; the cell is the unified search embedded
+  in a notebook, with its results shown in place. Results attach into LLM cells
+  as context.
 - **Compute cell** — user JavaScript evaluated in a sandboxed, terminable Web
   Worker with **math.js** available, an async **`graph.query`/`graph.orbit`**
   bridge back to the graph, captured console/value output, and **Chart.js**
@@ -41,11 +45,12 @@ Both cells slot into the Slice 1 `cellRegistry`; neither adds Go dependencies.
 
 - **3a — Graph query cell**
   - searchN4L query editor reusing `frontend/src/lib/query-grammar.js`
-    (`analyzeQuery`/`getSuggestions`) for autocomplete/help, so grammar never
-    drifts from the unified search bar.
-  - **Run** → inline render of `SearchResult`: nodes + radius-1 orbit
-    (text queries), `Structural` path chains (`\from`/`\to`/`\paths`/`\sequence`),
-    and `Listings`.
+    (`analyzeQuery`/`getSuggestions`) for autocomplete/help — the SAME grammar
+    and directive set as the Ctrl+Shift+K unified search, so the cell supports
+    every query the search bar does and never drifts from it.
+  - **Run** → inline render of the FULL `SearchResult` the query produces:
+    matched nodes with their orbit (at the query's `\radius`), `Structural`
+    path/sequence chains, `Listings`, and authored `Notes` (`\notes`).
   - Attachable to LLM cells as context.
 - **3b — Compute cell**
   - Fresh Web Worker per Run (`type: "module"`), math.js imported inside it.
@@ -66,7 +71,7 @@ search (6); additional compute kernels; persisting full results or chart images.
 frontend/src/
 ├── components/notebook/
 │   ├── GraphQueryCell.svelte   # NEW: query editor + Run + inline results
-│   ├── GraphResults.svelte     # NEW: renders nodes/orbits/Structural/Listings
+│   ├── GraphResults.svelte     # NEW: renders nodes/orbits/Structural/Listings/Notes (full SearchResult)
 │   └── ComputeCell.svelte      # NEW: code editor + Run/Stop + output + charts
 ├── lib/
 │   ├── notebook.js             # register 'graph'/'compute'; newGraphCell/newComputeCell
@@ -96,10 +101,12 @@ already passes and adding "+ Graph cell" / "+ Compute cell" buttons.
 Read-only, minimal — the graph is already exposed:
 
 - Reuse the existing `SearchGraph(query string) → (*search.SearchResult, error)`
-  for both the graph cell and the compute bridge. `graph.orbit(node)` is a
-  frontend convenience that calls `SearchGraph(node + " \\radius 1")` (the
-  `\radius` directive already exists in the query grammar) — no new backend
-  method.
+  for both the graph cell and the compute bridge — it already parses the full
+  searchN4L grammar, so the graph cell inherits every directive the unified
+  search supports with zero new backend work. `graph.orbit(node, radius = 1)` is
+  a frontend convenience that calls `SearchGraph(node + " \\radius " + radius)`
+  (the `\radius` directive already exists) — no fixed limit; the radius is a
+  caller argument.
 - No new BadgerDB access, no new Go dependency. (If a dedicated
   `GraphQuery`/`GraphOrbit` binding proves cleaner during implementation, it is a
   thin pass-through to `SearchGraph`; the plan will decide.)
@@ -115,11 +122,13 @@ Cell object in `cells_json`:
 - **Editor:** a query input using `analyzeQuery`/`getSuggestions` from
   `query-grammar.js` for the `\directive` autocomplete/help dropdown, matching
   the OmniBar UX.
-- **Run:** calls `SearchGraph(query)`; renders via `GraphResults.svelte`:
-  - text queries → each matched node with its radius-1 orbit (`arrowLong →
-    neighborText`);
+- **Run:** calls `SearchGraph(query)` with the user's full searchN4L query;
+  renders whatever the result contains via `GraphResults.svelte`:
+  - matched nodes with their orbit at the query's radius (`arrowLong →
+    neighborText`, all radii the query returned, not just 1);
   - `\from`/`\to`/`\paths`/`\sequence` → `Structural` chains as arrow sequences;
-  - `Listings` → a simple list.
+  - `Listings` → a simple list; `Notes` (`\notes`) → the authored note blocks.
+  This is the same result set the Ctrl+Shift+K search produces, shown inline.
 - **Persistence:** `query` persists; results are ephemeral. On Run, a bounded
   plain-text summary of the results is written to `resultText` (persisted,
   truncated to a few KB) so an LLM cell can attach it after a restart without
@@ -146,10 +155,12 @@ Cell object in `cells_json`:
 ### Worker API surface (installed in `compute-worker.js`)
 
 - `math` — the math.js namespace.
-- `graph.query(q)` → `Promise<SearchResult>`; `graph.orbit(node)` →
-  `Promise<SearchResult>`. Each posts `{type:"graph-req", id, kind, arg}`; the
-  host calls `SearchGraph` and posts `{type:"graph-res", id, result|error}`; the
-  worker resolves/rejects the pending Promise.
+- `graph.query(q)` → `Promise<SearchResult>` runs any full searchN4L query;
+  `graph.orbit(node, radius = 1)` → `Promise<SearchResult>` is a convenience for
+  `query(node + " \\radius " + radius)` (radius is a caller argument, not fixed).
+  Each posts `{type:"graph-req", id, query}`; the host calls `SearchGraph` and
+  posts `{type:"graph-res", id, result|error}`; the worker resolves/rejects the
+  pending Promise.
 - `chart(config)` — posts `{type:"chart", config}`; the host renders it (below).
 - `console.log/info/warn/error` — shimmed to post `{type:"console", level, text}`.
 - The final expression value is posted as `{type:"value", text}` (stringified).
@@ -228,8 +239,10 @@ dependencies; the graph is reached through the existing `SearchGraph` binding.
 
 ## Success criteria
 
-- A text query renders matched nodes with their orbit; a `\from…\to` query
-  renders path chains.
+- The graph cell runs any query the Ctrl+Shift+K search accepts and shows the
+  same results inline: a text query with `\radius N` renders nodes with orbits at
+  that radius; a `\from…\to` query renders path chains; `\notes`/`\chapter`/
+  `\context` behave as in the search bar. No radius-1 limit.
 - A compute cell computes with math.js, `await graph.query('…')` returns live
   graph results, and a `chart(...)` call renders a Chart.js plot.
 - Stop and the 5s timeout both kill a runaway compute cell without freezing the
