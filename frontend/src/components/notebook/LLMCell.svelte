@@ -16,6 +16,7 @@
   let partial = ''
   let turn = null
   let error = ''
+  let lastSent = ''
 
   onMount(async () => { try { const c = await GetLLMConfig(); profiles = c.profiles ?? [] } catch { /* settings not configured */ } })
   onDestroy(() => turn?.cancel())
@@ -35,6 +36,7 @@
   function send() {
     const text = input.trim()
     if (!text || streaming) return
+    lastSent = text
     cell.messages = [...cell.messages, { role: 'user', content: text }]
     cell = cell
     input = ''
@@ -48,7 +50,7 @@
       messages: cell.messages,
       onDelta: (t) => { partial += t },
       onDone: () => { finish(partial) },
-      onError: (m) => { error = m; streaming = false; partial = ''; turn = null },
+      onError: (m) => { error = m; abandonTurn() },
     })
   }
 
@@ -59,7 +61,21 @@
     turn = null
   }
 
-  function stop() { turn?.cancel(); streaming = false; partial = ''; turn = null }
+  function abandonTurn() {
+    // Remove the unanswered trailing user message so the transcript never ends
+    // with a dangling user turn (native Anthropic rejects consecutive user
+    // roles on the next send), and restore its text to the input for retry.
+    if (cell.messages.length && cell.messages[cell.messages.length - 1].role === 'user') {
+      cell.messages = cell.messages.slice(0, -1)
+      cell = cell
+    }
+    if (lastSent && !input) input = lastSent
+    partial = ''
+    streaming = false
+    turn = null
+  }
+
+  function stop() { turn?.cancel(); abandonTurn() }
   function onKey(e) { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); send() } }
 </script>
 

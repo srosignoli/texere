@@ -36,7 +36,7 @@ func (p *anthropicProvider) Stream(ctx context.Context, req Request, onDelta fun
 	httpReq.Header.Set("x-api-key", p.apiKey)
 	httpReq.Header.Set("anthropic-version", "2023-06-01")
 
-	resp, err := http.DefaultClient.Do(httpReq)
+	resp, err := httpClient.Do(httpReq)
 	if err != nil {
 		return err
 	}
