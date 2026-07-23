@@ -2,13 +2,21 @@
 
 Prereqs: open an extract for processing.
 
-## TC-1 Draw (mouse toggle)
-1. Add a Sketch cell; turn ON the "mouse" toggle; drag on the canvas.
-   - EXPECT: a smooth pen stroke appears; width varies slightly (simulated pressure).
+> **Platform note:** On Linux/WebKitGTK a pen tablet (e.g. XP-Pen) is reported
+> to the webview as `pointerType: "mouse"` with no real pressure — it is
+> indistinguishable from a mouse, and palm rejection / hardware pressure are not
+> available there. The "mouse/pen" toggle therefore defaults ON so the mouse and
+> the tablet both draw out of the box. True `pen`/`touch` pointer types (and thus
+> pen-only palm rejection) only appear on platforms that report them, e.g.
+> Windows/WebView2 touchscreens.
 
-## TC-2 Palm rejection / pen-only
-1. Turn the "mouse" toggle OFF; try to draw with the mouse.
-   - EXPECT: nothing draws (pen-only). (With a pen tablet, pen still draws; touch never draws.)
+## TC-1 Draw (default)
+1. Add a Sketch cell (the "mouse/pen" toggle is ON by default); drag on the canvas with the mouse or the pen tablet.
+   - EXPECT: a smooth stroke appears; width varies slightly (simulated pressure).
+
+## TC-2 Pen-only toggle / palm rejection
+1. Turn the "mouse/pen" toggle OFF; try to draw with the mouse (or, on Linux, the tablet).
+   - EXPECT: nothing draws — only a real `pen` pointer draws in this mode. On Linux/WebKitGTK the tablet reports as `mouse`, so it will NOT draw with the toggle off (expected); on Windows/WebView2 a pen still draws and touch never draws.
 
 ## TC-3 Tools + colors
 1. Pick Highlight + amber; draw over an existing pen stroke.

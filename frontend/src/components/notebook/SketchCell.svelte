@@ -18,7 +18,11 @@
   let tool = 'pen'
   let color = COLORS[0]
   let size = SIZES.pen
-  let mouseDraw = false
+  // On WebKitGTK (Linux) a pen tablet reports pointerType 'mouse', so it is
+  // indistinguishable from a mouse; default this ON so the pen/mouse draw out of
+  // the box. Turn OFF for pen-only palm rejection on platforms that report
+  // 'pen'/'touch' correctly (e.g. Windows/WebView2 touchscreens).
+  let mouseDraw = true
 
   // Live stroke list; undo/redo hold invertible ops.
   let strokes = (cell.strokes ?? []).map((s) => ({ ...s, points: s.points.slice() }))
@@ -151,7 +155,7 @@
       <button on:click={undo} disabled={!undoStack.length} title="Undo">↶</button>
       <button on:click={redo} disabled={!redoStack.length} title="Redo">↷</button>
       <button on:click={clearAll} title="Clear">Clear</button>
-      <label class="sk-mouse"><input type="checkbox" bind:checked={mouseDraw} /> mouse</label>
+      <label class="sk-mouse" title="Allow mouse/pen to draw. Turn off for pen-only palm rejection (only effective where the platform reports a real pen — not Linux/WebKitGTK)."><input type="checkbox" bind:checked={mouseDraw} /> mouse/pen</label>
       <span class="sk-spacer"></span>
       <button class="sk-del" on:click={onDelete} title="Delete cell">✕</button>
     </div>
