@@ -1,7 +1,7 @@
 <script>
   import { createEventDispatcher, onDestroy } from 'svelte'
   import { OpenNotebook, GetNotebook, SaveNotebook } from '../../../wailsjs/go/main/App'
-  import { newDraftCell, newLLMCell, cellRegistry } from '../../lib/notebook.js'
+  import { newDraftCell, newLLMCell, newGraphCell, cellRegistry } from '../../lib/notebook.js'
   import ContextCell from './ContextCell.svelte'
   import LLMSettings from '../LLMSettings.svelte'
 
@@ -48,6 +48,7 @@
 
   function addDraft() { cells = [...cells, newDraftCell('')]; scheduleSave() }
   function addLLM() { cells = [...cells, newLLMCell('ask')]; scheduleSave() }
+  function addGraph() { cells = [...cells, newGraphCell()]; scheduleSave() }
   function updateCell(i, text) { cells[i].text = text; scheduleSave() }
   function updateCellObj(i, obj) { cells[i] = obj; cells = cells; scheduleSave() }
   function deleteCell(i) { cells = cells.filter((_, j) => j !== i); scheduleSave() }
@@ -86,6 +87,7 @@
     {#if !readOnly}
       <button class="nb-add" on:click={addDraft}>+ N4L draft cell</button>
       <button class="nb-add" on:click={addLLM}>+ LLM cell</button>
+      <button class="nb-add" on:click={addGraph}>+ Graph cell</button>
     {/if}
   </div>
 </div>

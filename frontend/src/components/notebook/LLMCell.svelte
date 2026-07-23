@@ -93,11 +93,11 @@
     {#if !readOnly}<button class="del" on:click={onDelete} title="Delete cell">✕</button>{/if}
   </div>
 
-  {#if !readOnly && cells.filter((c) => c.id !== cell.id && (c.type === 'n4l' || c.type === 'llm')).length}
+  {#if !readOnly && cells.filter((c) => c.id !== cell.id && (c.type === 'n4l' || c.type === 'llm' || c.type === 'graph' || c.type === 'compute')).length}
     <div class="attach">
       <span>Attach context:</span>
-      {#each cells.filter((c) => c.id !== cell.id && (c.type === 'n4l' || c.type === 'llm')) as c}
-        <label><input type="checkbox" checked={(cell.attachments ?? []).includes(c.id)} on:change={() => toggleAttach(c.id)} /> {c.type === 'n4l' ? 'draft' : 'llm'} {c.id.slice(-4)}</label>
+      {#each cells.filter((c) => c.id !== cell.id && (c.type === 'n4l' || c.type === 'llm' || c.type === 'graph' || c.type === 'compute')) as c}
+        <label><input type="checkbox" checked={(cell.attachments ?? []).includes(c.id)} on:change={() => toggleAttach(c.id)} /> {c.type === 'n4l' ? 'draft' : c.type === 'graph' ? 'graph' : c.type === 'compute' ? 'compute' : 'llm'} {c.id.slice(-4)}</label>
       {/each}
     </div>
   {/if}

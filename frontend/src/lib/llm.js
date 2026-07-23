@@ -36,6 +36,8 @@ export function buildSystem(mode, context, attachedCells) {
     else if (c.type === 'llm' && c.messages?.length) {
       ctx.push('# Attached conversation\n' + c.messages.map((m) => `${m.role}: ${m.content}`).join('\n'))
     }
+    else if (c.type === 'graph' && c.resultText) ctx.push(`# Attached graph result\n${c.resultText}`)
+    else if (c.type === 'compute' && c.resultText) ctx.push(`# Attached compute output\n${c.resultText}`)
   }
   if (ctx.length) parts.push('--- Context ---\n' + ctx.join('\n\n'))
   return parts.join('\n\n')
