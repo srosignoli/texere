@@ -62,13 +62,12 @@ canvas means the whole tablet maps to the drawing surface.
 ```
 
 - **New:** `logicalW`, `logicalH` — the sketch's fixed logical canvas dimensions.
-  `null`/absent on a fresh cell; set on the first stroke to the active container's
-  CSS size; stamped on load for legacy sketches (see Migration).
+  `null`/absent on a fresh cell **and on legacy sketches** (not migrated — see
+  below); set on the first *new* stroke to the active container's CSS size.
 - `points` — `[x, y, pressure]` are now **logical** coordinates (in the
   `logicalW × logicalH` space), not screen pixels. `pressure` unchanged.
 - `size` — now a **logical** width (`sliderPx ÷ drawScale` at draw time), rendered
-  as `size × scale`. Legacy `size` values (screen px at inline scale ≈ 1) render
-  close enough after migration.
+  as `size × scale`.
 - `height` — unchanged; the inline cell's CSS height, persisted. **Never** written
   from the fullscreen container size (guarded — see Interaction).
 
@@ -150,10 +149,13 @@ exist.
 
 ## Migration (existing sketches)
 
-- On mount, if `cell.logicalW`/`logicalH` are missing **and** the sketch already
-  has strokes, stamp `logicalW = wrap.clientWidth`, `logicalH = cell.height` and
-  keep the existing pixel points unchanged (they were screen px in ~that space, so
-  they render close to the original). Do not rewrite point values.
+- **No migration.** Legacy sketches (strokes but no `logicalW`/`logicalH`) render
+  with the identity transform (`fitTransform` returns `{scale:1, ox:0, oy:0}` when
+  logical dims are unset), i.e. their existing absolute-pixel behavior — roughly as
+  before at the inline size. No on-load stamping and no point rewriting.
+- If the user draws a **new** stroke on a legacy sketch, `logicalW/H` get set from
+  the current container at that moment (mixing the old absolute points with the new
+  logical space). Accepted: existing sketches are throwaway test drawings.
 - A fresh sketch with no strokes leaves `logicalW/H` unset until the first stroke.
 
 ## Edge cases / error handling
@@ -184,7 +186,8 @@ plus a manual test plan appended to the Slice-4 plan:
 - Undo/redo/erase/clear work in both inline and expanded modes.
 - Inline resize still persists `cell.height`; expanding does **not** change it.
 - Esc exits expand; restart the app and reopen — the sketch re-renders correctly
-  (logical coords persisted) and an old (pre-migration) sketch still shows.
+  (logical coords persisted) and a legacy (no-`logicalW/H`) sketch still shows via
+  the identity transform.
 
 ## Success criteria
 
