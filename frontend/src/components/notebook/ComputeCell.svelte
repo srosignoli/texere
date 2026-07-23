@@ -9,6 +9,7 @@
   export let readOnly = false
   export let context = null // unused; shared cell prop set
   export let cells = []      // unused
+  export let onPush = () => {} // unused; shared cell prop set
 
   let running = false
   let logs = []        // { level, text }
@@ -20,7 +21,7 @@
   onDestroy(() => run?.cancel())
 
   function persist() {
-    const text = [...logs.map((l) => l.text), value].filter(Boolean).join('\n').slice(0, 4000)
+    const text = [...logs.map((l) => l.text), value, error].filter(Boolean).join('\n').slice(0, 4000)
     cell.resultText = text
     onChange(cell)
   }

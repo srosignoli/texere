@@ -10,6 +10,7 @@
   export let readOnly = false
   export let context = null // unused; shared cell prop set
   export let cells = []      // unused
+  export let onPush = () => {} // unused; shared cell prop set
 
   let result = null
   let running = false
