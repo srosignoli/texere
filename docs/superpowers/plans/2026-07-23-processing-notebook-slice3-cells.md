@@ -20,7 +20,7 @@
 
 ## Deviation from the spec (confirm at handoff)
 
-The spec says the compute cell shows "the last expression's value." Implicit last-expression capture is incompatible with the top-level-`await` async wrapper without an AST transform (out of scope). This plan instead shows the value the user code **`return`s** from the async wrapper (top-level `await` supported), alongside captured `console` output. This is the one behavioral deviation; everything else matches the spec.
+The spec says the compute cell shows "the last expression's value." Implicit last-expression capture is incompatible with the top-level-`await` async wrapper without an AST transform (out of scope). This plan instead shows the value the user code **`return`s** from the async wrapper (top-level `await` supported), **plus a `print(...)` helper** in scope so a value can be displayed without `return` (e.g. `print(math.sqrt(16))`), alongside captured `console` output. This is the one behavioral deviation; everything else matches the spec. (User-confirmed: return + print.)
 
 ---
 
@@ -442,8 +442,10 @@ git commit -m "chore(deps): add math.js + Chart.js for the compute cell"
 **Interfaces:**
 - Consumes: `mathjs` (in the worker); `SearchGraph` from `../../wailsjs/go/main/App` (in the host).
 - Produces:
-  - `compute-worker.js` — a Web Worker module; message protocol below.
-  - `compute-host.js` exports `runCompute(code, { onConsole, onValue, onChart, onError, onDone, timeoutMs })` → `{ cancel() }`.
+  - `compute-worker.js` — a Web Worker module; message protocol below. In-scope
+    globals for user code: `math`, `graph` (`query`/`orbit`), `chart(config)`,
+    `print(...args)` (display a value without `return`), and `console`.
+  - `compute-host.js` exports `runCompute(code, { onConsole, onValue, onChart, onError, onDone, timeoutMs })` → `{ cancel() }`. `print` output arrives on the `onConsole` callback with `level === 'print'`.
 - Message protocol (host ⇄ worker):
   - host→worker: `{type:'run', code}`, `{type:'graph-res', id, result|error}`
   - worker→host: `{type:'console', level, text}`, `{type:'chart', config}`, `{type:'value', text}`, `{type:'error', text}`, `{type:'done'}`, `{type:'graph-req', id, query}`
@@ -477,6 +479,9 @@ const graph = {
   orbit: (node, radius = 1) => rpc(String(node) + ' \\radius ' + radius),
 }
 const chart = (config) => post({ type: 'chart', config })
+// print(...) shows a value in the output without needing `return`; it rides the
+// console channel with a distinct 'print' level the UI styles like the value.
+const print = (...a) => post({ type: 'console', level: 'print', text: a.map(fmt).join(' ') })
 const consoleShim = {
   log: (...a) => post({ type: 'console', level: 'log', text: a.map(fmt).join(' ') }),
   info: (...a) => post({ type: 'console', level: 'info', text: a.map(fmt).join(' ') }),
@@ -497,9 +502,9 @@ self.onmessage = async (e) => {
   if (m.type === 'run') {
     try {
       // eslint-disable-next-line no-new-func
-      const fn = new Function('math', 'graph', 'chart', 'console',
+      const fn = new Function('math', 'graph', 'chart', 'print', 'console',
         '"use strict"; return (async () => {\n' + m.code + '\n})();')
-      const value = await fn(math, graph, chart, consoleShim)
+      const value = await fn(math, graph, chart, print, consoleShim)
       if (value !== undefined) post({ type: 'value', text: fmt(value) })
       post({ type: 'done' })
     } catch (err) {
@@ -648,7 +653,7 @@ Create `frontend/src/components/notebook/ComputeCell.svelte`:
     {/if}
   </div>
   <textarea class="cc-code" value={cell.code ?? ''} on:input={onCodeInput} disabled={readOnly} spellcheck="false"
-    placeholder={"// math.js as `math`, async `graph.query(q)` / `graph.orbit(node)`, `chart(config)`.\n// `return` a value to display it.\nreturn math.sqrt(16)"} rows="5"></textarea>
+    placeholder={"// math.js as `math`, async `graph.query(q)` / `graph.orbit(node)`, `chart(config)`.\n// `print(x)` shows a value; or `return` one.\nprint(math.sqrt(16))"} rows="5"></textarea>
 
   {#if logs.length || value || error || chartConfigs.length}
     <div class="cc-out">
@@ -674,6 +679,7 @@ Create `frontend/src/components/notebook/ComputeCell.svelte`:
   .cc-log { font-family: monospace; font-size: 12px; color: #b9c6d6; white-space: pre-wrap; }
   .cc-log.warn { color: #e0b050; }
   .cc-log.error { color: #ff8080; }
+  .cc-log.print { color: #7dd3fc; }
   .cc-value { font-family: monospace; font-size: 13px; color: #7dd3fc; white-space: pre-wrap; }
   .cc-error { color: #ff8080; font-size: 12px; white-space: pre-wrap; }
   .cc-chart { background: #0b1220; border: 1px solid #1c2a3a; border-radius: 6px; padding: 6px; margin-top: 4px; }
@@ -774,11 +780,11 @@ Prereqs: a collection with a built graph (Ctrl+G). Open an extract for processin
 2. On a collection with no graph built, run any query.
    - EXPECT: "Graph not built (Ctrl+G)" hint, no crash.
 
-## TC-4 Compute cell — math.js + value
+## TC-4 Compute cell — math.js, value, print
 1. Add a Compute cell; enter `return math.sqrt(2) * 10`; Run.
    - EXPECT: `⇒ 14.14…` shown.
-2. Add `console.log('hi', {a:1})` above the return; Run.
-   - EXPECT: the console line renders.
+2. Replace with `print(math.sqrt(16)); console.log('hi', {a:1})`; Run.
+   - EXPECT: a `print` line shows `4` (styled like a value) and the console line renders — no `return` needed.
 
 ## TC-5 Compute cell — graph bridge
 1. In a Compute cell: `const r = await graph.query('<node> \\radius 1'); return r.Nodes.length`; Run.
