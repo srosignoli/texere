@@ -10,6 +10,8 @@
   export let onPush = () => {}
   export let onDelete = () => {}
   export let readOnly = false
+  export let context = null   // unused; present so the shared cell prop set matches
+  export let cells = []       // unused
 
   let container, view
   let arrowDefsRef = []
