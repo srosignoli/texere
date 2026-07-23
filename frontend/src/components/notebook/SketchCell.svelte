@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy } from 'svelte'
-  import { renderStrokes } from '../../lib/sketch-render.js'
+  import { renderStrokes, fitTransform } from '../../lib/sketch-render.js'
 
   export let cell
   export let onChange = () => {}
@@ -49,7 +49,9 @@
     if (!ctx) return
     const width = wrap.clientWidth
     const height = wrap.clientHeight
-    renderStrokes(ctx, drawing ? [...strokes, drawing] : strokes, { width, height, dpr })
+    renderStrokes(ctx, drawing ? [...strokes, drawing] : strokes, {
+      width, height, dpr, logicalW: cell.logicalW, logicalH: cell.logicalH,
+    })
   }
   function scheduleRender() {
     if (rafPending) return
@@ -72,11 +74,14 @@
   }
   function pointOf(e) {
     const r = canvas.getBoundingClientRect()
-    return [e.clientX - r.left, e.clientY - r.top, e.pressure || 0.5]
+    const { scale, ox, oy } = fitTransform(wrap.clientWidth, wrap.clientHeight, cell.logicalW, cell.logicalH)
+    return [((e.clientX - r.left) - ox) / scale, ((e.clientY - r.top) - oy) / scale, e.pressure || 0.5]
   }
 
   function eraseAt(p) {
-    const th = 10
+    // p is in logical units; scale a ~10px screen threshold into logical units.
+    const { scale } = fitTransform(wrap.clientWidth, wrap.clientHeight, cell.logicalW, cell.logicalH)
+    const th = 10 / scale
     const keep = []
     for (const s of strokes) {
       if (s.points.some((q) => Math.hypot(q[0] - p[0], q[1] - p[1]) < th)) erasing.removed.push(s)
@@ -90,8 +95,15 @@
     if (activePointerId !== null) return // ignore a second pointer while one action is in progress
     activePointerId = e.pointerId
     canvas.setPointerCapture(e.pointerId)
+    // Lazily fix the sketch's logical canvas to the current container on the
+    // first stroke (Expand-first ⇒ whole window/tablet becomes the logical space).
+    if (!cell.logicalW || !cell.logicalH) {
+      cell.logicalW = wrap.clientWidth
+      cell.logicalH = wrap.clientHeight
+    }
+    const { scale } = fitTransform(wrap.clientWidth, wrap.clientHeight, cell.logicalW, cell.logicalH)
     if (tool === 'eraser') { erasing = { removed: [] }; eraseAt(pointOf(e)) }
-    else drawing = { tool, color, size, points: [pointOf(e)] }
+    else drawing = { tool, color, size: size / scale, points: [pointOf(e)] } // store logical width
     scheduleRender()
   }
   function onMove(e) {
