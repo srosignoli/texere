@@ -42,4 +42,3 @@ func New(kind, baseURL, apiKey string) (Provider, error) {
 		return nil, errors.New("llm: unknown provider kind " + kind)
 	}
 }
-

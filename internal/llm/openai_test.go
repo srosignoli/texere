@@ -18,9 +18,9 @@ func TestOpenAIStream(t *testing.T) {
 			t.Errorf("path = %q", r.URL.Path)
 		}
 		w.Header().Set("Content-Type", "text/event-stream")
-		io.WriteString(w, "data: {\"choices\":[{\"delta\":{\"content\":\"Hel\"}}]}\n\n")
-		io.WriteString(w, "data: {\"choices\":[{\"delta\":{\"content\":\"lo\"}}]}\n\n")
-		io.WriteString(w, "data: [DONE]\n\n")
+		_, _ = io.WriteString(w, "data: {\"choices\":[{\"delta\":{\"content\":\"Hel\"}}]}\n\n")
+		_, _ = io.WriteString(w, "data: {\"choices\":[{\"delta\":{\"content\":\"lo\"}}]}\n\n")
+		_, _ = io.WriteString(w, "data: [DONE]\n\n")
 	}))
 	defer srv.Close()
 
@@ -40,7 +40,7 @@ func TestOpenAIStream(t *testing.T) {
 func TestOpenAIStreamError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(401)
-		io.WriteString(w, `{"error":{"message":"bad key"}}`)
+		_, _ = io.WriteString(w, `{"error":{"message":"bad key"}}`)
 	}))
 	defer srv.Close()
 	p := &openaiProvider{baseURL: srv.URL, apiKey: "k"}
