@@ -14,6 +14,12 @@ html {
  * Hex strings only (#rrggbb) — Theme.js parses them into 24-bit ints.
  */
 :root {
+    /* Tell the webview this app is dark so WebKitGTK themes native form
+       controls (the <select> box AND its popup menu) and scrollbars in dark
+       mode. Without this, native selects render light-on-light and ignore
+       CSS/<option> styling of the native popup. */
+    color-scheme: dark;
+
     /* Edge palette — meta-type → color (FR-011 / FR-012). */
     --explorer-edge-contains: #f59e0b;     /* amber, structural / pillar */
     --explorer-edge-leads-to: #06b6d4;     /* cyan, primary causal flow */

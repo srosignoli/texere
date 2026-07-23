@@ -127,9 +127,15 @@
   .llm-bar { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-bottom: 1px solid #1c2a3a; }
   .modes button { background: #14233a; color: #93c5fd; border: 1px solid #2a3a4a; border-radius: 6px; padding: 2px 10px; cursor: pointer; font-size: 12px; }
   .modes button.active { background: #244a72; color: #e8eaf0; }
-  .prof { background: #0b1220; border: 1px solid #2a3a4a; border-radius: 6px; color: #cdd6e2; font-size: 12px; padding: 2px 6px; }
-  /* Native dropdown popup options need explicit dark styling on WebKitGTK,
-     otherwise the light option text renders on a white system background. */
+  /* appearance:none lets WebKitGTK apply the app's dark-blue background to the
+     select and its popup instead of the UA grey; data-URI chevron replaces the
+     removed native arrow. */
+  .prof {
+    -webkit-appearance: none; appearance: none;
+    background: #0b1220; border: 1px solid #2a3a4a; border-radius: 6px; color: #cdd6e2; font-size: 12px; padding: 2px 22px 2px 6px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath fill='%23cdd6e2' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 7px center;
+  }
   .prof option { background: #0b1220; color: #cdd6e2; }
   .spacer { flex: 1; }
   .del { background: none; border: none; color: #6b7a8a; cursor: pointer; }

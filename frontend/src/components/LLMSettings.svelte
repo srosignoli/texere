@@ -100,8 +100,14 @@
   .ov-form { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; }
   .ov-form label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: #93c5fd; }
   .ov-form input, .ov-form select { background: #0b1220; border: 1px solid #2a3a4a; border-radius: 6px; color: #e8eaf0; padding: 5px 8px; font-size: 13px; }
-  /* Style the native dropdown popup options too — WebKitGTK renders them on a
-     white system background otherwise, hiding the light select text. */
+  /* appearance:none makes WebKitGTK render the select (and its popup) as a
+     CSS-styled control so the app's dark-blue background applies instead of the
+     UA grey; a data-URI chevron replaces the removed native arrow. */
+  .ov-form select {
+    -webkit-appearance: none; appearance: none; padding-right: 26px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath fill='%23cdd6e2' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 9px center;
+  }
   .ov-form select option { background: #0b1220; color: #e8eaf0; }
   .ov-actions { flex-direction: row; display: flex; gap: 8px; }
 </style>
