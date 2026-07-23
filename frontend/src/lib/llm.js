@@ -37,7 +37,12 @@ export function buildSystem(mode, context, attachedCells) {
       ctx.push('# Attached conversation\n' + c.messages.map((m) => `${m.role}: ${m.content}`).join('\n'))
     }
     else if (c.type === 'graph' && c.resultText) ctx.push(`# Attached graph result\n${c.resultText}`)
-    else if (c.type === 'compute' && c.resultText) ctx.push(`# Attached compute output\n${c.resultText}`)
+    else if (c.type === 'compute' && (c.code || c.resultText)) {
+      let s = '# Attached compute cell'
+      if (c.code) s += `\n\`\`\`js\n${c.code}\n\`\`\``
+      if (c.resultText) s += `\n\nOutput:\n${c.resultText}`
+      ctx.push(s)
+    }
   }
   if (ctx.length) parts.push('--- Context ---\n' + ctx.join('\n\n'))
   return parts.join('\n\n')

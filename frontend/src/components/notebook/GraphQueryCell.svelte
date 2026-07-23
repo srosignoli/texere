@@ -102,7 +102,7 @@
   .gq-cell { background: #0e1622; border: 1px solid #26374a; border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
   .gq-bar { display: flex; align-items: flex-start; gap: 6px; padding: 6px 8px; }
   .gq-input-wrap { position: relative; flex: 1; min-width: 0; }
-  .gq-input { width: 100%; background: #0b1220; border: 1px solid #2a3a4a; border-radius: 6px; color: #e8eaf0; font-size: 13px; padding: 5px 8px; font-family: monospace; }
+  .gq-input { box-sizing: border-box; width: 100%; background: #0b1220; border: 1px solid #2a3a4a; border-radius: 6px; color: #e8eaf0; font-size: 13px; padding: 5px 8px; font-family: monospace; }
   .gq-sug { position: absolute; z-index: 5; left: 0; right: 0; margin: 2px 0 0; padding: 4px; list-style: none; background: #101826; border: 1px solid #2a3a4a; border-radius: 6px; max-height: 200px; overflow-y: auto; }
   .gq-sug li { padding: 3px 6px; cursor: pointer; font-size: 12px; color: #cdd6e2; border-radius: 4px; }
   .gq-sug li:hover { background: #24374d; }
