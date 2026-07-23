@@ -1,7 +1,7 @@
 <script>
   import { SearchGraph } from '../../../wailsjs/go/main/App'
   import { analyzeQuery, getSuggestions } from '../../lib/query-grammar.js'
-  import { queryHints } from '../../stores/queryHints.js'
+  import { queryHints, ensureQueryHints } from '../../stores/queryHints.js'
   import GraphResults from './GraphResults.svelte'
 
   export let cell
@@ -51,7 +51,7 @@
       result = await SearchGraph(cell.query)
       cell.resultText = summarize(result)
       onChange(cell)
-    } catch (e) { error = String(e?.message ?? e); result = null }
+    } catch (e) { error = String(e?.message ?? e); result = null; cell.resultText = ''; onChange(cell) }
     finally { running = false }
   }
 
@@ -78,7 +78,7 @@
 <div class="gq-cell">
   <div class="gq-bar">
     <div class="gq-input-wrap">
-      <input class="gq-input" value={cell.query} on:input={onInput} on:keydown={onKey}
+      <input class="gq-input" value={cell.query} on:input={onInput} on:keydown={onKey} on:focus={() => ensureQueryHints()}
         placeholder="searchN4L query — e.g.  eat \radius 2   or   \from A \to B" disabled={readOnly} autocomplete="off" />
       {#if showSug && !readOnly}
         <ul class="gq-sug">
