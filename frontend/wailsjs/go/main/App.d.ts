@@ -8,6 +8,8 @@ import {search} from '../models';
 
 export function BuildGraph():Promise<main.BuildGraphResult>;
 
+export function CancelLLMTurn(arg1:string):Promise<void>;
+
 export function ConfirmQuit():Promise<void>;
 
 export function CreateExtract(arg1:string,arg2:string,arg3:string):Promise<main.CreateExtractView>;
@@ -15,6 +17,8 @@ export function CreateExtract(arg1:string,arg2:string,arg3:string):Promise<main.
 export function CreateNewFile(arg1:string):Promise<content.ChapterSummary>;
 
 export function DeferExtract(arg1:string):Promise<void>;
+
+export function DeleteLLMProfile(arg1:string):Promise<void>;
 
 export function DismissExtract(arg1:string):Promise<void>;
 
@@ -37,6 +41,8 @@ export function GetFileContent(arg1:string):Promise<string>;
 export function GetInitialCollectionDir():Promise<string>;
 
 export function GetInitialSummaries():Promise<Array<content.ChapterSummary>>;
+
+export function GetLLMConfig():Promise<main.LLMConfig>;
 
 export function GetNotebook(arg1:string):Promise<main.NotebookView>;
 
@@ -92,13 +98,21 @@ export function ResolveReminder(arg1:string,arg2:number):Promise<content.WriteBa
 
 export function SaveFile(arg1:string,arg2:string):Promise<main.SaveFileResult>;
 
+export function SaveLLMProfile(arg1:main.LLMProfile):Promise<void>;
+
 export function SaveNotebook(arg1:string,arg2:string):Promise<void>;
 
 export function SearchGraph(arg1:string):Promise<search.SearchResult>;
 
+export function SetActiveProfile(arg1:string):Promise<void>;
+
 export function SetReadingProjLen(arg1:string,arg2:number):Promise<void>;
 
+export function StartLLMTurn(arg1:main.StartTurnReq):Promise<string>;
+
 export function SyncStudyItems():Promise<learning.SyncResult>;
+
+export function TestLLMProfile(arg1:string):Promise<void>;
 
 export function UpdateReadingProgress(arg1:string,arg2:string):Promise<void>;
 

@@ -17,8 +17,9 @@ import (
 // AppConfig is the persisted user configuration.
 // Stored at: os.UserConfigDir()/texere/config.json
 type AppConfig struct {
-	CollectionDir string   `json:"collectionDir"` // abs path; "" = no collection saved yet
-	RecentArrows  []string `json:"recentArrows"`  // LRU list of arrow codes; max 10 entries
+	CollectionDir string    `json:"collectionDir"` // abs path; "" = no collection saved yet
+	RecentArrows  []string  `json:"recentArrows"`  // LRU list of arrow codes; max 10 entries
+	LLM           LLMConfig `json:"llm"`
 }
 
 // SaveFileResult is returned by the SaveFile Wails-bound method.
@@ -39,10 +40,12 @@ type App struct {
 	initialSums   []content.ChapterSummary // summaries loaded at startup from saved config
 	startupError  string                   // non-empty when auto-load failed (dir missing)
 	watcher       *content.CollectionWatcher
-	quitConfirmed bool                      // set by ConfirmQuit so beforeClose lets the second Quit() through
-	searchSvc     *search.SearchService     // graph search; nil until a collection is loaded
-	explorerSvc   *explorer.ExplorerService // 2.5D isometric explorer; lifetime mirrors searchSvc
-	learnStore    *learning.Store           // spaced-repetition store; nil until a collection is loaded
+	quitConfirmed bool                          // set by ConfirmQuit so beforeClose lets the second Quit() through
+	searchSvc     *search.SearchService         // graph search; nil until a collection is loaded
+	explorerSvc   *explorer.ExplorerService     // 2.5D isometric explorer; lifetime mirrors searchSvc
+	learnStore    *learning.Store               // spaced-repetition store; nil until a collection is loaded
+	llmStreams    map[string]context.CancelFunc // active LLM turns, keyed by streamId
+	llmMu         sync.Mutex                    // guards llmStreams
 }
 
 // NewApp creates a new App instance.
@@ -54,6 +57,7 @@ func NewApp() *App {
 // methods (e.g. wails.runtime.EventsEmit) can be called from other methods.
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	a.llmStreams = map[string]context.CancelFunc{}
 
 	// Load the SSTconfig arrow + annotation registry from the directory
 	// adjacent to the binary. In development this is the repo root.

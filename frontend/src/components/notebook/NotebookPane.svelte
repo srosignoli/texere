@@ -1,8 +1,9 @@
 <script>
   import { createEventDispatcher, onDestroy } from 'svelte'
   import { OpenNotebook, GetNotebook, SaveNotebook } from '../../../wailsjs/go/main/App'
-  import { newDraftCell, cellRegistry } from '../../lib/notebook.js'
+  import { newDraftCell, newLLMCell, cellRegistry } from '../../lib/notebook.js'
   import ContextCell from './ContextCell.svelte'
+  import LLMSettings from '../LLMSettings.svelte'
 
   export let nodeID
   export let notebookId = null      // when set, reopen this notebook read-only
@@ -15,6 +16,7 @@
   let nbId = null
   let error = ''
   let saveTimer = null
+  let showSettings = false
 
   async function load() {
     error = ''
@@ -45,7 +47,9 @@
   })
 
   function addDraft() { cells = [...cells, newDraftCell('')]; scheduleSave() }
+  function addLLM() { cells = [...cells, newLLMCell('ask')]; scheduleSave() }
   function updateCell(i, text) { cells[i].text = text; scheduleSave() }
+  function updateCellObj(i, obj) { cells[i] = obj; cells = cells; scheduleSave() }
   function deleteCell(i) { cells = cells.filter((_, j) => j !== i); scheduleSave() }
   function move(i, dir) {
     const j = i + dir
@@ -58,6 +62,7 @@
   <div class="nb-head">
     <span class="nb-title">Notebook</span>
     {#if readOnly}<span class="nb-ro">read-only</span>{/if}
+    <button class="nb-gear" on:click={() => (showSettings = true)} title="LLM providers">⚙ Models</button>
   </div>
   {#if error}<div class="nb-error">{error}</div>{/if}
   <div class="nb-scroll">
@@ -71,8 +76,8 @@
           </div>
         {/if}
         <div class="nb-cell">
-          <svelte:component this={cellRegistry[cell.type]} {cell} {readOnly}
-            onChange={(t) => updateCell(i, t)}
+          <svelte:component this={cellRegistry[cell.type]} {cell} {readOnly} {context} cells={cells}
+            onChange={(t) => (typeof t === 'string' ? updateCell(i, t) : updateCellObj(i, t))}
             onPush={(t) => onPush(t)}
             onDelete={() => deleteCell(i)} />
         </div>
@@ -80,15 +85,18 @@
     {/each}
     {#if !readOnly}
       <button class="nb-add" on:click={addDraft}>+ N4L draft cell</button>
+      <button class="nb-add" on:click={addLLM}>+ LLM cell</button>
     {/if}
   </div>
 </div>
+{#if showSettings}<LLMSettings onClose={() => (showSettings = false)} />{/if}
 
 <style>
   .nb-pane { position: absolute; inset: 0; display: flex; flex-direction: column; background: #0b1220; }
   .nb-head { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid #2a3a4a; background: #101826; }
   .nb-title { color: #7dd3fc; font-weight: 600; }
   .nb-ro { color: #b58a3a; font-size: 11px; }
+  .nb-gear { margin-left: auto; background: #14233a; color: #93c5fd; border: 1px solid #2a4a6a; border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
   .nb-error { color: #ff8080; padding: 6px 12px; font-size: 12px; }
   .nb-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 12px; }
   .nb-cellwrap { display: flex; gap: 6px; }

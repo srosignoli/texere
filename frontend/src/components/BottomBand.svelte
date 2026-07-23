@@ -2,9 +2,8 @@
   import { workbenchStore } from '../stores/workbench.js'
   import SourceTab from './SourceTab.svelte'
   import ReadTab from './ReadTab.svelte'
-  import TutorTab from './TutorTab.svelte'
 
-  // Tab components: ReadTab added T041, TutorTab added T048
+  // Tab components: ReadTab added T041
   $: activeTab = $workbenchStore.activeTab
 
   // Reference to SourceTab for imperative calls from MiddleBand (T035)
@@ -23,7 +22,6 @@
   <div class="tab-bar">
     <button class="tab-btn" class:active={activeTab === 'note'} on:click={() => setTab('note')}>Note</button>
     <button class="tab-btn" class:active={activeTab === 'read'} on:click={() => setTab('read')}>Read</button>
-    <button class="tab-btn" class:active={activeTab === 'tutor'} on:click={() => setTab('tutor')}>Tutor</button>
   </div>
 
   <div class="tab-content">
@@ -35,10 +33,6 @@
     {#if activeTab === 'read'}
       <div class="tab-pane">
         <ReadTab />
-      </div>
-    {:else if activeTab === 'tutor'}
-      <div class="tab-pane">
-        <TutorTab />
       </div>
     {/if}
   </div>
