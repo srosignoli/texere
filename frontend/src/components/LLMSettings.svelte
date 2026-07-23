@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte'
-  import { GetLLMConfig, SaveLLMProfile, DeleteLLMProfile, SetActiveProfile, TestLLMProfile } from '../wailsjs/go/main/App'
+  import { GetLLMConfig, SaveLLMProfile, DeleteLLMProfile, SetActiveProfile, TestLLMProfile } from '../../wailsjs/go/main/App'
 
   export let onClose = () => {}
 
