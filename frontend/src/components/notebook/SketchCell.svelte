@@ -27,7 +27,9 @@
 
   let drawing = null   // in-progress pen/highlighter stroke
   let erasing = null   // { removed: [] } during an erase pass
+  let activePointerId = null // the one pointer that owns the in-progress action
   let rafPending = false
+  let rafId = 0
 
   onMount(() => {
     ctx = canvas.getContext('2d')
@@ -37,7 +39,7 @@
     ro.observe(wrap)
     render()
   })
-  onDestroy(() => ro?.disconnect())
+  onDestroy(() => { ro?.disconnect(); if (rafPending) cancelAnimationFrame(rafId) })
 
   function render() {
     if (!ctx) return
@@ -48,7 +50,7 @@
   function scheduleRender() {
     if (rafPending) return
     rafPending = true
-    requestAnimationFrame(() => { rafPending = false; render() })
+    rafId = requestAnimationFrame(() => { rafPending = false; render() })
   }
   function onResize() {
     const h = Math.round(wrap.clientHeight)
@@ -81,18 +83,21 @@
 
   function onDown(e) {
     if (readOnly || !accept(e)) return
+    if (activePointerId !== null) return // ignore a second pointer while one action is in progress
+    activePointerId = e.pointerId
     canvas.setPointerCapture(e.pointerId)
     if (tool === 'eraser') { erasing = { removed: [] }; eraseAt(pointOf(e)) }
     else drawing = { tool, color, size, points: [pointOf(e)] }
     scheduleRender()
   }
   function onMove(e) {
-    if (readOnly) return
+    if (readOnly || e.pointerId !== activePointerId) return // only the owning pointer draws (palm rejection)
     if (drawing) { drawing.points.push(pointOf(e)); scheduleRender() }
     else if (erasing) { eraseAt(pointOf(e)); scheduleRender() }
   }
-  function onUp() {
-    if (readOnly) return
+  function onUp(e) {
+    if (readOnly || e.pointerId !== activePointerId) return
+    activePointerId = null
     if (drawing) {
       if (drawing.points.length) { strokes = [...strokes, drawing]; pushOp({ type: 'add', stroke: drawing }); persist() }
       drawing = null
