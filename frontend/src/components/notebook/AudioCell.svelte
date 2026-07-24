@@ -24,6 +24,7 @@
   function persist() { onChange(cell) }
 
   async function startRec() {
+    if (recording || stream) return
     recErr = ''
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true })
@@ -35,11 +36,23 @@
     const prefs = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/ogg', 'audio/mp4', '']
     let m = ''
     for (const p of prefs) { if (!p || (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(p))) { m = p; break } }
-    rec = m ? new MediaRecorder(stream, { mimeType: m }) : new MediaRecorder(stream)
-    chunks = []
-    rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data) }
-    rec.onstop = onStop
-    rec.start()
+    try {
+      rec = m ? new MediaRecorder(stream, { mimeType: m }) : new MediaRecorder(stream)
+      chunks = []
+      rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data) }
+      rec.onstop = onStop
+      rec.onerror = () => {
+        clearInterval(timer)
+        recording = false
+        if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null }
+        recErr = 'Recording error — please try again.'
+      }
+      rec.start()
+    } catch (e) {
+      if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null }
+      recErr = 'Could not start recording: ' + String(e?.message ?? e)
+      return
+    }
     recording = true
     startedAt = Date.now()
     elapsed = 0
@@ -53,8 +66,16 @@
     recording = false
     const durationMs = Date.now() - startedAt
     const mime = (rec && rec.mimeType) || 'audio/webm'
-    if (stream) stream.getTracks().forEach((t) => t.stop())
+    if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null }
+    if (!chunks.length) {
+      recErr = 'Empty recording.'
+      return
+    }
     const blob = new Blob(chunks, { type: mime })
+    if (!blob.size) {
+      recErr = 'Empty recording.'
+      return
+    }
     try {
       const b64 = await blobToBase64(blob)
       const ref = await SaveRecording(b64, mime)
