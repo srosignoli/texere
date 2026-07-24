@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte'
   import { GetLLMConfig } from '../../../wailsjs/go/main/App'
   import { buildSystem, streamTurn } from '../../lib/llm.js'
+  import { bakeSketch, bakeImage } from '../../lib/bake.js'
 
   export let cell
   export let context = null
@@ -33,7 +34,7 @@
     cell.attachments = [...a]; cell = cell; persist()
   }
 
-  function send() {
+  async function send() {
     const text = input.trim()
     if (!text || streaming) return
     lastSent = text
@@ -43,11 +44,33 @@
     error = ''
     partial = ''
     streaming = true
+
+    // Bake attached sketch/image cells; attach them once to the first user message.
+    let sendMessages = cell.messages
+    try {
+      const images = []
+      for (const c of attached) {
+        if (c.type === 'sketch') images.push(await bakeSketch(c))
+        else if (c.type === 'image') images.push(await bakeImage(c))
+      }
+      if (images.length) {
+        const idx = cell.messages.findIndex((m) => m.role === 'user')
+        sendMessages = cell.messages.map((m, i) => (i === idx ? { ...m, images } : m))
+      }
+    } catch (e) {
+      // Bake failed — undo the just-added user message and abort.
+      cell.messages = cell.messages.slice(0, -1)
+      cell = cell
+      error = String(e?.message ?? e)
+      streaming = false
+      return
+    }
+
     const system = buildSystem(cell.mode, context, attached)
     turn = streamTurn({
       profileId: cell.profileId,
       system,
-      messages: cell.messages,
+      messages: sendMessages,
       onDelta: (t) => { partial += t },
       onDone: () => { finish(partial) },
       onError: (m) => { error = m; abandonTurn() },
@@ -93,11 +116,11 @@
     {#if !readOnly}<button class="del" on:click={onDelete} title="Delete cell">✕</button>{/if}
   </div>
 
-  {#if !readOnly && cells.filter((c) => c.id !== cell.id && (c.type === 'n4l' || c.type === 'llm' || c.type === 'graph' || c.type === 'compute')).length}
+  {#if !readOnly && cells.filter((c) => c.id !== cell.id && ['n4l', 'llm', 'graph', 'compute', 'sketch', 'image'].includes(c.type)).length}
     <div class="attach">
       <span>Attach context:</span>
-      {#each cells.filter((c) => c.id !== cell.id && (c.type === 'n4l' || c.type === 'llm' || c.type === 'graph' || c.type === 'compute')) as c}
-        <label><input type="checkbox" checked={(cell.attachments ?? []).includes(c.id)} on:change={() => toggleAttach(c.id)} /> {c.type === 'n4l' ? 'draft' : c.type === 'graph' ? 'graph' : c.type === 'compute' ? 'compute' : 'llm'} {c.id.slice(-4)}</label>
+      {#each cells.filter((c) => c.id !== cell.id && ['n4l', 'llm', 'graph', 'compute', 'sketch', 'image'].includes(c.type)) as c}
+        <label><input type="checkbox" checked={(cell.attachments ?? []).includes(c.id)} on:change={() => toggleAttach(c.id)} /> {c.type === 'n4l' ? 'draft' : c.type === 'graph' ? 'graph' : c.type === 'compute' ? 'compute' : c.type === 'sketch' ? 'sketch' : c.type === 'image' ? 'image' : 'llm'} {c.id.slice(-4)}</label>
       {/each}
     </div>
   {/if}
