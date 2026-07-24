@@ -1,6 +1,8 @@
 <script>
   import { onMount, onDestroy, tick } from 'svelte'
   import { renderStrokes, fitTransform } from '../../lib/sketch-render.js'
+  import TranscribeBar from './TranscribeBar.svelte'
+  import { bakeSketch } from '../../lib/bake.js'
 
   export let cell
   export let onChange = () => {}
@@ -9,6 +11,7 @@
   export let context = null   // unused; shared cell prop set
   export let cells = []       // unused
   export let onPush = () => {} // unused; shared cell prop set
+  export let onInsert = () => {}
 
   const COLORS = ['#e8eaf0', '#f59e0b', '#7dd3fc', '#ff6b6b', '#10b981']
   const SIZES = { pen: 3, highlighter: 14 }
@@ -191,6 +194,7 @@
       <button class="sk-del" on:click={onDelete} title="Delete cell">✕</button>
     </div>
   {/if}
+  <TranscribeBar {cell} bake={bakeSketch} {onInsert} onChange={() => onChange(cell)} {readOnly} />
   <div class="sk-wrap" bind:this={wrap}>
     <canvas bind:this={canvas}
       on:pointerdown={onDown} on:pointermove={onMove} on:pointerup={onUp} on:pointercancel={onUp}></canvas>

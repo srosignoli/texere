@@ -1,5 +1,7 @@
 <script>
   import { imageStyles, rotateCrop } from '../../lib/image-view.js'
+  import TranscribeBar from './TranscribeBar.svelte'
+  import { bakeImage } from '../../lib/bake.js'
 
   export let cell
   export let onChange = () => {}
@@ -8,6 +10,7 @@
   export let context = null   // unused; shared cell prop set
   export let cells = []       // unused
   export let onPush = () => {} // unused
+  export let onInsert = () => {}
 
   let missing = false
   let cropping = false
@@ -84,6 +87,7 @@
       <button class="im-del" on:click={onDelete} title="Delete cell">✕</button>
     </div>
   {/if}
+  <TranscribeBar {cell} bake={bakeImage} {onInsert} onChange={() => onChange(cell)} {readOnly} />
 
   {#if missing}
     <div class="im-missing">image not found: {cell.asset}</div>

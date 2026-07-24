@@ -61,6 +61,7 @@
   }
   function updateCell(i, text) { cells[i].text = text; scheduleSave() }
   function updateCellObj(i, obj) { cells[i] = obj; cells = cells; scheduleSave() }
+  function insertAfter(i, newCell) { cells = [...cells.slice(0, i + 1), newCell, ...cells.slice(i + 1)]; scheduleSave() }
   function deleteCell(i) { cells = cells.filter((_, j) => j !== i); scheduleSave() }
   function move(i, dir) {
     const j = i + dir
@@ -90,7 +91,8 @@
           <svelte:component this={cellRegistry[cell.type]} {cell} {readOnly} {context} cells={cells}
             onChange={(t) => (typeof t === 'string' ? updateCell(i, t) : updateCellObj(i, t))}
             onPush={(t) => onPush(t)}
-            onDelete={() => deleteCell(i)} />
+            onDelete={() => deleteCell(i)}
+            onInsert={(text) => insertAfter(i, newDraftCell(text))} />
         </div>
       </div>
     {/each}

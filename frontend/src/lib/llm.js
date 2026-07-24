@@ -20,6 +20,13 @@ export const TUTOR_SYSTEM =
   'it — do not hand them a finished front/back. If asked to "just write the card", decline and guide ' +
   'them to write it. Be encouraging but rigorous. Use the provided context when relevant.'
 
+export const TRANSCRIBE_SYSTEM =
+  'You transcribe images of handwritten or printed notes into clean text. ' +
+  'Transcribe all text faithfully, preserving structure (headings, lists, indentation) as Markdown. ' +
+  'If the image contains a diagram, flowchart, chart, mind-map, or graph, reconstruct it as a fenced ' +
+  '```mermaid code block that best represents its structure, in addition to any surrounding text. ' +
+  'Output only the transcription — no preamble or commentary.'
+
 // buildSystem composes the system prompt: mode framing + a context block built
 // from the pinned context cell and any attached cells' text.
 export function buildSystem(mode, context, attachedCells) {
