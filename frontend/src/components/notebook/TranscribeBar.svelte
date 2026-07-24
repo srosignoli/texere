@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from 'svelte'
+  import { onMount, onDestroy } from 'svelte'
   import { GetLLMConfig } from '../../../wailsjs/go/main/App'
   import { streamTurn, TRANSCRIBE_SYSTEM } from '../../lib/llm.js'
 
@@ -12,8 +12,11 @@
   let profiles = []
   let busy = false
   let err = ''
+  let turn = null
 
   onMount(async () => { try { const c = await GetLLMConfig(); profiles = c.profiles ?? [] } catch { /* not configured */ } })
+
+  onDestroy(() => turn?.cancel())
 
   function setProfile(id) { cell.transcribeProfileId = id || null; cell = cell; onChange(cell) }
 
@@ -24,13 +27,13 @@
     let img
     try { img = await bake(cell) } catch (e) { err = String(e?.message ?? e); busy = false; return }
     let acc = ''
-    streamTurn({
+    turn = streamTurn({
       profileId: cell.transcribeProfileId,
       system: TRANSCRIBE_SYSTEM,
       messages: [{ role: 'user', content: 'Transcribe this image.', images: [img] }],
       onDelta: (t) => { acc += t },
-      onDone: () => { busy = false; if (acc.trim()) onInsert(acc) },
-      onError: (m) => { err = m; busy = false },
+      onDone: () => { busy = false; turn = null; if (acc.trim()) onInsert(acc) },
+      onError: (m) => { err = m; busy = false; turn = null },
     })
   }
 </script>
