@@ -122,6 +122,10 @@ export function GradeItem(arg1, arg2, arg3) {
   return window['go']['main']['App']['GradeItem'](arg1, arg2, arg3);
 }
 
+export function ImportImage() {
+  return window['go']['main']['App']['ImportImage']();
+}
+
 export function ImportPdfSource() {
   return window['go']['main']['App']['ImportPdfSource']();
 }

@@ -4,6 +4,7 @@ import LLMCell from '../components/notebook/LLMCell.svelte'
 import GraphQueryCell from '../components/notebook/GraphQueryCell.svelte'
 import ComputeCell from '../components/notebook/ComputeCell.svelte'
 import SketchCell from '../components/notebook/SketchCell.svelte'
+import ImageCell from '../components/notebook/ImageCell.svelte'
 
 let seq = 0
 export function newDraftCell(text = '') {
@@ -31,6 +32,11 @@ export function newSketchCell() {
   return { id: `cell-${Date.now()}-${seq}`, type: 'sketch', height: 240, strokes: [] }
 }
 
+export function newImageCell(asset, mime) {
+  seq += 1
+  return { id: `cell-${Date.now()}-${seq}`, type: 'image', asset, mime, naturalW: 0, naturalH: 0, rotation: 0, crop: null }
+}
+
 // type -> Svelte component. Later slices add: image.
 export const cellRegistry = {
   context: ContextCell,
@@ -39,4 +45,5 @@ export const cellRegistry = {
   graph: GraphQueryCell,
   compute: ComputeCell,
   sketch: SketchCell,
+  image: ImageCell,
 }

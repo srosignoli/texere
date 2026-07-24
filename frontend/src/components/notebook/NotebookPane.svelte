@@ -1,7 +1,7 @@
 <script>
   import { createEventDispatcher, onDestroy } from 'svelte'
-  import { OpenNotebook, GetNotebook, SaveNotebook } from '../../../wailsjs/go/main/App'
-  import { newDraftCell, newLLMCell, newGraphCell, newComputeCell, newSketchCell, cellRegistry } from '../../lib/notebook.js'
+  import { OpenNotebook, GetNotebook, SaveNotebook, ImportImage } from '../../../wailsjs/go/main/App'
+  import { newDraftCell, newLLMCell, newGraphCell, newComputeCell, newSketchCell, newImageCell, cellRegistry } from '../../lib/notebook.js'
   import ContextCell from './ContextCell.svelte'
   import LLMSettings from '../LLMSettings.svelte'
 
@@ -51,6 +51,14 @@
   function addGraph() { cells = [...cells, newGraphCell()]; scheduleSave() }
   function addCompute() { cells = [...cells, newComputeCell()]; scheduleSave() }
   function addSketch() { cells = [...cells, newSketchCell()]; scheduleSave() }
+  async function addImage() {
+    try {
+      const ref = await ImportImage()
+      if (!ref) return // cancelled
+      cells = [...cells, newImageCell(ref.asset, ref.mime)]
+      scheduleSave()
+    } catch (e) { error = String(e?.message ?? e) }
+  }
   function updateCell(i, text) { cells[i].text = text; scheduleSave() }
   function updateCellObj(i, obj) { cells[i] = obj; cells = cells; scheduleSave() }
   function deleteCell(i) { cells = cells.filter((_, j) => j !== i); scheduleSave() }
@@ -92,6 +100,7 @@
       <button class="nb-add" on:click={addGraph}>+ Graph cell</button>
       <button class="nb-add" on:click={addCompute}>+ Compute cell</button>
       <button class="nb-add" on:click={addSketch}>+ Sketch cell</button>
+      <button class="nb-add" on:click={addImage}>+ Image cell</button>
     {/if}
   </div>
 </div>

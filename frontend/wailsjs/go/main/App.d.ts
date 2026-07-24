@@ -66,6 +66,8 @@ export function GetStudyStats():Promise<learning.Stats>;
 
 export function GradeItem(arg1:string,arg2:number,arg3:number):Promise<learning.CardView>;
 
+export function ImportImage():Promise<Record<string, any>>;
+
 export function ImportPdfSource():Promise<main.ReadingView>;
 
 export function ImportTextSource():Promise<main.ReadingView>;

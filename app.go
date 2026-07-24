@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -11,6 +12,7 @@ import (
 	"texere/internal/content"
 	"texere/internal/explorer"
 	"texere/internal/learning"
+	"texere/internal/media"
 	"texere/internal/search"
 )
 
@@ -34,6 +36,7 @@ type App struct {
 	ctx           context.Context
 	registry      *content.SSTRegistry
 	collectionDir string                   // abs path of the open collection; "" when none
+	dirMu         sync.RWMutex             // guards collectionDir for the /media asset handler (HTTP goroutine)
 	savingMu      sync.Mutex               // guards savingPaths
 	savingPaths   map[string]int           // ref-counted set of paths the app is writing; suppresses false external-mod events
 	openFilePath  string                   // path of the file currently open in the Source tab
@@ -88,7 +91,9 @@ func (a *App) startup(ctx context.Context) {
 		a.startupError = "Could not load collection: " + err.Error()
 		return
 	}
+	a.dirMu.Lock()
 	a.collectionDir = cfg.CollectionDir
+	a.dirMu.Unlock()
 	a.initialSums = summaries
 	a.searchSvc = search.NewSearchService(cfg.CollectionDir, a.registry)
 	a.explorerSvc = explorer.NewExplorerService(a.searchSvc, a.registry)
@@ -174,7 +179,9 @@ func (a *App) OpenCollection(dir string) ([]content.ChapterSummary, error) {
 
 	// No file is open after switching collections.
 	a.openFilePath = ""
+	a.dirMu.Lock()
 	a.collectionDir = dir
+	a.dirMu.Unlock()
 
 	// Re-create the search service for the new collection directory.
 	if a.searchSvc != nil {
@@ -213,6 +220,48 @@ func (a *App) OpenCollection(dir string) ([]content.ChapterSummary, error) {
 	}
 
 	return summaries, nil
+}
+
+// mediaDir returns <collectionDir>/media, or "" when no collection is open.
+// Unexported so it is not surfaced as a Wails binding; read by the asset handler
+// (main.go) on the HTTP goroutine, hence the mutex.
+func (a *App) mediaDir() string {
+	a.dirMu.RLock()
+	defer a.dirMu.RUnlock()
+	if a.collectionDir == "" {
+		return ""
+	}
+	return filepath.Join(a.collectionDir, "media")
+}
+
+// ImportImage opens the OS file dialog, copies the chosen image into the
+// collection's media/ directory, and returns {asset, mime}. Returns (nil, nil)
+// when the user cancels, and an error when no collection is open or the file is
+// not a supported image.
+func (a *App) ImportImage() (map[string]any, error) {
+	a.dirMu.RLock()
+	dir := a.collectionDir
+	a.dirMu.RUnlock()
+	if dir == "" {
+		return nil, fmt.Errorf("no collection open")
+	}
+	sel, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Add image",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "Images (*.jpg, *.png, *.gif, *.webp)", Pattern: "*.jpg;*.jpeg;*.png;*.gif;*.webp"},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	if sel == "" {
+		return nil, nil // cancelled
+	}
+	asset, err := media.Import(dir, sel)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{"asset": asset.Name, "mime": asset.Mime}, nil
 }
 
 // ParseFileForUI is a Wails-bound method that parses a .n4l file and returns
