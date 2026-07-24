@@ -9,10 +9,17 @@ import (
 	"errors"
 )
 
+// Image is an inline base64-encoded image attached to a user turn.
+type Image struct {
+	MediaType string `json:"mediaType"` // "image/png" | "image/jpeg"
+	Data      string `json:"data"`      // base64, no data: prefix
+}
+
 // Message is one turn in a conversation.
 type Message struct {
-	Role    string `json:"role"` // "system" | "user" | "assistant"
-	Content string `json:"content"`
+	Role    string  `json:"role"` // "system" | "user" | "assistant"
+	Content string  `json:"content"`
+	Images  []Image `json:"images,omitempty"` // user turns only
 }
 
 // Request is a single streamed completion request.

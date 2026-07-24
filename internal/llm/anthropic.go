@@ -19,7 +19,7 @@ func (p *anthropicProvider) Stream(ctx context.Context, req Request, onDelta fun
 	payload := map[string]any{
 		"model":      req.Model,
 		"max_tokens": req.MaxTokens,
-		"messages":   req.Messages, // user/assistant only
+		"messages":   anthropicMessages(req.Messages),
 		"stream":     true,
 	}
 	if req.System != "" {

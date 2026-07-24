@@ -24,7 +24,7 @@ func (p *openaiProvider) Stream(ctx context.Context, req Request, onDelta func(s
 
 	body, _ := json.Marshal(map[string]any{
 		"model":      req.Model,
-		"messages":   msgs,
+		"messages":   openaiMessages(msgs),
 		"stream":     true,
 		"max_tokens": req.MaxTokens,
 	})
