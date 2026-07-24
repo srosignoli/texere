@@ -20,6 +20,7 @@
   let stream = null
   let timer = null
   let startedAt = 0
+  let destroyed = false
 
   function persist() { onChange(cell) }
 
@@ -62,6 +63,7 @@
   function stopRec() { try { if (rec && rec.state !== 'inactive') rec.stop() } catch (_) {} }
 
   async function onStop() {
+    if (destroyed) return
     clearInterval(timer)
     recording = false
     const durationMs = Date.now() - startedAt
@@ -105,7 +107,7 @@
 
   function onMeta(e) {
     const d = Math.round((e.target.duration || 0) * 1000)
-    if (d && d !== cell.durationMs) { cell.durationMs = d; persist() }
+    if (Number.isFinite(d) && d && d !== cell.durationMs) { cell.durationMs = d; persist() }
   }
 
   function replace() { cell.asset = ''; cell.mime = ''; cell.durationMs = 0; missing = false; persist() }
@@ -115,7 +117,7 @@
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
   }
 
-  onDestroy(() => { clearInterval(timer); if (stream) stream.getTracks().forEach((t) => t.stop()) })
+  onDestroy(() => { destroyed = true; clearInterval(timer); if (stream) stream.getTracks().forEach((t) => t.stop()) })
 </script>
 
 <div class="au-cell">
