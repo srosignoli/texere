@@ -122,6 +122,10 @@ export function GradeItem(arg1, arg2, arg3) {
   return window['go']['main']['App']['GradeItem'](arg1, arg2, arg3);
 }
 
+export function ImportAudio() {
+  return window['go']['main']['App']['ImportAudio']();
+}
+
 export function ImportImage() {
   return window['go']['main']['App']['ImportImage']();
 }
@@ -196,6 +200,10 @@ export function SaveLLMProfile(arg1) {
 
 export function SaveNotebook(arg1, arg2) {
   return window['go']['main']['App']['SaveNotebook'](arg1, arg2);
+}
+
+export function SaveRecording(arg1, arg2) {
+  return window['go']['main']['App']['SaveRecording'](arg1, arg2);
 }
 
 export function SearchGraph(arg1) {

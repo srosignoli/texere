@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"log"
 	"os"
@@ -258,6 +259,55 @@ func (a *App) ImportImage() (map[string]any, error) {
 		return nil, nil // cancelled
 	}
 	asset, err := media.Import(dir, sel)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{"asset": asset.Name, "mime": asset.Mime}, nil
+}
+
+// ImportAudio opens the OS file dialog (audio filter), copies the chosen file
+// into media/, and returns {asset, mime}. (nil, nil) on cancel; error if no
+// collection is open or the type is unsupported.
+func (a *App) ImportAudio() (map[string]any, error) {
+	a.dirMu.RLock()
+	dir := a.collectionDir
+	a.dirMu.RUnlock()
+	if dir == "" {
+		return nil, fmt.Errorf("no collection open")
+	}
+	sel, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Add audio",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "Audio (*.webm, *.ogg, *.wav, *.mp3, *.m4a, *.aac, *.flac)", Pattern: "*.webm;*.ogg;*.oga;*.wav;*.mp3;*.m4a;*.mp4;*.aac;*.flac"},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	if sel == "" {
+		return nil, nil
+	}
+	asset, err := media.ImportAudio(dir, sel)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{"asset": asset.Name, "mime": asset.Mime}, nil
+}
+
+// SaveRecording decodes base64 audio bytes from an in-app recording and stores
+// them in media/, returning {asset, mime}.
+func (a *App) SaveRecording(dataBase64, mime string) (map[string]any, error) {
+	a.dirMu.RLock()
+	dir := a.collectionDir
+	a.dirMu.RUnlock()
+	if dir == "" {
+		return nil, fmt.Errorf("no collection open")
+	}
+	data, err := base64.StdEncoding.DecodeString(dataBase64)
+	if err != nil {
+		return nil, fmt.Errorf("decode recording: %w", err)
+	}
+	asset, err := media.SaveAudio(dir, data, mime)
 	if err != nil {
 		return nil, err
 	}
