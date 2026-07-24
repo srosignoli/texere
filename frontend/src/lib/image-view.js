@@ -17,8 +17,11 @@ export function imageStyles({ naturalW, naturalH, rotation = 0, crop = null }) {
   const RH = swap ? W : H
   const c = crop && crop.w > 0 && crop.h > 0 ? crop : { x: 0, y: 0, w: 1, h: 1 }
 
+  // --ar is the numeric aspect (w/h) of the crop box; the component uses it to
+  // cap the viewport SIZE uniformly (max-width: calc(<maxHeight> * var(--ar)))
+  // so tall images scale down instead of being clipped/squished by a height cap.
   const viewport = `position:relative;overflow:hidden;width:100%;` +
-    `aspect-ratio:${c.w * RW} / ${c.h * RH};`
+    `aspect-ratio:${c.w * RW} / ${c.h * RH};--ar:${(c.w * RW) / (c.h * RH)};`
   const pan = `position:absolute;` +
     `left:${(-c.x / c.w) * 100}%;top:${(-c.y / c.h) * 100}%;` +
     `width:${100 / c.w}%;height:${100 / c.h}%;`

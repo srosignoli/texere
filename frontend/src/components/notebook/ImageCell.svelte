@@ -89,18 +89,18 @@
     <div class="im-missing">image not found: {cell.asset}</div>
   {:else if cropping}
     <div class="im-cropwrap">
-      <div style={cropStyles.viewport}>
+      <div class="im-view" style={cropStyles.viewport}>
         <div style={cropStyles.pan}>
           <img bind:this={imgEl} {src} style={cropStyles.img} alt=""
             on:pointerdown={down} on:pointermove={move} on:pointerup={up} on:pointercancel={up} draggable="false" />
         </div>
+        {#if sel}
+          <div class="im-sel" style="left:{sel.x * 100}%;top:{sel.y * 100}%;width:{sel.w * 100}%;height:{sel.h * 100}%;"></div>
+        {/if}
       </div>
-      {#if sel}
-        <div class="im-sel" style="left:{sel.x * 100}%;top:{sel.y * 100}%;width:{sel.w * 100}%;height:{sel.h * 100}%;"></div>
-      {/if}
     </div>
   {:else}
-    <div style={styles.viewport}>
+    <div class="im-view" style={styles.viewport}>
       <div style={styles.pan}>
         <img {src} style={styles.img} alt="" on:load={onLoad} on:error={() => (missing = true)} draggable="false" />
       </div>
@@ -115,9 +115,12 @@
   .im-spacer { flex: 1; }
   .im-del { background: none !important; border: none !important; color: #6b7a8a !important; }
   .im-del:hover { color: #ff8080 !important; }
-  .im-cell > div:not(.im-bar):not(.im-cropwrap) { max-height: 70vh; }
-  .im-cell img { max-width: 100%; }
-  .im-cropwrap { position: relative; max-height: 70vh; touch-action: none; cursor: crosshair; }
+  /* Cap the viewport SIZE uniformly (preserve aspect) so tall images scale down
+     instead of being clipped/squished. --ar (from image-view.js) is the crop-box
+     aspect. Do NOT put max-width:100% on the <img>: the rotated (90/270) img is
+     width:200%, which such a clamp would distort. */
+  .im-view { max-height: 70vh; max-width: calc(70vh * var(--ar)); }
+  .im-cropwrap { touch-action: none; cursor: crosshair; }
   .im-sel { position: absolute; border: 1.5px solid #7dd3fc; background: rgba(125, 211, 252, 0.15); pointer-events: none; }
   .im-missing { padding: 20px; color: #ff8080; font-size: 13px; }
 </style>
