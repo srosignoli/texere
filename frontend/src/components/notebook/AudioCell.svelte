@@ -15,7 +15,18 @@
   let recErr = ''
   let elapsed = 0
   let missing = false
+  let playErr = ''
   let rec = null
+
+  // <audio> error: distinguish a fetch/404 from a decode/format failure so the
+  // message is accurate (WebKitGTK/WSLg often lacks the codecs to decode audio).
+  function onAudioError(e) {
+    missing = true
+    const code = e.target && e.target.error ? e.target.error.code : 0
+    if (code === 3 || code === 4) playErr = `Can’t play this audio in this webview — format/codec not supported here (MediaError ${code}).`
+    else if (code === 2) playErr = `Audio failed to load (MediaError 2).`
+    else playErr = `Audio error (MediaError ${code}).`
+  }
   let chunks = []
   let stream = null
   let timer = null
@@ -82,7 +93,7 @@
       const b64 = await blobToBase64(blob)
       const ref = await SaveRecording(b64, mime)
       cell.asset = ref.asset; cell.mime = ref.mime; cell.durationMs = durationMs
-      missing = false; persist()
+      missing = false; playErr = ''; persist()
     } catch (e) { recErr = String(e?.message ?? e) }
   }
 
@@ -101,7 +112,7 @@
       const ref = await ImportAudio()
       if (!ref) return
       cell.asset = ref.asset; cell.mime = ref.mime; cell.durationMs = 0
-      missing = false; persist()
+      missing = false; playErr = ''; persist()
     } catch (e) { recErr = String(e?.message ?? e) }
   }
 
@@ -110,7 +121,7 @@
     if (Number.isFinite(d) && d && d !== cell.durationMs) { cell.durationMs = d; persist() }
   }
 
-  function replace() { cell.asset = ''; cell.mime = ''; cell.durationMs = 0; missing = false; persist() }
+  function replace() { cell.asset = ''; cell.mime = ''; cell.durationMs = 0; missing = false; playErr = ''; persist() }
 
   function fmt(ms) {
     const s = Math.floor((ms || 0) / 1000)
@@ -131,9 +142,9 @@
 
   {#if cell.asset}
     {#if missing}
-      <div class="au-missing">audio not found: {cell.asset}</div>
+      <div class="au-missing">{playErr || `audio not found: ${cell.asset}`}</div>
     {:else}
-      <audio class="au-player" src={"/media/" + cell.asset} controls on:loadedmetadata={onMeta} on:error={() => (missing = true)}></audio>
+      <audio class="au-player" src={"/media/" + cell.asset} controls on:loadedmetadata={onMeta} on:error={onAudioError}></audio>
     {/if}
   {:else if !readOnly}
     <div class="au-empty">
