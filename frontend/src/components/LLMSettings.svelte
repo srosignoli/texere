@@ -1,29 +1,46 @@
 <script>
   import { onMount } from 'svelte'
-  import { GetLLMConfig, SaveLLMProfile, DeleteLLMProfile, SetActiveProfile, TestLLMProfile } from '../../wailsjs/go/main/App'
+  import {
+    GetLLMConfig, SaveLLMProfile, DeleteLLMProfile, SetActiveProfile, TestLLMProfile,
+    GetSTTConfig, SaveSTTProfile, DeleteSTTProfile, SetActiveSTTProfile,
+  } from '../../wailsjs/go/main/App'
 
   export let onClose = () => {}
 
-  const PRESETS = [
+  const LLM_PRESETS = [
     { name: 'Anthropic',  kind: 'anthropic',         baseUrl: 'https://api.anthropic.com',                          model: 'claude-opus-4-8' },
     { name: 'OpenAI',     kind: 'openai-compatible',  baseUrl: 'https://api.openai.com/v1',                          model: 'gpt-4o' },
     { name: 'Google',     kind: 'openai-compatible',  baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', model: 'gemini-2.0-flash' },
     { name: 'OpenRouter', kind: 'openai-compatible',  baseUrl: 'https://openrouter.ai/api/v1',                       model: '' },
     { name: 'Local (Ollama)', kind: 'openai-compatible', baseUrl: 'http://localhost:11434/v1',                       model: 'llama3.1' },
   ]
+  const STT_PRESETS = [
+    { name: 'OpenAI Whisper', kind: 'openai-compatible', baseUrl: 'https://api.openai.com/v1', model: 'whisper-1' },
+    { name: 'Local whisper',  kind: 'openai-compatible', baseUrl: 'http://localhost:8080/v1',  model: 'whisper-1' },
+  ]
 
+  // Per-tab binding + option set. Called with the current tab so async actions
+  // never read a stale reactive value.
+  function apiFor(t) {
+    return t === 'stt'
+      ? { get: GetSTTConfig, save: SaveSTTProfile, del: DeleteSTTProfile, setActive: SetActiveSTTProfile, test: null, presets: STT_PRESETS, hasKind: false }
+      : { get: GetLLMConfig, save: SaveLLMProfile, del: DeleteLLMProfile, setActive: SetActiveProfile, test: TestLLMProfile, presets: LLM_PRESETS, hasKind: true }
+  }
+
+  let tab = 'llm'
   let profiles = []
   let activeId = ''
-  let editing = null   // the profile being added/edited
-  let testMsg = {}     // profileId -> status string
+  let editing = null
+  let testMsg = {}
   let error = ''
 
   onMount(load)
   async function load() {
     error = ''
-    try { const c = await GetLLMConfig(); profiles = c.profiles ?? []; activeId = c.activeProfileId ?? '' }
+    try { const c = await apiFor(tab).get(); profiles = c.profiles ?? []; activeId = c.activeProfileId ?? '' }
     catch (e) { error = String(e?.message ?? e) }
   }
+  function setTab(t) { tab = t; editing = null; testMsg = {}; load() }
 
   function addFrom(preset) {
     editing = { id: `p-${Date.now()}`, name: preset.name, kind: preset.kind, baseUrl: preset.baseUrl, model: preset.model, apiKey: '', apiKeyEnv: '' }
@@ -31,36 +48,44 @@
   function edit(p) { editing = { ...p } }
   async function save() {
     error = ''
-    try { await SaveLLMProfile(editing); editing = null; await load() }
+    try { await apiFor(tab).save(editing); editing = null; await load() }
     catch (e) { error = String(e?.message ?? e) }
   }
-  async function del(id) { error = ''; try { await DeleteLLMProfile(id); await load() } catch (e) { error = String(e?.message ?? e) } }
-  async function setActive(id) { error = ''; try { await SetActiveProfile(id); activeId = id } catch (e) { error = String(e?.message ?? e) } }
+  async function del(id) { error = ''; try { await apiFor(tab).del(id); await load() } catch (e) { error = String(e?.message ?? e) } }
+  async function setActive(id) { error = ''; try { await apiFor(tab).setActive(id); activeId = id } catch (e) { error = String(e?.message ?? e) } }
   async function test(id) {
+    const fn = apiFor(tab).test
+    if (!fn) return
     testMsg = { ...testMsg, [id]: 'testing…' }
-    try { await TestLLMProfile(id); testMsg = { ...testMsg, [id]: '✓ ok' } }
+    try { await fn(id); testMsg = { ...testMsg, [id]: '✓ ok' } }
     catch (e) { testMsg = { ...testMsg, [id]: '✕ ' + String(e?.message ?? e) } }
   }
 </script>
 
 <div class="ov-backdrop" on:click={onClose}></div>
 <div class="ov-modal">
-  <div class="ov-head"><span>LLM Providers</span><button on:click={onClose}>✕</button></div>
+  <div class="ov-head"><span>Models</span><button on:click={onClose}>✕</button></div>
+  <div class="ov-tabs">
+    <button class:sel={tab === 'llm'} on:click={() => setTab('llm')}>LLM Providers</button>
+    <button class:sel={tab === 'stt'} on:click={() => setTab('stt')}>Speech-to-text</button>
+  </div>
   {#if error}<div class="ov-error">{error}</div>{/if}
 
   {#if editing}
     <div class="ov-form">
       <label>Name<input bind:value={editing.name} /></label>
-      <label>Kind
-        <select bind:value={editing.kind}>
-          <option value="openai-compatible">openai-compatible</option>
-          <option value="anthropic">anthropic</option>
-        </select>
-      </label>
+      {#if apiFor(tab).hasKind}
+        <label>Kind
+          <select bind:value={editing.kind}>
+            <option value="openai-compatible">openai-compatible</option>
+            <option value="anthropic">anthropic</option>
+          </select>
+        </label>
+      {/if}
       <label>Base URL<input bind:value={editing.baseUrl} /></label>
-      <label>Model<input bind:value={editing.model} placeholder="e.g. claude-opus-4-8" /></label>
-      <label>API key<input type="password" bind:value={editing.apiKey} placeholder="leave blank to use an env var" /></label>
-      <label>…or env var name<input bind:value={editing.apiKeyEnv} placeholder="e.g. ANTHROPIC_API_KEY" /></label>
+      <label>Model<input bind:value={editing.model} placeholder={tab === 'stt' ? 'e.g. whisper-1' : 'e.g. claude-opus-4-8'} /></label>
+      <label>API key<input type="password" bind:value={editing.apiKey} placeholder={tab === 'stt' ? 'optional (local servers)' : 'leave blank to use an env var'} /></label>
+      <label>…or env var name<input bind:value={editing.apiKeyEnv} placeholder="e.g. OPENAI_API_KEY" /></label>
       <div class="ov-actions"><button class="primary" on:click={save}>Save</button><button on:click={() => (editing = null)}>Cancel</button></div>
     </div>
   {:else}
@@ -69,7 +94,7 @@
         <li>
           <label class="ov-active"><input type="radio" checked={p.id === activeId} on:change={() => setActive(p.id)} /></label>
           <div class="ov-meta"><b>{p.name}</b><span>{p.kind} · {p.model || '(no model)'}</span></div>
-          <button on:click={() => test(p.id)}>Test</button>
+          {#if apiFor(tab).test}<button on:click={() => test(p.id)}>Test</button>{/if}
           <button on:click={() => edit(p)}>Edit</button>
           <button on:click={() => del(p.id)}>Delete</button>
           {#if testMsg[p.id]}<span class="ov-test">{testMsg[p.id]}</span>{/if}
@@ -78,7 +103,7 @@
     </ul>
     <div class="ov-presets">
       <span>Add:</span>
-      {#each PRESETS as preset}<button on:click={() => addFrom(preset)}>{preset.name}</button>{/each}
+      {#each apiFor(tab).presets as preset}<button on:click={() => addFrom(preset)}>{preset.name}</button>{/each}
     </div>
   {/if}
 </div>
@@ -88,6 +113,9 @@
   .ov-modal { position: fixed; top: 8%; left: 50%; transform: translateX(-50%); width: 560px; max-width: 92vw; max-height: 80vh; overflow: auto; z-index: 41; background: #0e1622; border: 1px solid #2a3a4a; border-radius: 10px; color: #cdd6e2; }
   .ov-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid #26374a; color: #7dd3fc; font-weight: 600; }
   .ov-head button { background: none; border: none; color: #6b7a8a; cursor: pointer; }
+  .ov-tabs { display: flex; gap: 6px; padding: 8px 14px 0; }
+  .ov-tabs button { background: none; border: none; border-bottom: 2px solid transparent; color: #6b7a8a; cursor: pointer; padding: 4px 6px; font-size: 12px; }
+  .ov-tabs button.sel { color: #7dd3fc; border-bottom-color: #7dd3fc; }
   .ov-error { color: #ff8080; padding: 6px 14px; font-size: 12px; }
   .ov-list { list-style: none; margin: 0; padding: 8px 12px; }
   .ov-list li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #1b2735; }
