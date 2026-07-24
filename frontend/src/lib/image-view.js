@@ -33,3 +33,16 @@ export function imageStyles({ naturalW, naturalH, rotation = 0, crop = null }) {
 
   return { viewport, pan, img }
 }
+
+// rotateCrop maps a normalized crop rect through `turns` clockwise 90° rotations
+// of the frame, so a crop is preserved (keeps framing the same content) when the
+// image is rotated. crop is {x,y,w,h} fractions of the rotated frame; null → null.
+// One clockwise quarter turn maps (x,y) → (1-y, x), so the rect becomes
+// { x: 1-y-h, y: x, w: h, h: w }.
+export function rotateCrop(crop, turns) {
+  if (!crop) return null
+  const q = ((Math.round(turns) % 4) + 4) % 4
+  let c = { x: crop.x, y: crop.y, w: crop.w, h: crop.h }
+  for (let i = 0; i < q; i++) c = { x: 1 - c.y - c.h, y: c.x, w: c.h, h: c.w }
+  return c
+}

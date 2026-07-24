@@ -1,5 +1,5 @@
 <script>
-  import { imageStyles } from '../../lib/image-view.js'
+  import { imageStyles, rotateCrop } from '../../lib/image-view.js'
 
   export let cell
   export let onChange = () => {}
@@ -34,7 +34,7 @@
   }
   function rotate(delta) {
     cell.rotation = (((cell.rotation || 0) + delta) % 360 + 360) % 360
-    cell.crop = null // rotating invalidates a crop taken in the old frame
+    cell.crop = rotateCrop(cell.crop, delta / 90) // rotate the crop with the frame so it is preserved
     persist()
   }
   function reset() {
