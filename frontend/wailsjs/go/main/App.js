@@ -30,6 +30,10 @@ export function DeleteLLMProfile(arg1) {
   return window['go']['main']['App']['DeleteLLMProfile'](arg1);
 }
 
+export function DeleteSTTProfile(arg1) {
+  return window['go']['main']['App']['DeleteSTTProfile'](arg1);
+}
+
 export function DismissExtract(arg1) {
   return window['go']['main']['App']['DismissExtract'](arg1);
 }
@@ -92,6 +96,10 @@ export function GetReadingList() {
 
 export function GetRecentArrows() {
   return window['go']['main']['App']['GetRecentArrows']();
+}
+
+export function GetSTTConfig() {
+  return window['go']['main']['App']['GetSTTConfig']();
 }
 
 export function GetSourceBytes(arg1) {
@@ -206,12 +214,20 @@ export function SaveRecording(arg1, arg2) {
   return window['go']['main']['App']['SaveRecording'](arg1, arg2);
 }
 
+export function SaveSTTProfile(arg1) {
+  return window['go']['main']['App']['SaveSTTProfile'](arg1);
+}
+
 export function SearchGraph(arg1) {
   return window['go']['main']['App']['SearchGraph'](arg1);
 }
 
 export function SetActiveProfile(arg1) {
   return window['go']['main']['App']['SetActiveProfile'](arg1);
+}
+
+export function SetActiveSTTProfile(arg1) {
+  return window['go']['main']['App']['SetActiveSTTProfile'](arg1);
 }
 
 export function SetReadingProjLen(arg1, arg2) {
@@ -228,6 +244,10 @@ export function SyncStudyItems() {
 
 export function TestLLMProfile(arg1) {
   return window['go']['main']['App']['TestLLMProfile'](arg1);
+}
+
+export function TranscribeAudio(arg1, arg2) {
+  return window['go']['main']['App']['TranscribeAudio'](arg1, arg2);
 }
 
 export function UpdateReadingProgress(arg1, arg2) {

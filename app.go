@@ -23,6 +23,7 @@ type AppConfig struct {
 	CollectionDir string    `json:"collectionDir"` // abs path; "" = no collection saved yet
 	RecentArrows  []string  `json:"recentArrows"`  // LRU list of arrow codes; max 10 entries
 	LLM           LLMConfig `json:"llm"`
+	STT           LLMConfig `json:"stt"`
 }
 
 // SaveFileResult is returned by the SaveFile Wails-bound method.

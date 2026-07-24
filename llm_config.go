@@ -40,6 +40,20 @@ func resolveKey(p LLMProfile) (string, error) {
 	return p.APIKey, nil
 }
 
+// resolveKeyOptional is like resolveKey but permits a keyless profile: it returns
+// "" and no error when neither APIKey nor APIKeyEnv is set. Used by STT, whose
+// local endpoints (e.g. a whisper server) need no auth.
+func resolveKeyOptional(p LLMProfile) (string, error) {
+	if p.APIKeyEnv != "" {
+		v := os.Getenv(p.APIKeyEnv)
+		if v == "" {
+			return "", fmt.Errorf("env var %q is empty", p.APIKeyEnv)
+		}
+		return v, nil
+	}
+	return p.APIKey, nil // "" is allowed
+}
+
 func findProfile(cfg *LLMConfig, id string) (LLMProfile, bool) {
 	for _, p := range cfg.Profiles {
 		if p.ID == id {
