@@ -5,6 +5,7 @@ import GraphQueryCell from '../components/notebook/GraphQueryCell.svelte'
 import ComputeCell from '../components/notebook/ComputeCell.svelte'
 import SketchCell from '../components/notebook/SketchCell.svelte'
 import ImageCell from '../components/notebook/ImageCell.svelte'
+import AudioCell from '../components/notebook/AudioCell.svelte'
 
 let seq = 0
 export function newDraftCell(text = '') {
@@ -37,6 +38,11 @@ export function newImageCell(asset, mime) {
   return { id: `cell-${Date.now()}-${seq}`, type: 'image', asset, mime, naturalW: 0, naturalH: 0, rotation: 0, crop: null }
 }
 
+export function newAudioCell() {
+  seq += 1
+  return { id: `cell-${Date.now()}-${seq}`, type: 'audio', asset: '', mime: '', durationMs: 0 }
+}
+
 // type -> Svelte component. Later slices add: image.
 export const cellRegistry = {
   context: ContextCell,
@@ -46,4 +52,5 @@ export const cellRegistry = {
   compute: ComputeCell,
   sketch: SketchCell,
   image: ImageCell,
+  audio: AudioCell,
 }

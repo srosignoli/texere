@@ -31,6 +31,9 @@ func FileServer(dirFn func() string) http.Handler {
 			http.NotFound(w, r)
 			return
 		}
+		if ct, ok := audioMimeByExt[strings.ToLower(filepath.Ext(name))]; ok {
+			w.Header().Set("Content-Type", ct) // Go's mime table calls .webm video/webm; be explicit for <audio>
+		}
 		http.ServeFile(w, r, filepath.Join(dir, name))
 	})
 }

@@ -85,3 +85,53 @@ func TestFileServerServesAndBlocksTraversal(t *testing.T) {
 		t.Errorf("empty dir: code=%d, want 404", rr2.Code)
 	}
 }
+
+func TestImportAudioByExtension(t *testing.T) {
+	col := t.TempDir()
+	src := filepath.Join(t.TempDir(), "memo.MP3") // mixed case
+	if err := os.WriteFile(src, []byte("not really mp3 but ext decides"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	a, err := ImportAudio(col, src)
+	if err != nil {
+		t.Fatalf("ImportAudio: %v", err)
+	}
+	if a.Mime != "audio/mpeg" || !strings.HasSuffix(a.Name, ".mp3") {
+		t.Errorf("got name=%q mime=%q", a.Name, a.Mime)
+	}
+	if _, err := os.Stat(filepath.Join(col, "media", a.Name)); err != nil {
+		t.Errorf("not written: %v", err)
+	}
+	// dedup
+	b, _ := ImportAudio(col, src)
+	if b.Name != a.Name {
+		t.Errorf("dedup failed: %q vs %q", b.Name, a.Name)
+	}
+}
+
+func TestImportAudioRejectsNonAudioExt(t *testing.T) {
+	col := t.TempDir()
+	src := filepath.Join(t.TempDir(), "note.txt")
+	_ = os.WriteFile(src, []byte("x"), 0o644)
+	if _, err := ImportAudio(col, src); err == nil {
+		t.Fatal("expected rejection for .txt")
+	}
+}
+
+func TestSaveAudioStripsCodecs(t *testing.T) {
+	col := t.TempDir()
+	a, err := SaveAudio(col, []byte("opusbytes"), "audio/webm;codecs=opus")
+	if err != nil {
+		t.Fatalf("SaveAudio: %v", err)
+	}
+	if a.Mime != "audio/webm" || !strings.HasSuffix(a.Name, ".webm") {
+		t.Errorf("got name=%q mime=%q", a.Name, a.Mime)
+	}
+}
+
+func TestSaveAudioRejectsUnknownMime(t *testing.T) {
+	col := t.TempDir()
+	if _, err := SaveAudio(col, []byte("x"), "audio/weird"); err == nil {
+		t.Fatal("expected rejection for audio/weird")
+	}
+}

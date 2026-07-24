@@ -66,6 +66,8 @@ export function GetStudyStats():Promise<learning.Stats>;
 
 export function GradeItem(arg1:string,arg2:number,arg3:number):Promise<learning.CardView>;
 
+export function ImportAudio():Promise<Record<string, any>>;
+
 export function ImportImage():Promise<Record<string, any>>;
 
 export function ImportPdfSource():Promise<main.ReadingView>;
@@ -103,6 +105,8 @@ export function SaveFile(arg1:string,arg2:string):Promise<main.SaveFileResult>;
 export function SaveLLMProfile(arg1:main.LLMProfile):Promise<void>;
 
 export function SaveNotebook(arg1:string,arg2:string):Promise<void>;
+
+export function SaveRecording(arg1:string,arg2:string):Promise<Record<string, any>>;
 
 export function SearchGraph(arg1:string):Promise<search.SearchResult>;
 
