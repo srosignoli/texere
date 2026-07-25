@@ -41,7 +41,7 @@
     const invalid = !l || (l.diagnostics && l.diagnostics.graphError) || !l.nodes || l.nodes.length === 0
     if (invalid) { disposeMeshes(); sceneCtx.render(); return }
     disposeMeshes()
-    layerPlanes = buildLayerPlanes(sceneCtx.scene, l, sceneCtx.camera, canvas, { opacity: 0.12, mode: 'stacked', picker })
+    layerPlanes = buildLayerPlanes(sceneCtx.scene, l, sceneCtx.camera, canvas, { opacity: 0.12, mode: 'extended', picker })
     const t = computeCameraFrame(sceneCtx.camera, l.bounds)
     sceneCtx.camera.position.copy(t.position)
     sceneCtx.camera.zoom = t.zoom
@@ -50,7 +50,7 @@
     sceneCtx.render()
     rafId = requestAnimationFrame(() => {
       rafId = 0
-      nodeMeshes = buildNodeMeshes(sceneCtx.scene, l, sceneCtx.camera, canvas, picker, { mode: 'stacked' })
+      nodeMeshes = buildNodeMeshes(sceneCtx.scene, l, sceneCtx.camera, canvas, picker, { mode: 'extended' })
       edgeMeshes = buildEdgeMeshes(sceneCtx.scene, l, nodeMeshes, picker)
       nodeMeshes.setAllOpacity(1)
       edgeMeshes.setAllOpacity(1)

@@ -61,7 +61,7 @@
     showSug = false
     try {
       if (cell.view === 'graph') {
-        layout = await GraphLayout(cell.query, 'stacked')
+        layout = await GraphLayout(cell.query, 'extended')
         // Keep LLM-attach working: derive a bounded text summary from node labels.
         const labels = (layout?.nodes ?? []).map((n) => n.label ?? n.text ?? n.name ?? '').filter(Boolean)
         cell.resultText = labels.join('\n').slice(0, 4000)
