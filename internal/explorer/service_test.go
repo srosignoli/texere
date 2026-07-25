@@ -2,7 +2,13 @@ package explorer
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
+
+	"texere/internal/content"
+	"texere/internal/graph"
+	"texere/internal/search"
 )
 
 // =============================================================================
@@ -15,6 +21,33 @@ import (
 // search.SearchService and BadgerDB).
 func newServiceWithActive(rs *ResultSet) *ExplorerService {
 	return &ExplorerService{active: rs}
+}
+
+// newTestServiceWithGraph builds a real ExplorerService backed by a ready
+// search.SearchService: a small fixture collection is written to a temp
+// dir, graph.BuildFromCollection populates its BadgerDB store, and a
+// search.SearchService is opened against it. Mirrors the working pattern in
+// build_explorer_test.go (package main) but stays self-contained here so
+// internal/explorer's own tests don't need App wiring.
+func newTestServiceWithGraph(t *testing.T) *ExplorerService {
+	t.Helper()
+	dir := t.TempDir()
+	n4l := "- Chapter One\n" +
+		":: ctx ::\n" +
+		"alpha (contains) beta\n"
+	if err := os.WriteFile(filepath.Join(dir, "c.n4l"), []byte(n4l), 0o644); err != nil {
+		t.Fatalf("write n4l fixture: %v", err)
+	}
+
+	reg, _ := content.LoadRegistry(filepath.Join(dir, "SSTconfig")) // degraded (no SSTconfig dir) is fine
+	if _, err := graph.BuildFromCollection(dir, reg); err != nil {
+		t.Fatalf("BuildFromCollection: %v", err)
+	}
+
+	searchSvc := search.NewSearchService(dir, reg)
+	t.Cleanup(searchSvc.Close)
+
+	return NewExplorerService(searchSvc, reg)
 }
 
 func TestReanchor_StaleResultIDReturnsError(t *testing.T) {
@@ -170,6 +203,45 @@ func TestClose_OnEmptyServiceIsNoOp(t *testing.T) {
 	svc := &ExplorerService{}
 	if err := svc.Close(); err != nil {
 		t.Fatalf("Close on empty service should succeed, got %v", err)
+	}
+}
+
+// =============================================================================
+// GraphLayout binding: stateless Layout must not evict the active session.
+// =============================================================================
+
+func TestLayoutMatchesOpenAndDoesNotEvictSession(t *testing.T) {
+	svc := newTestServiceWithGraph(t)
+	const q = "alpha"
+
+	// Establish a session via Open, capture its result.
+	openOut, err := svc.Open(q, "stacked")
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	if openOut.Diagnostics.GraphError != "" {
+		t.Fatalf("Open graphError: %q", openOut.Diagnostics.GraphError)
+	}
+	if len(openOut.Nodes) == 0 {
+		t.Fatalf("Open returned 0 nodes for fixture query %q", q)
+	}
+
+	// Layout returns an equivalent result (same node/edge counts) …
+	layoutOut, err := svc.Layout(q, "stacked")
+	if err != nil {
+		t.Fatalf("Layout: %v", err)
+	}
+	if len(layoutOut.Nodes) != len(openOut.Nodes) || len(layoutOut.Edges) != len(openOut.Edges) {
+		t.Errorf("Layout nodes/edges = %d/%d, want %d/%d",
+			len(layoutOut.Nodes), len(layoutOut.Edges), len(openOut.Nodes), len(openOut.Edges))
+	}
+
+	// … and Layout did NOT evict the active session: a Reanchor against the
+	// Open result still works.
+	if openOut.AnchorID != "" {
+		if _, err := svc.Reanchor(openOut.ResultID, openOut.AnchorID, "stacked"); err != nil {
+			t.Errorf("Reanchor after interleaved Layout failed (session evicted): %v", err)
+		}
 	}
 }
 
