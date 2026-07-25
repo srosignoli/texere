@@ -1549,7 +1549,7 @@
   .explorer-root {
     position: fixed;
     inset: 0;
-    z-index: 50;
+    z-index: 70; /* above StudySurface (60) so Expand from a notebook graph cell overlays it */
     background: var(--bg-1, #0e0f12);
     overflow: hidden;
   }

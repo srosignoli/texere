@@ -1,8 +1,10 @@
 <script>
-  import { SearchGraph } from '../../../wailsjs/go/main/App'
+  import { SearchGraph, GraphLayout } from '../../../wailsjs/go/main/App'
   import { analyzeQuery, getSuggestions } from '../../lib/query-grammar.js'
   import { queryHints, ensureQueryHints } from '../../stores/queryHints.js'
   import GraphResults from './GraphResults.svelte'
+  import IsoGraphView from '../IsoGraphView.svelte'
+  import { explorerOpen, explorerQuery } from '../../stores/explorer.js'
 
   export let cell
   export let onChange = () => {}
@@ -13,6 +15,7 @@
   export let onPush = () => {} // unused; shared cell prop set
 
   let result = null
+  let layout = null
   let running = false
   let error = ''
   let caretPos = 0
@@ -43,16 +46,32 @@
     onChange(cell)
   }
 
+  function setView(v) {
+    if (cell.view === v) return
+    cell.view = v
+    onChange(cell)
+    if (v === 'graph' && cell.query.trim()) run()
+  }
+  function expand() { explorerQuery.set(cell.query); explorerOpen.set(true) }
+
   async function run() {
     if (running) return
     running = true
     error = ''
     showSug = false
     try {
-      result = await SearchGraph(cell.query)
-      cell.resultText = summarize(result)
-      onChange(cell)
-    } catch (e) { error = String(e?.message ?? e); result = null; cell.resultText = ''; onChange(cell) }
+      if (cell.view === 'graph') {
+        layout = await GraphLayout(cell.query, 'extended')
+        // Keep LLM-attach working: derive a bounded text summary from node labels.
+        const labels = (layout?.nodes ?? []).map((n) => n.label ?? n.text ?? n.name ?? '').filter(Boolean)
+        cell.resultText = labels.join('\n').slice(0, 4000)
+        onChange(cell)
+      } else {
+        result = await SearchGraph(cell.query)
+        cell.resultText = summarize(result)
+        onChange(cell)
+      }
+    } catch (e) { error = String(e?.message ?? e); result = null; layout = null; cell.resultText = ''; onChange(cell) }
     finally { running = false }
   }
 
@@ -89,13 +108,24 @@
         </ul>
       {/if}
     </div>
+    <div class="gq-view">
+      <button class:sel={(cell.view ?? 'text') === 'text'} on:click={() => setView('text')} disabled={readOnly && false}>Text</button>
+      <button class:sel={(cell.view ?? 'text') === 'graph'} on:click={() => setView('graph')}>Graph</button>
+    </div>
     {#if !readOnly}
       <button class="gq-run" on:click={run} disabled={running}>{running ? '…' : 'Run'}</button>
       <button class="gq-del" on:click={onDelete} title="Delete cell">✕</button>
     {/if}
   </div>
   {#if error}<div class="gq-error">{error}</div>{/if}
-  {#if result}<div class="gq-results"><GraphResults {result} /></div>{/if}
+  {#if (cell.view ?? 'text') === 'graph'}
+    <div class="gq-graph">
+      <div class="gq-graphbar"><button class="gq-expand" on:click={expand} title="Open in full explorer">⛶ Expand</button></div>
+      <IsoGraphView {layout} height={320} />
+    </div>
+  {:else if result}
+    <div class="gq-results"><GraphResults {result} /></div>
+  {/if}
 </div>
 
 <style>
@@ -112,4 +142,10 @@
   .gq-del:hover { color: #ff8080; }
   .gq-error { color: #ff8080; font-size: 12px; padding: 0 8px 6px; }
   .gq-results { padding: 6px 8px 8px; border-top: 1px solid #1c2a3a; }
+  .gq-view { display: inline-flex; gap: 2px; }
+  .gq-view button { background: #14233a; color: #6b7a8a; border: 1px solid #2a3a4a; border-radius: 6px; padding: 4px 8px; cursor: pointer; font-size: 12px; }
+  .gq-view button.sel { color: #e8eaf0; background: #244a72; }
+  .gq-graph { border-top: 1px solid #1c2a3a; padding: 6px 8px 8px; }
+  .gq-graphbar { display: flex; justify-content: flex-end; margin-bottom: 4px; }
+  .gq-expand { background: #14233a; color: #93c5fd; border: 1px solid #2a3a4a; border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
 </style>

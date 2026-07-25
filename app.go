@@ -351,6 +351,22 @@ func (a *App) ExplorerOpen(query string, mode string) (explorer.LayoutResult, er
 	return a.explorerSvc.Open(query, mode)
 }
 
+// GraphLayout returns an isometric layout for a query WITHOUT starting/replacing
+// the global explorer session — used by the notebook graph cell's graph view.
+func (a *App) GraphLayout(query string, mode string) (explorer.LayoutResult, error) {
+	if a.explorerSvc == nil {
+		return explorer.LayoutResult{
+			Nodes:       []explorer.NodeView{},
+			Edges:       []explorer.EdgeView{},
+			Territories: []explorer.TerritoryView{},
+			Diagnostics: explorer.Diagnostics{
+				GraphError: "Build your graph first (Ctrl+G) to enable graph search.",
+			},
+		}, nil
+	}
+	return a.explorerSvc.Layout(query, mode)
+}
+
 // ExplorerReanchor runs a new layout pass against the cached ResultSet
 // with the supplied anchor. `mode` flips between layout encodings
 // (stacked / extended) without re-running the search. Returns

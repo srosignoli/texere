@@ -94,20 +94,38 @@ func (s *ExplorerService) SetSearchService(searchSvc *search.SearchService) {
 // encoding (LayoutModeStacked / LayoutModeExtended); empty defaults to
 // stacked.
 func (s *ExplorerService) Open(query, mode string) (LayoutResult, error) {
-	if isBlank(query) {
-		return LayoutResult{}, ErrEmptyQuery
-	}
-
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
-	if s.search == nil || !s.search.IsReady() {
-		return graphUnavailableResult(), nil
+	rs, out, err := s.layoutForQuery(query, mode)
+	if rs != nil {
+		s.active = rs // keep the session for Reanchor (unchanged behavior)
 	}
+	return out, err
+}
 
+// Layout computes a layout for a query WITHOUT storing it as the active
+// session, so notebook graph cells can render a query without evicting the
+// global explorer's active ResultSet.
+func (s *ExplorerService) Layout(query, mode string) (LayoutResult, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	_, out, err := s.layoutForQuery(query, mode)
+	return out, err
+}
+
+// layoutForQuery is the stateless core of Open: search → build → clamp →
+// layout. It never touches s.active; the caller decides whether to store the
+// returned ResultSet. Assumes s.mu is held.
+func (s *ExplorerService) layoutForQuery(query, mode string) (*ResultSet, LayoutResult, error) {
+	if isBlank(query) {
+		return nil, LayoutResult{}, ErrEmptyQuery
+	}
+	if s.search == nil || !s.search.IsReady() {
+		return nil, graphUnavailableResult(), nil
+	}
 	sr, err := s.search.Search(withDefaultLimit(query))
 	if err != nil {
-		return graphUnavailableResult(), nil
+		return nil, graphUnavailableResult(), nil
 	}
 	if sr.GraphUnavailable {
 		msg := sr.GraphError
@@ -116,24 +134,18 @@ func (s *ExplorerService) Open(query, mode string) (LayoutResult, error) {
 		}
 		out := emptyLayoutResult()
 		out.Diagnostics.GraphError = msg
-		return out, nil
+		return nil, out, nil
 	}
-
 	rs := BuildResultSet(sr, s.registry, query)
 	if len(rs.Nodes) == 0 {
-		s.active = rs
-		return emptyLayoutResult(), nil
+		return rs, emptyLayoutResult(), nil
 	}
-
 	// Result-size clamping (FR-034). Drop the highest-keyed nodes (and
 	// their incident edges) until under both caps. Keying is stable
 	// across runs, so the same query always clamps to the same subset
 	// — a property the frontend relies on for "Showing X of N" UX.
 	truncated := clampResultSet(rs)
-
 	rs.DefaultAnchor = pickDefaultAnchor(rs)
-	s.active = rs
-
 	pass := LayoutFromAnchor(rs, rs.DefaultAnchor, effectiveMode(rs, mode))
 	out := s.toLayoutResult(rs, pass)
 	out.Diagnostics.MatchCount = matchCount(rs)
@@ -141,7 +153,7 @@ func (s *ExplorerService) Open(query, mode string) (LayoutResult, error) {
 		out.Diagnostics.Clamped = true
 		out.Diagnostics.Truncated = truncated
 	}
-	return out, nil
+	return rs, out, nil
 }
 
 // matchCount returns how many of the rendered nodes were direct query
@@ -462,4 +474,3 @@ func isBlank(s string) bool {
 	}
 	return true
 }
-

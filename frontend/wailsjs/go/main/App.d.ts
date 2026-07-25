@@ -70,6 +70,8 @@ export function GetStudyStats():Promise<learning.Stats>;
 
 export function GradeItem(arg1:string,arg2:number,arg3:number):Promise<learning.CardView>;
 
+export function GraphLayout(arg1:string,arg2:string):Promise<explorer.LayoutResult>;
+
 export function ImportAudio():Promise<Record<string, any>>;
 
 export function ImportImage():Promise<Record<string, any>>;
