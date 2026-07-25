@@ -36,7 +36,9 @@
   }
 
   function renderLayout(l) {
-    if (!sceneCtx || !l || message) return
+    if (!sceneCtx) return
+    if (rafId) { cancelAnimationFrame(rafId); rafId = 0 }
+    if (!l || message) { disposeMeshes(); sceneCtx.render(); return }
     disposeMeshes()
     layerPlanes = buildLayerPlanes(sceneCtx.scene, l, sceneCtx.camera, canvas, { opacity: 0.12, mode: 'stacked', picker })
     const t = computeCameraFrame(sceneCtx.camera, l.bounds)
@@ -45,7 +47,6 @@
     sceneCtx.camera.lookAt(t.lookAt)
     sceneCtx.camera.updateProjectionMatrix()
     sceneCtx.render()
-    if (rafId) cancelAnimationFrame(rafId)
     rafId = requestAnimationFrame(() => {
       rafId = 0
       nodeMeshes = buildNodeMeshes(sceneCtx.scene, l, sceneCtx.camera, canvas, picker, { mode: 'stacked' })
@@ -64,6 +65,7 @@
     picker = createPicker(sceneCtx.camera, canvas)
     ro = new ResizeObserver(() => sceneCtx?.render())
     ro.observe(wrap)
+    sceneCtx.render()
   })
 
   onDestroy(() => {
@@ -83,5 +85,5 @@
 <style>
   .iso-wrap { position: relative; width: 100%; background: #0b1220; border-radius: 6px; overflow: hidden; }
   .iso-wrap canvas { display: block; width: 100%; height: 100%; touch-action: none; }
-  .iso-msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #7a8ba0; font-size: 13px; padding: 12px; text-align: center; }
+  .iso-msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #7a8ba0; font-size: 13px; padding: 12px; text-align: center; background: #0b1220; }
 </style>
