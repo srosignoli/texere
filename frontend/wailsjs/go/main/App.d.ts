@@ -5,6 +5,7 @@ import {content} from '../models';
 import {explorer} from '../models';
 import {learning} from '../models';
 import {search} from '../models';
+import {mediasearch} from '../models';
 
 export function BuildGraph():Promise<main.BuildGraphResult>;
 
@@ -29,6 +30,8 @@ export function ExplorerClose():Promise<void>;
 export function ExplorerOpen(arg1:string,arg2:string):Promise<explorer.LayoutResult>;
 
 export function ExplorerReanchor(arg1:string,arg2:string,arg3:string):Promise<explorer.LayoutResult>;
+
+export function FetchMediaURL(arg1:string):Promise<Record<string, any>>;
 
 export function GetArrowRegistry():Promise<Array<content.ArrowDef>>;
 
@@ -88,6 +91,8 @@ export function ListChapters():Promise<Array<string>>;
 
 export function ListContextTags():Promise<Array<string>>;
 
+export function ListMediaProviders():Promise<Array<main.ProviderInfo>>;
+
 export function OpenCollection(arg1:string):Promise<Array<content.ChapterSummary>>;
 
 export function OpenNotebook(arg1:string):Promise<main.NotebookView>;
@@ -117,6 +122,8 @@ export function SaveRecording(arg1:string,arg2:string):Promise<Record<string, an
 export function SaveSTTProfile(arg1:main.LLMProfile):Promise<void>;
 
 export function SearchGraph(arg1:string):Promise<search.SearchResult>;
+
+export function SearchMedia(arg1:string,arg2:string,arg3:string,arg4:number):Promise<Array<mediasearch.Result>>;
 
 export function SetActiveProfile(arg1:string):Promise<void>;
 

@@ -969,6 +969,22 @@ export namespace main {
 		}
 	}
 	
+	export class ProviderInfo {
+	    id: string;
+	    name: string;
+	    kinds: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ProviderInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.kinds = source["kinds"];
+	    }
+	}
 	export class ReadingView {
 	    id: string;
 	    refPath: string;
@@ -1065,6 +1081,33 @@ export namespace main {
 		    }
 		    return a;
 		}
+	}
+
+}
+
+export namespace mediasearch {
+	
+	export class Result {
+	    kind: string;
+	    thumbUrl: string;
+	    fullUrl: string;
+	    title: string;
+	    sourcePage: string;
+	    license: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Result(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.thumbUrl = source["thumbUrl"];
+	        this.fullUrl = source["fullUrl"];
+	        this.title = source["title"];
+	        this.sourcePage = source["sourcePage"];
+	        this.license = source["license"];
+	    }
 	}
 
 }
