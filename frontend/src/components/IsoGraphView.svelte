@@ -38,7 +38,8 @@
   function renderLayout(l) {
     if (!sceneCtx) return
     if (rafId) { cancelAnimationFrame(rafId); rafId = 0 }
-    if (!l || message) { disposeMeshes(); sceneCtx.render(); return }
+    const invalid = !l || (l.diagnostics && l.diagnostics.graphError) || !l.nodes || l.nodes.length === 0
+    if (invalid) { disposeMeshes(); sceneCtx.render(); return }
     disposeMeshes()
     layerPlanes = buildLayerPlanes(sceneCtx.scene, l, sceneCtx.camera, canvas, { opacity: 0.12, mode: 'stacked', picker })
     const t = computeCameraFrame(sceneCtx.camera, l.bounds)
@@ -51,6 +52,8 @@
       rafId = 0
       nodeMeshes = buildNodeMeshes(sceneCtx.scene, l, sceneCtx.camera, canvas, picker, { mode: 'stacked' })
       edgeMeshes = buildEdgeMeshes(sceneCtx.scene, l, nodeMeshes, picker)
+      nodeMeshes.setAllOpacity(1)
+      edgeMeshes.setAllOpacity(1)
       sceneCtx.render()
     })
   }
