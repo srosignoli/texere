@@ -20,6 +20,8 @@ export function DeferExtract(arg1:string):Promise<void>;
 
 export function DeleteLLMProfile(arg1:string):Promise<void>;
 
+export function DeleteSTTProfile(arg1:string):Promise<void>;
+
 export function DismissExtract(arg1:string):Promise<void>;
 
 export function ExplorerClose():Promise<void>;
@@ -51,6 +53,8 @@ export function GetNotebookLinks(arg1:string):Promise<Array<main.NotebookLinkMar
 export function GetReadingList():Promise<Array<main.ReadingView>>;
 
 export function GetRecentArrows():Promise<Array<string>>;
+
+export function GetSTTConfig():Promise<main.LLMConfig>;
 
 export function GetSourceBytes(arg1:string):Promise<string>;
 
@@ -108,9 +112,13 @@ export function SaveNotebook(arg1:string,arg2:string):Promise<void>;
 
 export function SaveRecording(arg1:string,arg2:string):Promise<Record<string, any>>;
 
+export function SaveSTTProfile(arg1:main.LLMProfile):Promise<void>;
+
 export function SearchGraph(arg1:string):Promise<search.SearchResult>;
 
 export function SetActiveProfile(arg1:string):Promise<void>;
+
+export function SetActiveSTTProfile(arg1:string):Promise<void>;
 
 export function SetReadingProjLen(arg1:string,arg2:number):Promise<void>;
 
@@ -119,6 +127,8 @@ export function StartLLMTurn(arg1:main.StartTurnReq):Promise<string>;
 export function SyncStudyItems():Promise<learning.SyncResult>;
 
 export function TestLLMProfile(arg1:string):Promise<void>;
+
+export function TranscribeAudio(arg1:string,arg2:string):Promise<string>;
 
 export function UpdateReadingProgress(arg1:string,arg2:string):Promise<void>;
 

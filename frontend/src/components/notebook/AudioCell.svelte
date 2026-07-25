@@ -1,6 +1,6 @@
 <script>
-  import { onDestroy } from 'svelte'
-  import { ImportAudio, SaveRecording } from '../../../wailsjs/go/main/App'
+  import { onDestroy, onMount } from 'svelte'
+  import { ImportAudio, SaveRecording, GetSTTConfig, TranscribeAudio } from '../../../wailsjs/go/main/App'
 
   export let cell
   export let onChange = () => {}
@@ -9,6 +9,7 @@
   export let context = null   // unused; shared cell prop set
   export let cells = []       // unused
   export let onPush = () => {} // unused
+  export let onInsert = () => {}
 
   let recording = false
   let recUnavailable = false
@@ -17,6 +18,9 @@
   let missing = false
   let playErr = ''
   let rec = null
+  let sttProfiles = []
+  let transcribing = false
+  let transErr = ''
 
   // <audio> error: distinguish a fetch/404 from a decode/format failure so the
   // message is accurate (WebKitGTK/WSLg often lacks the codecs to decode audio).
@@ -128,6 +132,21 @@
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
   }
 
+  onMount(async () => { try { const c = await GetSTTConfig(); sttProfiles = c.profiles ?? [] } catch { /* not configured */ } })
+
+  function setTransProfile(id) { cell.transcribeProfileId = id || null; cell = cell; onChange(cell) }
+
+  async function transcribe() {
+    if (transcribing) return
+    transcribing = true
+    transErr = ''
+    try {
+      const text = await TranscribeAudio(cell.transcribeProfileId || '', cell.asset)
+      if (text && text.trim()) onInsert(text)
+    } catch (e) { transErr = String(e?.message ?? e) }
+    transcribing = false
+  }
+
   onDestroy(() => { destroyed = true; clearInterval(timer); if (stream) stream.getTracks().forEach((t) => t.stop()) })
 </script>
 
@@ -145,6 +164,17 @@
       <div class="au-missing">{playErr || `audio not found: ${cell.asset}`}</div>
     {:else}
       <audio class="au-player" src={"/media/" + cell.asset} controls on:loadedmetadata={onMeta} on:error={onAudioError}></audio>
+    {/if}
+    {#if !readOnly}
+      <div class="au-trans">
+        <select value={cell.transcribeProfileId || ''} on:change={(e) => setTransProfile(e.target.value)} disabled={transcribing || !sttProfiles.length} title="Speech-to-text model">
+          <option value="">active default</option>
+          {#each sttProfiles as p}<option value={p.id}>{p.name}</option>{/each}
+        </select>
+        <button on:click={transcribe} disabled={transcribing || !sttProfiles.length}>{transcribing ? 'Transcribing…' : 'Transcribe'}</button>
+        {#if !sttProfiles.length}<span class="au-hint">Configure a model in ⚙ Models → Speech-to-text</span>{/if}
+        {#if transErr}<span class="au-err">{transErr}</span>{/if}
+      </div>
     {/if}
   {:else if !readOnly}
     <div class="au-empty">
@@ -176,4 +206,8 @@
   .au-player { width: 100%; display: block; padding: 8px; }
   .au-err { color: #ff8080; font-size: 12px; width: 100%; }
   .au-missing { padding: 14px; color: #ff8080; font-size: 13px; }
+  .au-trans { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-top: 1px solid #1c2a3a; flex-wrap: wrap; }
+  .au-trans select, .au-trans button { background: #14233a; color: #93c5fd; border: 1px solid #2a3a4a; border-radius: 6px; padding: 2px 8px; font-size: 12px; cursor: pointer; }
+  .au-trans button:disabled, .au-trans select:disabled { opacity: .5; cursor: default; }
+  .au-hint { color: #5a7a9a; font-size: 11px; }
 </style>

@@ -22,6 +22,23 @@ func TestResolveKey(t *testing.T) {
 	}
 }
 
+func TestResolveKeyOptional(t *testing.T) {
+	if k, err := resolveKeyOptional(LLMProfile{}); err != nil || k != "" {
+		t.Errorf("keyless: got %q err %v, want \"\" nil", k, err)
+	}
+	if k, err := resolveKeyOptional(LLMProfile{APIKey: "sk-1"}); err != nil || k != "sk-1" {
+		t.Errorf("literal: got %q err %v", k, err)
+	}
+	os.Setenv("TEXERE_TEST_STT_KEY", "envval")
+	defer os.Unsetenv("TEXERE_TEST_STT_KEY")
+	if k, err := resolveKeyOptional(LLMProfile{APIKeyEnv: "TEXERE_TEST_STT_KEY"}); err != nil || k != "envval" {
+		t.Errorf("env: got %q err %v", k, err)
+	}
+	if _, err := resolveKeyOptional(LLMProfile{APIKeyEnv: "TEXERE_TEST_STT_MISSING"}); err == nil {
+		t.Error("expected error for empty named env var")
+	}
+}
+
 func TestProfileCRUD(t *testing.T) {
 	cfg := &LLMConfig{}
 	upsertProfile(cfg, LLMProfile{ID: "a", Name: "A"})
