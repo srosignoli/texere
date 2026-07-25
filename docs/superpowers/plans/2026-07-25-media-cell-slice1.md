@@ -258,6 +258,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -312,11 +313,11 @@ func TestCommonsSearchNormalizes(t *testing.T) {
 		t.Errorf("result =\n %+v\nwant\n %+v", got[0], want)
 	}
 	for _, sub := range []string{"gsrsearch=apple", "gsrnamespace=6", "gsrlimit=24", "formatversion=2"} {
-		if !contains(gotQuery, sub) {
+		if !strings.Contains(gotQuery, sub) {
 			t.Errorf("query %q missing %q", gotQuery, sub)
 		}
 	}
-	if !contains(gotUA, "texere") {
+	if !strings.Contains(gotUA, "texere") {
 		t.Errorf("User-Agent = %q, want it to identify texere", gotUA)
 	}
 }
@@ -351,15 +352,6 @@ func TestCommonsRejectsUnsupportedKind(t *testing.T) {
 	if _, err := Commons{BaseURL: "http://unused"}.Search(context.Background(), "apple", "audio", 24); err == nil {
 		t.Fatal("expected error for kind=audio, got nil")
 	}
-}
-
-func contains(s, sub string) bool {
-	for i := 0; i+len(sub) <= len(s); i++ {
-		if s[i:i+len(sub)] == sub {
-			return true
-		}
-	}
-	return false
 }
 ```
 
@@ -573,6 +565,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -629,7 +622,7 @@ func TestOpenverseSearchNormalizes(t *testing.T) {
 		t.Errorf("license = %q, want %q", got[1].License, "CC CC0")
 	}
 	for _, sub := range []string{"q=apple", "page_size=24"} {
-		if !contains(gotQuery, sub) {
+		if !strings.Contains(gotQuery, sub) {
 			t.Errorf("query %q missing %q", gotQuery, sub)
 		}
 	}
@@ -1164,6 +1157,7 @@ Create `frontend/src/components/notebook/media/MediaImageView.svelte`:
   import { imageStyles } from '../../../lib/image-view.js'
 
   export let cell
+  export let onMeta = () => {}   // (w, h) => record and persist the intrinsic size
 
   let missing = false
 
@@ -1172,10 +1166,10 @@ Create `frontend/src/components/notebook/media/MediaImageView.svelte`:
 
   function onLoad(e) {
     missing = false
+    // Persisted so imageStyles is correct on first paint after a reload, rather
+    // than only once the image has loaded. Same behaviour as ImageCell.
     if (!cell.naturalW || !cell.naturalH) {
-      cell.naturalW = e.target.naturalWidth
-      cell.naturalH = e.target.naturalHeight
-      cell = cell
+      onMeta(e.target.naturalWidth, e.target.naturalHeight)
     }
   }
 </script>
@@ -1358,6 +1352,13 @@ Replace the body of `frontend/src/components/notebook/MediaCell.svelte`:
   }
 
   function onQuery(q) { cell.query = q; persist() }
+
+  function onMeta(w, h) {
+    cell.naturalW = w
+    cell.naturalH = h
+    cell = cell
+    persist()
+  }
 </script>
 
 <div class="me-cell">
@@ -1375,7 +1376,7 @@ Replace the body of `frontend/src/components/notebook/MediaCell.svelte`:
       <MediaSearchPanel kind={cell.kind} query={cell.query} {onQuery} {onPick} />
     {/if}
   {:else}
-    <svelte:component this={views[cell.kind]} {cell} />
+    <svelte:component this={views[cell.kind]} {cell} {onMeta} />
     {#if cell.sourcePage}
       <div class="me-src"><a href={cell.sourcePage} target="_blank" rel="noreferrer">source</a></div>
     {/if}
@@ -1577,6 +1578,7 @@ Replace `frontend/src/components/notebook/media/MediaImageView.svelte`:
   export let cell
   export let cropping = false
   export let onCrop = () => {}   // ({x,y,w,h}) => void
+  export let onMeta = () => {}   // (w, h) => record and persist the intrinsic size
 
   let missing = false
   let imgEl
@@ -1593,9 +1595,7 @@ Replace `frontend/src/components/notebook/media/MediaImageView.svelte`:
   function onLoad(e) {
     missing = false
     if (!cell.naturalW || !cell.naturalH) {
-      cell.naturalW = e.target.naturalWidth
-      cell.naturalH = e.target.naturalHeight
-      cell = cell
+      onMeta(e.target.naturalWidth, e.target.naturalHeight)
     }
   }
 
@@ -1667,7 +1667,7 @@ In `MediaCell.svelte`, add state and handlers:
 Pass the props through to the view — replace the `<svelte:component>` line:
 
 ```svelte
-    <svelte:component this={views[cell.kind]} {cell} {cropping} onCrop={applyCrop} />
+    <svelte:component this={views[cell.kind]} {cell} {cropping} {onMeta} onCrop={applyCrop} />
 ```
 
 Add the toolbar immediately after that line:
