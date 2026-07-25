@@ -15,6 +15,10 @@
   // without MediaCell changing.
   const views = { image: MediaImageView }
 
+  let replacing = false
+
+  function replace() { replacing = true }
+
   function persist() { onChange(cell) }
 
   function onPick(result, ref) {
@@ -29,6 +33,7 @@
     cell.naturalW = 0
     cell.naturalH = 0
     cell = cell
+    replacing = false
     persist()
   }
 
@@ -47,10 +52,16 @@
     <span class="me-label">Media</span>
     {#if cell.license}<span class="me-lic">{cell.license}</span>{/if}
     <span class="me-spacer"></span>
+    {#if !readOnly && cell.asset && !replacing}
+      <button class="me-btn" on:click={replace} title="Pick a different asset">Replace</button>
+    {/if}
+    {#if !readOnly && replacing && cell.asset}
+      <button class="me-btn" on:click={() => (replacing = false)} title="Keep the current asset">Cancel</button>
+    {/if}
     {#if !readOnly}<button class="me-btn" on:click={onDelete} title="Delete cell">✕</button>{/if}
   </div>
 
-  {#if !cell.asset}
+  {#if !cell.asset || replacing}
     {#if readOnly}
       <div class="me-empty">No asset.</div>
     {:else}

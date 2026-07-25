@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte'
-  import { ListMediaProviders, SearchMedia, FetchMediaURL } from '../../../wailsjs/go/main/App'
+  import { ListMediaProviders, SearchMedia, FetchMediaURL, ImportImage } from '../../../wailsjs/go/main/App'
 
   export let kind = 'image'
   export let query = ''
@@ -17,6 +17,7 @@
   let err = ''
   let fetchingURL = ''      // FullURL of the result currently downloading
   let seq = 0               // guards against out-of-order responses
+  let pasteURL = ''
 
   onMount(async () => {
     try {
@@ -53,17 +54,37 @@
     err = ''
     try {
       const ref = await FetchMediaURL(r.fullUrl)
-      onPick(r, ref)
+      onPick({ ...r, provider: providerId }, ref)
     } catch (e) {
       const msg = String(e?.message ?? e)
-      // 403 on a direct fetch almost always means hotlink protection: the
-      // picture is viewable on its page but not downloadable by URL.
       err = msg.includes('403')
         ? `${msg} — this host blocks direct downloads. Open the source page and use Paste URL with the real image address.`
         : msg
     } finally {
       fetchingURL = ''
     }
+  }
+
+  async function importFile() {
+    err = ''
+    try {
+      const ref = await ImportImage()
+      if (!ref) return // cancelled
+      onPick({ kind, title: '', sourcePage: '', license: '', provider: 'file' }, ref)
+    } catch (e) { err = String(e?.message ?? e) }
+  }
+
+  async function fetchPasted() {
+    const u = pasteURL.trim()
+    if (!u) return
+    err = ''
+    busy = true
+    try {
+      const ref = await FetchMediaURL(u)
+      onPick({ kind, title: '', sourcePage: u, license: '', provider: 'url' }, ref)
+    } catch (e) {
+      err = String(e?.message ?? e)
+    } finally { busy = false }
   }
 </script>
 
@@ -77,6 +98,12 @@
     <button class="ms-btn" on:click={search} disabled={busy || !query.trim()}>
       {busy ? 'Searching…' : 'Search'}
     </button>
+  </div>
+  <div class="ms-alt">
+    <button class="ms-btn" on:click={importFile} disabled={busy}>Import file…</button>
+    <input class="ms-q" type="text" placeholder="…or paste an image URL"
+      bind:value={pasteURL} on:keydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); fetchPasted() } }} />
+    <button class="ms-btn" on:click={fetchPasted} disabled={busy || !pasteURL.trim()}>Fetch</button>
   </div>
 
   {#if err}<div class="ms-err">{err}</div>{/if}
@@ -100,6 +127,7 @@
 <style>
   .ms-panel { padding: 8px; }
   .ms-bar { display: flex; gap: 6px; align-items: center; }
+  .ms-alt { display: flex; gap: 6px; align-items: center; margin-top: 6px; }
   .ms-q { flex: 1 1 auto; background: #0b1220; color: #cde; border: 1px solid #2a3a4a; border-radius: 4px; padding: 4px 8px; }
   .ms-btn { background: #1b2636; color: #cde; border: 1px solid #2a3a4a; border-radius: 4px; padding: 4px 10px; cursor: pointer; }
   .ms-btn:disabled { opacity: 0.5; cursor: default; }
