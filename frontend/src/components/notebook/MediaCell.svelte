@@ -16,10 +16,14 @@
   const views = { image: MediaImageView }
 
   let replacing = false
+  let cropping = false
 
   function replace() { replacing = true }
 
   function persist() { onChange(cell) }
+
+  function applyCrop(crop) { cell.crop = crop; cell = cell; persist(); cropping = false }
+  function clearCrop() { cell.crop = null; cell = cell; persist() }
 
   function onPick(result, ref) {
     cell.asset = ref.asset
@@ -34,6 +38,7 @@
     cell.naturalH = 0
     cell = cell
     replacing = false
+    cropping = false
     persist()
   }
 
@@ -68,7 +73,17 @@
       <MediaSearchPanel kind={cell.kind} query={cell.query} {onQuery} {onPick} />
     {/if}
   {:else}
-    <svelte:component this={views[cell.kind]} {cell} {onMeta} />
+    <svelte:component this={views[cell.kind]} {cell} {cropping} {onMeta} onCrop={applyCrop} />
+    {#if !readOnly}
+      <div class="me-tools">
+        {#if cropping}
+          <button class="me-btn" on:click={() => (cropping = false)}>Cancel crop</button>
+        {:else}
+          <button class="me-btn" on:click={() => (cropping = true)}>Crop</button>
+        {/if}
+        {#if cell.crop}<button class="me-btn" on:click={clearCrop}>Clear crop</button>{/if}
+      </div>
+    {/if}
     {#if cell.sourcePage}
       <div class="me-src"><a href={cell.sourcePage} target="_blank" rel="noreferrer">source</a></div>
     {/if}
@@ -86,4 +101,5 @@
   .me-empty { padding: 12px; color: #8aa; font-size: 13px; }
   .me-src { padding: 0 8px 8px; font-size: 11px; }
   .me-src a { color: #6ad; }
+  .me-tools { display: flex; gap: 6px; padding: 0 8px 8px; }
 </style>
