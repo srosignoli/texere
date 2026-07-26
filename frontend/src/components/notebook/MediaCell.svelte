@@ -2,6 +2,7 @@
   import MediaSearchPanel from './MediaSearchPanel.svelte'
   import MediaImageView from './media/MediaImageView.svelte'
   import { buildMediaFact } from '../../lib/media-fact.js'
+  import { BrowserOpenURL } from '../../../wailsjs/runtime/runtime'
 
   export let cell
   export let onChange = () => {}
@@ -19,7 +20,7 @@
   let replacing = false
   let cropping = false
 
-  function replace() { replacing = true }
+  function replace() { replacing = true; cropping = false }
 
   function persist() { onChange(cell) }
 
@@ -47,6 +48,15 @@
   }
 
   function onQuery(q) { cell.query = q; persist() }
+
+  // cell.sourcePage is verbatim provider JSON (Commons' descriptionurl,
+  // Openverse's foreign_landing_url) — remote-controlled text, not a trusted
+  // href. A raw <a target="_blank"> also does nothing under Wails' WebKitGTK
+  // frontend on Linux, which registers no handler for it. Validate the scheme
+  // and hand off to the OS browser instead, matching WebSourcePane.svelte.
+  function openSource() {
+    if (/^https?:\/\//i.test(cell.sourcePage)) BrowserOpenURL(cell.sourcePage)
+  }
 
   function setSubject(e) { cell.subject = e.target.value; persist() }
 
@@ -101,7 +111,7 @@
       </div>
     {/if}
     {#if cell.sourcePage}
-      <div class="me-src"><a href={cell.sourcePage} target="_blank" rel="noreferrer">source</a></div>
+      <div class="me-src"><button class="me-src-btn" on:click={openSource}>source</button></div>
     {/if}
   {/if}
 </div>
@@ -116,7 +126,7 @@
   .me-btn:hover { background: #24334a; }
   .me-empty { padding: 12px; color: #8aa; font-size: 13px; }
   .me-src { padding: 0 8px 8px; font-size: 11px; }
-  .me-src a { color: #6ad; }
+  .me-src-btn { background: none; border: none; padding: 0; color: #6ad; cursor: pointer; font-size: 11px; text-decoration: underline; }
   .me-tools { display: flex; gap: 6px; padding: 0 8px 8px; }
   .me-subj { width: 140px; background: #0b1220; color: #cde; border: 1px solid #2a3a4a; border-radius: 4px; padding: 2px 6px; }
   .me-btn:disabled { opacity: 0.5; cursor: default; }

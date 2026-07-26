@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from 'svelte'
+  import { onMount, onDestroy } from 'svelte'
   import { ListMediaProviders, SearchMedia, FetchMediaURL, ImportImage } from '../../../wailsjs/go/main/App'
 
   export let kind = 'image'
@@ -19,12 +19,22 @@
   let seq = 0               // guards against out-of-order responses
   let pasteURL = ''
 
+  // Guards pick()/fetchPasted()/importFile() the same way `seq` guards
+  // search(): each acquisition captures the current generation, and the
+  // result is applied only if it is still current when the await resolves.
+  // Bumped on teardown (Cancel unmounts this panel) and at the start of every
+  // new acquisition, so a cancelled or superseded fetch can never call
+  // onPick and overwrite the cell out from under the user.
+  let acqGen = 0
+
   onMount(async () => {
     try {
       providers = (await ListMediaProviders()).filter((p) => p.kinds?.includes(kind))
       providerId = providers[0]?.id ?? ''
     } catch (e) { err = String(e?.message ?? e) }
   })
+
+  onDestroy(() => { acqGen++ })
 
   async function search() {
     const q = query.trim()
@@ -52,26 +62,37 @@
     if (fetchingURL) return
     fetchingURL = r.fullUrl
     err = ''
+    const mine = ++acqGen
     try {
       const ref = await FetchMediaURL(r.fullUrl)
+      if (mine !== acqGen) return   // cancelled or superseded while fetching
       onPick({ ...r, provider: providerId }, ref)
     } catch (e) {
+      if (mine !== acqGen) return
       const msg = String(e?.message ?? e)
       err = msg.includes('403')
         ? `${msg} — this host blocks direct downloads. Open the source page and use Paste URL with the real image address.`
         : msg
     } finally {
-      fetchingURL = ''
+      if (mine === acqGen) fetchingURL = ''
     }
   }
 
   async function importFile() {
     err = ''
+    busy = true
+    const mine = ++acqGen
     try {
       const ref = await ImportImage()
+      if (mine !== acqGen) return   // cancelled or superseded while the dialog was open
       if (!ref) return // cancelled
       onPick({ kind, title: '', sourcePage: '', license: '', provider: 'file' }, ref)
-    } catch (e) { err = String(e?.message ?? e) }
+    } catch (e) {
+      if (mine !== acqGen) return
+      err = String(e?.message ?? e)
+    } finally {
+      if (mine === acqGen) busy = false
+    }
   }
 
   async function fetchPasted() {
@@ -79,12 +100,17 @@
     if (!u) return
     err = ''
     busy = true
+    const mine = ++acqGen
     try {
       const ref = await FetchMediaURL(u)
+      if (mine !== acqGen) return   // cancelled or superseded while fetching
       onPick({ kind, title: '', sourcePage: u, license: '', provider: 'url' }, ref)
     } catch (e) {
+      if (mine !== acqGen) return
       err = String(e?.message ?? e)
-    } finally { busy = false }
+    } finally {
+      if (mine === acqGen) busy = false
+    }
   }
 </script>
 
@@ -95,7 +121,7 @@
     </select>
     <input class="ms-q" type="text" placeholder="Search for a picture…"
       bind:value={query} on:input={() => onQuery(query)} on:keydown={onKey} />
-    <button class="ms-btn" on:click={search} disabled={busy || !query.trim()}>
+    <button class="ms-btn" on:click={search} disabled={busy || !query.trim() || !providerId}>
       {busy ? 'Searching…' : 'Search'}
     </button>
   </div>
