@@ -27,9 +27,14 @@ network for TC-5.
    - EXPECT: a thumbnail grid of results appears below; the button reads
      "Searching…" while in flight, then reverts.
 2. Switch the provider dropdown to Openverse.
-   - EXPECT: the panel re-searches automatically (no need to click Search
-     again) and shows a different grid of `apple` results from Openverse.
-3. Switch back to Commons.
+   - EXPECT: switching the provider does not re-search automatically — the
+     Commons results grid from step 1 stays on screen unchanged (there is
+     no reactive re-search wired to the dropdown; only the query box's
+     Enter key and the Search button trigger a search).
+3. Click Search again (or press Enter in the query box).
+   - EXPECT: the grid now shows a different set of `apple` results from
+     Openverse, replacing the Commons grid.
+4. Switch back to Commons and click Search again.
    - EXPECT: results refresh to the Commons grid again.
 
 ## TC-3 Pick and persist; content-addressed dedup
@@ -91,11 +96,17 @@ network for TC-5.
    - EXPECT: an error naming the failed status (e.g. "status 404").
 4. Paste a URL known to hotlink-protect (403 on direct fetch, e.g. certain
    stock-photo or CDN pages) and Fetch.
+   - EXPECT: the error text is the plain underlying error only (e.g.
+     containing "403"), with no added guidance. The Paste URL path
+     (`fetchPasted()`) does not enrich 403s — that enrichment is specific
+     to clicking a search result (see step 5 and "Known limitations"
+     below).
+5. Instead, from a search grid (see TC-2), click the thumbnail of a result
+   known to hotlink-protect (403 on direct fetch).
    - EXPECT: the error text is the enriched 403 message pointing at Paste
-     URL — "…this host blocks direct downloads. Open the source page and use
-     Paste URL with the real image address." (This is the same message a
-     blocked search-result click would show; here it demonstrates the direct
-     paste path hits the same guard.)
+     URL — "…this host blocks direct downloads. Open the source page and
+     use Paste URL with the real image address." (This enrichment applies
+     only to the search-result pick path, not to Paste URL — see step 4.)
 
 ## TC-9 Oversize
 
@@ -129,8 +140,13 @@ network for TC-5.
      from the toolbar.
 5. Enter Crop mode again and perform a very small drag (a few pixels, under
    ~2% of the image in either dimension).
-   - EXPECT: releasing the drag does not apply any crop (the tiny/accidental
-     drag is ignored); the view stays uncropped (or keeps its prior crop).
+   - EXPECT: releasing the drag does not call the crop handler, so the
+     stored crop is unchanged (still cleared, per step 4). The cell does
+     **not** return to the normal filled view — it stays in Crop mode: the
+     uncropped full frame and the "Drag to select a crop." hint remain on
+     screen, and the toolbar still shows "Cancel crop" (not "Crop"). Only
+     clicking "Cancel crop", or completing a drag past the ~2% threshold,
+     leaves Crop mode.
 6. Compare the Media cell's toolbar to the `+ Scan` image cell's toolbar.
    - EXPECT: the Media cell's toolbar has Replace/Crop/Clear crop/Promote to
      N4L but no **Rotate** control; the Scan cell still has Rotate.
@@ -205,3 +221,14 @@ network for TC-5.
      query text/iso toggle, compute cell execution, LLM chat) — the addition
      of the Media cell and the `+ Scan` relabel introduce no regressions in
      any other cell type.
+
+## Known limitations
+
+- **Paste URL 403s carry no enriched guidance.** The "…this host blocks
+  direct downloads. Open the source page and use Paste URL with the real
+  image address." message is produced only by the search-result pick path
+  (`pick()` in `MediaSearchPanel.svelte`). The paste-URL path
+  (`fetchPasted()` in the same file) sets the error from the raw underlying
+  failure with no 403-specific case, so a hotlink-protected pasted URL
+  surfaces only the plain error (e.g. "status 403") with no pointer back to
+  Paste URL. See TC-8 steps 4–5.
