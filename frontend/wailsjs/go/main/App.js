@@ -50,6 +50,10 @@ export function ExplorerReanchor(arg1, arg2, arg3) {
   return window['go']['main']['App']['ExplorerReanchor'](arg1, arg2, arg3);
 }
 
+export function FetchMediaURL(arg1) {
+  return window['go']['main']['App']['FetchMediaURL'](arg1);
+}
+
 export function GetArrowRegistry() {
   return window['go']['main']['App']['GetArrowRegistry']();
 }
@@ -166,6 +170,10 @@ export function ListContextTags() {
   return window['go']['main']['App']['ListContextTags']();
 }
 
+export function ListMediaProviders() {
+  return window['go']['main']['App']['ListMediaProviders']();
+}
+
 export function OpenCollection(arg1) {
   return window['go']['main']['App']['OpenCollection'](arg1);
 }
@@ -224,6 +232,10 @@ export function SaveSTTProfile(arg1) {
 
 export function SearchGraph(arg1) {
   return window['go']['main']['App']['SearchGraph'](arg1);
+}
+
+export function SearchMedia(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['SearchMedia'](arg1, arg2, arg3, arg4);
 }
 
 export function SetActiveProfile(arg1) {

@@ -258,6 +258,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -312,11 +313,11 @@ func TestCommonsSearchNormalizes(t *testing.T) {
 		t.Errorf("result =\n %+v\nwant\n %+v", got[0], want)
 	}
 	for _, sub := range []string{"gsrsearch=apple", "gsrnamespace=6", "gsrlimit=24", "formatversion=2"} {
-		if !contains(gotQuery, sub) {
+		if !strings.Contains(gotQuery, sub) {
 			t.Errorf("query %q missing %q", gotQuery, sub)
 		}
 	}
-	if !contains(gotUA, "texere") {
+	if !strings.Contains(gotUA, "texere") {
 		t.Errorf("User-Agent = %q, want it to identify texere", gotUA)
 	}
 }
@@ -351,15 +352,6 @@ func TestCommonsRejectsUnsupportedKind(t *testing.T) {
 	if _, err := Commons{BaseURL: "http://unused"}.Search(context.Background(), "apple", "audio", 24); err == nil {
 		t.Fatal("expected error for kind=audio, got nil")
 	}
-}
-
-func contains(s, sub string) bool {
-	for i := 0; i+len(sub) <= len(s); i++ {
-		if s[i:i+len(sub)] == sub {
-			return true
-		}
-	}
-	return false
 }
 ```
 
@@ -573,6 +565,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -629,7 +622,7 @@ func TestOpenverseSearchNormalizes(t *testing.T) {
 		t.Errorf("license = %q, want %q", got[1].License, "CC CC0")
 	}
 	for _, sub := range []string{"q=apple", "page_size=24"} {
-		if !contains(gotQuery, sub) {
+		if !strings.Contains(gotQuery, sub) {
 			t.Errorf("query %q missing %q", gotQuery, sub)
 		}
 	}
@@ -1164,6 +1157,7 @@ Create `frontend/src/components/notebook/media/MediaImageView.svelte`:
   import { imageStyles } from '../../../lib/image-view.js'
 
   export let cell
+  export let onMeta = () => {}   // (w, h) => record and persist the intrinsic size
 
   let missing = false
 
@@ -1172,10 +1166,10 @@ Create `frontend/src/components/notebook/media/MediaImageView.svelte`:
 
   function onLoad(e) {
     missing = false
+    // Persisted so imageStyles is correct on first paint after a reload, rather
+    // than only once the image has loaded. Same behaviour as ImageCell.
     if (!cell.naturalW || !cell.naturalH) {
-      cell.naturalW = e.target.naturalWidth
-      cell.naturalH = e.target.naturalHeight
-      cell = cell
+      onMeta(e.target.naturalWidth, e.target.naturalHeight)
     }
   }
 </script>
@@ -1358,6 +1352,13 @@ Replace the body of `frontend/src/components/notebook/MediaCell.svelte`:
   }
 
   function onQuery(q) { cell.query = q; persist() }
+
+  function onMeta(w, h) {
+    cell.naturalW = w
+    cell.naturalH = h
+    cell = cell
+    persist()
+  }
 </script>
 
 <div class="me-cell">
@@ -1375,7 +1376,7 @@ Replace the body of `frontend/src/components/notebook/MediaCell.svelte`:
       <MediaSearchPanel kind={cell.kind} query={cell.query} {onQuery} {onPick} />
     {/if}
   {:else}
-    <svelte:component this={views[cell.kind]} {cell} />
+    <svelte:component this={views[cell.kind]} {cell} {onMeta} />
     {#if cell.sourcePage}
       <div class="me-src"><a href={cell.sourcePage} target="_blank" rel="noreferrer">source</a></div>
     {/if}
@@ -1577,6 +1578,7 @@ Replace `frontend/src/components/notebook/media/MediaImageView.svelte`:
   export let cell
   export let cropping = false
   export let onCrop = () => {}   // ({x,y,w,h}) => void
+  export let onMeta = () => {}   // (w, h) => record and persist the intrinsic size
 
   let missing = false
   let imgEl
@@ -1593,9 +1595,7 @@ Replace `frontend/src/components/notebook/media/MediaImageView.svelte`:
   function onLoad(e) {
     missing = false
     if (!cell.naturalW || !cell.naturalH) {
-      cell.naturalW = e.target.naturalWidth
-      cell.naturalH = e.target.naturalHeight
-      cell = cell
+      onMeta(e.target.naturalWidth, e.target.naturalHeight)
     }
   }
 
@@ -1667,7 +1667,7 @@ In `MediaCell.svelte`, add state and handlers:
 Pass the props through to the view — replace the `<svelte:component>` line:
 
 ```svelte
-    <svelte:component this={views[cell.kind]} {cell} {cropping} onCrop={applyCrop} />
+    <svelte:component this={views[cell.kind]} {cell} {cropping} {onMeta} onCrop={applyCrop} />
 ```
 
 Add the toolbar immediately after that line:
@@ -1738,19 +1738,19 @@ import { buildMediaFact } from './media-fact.js'
 test('builds a has-picture fact from subject and asset', () => {
   assert.equal(
     buildMediaFact({ subject: 'manzana', asset: 'a3f9c1.jpg' }),
-    'manzana\n    has picture   media/a3f9c1.jpg\n')
+    'manzana\n"  (pic) media/a3f9c1.jpg\n')
 })
 
 test('a multi-word subject is preserved verbatim', () => {
   assert.equal(
     buildMediaFact({ subject: 'red delicious apple', asset: 'b7.png' }),
-    'red delicious apple\n    has picture   media/b7.png\n')
+    'red delicious apple\n"  (pic) media/b7.png\n')
 })
 
 test('subject is trimmed', () => {
   assert.equal(
     buildMediaFact({ subject: '  manzana  ', asset: 'a3.jpg' }),
-    'manzana\n    has picture   media/a3.jpg\n')
+    'manzana\n"  (pic) media/a3.jpg\n')
 })
 
 test('an empty subject yields an empty string, not a malformed fact', () => {
@@ -1793,15 +1793,15 @@ Create `frontend/src/lib/media-fact.js`:
 // The asset path is collection-relative (`media/<hash>.<ext>`), not absolute and
 // not a file:// URL, so a collection stays portable when moved or shared.
 
-// N4L arrow declared in SSTconfig/arrows-EP-3.sst. Undeclared arrows still work
-// (internal/content/unknown_arrows.go synthesizes them), but declaring it gives
-// the relation a proper type and reverse name.
-const PICTURE_ARROW = 'has picture'
+// N4L references arrows by their short CODE, not their long name — the code
+// is the `(pic)` token in SSTconfig/arrows-EP-3.sst, which declares long name
+// "has picture" / reverse "is a picture of" for it.
+const PICTURE_ARROW = 'pic'
 
 export function buildMediaFact({ subject, asset }) {
   const s = (subject ?? '').trim()
   if (!s || !asset) return ''
-  return `${s}\n    ${PICTURE_ARROW}   media/${asset}\n`
+  return `${s}\n"  (${PICTURE_ARROW}) media/${asset}\n`
 }
 ```
 
@@ -1852,7 +1852,7 @@ Run: `make dev`
 2. *Promote to N4L* → an N4L draft cell appears directly below containing:
    ```
    manzana
-       has picture   media/<hash>.jpg
+   "  (pic) media/<hash>.jpg
    ```
 3. Edit the subject to `manzana roja`, promote again → the new draft uses the edited subject.
 4. Clear the subject → *Promote to N4L* is disabled.
@@ -1875,7 +1875,7 @@ git commit -m "feat(notebook): promote a media cell to a 'has picture' N4L fact"
 - Create: `docs/superpowers/specs/2026-07-25-media-cell-slice1-manual-test-plan.md`
 
 **Interfaces:**
-- Consumes: the `has picture` arrow string from `lib/media-fact.js` (Task 9). The two must match exactly.
+- Consumes: the arrow **code** `pic` emitted by `lib/media-fact.js` (Task 9). N4L references arrows by code, not long name, so the code in the emitter and the code declared here must match exactly.
 
 - [ ] **Step 1: Declare the arrow**
 
@@ -1936,7 +1936,7 @@ git commit -m "feat(config): declare 'has picture' arrow; docs: media cell slice
 
 **Spec coverage.** Every section of the design maps to a task: `internal/mediasearch` and both providers → Tasks 2–3; `media.FetchRemote` → Task 1; the three bindings incl. `ProviderInfo{ID,Name,Kinds}` → Task 4; `MediaCell` / `MediaSearchPanel` / `MediaImageView` / kind→component map → Tasks 5–6; the full cell shape incl. reserved `embedURL` → Task 5; `+ Media` and the `+ Scan` relabel with `type` strings unchanged → Task 5; paste-URL as a peer path → Task 7; crop-in / rotate-out → Task 8; `buildMediaFact` and promotion via `onInsert` → Task 9; the `has picture` arrow → Task 10. Error handling is distributed to where it occurs: empty-vs-error states and stale-search cancellation in Task 6, the 403 hotlink message and fetch failures in Tasks 6–7, missing-asset render in Task 6, no-collection in Task 4. Testing matches the spec: Go `httptest` suites in Tasks 1–4, the `buildMediaFact` JS suite in Task 9, the manual plan in Task 10. Nothing in the spec's out-of-scope list appears in any task.
 
-**Type consistency.** `Result` field names are identical across the two providers, both test fixtures, the binding signature, and the Svelte consumers (`r.thumbUrl`, `r.fullUrl` — camelCase per the JSON tags, since Wails marshals through them). `Asset{Name, Mime}` is the existing type, unchanged. `FetchMediaURL` returns `{asset, mime}`, matching `ImportImage` so `onPick` handles both paths identically. `buildMediaFact`'s `'has picture'` matches the arrow declared in Task 10.
+**Type consistency.** `Result` field names are identical across the two providers, both test fixtures, the binding signature, and the Svelte consumers (`r.thumbUrl`, `r.fullUrl` — camelCase per the JSON tags, since Wails marshals through them). `Asset{Name, Mime}` is the existing type, unchanged. `FetchMediaURL` returns `{asset, mime}`, matching `ImportImage` so `onPick` handles both paths identically. `buildMediaFact` emits the arrow **code** `pic`, matching the code declared in Task 10 — N4L's registry is keyed by code, so emitting the long name `has picture` would parse as plain text and create no relation at all.
 
 **One deliberate forward reference:** Task 6 writes `cell.provider = result.provider ?? cell.provider` against a field the panel does not yet send, and Task 7 supplies it. This is called out inline in Task 6 Step 3, and the `??` makes the intermediate state correct rather than merely harmless.
 

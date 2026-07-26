@@ -9,8 +9,9 @@
 Add a **Media cell** to the processing notebook: search the web for a picture,
 pick one, and it is fetched, content-addressed, and stored in the collection's
 `media/` directory like any other asset. A **Promote to N4L** action writes a
-fact referencing the asset (`<subject>` — `has picture` → `media/<hash>.jpg`)
-into an N4L draft cell below, using the notebook's existing insert path.
+fact referencing the asset (`<subject>` — `pic` ("has picture") →
+`media/<hash>.jpg`) into an N4L draft cell below, using the notebook's
+existing insert path.
 
 This slice covers **images only**. The cell is designed to grow pronunciation
 audio and video in later slices; the acquisition pipeline is type-agnostic by
@@ -204,8 +205,12 @@ the EP ("expresses") spacetime type. Declaring it buys clean typing;
 
 ```n4l
 manzana
-    has picture   media/a3f9c1….jpg
+"  (pic) media/a3f9c1….jpg
 ```
+
+(subject line, then a ditto continuation line — `"`, two spaces, the arrow
+code in parens, one space, the target — which is how N4L arrows are actually
+referenced; an indented long name does not parse as a fact.)
 
 `subject` is editable before promoting. Pushing that draft to a file uses the
 push flow that already exists — this slice adds no write path.

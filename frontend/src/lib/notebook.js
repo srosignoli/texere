@@ -6,6 +6,7 @@ import ComputeCell from '../components/notebook/ComputeCell.svelte'
 import SketchCell from '../components/notebook/SketchCell.svelte'
 import ImageCell from '../components/notebook/ImageCell.svelte'
 import AudioCell from '../components/notebook/AudioCell.svelte'
+import MediaCell from '../components/notebook/MediaCell.svelte'
 
 let seq = 0
 export function newDraftCell(text = '') {
@@ -43,6 +44,22 @@ export function newAudioCell() {
   return { id: `cell-${Date.now()}-${seq}`, type: 'audio', asset: '', mime: '', durationMs: 0 }
 }
 
+// Media cell: a study asset (picture now; pronunciation and video later) found
+// by web search, pasted URL, or file import. `kind` discriminates the render;
+// `embedURL` is reserved for video, which is referenced rather than stored, so
+// adding it later needs no migration of saved notebooks.
+export function newMediaCell() {
+  seq += 1
+  return {
+    id: `cell-${Date.now()}-${seq}`, type: 'media',
+    kind: 'image',
+    asset: '', mime: '', embedURL: '',
+    crop: null, naturalW: 0, naturalH: 0,
+    query: '', subject: '',
+    provider: '', sourcePage: '', license: '',
+  }
+}
+
 // type -> Svelte component. Later slices add: image.
 export const cellRegistry = {
   context: ContextCell,
@@ -53,4 +70,5 @@ export const cellRegistry = {
   sketch: SketchCell,
   image: ImageCell,
   audio: AudioCell,
+  media: MediaCell,
 }
