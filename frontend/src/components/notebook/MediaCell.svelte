@@ -34,6 +34,9 @@
     cell.license = result.license ?? ''
     // The thing you searched for is the thing the fact will be about.
     if (!cell.subject) cell.subject = cell.query.trim()
+    // A crop is fractions of the OLD frame; carrying it onto a differently
+    // framed picture silently mis-crops it, so drop it with the asset.
+    cell.crop = null
     cell.naturalW = 0
     cell.naturalH = 0
     cell = cell
