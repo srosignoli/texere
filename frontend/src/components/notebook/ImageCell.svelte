@@ -47,8 +47,14 @@
   }
   function enterCrop() { cropping = true; sel = null }
   function cancelCrop() { cropping = false; sel = null; dragging = false }
+  // Applied on drag-release rather than via a confirm button, matching the
+  // media cell. A drag under 2% in either axis is ignored so a stray click
+  // cannot collapse the view; crop mode is kept in that case so the user can
+  // simply drag again.
   function applyCrop() {
-    if (sel && sel.w > 0.02 && sel.h > 0.02) { cell.crop = { ...sel }; persist() }
+    if (!sel || sel.w <= 0.02 || sel.h <= 0.02) return
+    cell.crop = { ...sel }
+    persist()
     cancelCrop()
   }
 
@@ -68,7 +74,12 @@
       w: Math.abs(p.x - start.x), h: Math.abs(p.y - start.y),
     }
   }
-  function up() { dragging = false }
+  function up() {
+    if (!dragging) return
+    dragging = false
+    applyCrop()
+    sel = null // clear the rubber band whether or not the drag was applied
+  }
 </script>
 
 <div class="im-cell">
@@ -77,7 +88,6 @@
       <button on:click={() => rotate(-90)} title="Rotate left">↶</button>
       <button on:click={() => rotate(90)} title="Rotate right">↷</button>
       {#if cropping}
-        <button on:click={applyCrop} title="Apply crop">✓ Apply</button>
         <button on:click={cancelCrop} title="Cancel crop">✕ Cancel</button>
       {:else}
         <button on:click={enterCrop} title="Crop">⛶ Crop</button>
@@ -102,6 +112,7 @@
           <div class="im-sel" style="left:{sel.x * 100}%;top:{sel.y * 100}%;width:{sel.w * 100}%;height:{sel.h * 100}%;"></div>
         {/if}
       </div>
+      <div class="im-hint">Drag to select a crop.</div>
     </div>
   {:else}
     <div class="im-view" style={styles.viewport}>
@@ -127,4 +138,5 @@
   .im-cropwrap { touch-action: none; cursor: crosshair; }
   .im-sel { position: absolute; border: 1.5px solid #7dd3fc; background: rgba(125, 211, 252, 0.15); pointer-events: none; }
   .im-missing { padding: 20px; color: #ff8080; font-size: 13px; }
+  .im-hint { padding: 4px 8px 8px; color: #6b7a8a; font-size: 11px; }
 </style>
