@@ -169,12 +169,12 @@ network for TC-5.
      containing exactly:
      ```
      manzana
-         has picture   media/<assetname>.jpg
+     "  (pic) media/<assetname>.jpg
      ```
-     (subject line, then a line indented 4 spaces with `has picture`, three
-     spaces, then `media/<asset>`, matching `buildMediaFact`'s output
-     verbatim — no extra whitespace or trailing content beyond the final
-     newline).
+     (subject line, then a ditto continuation line — `"`, two spaces, the
+     `pic` arrow code in parens, one space, then `media/<asset>` — matching
+     `buildMediaFact`'s output verbatim — no extra whitespace or trailing
+     content beyond the final newline).
 
 ## TC-13 Push and graph
 

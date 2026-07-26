@@ -1738,19 +1738,19 @@ import { buildMediaFact } from './media-fact.js'
 test('builds a has-picture fact from subject and asset', () => {
   assert.equal(
     buildMediaFact({ subject: 'manzana', asset: 'a3f9c1.jpg' }),
-    'manzana\n    has picture   media/a3f9c1.jpg\n')
+    'manzana\n"  (pic) media/a3f9c1.jpg\n')
 })
 
 test('a multi-word subject is preserved verbatim', () => {
   assert.equal(
     buildMediaFact({ subject: 'red delicious apple', asset: 'b7.png' }),
-    'red delicious apple\n    has picture   media/b7.png\n')
+    'red delicious apple\n"  (pic) media/b7.png\n')
 })
 
 test('subject is trimmed', () => {
   assert.equal(
     buildMediaFact({ subject: '  manzana  ', asset: 'a3.jpg' }),
-    'manzana\n    has picture   media/a3.jpg\n')
+    'manzana\n"  (pic) media/a3.jpg\n')
 })
 
 test('an empty subject yields an empty string, not a malformed fact', () => {
@@ -1793,15 +1793,15 @@ Create `frontend/src/lib/media-fact.js`:
 // The asset path is collection-relative (`media/<hash>.<ext>`), not absolute and
 // not a file:// URL, so a collection stays portable when moved or shared.
 
-// N4L arrow declared in SSTconfig/arrows-EP-3.sst. Undeclared arrows still work
-// (internal/content/unknown_arrows.go synthesizes them), but declaring it gives
-// the relation a proper type and reverse name.
-const PICTURE_ARROW = 'has picture'
+// N4L references arrows by their short CODE, not their long name — the code
+// is the `(pic)` token in SSTconfig/arrows-EP-3.sst, which declares long name
+// "has picture" / reverse "is a picture of" for it.
+const PICTURE_ARROW = 'pic'
 
 export function buildMediaFact({ subject, asset }) {
   const s = (subject ?? '').trim()
   if (!s || !asset) return ''
-  return `${s}\n    ${PICTURE_ARROW}   media/${asset}\n`
+  return `${s}\n"  (${PICTURE_ARROW}) media/${asset}\n`
 }
 ```
 
@@ -1852,7 +1852,7 @@ Run: `make dev`
 2. *Promote to N4L* → an N4L draft cell appears directly below containing:
    ```
    manzana
-       has picture   media/<hash>.jpg
+   "  (pic) media/<hash>.jpg
    ```
 3. Edit the subject to `manzana roja`, promote again → the new draft uses the edited subject.
 4. Clear the subject → *Promote to N4L* is disabled.
