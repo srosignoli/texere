@@ -1875,7 +1875,7 @@ git commit -m "feat(notebook): promote a media cell to a 'has picture' N4L fact"
 - Create: `docs/superpowers/specs/2026-07-25-media-cell-slice1-manual-test-plan.md`
 
 **Interfaces:**
-- Consumes: the `has picture` arrow string from `lib/media-fact.js` (Task 9). The two must match exactly.
+- Consumes: the arrow **code** `pic` emitted by `lib/media-fact.js` (Task 9). N4L references arrows by code, not long name, so the code in the emitter and the code declared here must match exactly.
 
 - [ ] **Step 1: Declare the arrow**
 
@@ -1936,7 +1936,7 @@ git commit -m "feat(config): declare 'has picture' arrow; docs: media cell slice
 
 **Spec coverage.** Every section of the design maps to a task: `internal/mediasearch` and both providers → Tasks 2–3; `media.FetchRemote` → Task 1; the three bindings incl. `ProviderInfo{ID,Name,Kinds}` → Task 4; `MediaCell` / `MediaSearchPanel` / `MediaImageView` / kind→component map → Tasks 5–6; the full cell shape incl. reserved `embedURL` → Task 5; `+ Media` and the `+ Scan` relabel with `type` strings unchanged → Task 5; paste-URL as a peer path → Task 7; crop-in / rotate-out → Task 8; `buildMediaFact` and promotion via `onInsert` → Task 9; the `has picture` arrow → Task 10. Error handling is distributed to where it occurs: empty-vs-error states and stale-search cancellation in Task 6, the 403 hotlink message and fetch failures in Tasks 6–7, missing-asset render in Task 6, no-collection in Task 4. Testing matches the spec: Go `httptest` suites in Tasks 1–4, the `buildMediaFact` JS suite in Task 9, the manual plan in Task 10. Nothing in the spec's out-of-scope list appears in any task.
 
-**Type consistency.** `Result` field names are identical across the two providers, both test fixtures, the binding signature, and the Svelte consumers (`r.thumbUrl`, `r.fullUrl` — camelCase per the JSON tags, since Wails marshals through them). `Asset{Name, Mime}` is the existing type, unchanged. `FetchMediaURL` returns `{asset, mime}`, matching `ImportImage` so `onPick` handles both paths identically. `buildMediaFact`'s `'has picture'` matches the arrow declared in Task 10.
+**Type consistency.** `Result` field names are identical across the two providers, both test fixtures, the binding signature, and the Svelte consumers (`r.thumbUrl`, `r.fullUrl` — camelCase per the JSON tags, since Wails marshals through them). `Asset{Name, Mime}` is the existing type, unchanged. `FetchMediaURL` returns `{asset, mime}`, matching `ImportImage` so `onPick` handles both paths identically. `buildMediaFact` emits the arrow **code** `pic`, matching the code declared in Task 10 — N4L's registry is keyed by code, so emitting the long name `has picture` would parse as plain text and create no relation at all.
 
 **One deliberate forward reference:** Task 6 writes `cell.provider = result.provider ?? cell.provider` against a field the panel does not yet send, and Task 7 supplies it. This is called out inline in Task 6 Step 3, and the `??` makes the intermediate state correct rather than merely harmless.
 

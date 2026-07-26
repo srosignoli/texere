@@ -74,7 +74,11 @@
         ? `${msg} — this host blocks direct downloads. Open the source page and use Paste URL with the real image address.`
         : msg
     } finally {
-      if (mine === acqGen) fetchingURL = ''
+      // Cleared unconditionally: pick() is already self-exclusive via the
+      // guard above, so no later pick can be relying on this value. Gating the
+      // clear on the generation would strand it forever once superseded,
+      // leaving the grid permanently unclickable.
+      fetchingURL = ''
     }
   }
 
