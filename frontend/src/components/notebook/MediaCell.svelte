@@ -1,6 +1,7 @@
 <script>
   import MediaSearchPanel from './MediaSearchPanel.svelte'
   import MediaImageView from './media/MediaImageView.svelte'
+  import { buildMediaFact } from '../../lib/media-fact.js'
 
   export let cell
   export let onChange = () => {}
@@ -47,6 +48,14 @@
 
   function onQuery(q) { cell.query = q; persist() }
 
+  function setSubject(e) { cell.subject = e.target.value; persist() }
+
+  function promote() {
+    const text = buildMediaFact(cell)
+    if (!text) return
+    onInsert(text)
+  }
+
   function onMeta(w, h) {
     cell.naturalW = w
     cell.naturalH = h
@@ -85,6 +94,10 @@
           <button class="me-btn" on:click={() => (cropping = true)}>Crop</button>
         {/if}
         {#if cell.crop}<button class="me-btn" on:click={clearCrop}>Clear crop</button>{/if}
+        <span class="me-spacer"></span>
+        <input class="me-subj" type="text" placeholder="subject" value={cell.subject}
+          on:input={setSubject} title="The N4L node this picture is about" />
+        <button class="me-btn" on:click={promote} disabled={!cell.subject.trim()}>Promote to N4L</button>
       </div>
     {/if}
     {#if cell.sourcePage}
@@ -105,4 +118,6 @@
   .me-src { padding: 0 8px 8px; font-size: 11px; }
   .me-src a { color: #6ad; }
   .me-tools { display: flex; gap: 6px; padding: 0 8px 8px; }
+  .me-subj { width: 140px; background: #0b1220; color: #cde; border: 1px solid #2a3a4a; border-radius: 4px; padding: 2px 6px; }
+  .me-btn:disabled { opacity: 0.5; cursor: default; }
 </style>
