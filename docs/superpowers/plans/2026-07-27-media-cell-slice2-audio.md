@@ -703,7 +703,7 @@ git commit -m "feat(mediasearch): Lingua Libre pronunciation provider"
   - `Providers()` returns four providers: `Commons`, `Openverse`, `Pronunciation`, `CommonsAudio`.
   - `(a *App) ListLanguages() []mediasearch.Language`.
 
-`CommonsAudio` reuses `llResponse` — the shape is identical — and applies no filtering. Its titles are ordinary Commons filenames, so `parseLinguaLibre` returns empty lang/speaker and the name as the label, which is the right display for them.
+`CommonsAudio` reuses `llResponse` — the shape is identical — and applies no filtering. Its titles are ordinary Commons filenames, not Lingua Libre ones, so it does **not** call `parseLinguaLibre`: it strips the extension directly and leaves `Lang` and `Speaker` empty.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -840,6 +840,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"path"
 	"strconv"
 	"strings"
 )
@@ -880,9 +881,10 @@ func (c CommonsAudio) Search(ctx context.Context, query, kind string, limit int)
 		}
 		ii := pg.ImageInfo[0]
 		name := strings.TrimPrefix(pg.Title, "File:")
-		// These are ordinary Commons names, so no language or speaker is
-		// inferred; the label is the filename without its extension.
-		_, _, label := parseLinguaLibre(name, "")
+		// These are ordinary Commons names, not Lingua Libre ones, so no
+		// language or speaker is inferred and the label is simply the filename
+		// without its extension. Lang and Speaker are deliberately left empty.
+		label := strings.TrimSuffix(name, path.Ext(name))
 		out = append(out, Result{
 			Kind:       "audio",
 			FullURL:    ii.URL,
@@ -1354,19 +1356,99 @@ git commit -m "feat(notebook): media cell kind toggle + pronunciation language c
 ### Task 7: Audio result rows with in-place preview
 
 **Files:**
+- Create: `frontend/src/lib/media-error.js`
+- Create: `frontend/src/lib/media-error.test.js`
 - Modify: `frontend/src/components/notebook/MediaSearchPanel.svelte`
 
 **Interfaces:**
 - Consumes: `Result`'s `lang`, `speaker`, `mime`, `durationMs` (Task 1).
-- Produces: nothing consumed by later tasks.
+- Produces: `mediaErrorMessage(err, what)` from `frontend/src/lib/media-error.js` — **Task 8 imports this**, so the name and signature are contract.
+
+The `MediaError` wording is needed in two places (this task's preview and Task 8's player), so it lives in one module rather than being written twice. `AudioCell.svelte` has its own third copy and is deliberately left alone — it is off-limits per the global constraints, and touching it is out of scope for this slice.
 
 Audio has no thumbnail, so the grid becomes a list and each row carries a ▶ that streams the candidate directly from `upload.wikimedia.org` — which serves media without hotlink protection, as the image thumbnails already demonstrate. A single shared `<audio>` element is used so only one clip can play at a time.
 
 The format label matters: `commons-audio` returns `.ogg`, which WebKitGTK often cannot decode, and that should be visible before clicking rather than discovered as a dead button.
 
-- [ ] **Step 1: Add preview state and helpers**
+- [ ] **Step 1: Write the failing test for the shared error helper**
 
-In the script, beside the other state:
+Create `frontend/src/lib/media-error.test.js`:
+
+```js
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { mediaErrorMessage } from './media-error.js'
+
+// MediaError 3 (DECODE) and 4 (SRC_NOT_SUPPORTED) mean the format cannot be
+// played here — WebKitGTK/WSLg frequently lacks the codecs for .ogg. Reporting
+// that as "not found" would send the user hunting for the wrong problem.
+test('codec failures name the format, not a missing file', () => {
+  for (const code of [3, 4]) {
+    const msg = mediaErrorMessage({ code })
+    assert.match(msg, /format\/codec not supported/)
+    assert.match(msg, new RegExp(`MediaError ${code}`))
+  }
+})
+
+test('a network failure is reported as a load failure', () => {
+  assert.match(mediaErrorMessage({ code: 2 }), /failed to load/)
+})
+
+test('an unknown or absent error still produces a message', () => {
+  assert.match(mediaErrorMessage({ code: 0 }), /MediaError 0/)
+  assert.match(mediaErrorMessage(null), /MediaError 0/)
+  assert.match(mediaErrorMessage(undefined), /MediaError 0/)
+})
+
+test('the subject noun is configurable', () => {
+  assert.match(mediaErrorMessage({ code: 2 }, 'Preview'), /^Preview/)
+})
+```
+
+- [ ] **Step 2: Run it to verify it fails**
+
+Run: `make test-js`
+Expected: FAIL — `Cannot find module '.../frontend/src/lib/media-error.js'`.
+
+- [ ] **Step 3: Write the shared helper**
+
+Create `frontend/src/lib/media-error.js`:
+
+```js
+// Turns an HTMLMediaElement's MediaError into a message that names the real
+// cause. Shared by the media cell's search preview and its audio player, so the
+// wording cannot drift between them.
+//
+// Codes 3 (DECODE) and 4 (SRC_NOT_SUPPORTED) mean this webview cannot play the
+// format — common for .ogg under WebKitGTK/WSLg — which is a completely
+// different remedy from a file that failed to load.
+export function mediaErrorMessage(err, what = 'Audio') {
+  const code = err?.code ?? 0
+  if (code === 3 || code === 4) {
+    return `${what}: format/codec not supported in this webview (MediaError ${code}).`
+  }
+  if (code === 2) {
+    return `${what} failed to load (MediaError ${code}).`
+  }
+  return `${what} error (MediaError ${code}).`
+}
+```
+
+- [ ] **Step 4: Run it to verify it passes**
+
+Run: `make test-js`
+Expected: PASS — four `media-error` tests plus the pre-existing suites.
+
+- [ ] **Step 5: Add preview state and helpers**
+
+In `MediaSearchPanel.svelte`, extend the Svelte import to include `tick`, and import the helper:
+
+```js
+  import { onMount, onDestroy, tick } from 'svelte'
+  import { mediaErrorMessage } from '../../lib/media-error.js'
+```
+
+Then, beside the other state:
 
 ```js
   let previewURL = ''     // FullURL of the row currently previewing
@@ -1384,26 +1466,21 @@ In the script, beside the other state:
     return s.replace(/^x-/, '')
   }
 
-  function togglePreview(r) {
+  async function togglePreview(r) {
     previewErr = ''
     if (previewURL === r.fullUrl) { audioEl?.pause(); previewURL = ''; return }
     previewURL = r.fullUrl
-    // Let the src bind apply before playing.
-    setTimeout(() => audioEl?.play().catch(() => {}), 0)
+    await tick() // let the src binding apply before playing
+    audioEl?.play().catch(() => {})
   }
 
-  // Distinguish a load failure from a codec failure: WebKitGTK/WSLg frequently
-  // lacks the codecs for .ogg, and a silently dead button is the worst outcome.
   function onPreviewError(e) {
-    const code = e.target?.error?.code ?? 0
-    previewErr = code === 3 || code === 4
-      ? `Can’t play this format in this webview (MediaError ${code}).`
-      : `Preview failed to load (MediaError ${code}).`
+    previewErr = mediaErrorMessage(e.target?.error, 'Preview')
     previewURL = ''
   }
 ```
 
-- [ ] **Step 2: Branch the results markup by kind**
+- [ ] **Step 6: Branch the results markup by kind**
 
 Replace the `{:else if results.length}` branch so images keep the tile grid and audio gets rows:
 
@@ -1441,7 +1518,7 @@ Replace the `{:else if results.length}` branch so images keep the tile grid and 
   {/if}
 ```
 
-- [ ] **Step 3: Add the row styles**
+- [ ] **Step 7: Add the row styles**
 
 ```css
   .ms-rows { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; max-height: 320px; overflow-y: auto; }
@@ -1455,7 +1532,7 @@ Replace the `{:else if results.length}` branch so images keep the tile grid and 
   .ms-meta { font-size: 11px; color: #8aa; }
 ```
 
-- [ ] **Step 4: Stop playback when the panel goes away**
+- [ ] **Step 8: Stop playback when the panel goes away**
 
 An `onDestroy` already exists at line 37 for the acquisition-generation guard. Add the pause to **that** callback rather than registering a second one, so a preview cannot outlive the panel:
 
@@ -1463,15 +1540,15 @@ An `onDestroy` already exists at line 37 for the acquisition-generation guard. A
   onDestroy(() => { acqGen++; audioEl?.pause() })
 ```
 
-- [ ] **Step 5: Verify the build**
+- [ ] **Step 9: Verify the build and the tests**
 
-Run: `cd frontend && npx vite build`
-Expected: succeeds. Preview behaviour needs a GUI and is covered by the manual pass.
+Run: `cd frontend && npx vite build` then `make test-js` from the repo root.
+Expected: build succeeds; JS tests pass. Preview behaviour needs a GUI and is covered by the manual pass.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 10: Commit**
 
 ```bash
-git add frontend/src/components/notebook/MediaSearchPanel.svelte
+git add frontend/src/lib/media-error.js frontend/src/lib/media-error.test.js frontend/src/components/notebook/MediaSearchPanel.svelte
 git commit -m "feat(notebook): audio result rows with in-place preview"
 ```
 
@@ -1484,8 +1561,10 @@ git commit -m "feat(notebook): audio result rows with in-place preview"
 - Modify: `frontend/src/components/notebook/MediaCell.svelte`
 
 **Interfaces:**
-- Consumes: the `views` kind→component map in `MediaCell` (slice 1).
+- Consumes: the `views` kind→component map in `MediaCell` (slice 1); `mediaErrorMessage(err, what)` from `frontend/src/lib/media-error.js` (Task 7).
 - Produces: `views.audio = MediaAudioView`.
+
+Do **not** re-implement the `MediaError` wording here — import it. Task 7 created the shared module precisely so the preview and the player cannot drift apart.
 
 `MediaAudioView` takes only `cell`. It must tolerate the `cropping`, `onCrop`, and `onMeta` props that `MediaCell` passes to whichever view is mounted — Svelte warns about unknown props but does not fail, and declaring the unused ones keeps the console clean, matching how other cells declare unused shared props.
 
@@ -1495,6 +1574,8 @@ Create `frontend/src/components/notebook/media/MediaAudioView.svelte`:
 
 ```svelte
 <script>
+  import { mediaErrorMessage } from '../../../lib/media-error.js'
+
   export let cell
   export let cropping = false  // unused; images only
   export let onCrop = () => {} // unused; images only
@@ -1505,14 +1586,12 @@ Create `frontend/src/components/notebook/media/MediaAudioView.svelte`:
 
   $: src = `/media/${cell.asset}`
 
-  // Distinguish a fetch/404 from a decode failure: WebKitGTK/WSLg often lacks
-  // the codecs for .ogg, and "not found" would be a misleading message.
+  // Shared with the search preview so the wording cannot drift. It separates a
+  // decode failure (WebKitGTK/WSLg often lacks .ogg codecs) from a load
+  // failure, because "not found" would send the user after the wrong problem.
   function onAudioError(e) {
     missing = true
-    const code = e.target?.error?.code ?? 0
-    if (code === 3 || code === 4) playErr = `Can’t play this audio in this webview — format/codec not supported here (MediaError ${code}).`
-    else if (code === 2) playErr = `Audio failed to load (MediaError ${code}).`
-    else playErr = `Audio error (MediaError ${code}).`
+    playErr = mediaErrorMessage(e.target?.error)
   }
 </script>
 
