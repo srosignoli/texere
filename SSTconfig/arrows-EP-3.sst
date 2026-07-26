@@ -20,6 +20,7 @@
  + has no example    (noex)         - is not an example of (not-ex)
  + has abbreviation  (abbrev)       - is short for         (short for)
  + has name          (name)         - is the name of       (nom-de)
+ + has picture       (pic)          - is a picture of      (pic-of)
  + has version       (version)      - is a version of      (is-version)
  + has status        (status)       - is the status of     (status-of)
  + has data          (data)         - is data for          (data-for)
