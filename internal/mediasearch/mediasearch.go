@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -37,6 +38,9 @@ type Provider interface {
 const (
 	searchTimeout  = 15 * time.Second
 	searchMaxBytes = 4 << 20 // 4 MB of JSON is far beyond any sane response
+	// errBodyMaxBytes caps how much of a failed response is quoted back in the
+	// error — enough to carry the provider's explanation, not a whole page.
+	errBodyMaxBytes = 512
 	// searchUserAgent identifies texere to remote APIs. Go's default is 403'd
 	// by Wikimedia, whose API policy requires an identifying agent.
 	searchUserAgent = "texere/1.0 (+https://github.com/srosignoli/texere) media-search"
@@ -59,6 +63,13 @@ func getJSON(ctx context.Context, rawURL string, out any) error {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		// Include the body: providers explain the refusal there, and a bare
+		// status code is undiagnosable from the UI. Openverse, for one, answers
+		// an over-large page_size with 401 and a body naming the real cause.
+		snippet, _ := io.ReadAll(io.LimitReader(resp.Body, errBodyMaxBytes))
+		if s := strings.TrimSpace(string(snippet)); s != "" {
+			return fmt.Errorf("mediasearch: status %d: %s", resp.StatusCode, s)
+		}
 		return fmt.Errorf("mediasearch: status %d", resp.StatusCode)
 	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, searchMaxBytes))

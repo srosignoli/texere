@@ -60,7 +60,9 @@ func TestOpenverseSearchNormalizes(t *testing.T) {
 	if got[1].License != "CC CC0" {
 		t.Errorf("license = %q, want %q", got[1].License, "CC CC0")
 	}
-	for _, sub := range []string{"q=apple", "page_size=24"} {
+	// 24 is clamped to Openverse's anonymous maximum of 20; see
+	// TestOpenverseClampsPageSizeForAnonymousRequests.
+	for _, sub := range []string{"q=apple", "page_size=20"} {
 		if !strings.Contains(gotQuery, sub) {
 			t.Errorf("query %q missing %q", gotQuery, sub)
 		}

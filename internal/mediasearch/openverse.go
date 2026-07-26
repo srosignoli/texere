@@ -31,9 +31,18 @@ type openverseResponse struct {
 	} `json:"results"`
 }
 
+// openverseMaxAnonPageSize is Openverse's cap on page_size for unauthenticated
+// requests. Exceeding it is rejected with 401 Unauthorized — not the 400 the
+// parameter error would suggest — so the limit must be clamped, not passed
+// through. Registering an API key would raise this, which is a later slice.
+const openverseMaxAnonPageSize = 20
+
 func (o Openverse) Search(ctx context.Context, query, kind string, limit int) ([]Result, error) {
 	if kind != "image" {
 		return nil, fmt.Errorf("mediasearch: openverse: unsupported kind %q", kind)
+	}
+	if limit > openverseMaxAnonPageSize {
+		limit = openverseMaxAnonPageSize
 	}
 	q := url.Values{
 		"q":         {query},
