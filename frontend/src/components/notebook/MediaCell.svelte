@@ -111,7 +111,7 @@
         {/if}
         <span class="me-spacer"></span>
         <input class="me-subj" type="text" placeholder="subject" value={cell.subject}
-          on:input={setSubject} title="The N4L node this picture is about" />
+          on:input={setSubject} title="The N4L node this asset is about" />
         <button class="me-btn" on:click={promote} disabled={!cell.subject.trim()}>Promote to N4L</button>
       </div>
     {/if}
