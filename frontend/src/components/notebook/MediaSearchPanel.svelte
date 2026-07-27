@@ -265,12 +265,16 @@
 <style>
   .ms-panel { padding: 8px; }
   .ms-kinds { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
-  .ms-on { background: #24334a; border-color: #4a7aa8; color: #cfe6ff; }
   .ms-bar { display: flex; gap: 6px; align-items: center; }
   .ms-alt { display: flex; gap: 6px; align-items: center; margin-top: 6px; }
   .ms-q { flex: 1 1 auto; background: #0b1220; color: #cde; border: 1px solid #2a3a4a; border-radius: 4px; padding: 4px 8px; }
   .ms-btn { background: #1b2636; color: #cde; border: 1px solid #2a3a4a; border-radius: 4px; padding: 4px 10px; cursor: pointer; }
   .ms-btn:disabled { opacity: 0.5; cursor: default; }
+  /* Must come AFTER .ms-btn and its :hover — equal specificity, so source order
+     decides. Declared earlier it was silently overridden and the selected kind
+     looked identical to the unselected one. The filled accent also has to differ
+     from :hover, or hovering an unselected button mimics selection. */
+  .ms-btn.ms-on, .ms-btn.ms-on:hover { background: #2e6ca8; border-color: #6aa6dd; color: #f2f8ff; font-weight: 600; }
   select { background: #0b1220; color: #cde; border: 1px solid #2a3a4a; border-radius: 4px; padding: 4px; }
   .ms-err { margin-top: 8px; padding: 6px 8px; border: 1px solid #6a3a3a; border-radius: 4px; background: #2a1616; color: #f9c; font-size: 12px; }
   .ms-note { margin-top: 8px; color: #8aa; font-size: 12px; }

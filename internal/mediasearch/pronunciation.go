@@ -59,11 +59,15 @@ func (p Pronunciation) Search(ctx context.Context, query, kind string, limit int
 		"format":        {"json"},
 		"formatversion": {"2"},
 		"generator":     {"search"},
-		"gsrsearch":     {"LL-" + code + " " + word},
-		"gsrnamespace":  {"6"}, // File:
-		"gsrlimit":      {strconv.Itoa(limit)},
-		"prop":          {"imageinfo"},
-		"iiprop":        {"url|mime|size"}, // size also yields duration
+		// filetype:audio matters most for the FALLBACK path: when no Lingua
+		// Libre recording matches the word exactly, the unfiltered results are
+		// returned, and without this the File namespace happily yields PDFs and
+		// images — rows that offer a play button and then fail to download.
+		"gsrsearch":    {"LL-" + code + " " + word + " filetype:audio"},
+		"gsrnamespace": {"6"}, // File:
+		"gsrlimit":     {strconv.Itoa(limit)},
+		"prop":         {"imageinfo"},
+		"iiprop":       {"url|mime|size"}, // size also yields duration
 	}
 	var body llResponse
 	if err := getJSON(ctx, p.BaseURL+"?"+q.Encode(), &body); err != nil {

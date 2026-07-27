@@ -61,6 +61,12 @@ func TestPronunciationFiltersToTheExactWord(t *testing.T) {
 	if !strings.Contains(gotQuery, "gsrnamespace=6") {
 		t.Errorf("query %q should restrict to the File namespace", gotQuery)
 	}
+	// Without this the fallback path returns any file in the File namespace —
+	// PDFs and images included — which render as playable rows that then fail
+	// to download.
+	if !strings.Contains(gotQuery, "filetype%3Aaudio") {
+		t.Errorf("query %q should restrict to audio", gotQuery)
+	}
 }
 
 // When nothing matches exactly the unfiltered set is returned, so a word with no
