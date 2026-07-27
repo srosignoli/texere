@@ -1,6 +1,7 @@
 <script>
   import MediaSearchPanel from './MediaSearchPanel.svelte'
   import MediaImageView from './media/MediaImageView.svelte'
+  import MediaAudioView from './media/MediaAudioView.svelte'
   import { buildMediaFact } from '../../lib/media-fact.js'
   import { BrowserOpenURL } from '../../../wailsjs/runtime/runtime'
 
@@ -15,7 +16,7 @@
 
   // kind -> render component. Audio and video slot in here in later slices
   // without MediaCell changing.
-  const views = { image: MediaImageView }
+  const views = { image: MediaImageView, audio: MediaAudioView }
 
   let replacing = false
   let cropping = false
@@ -100,12 +101,14 @@
     <svelte:component this={views[cell.kind]} {cell} {cropping} {onMeta} onCrop={applyCrop} />
     {#if !readOnly}
       <div class="me-tools">
-        {#if cropping}
-          <button class="me-btn" on:click={() => (cropping = false)}>Cancel crop</button>
-        {:else}
-          <button class="me-btn" on:click={() => (cropping = true)}>Crop</button>
+        {#if cell.kind === 'image'}
+          {#if cropping}
+            <button class="me-btn" on:click={() => (cropping = false)}>Cancel crop</button>
+          {:else}
+            <button class="me-btn" on:click={() => (cropping = true)}>Crop</button>
+          {/if}
+          {#if cell.crop}<button class="me-btn" on:click={clearCrop}>Clear crop</button>{/if}
         {/if}
-        {#if cell.crop}<button class="me-btn" on:click={clearCrop}>Clear crop</button>{/if}
         <span class="me-spacer"></span>
         <input class="me-subj" type="text" placeholder="subject" value={cell.subject}
           on:input={setSubject} title="The N4L node this picture is about" />
