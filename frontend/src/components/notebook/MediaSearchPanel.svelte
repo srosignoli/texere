@@ -1,7 +1,8 @@
 <script>
   import { onMount, onDestroy, tick } from 'svelte'
-  import { ListMediaProviders, ListLanguages, SearchMedia, FetchMediaURL, ImportImage } from '../../../wailsjs/go/main/App'
+  import { ListMediaProviders, ListLanguages, SearchMedia, FetchMediaURL, ImportImage, ImportAudio } from '../../../wailsjs/go/main/App'
   import { mediaErrorMessage } from '../../lib/media-error.js'
+  import { getLastLanguage, setLastLanguage } from '../../lib/last-language.js'
 
   export let kind = 'image'
   export let query = ''
@@ -73,7 +74,14 @@
     try {
       allProviders = await ListMediaProviders()
       languages = await ListLanguages()
-      if (!lang) { lang = languages[0]?.name ?? ''; onLang(lang) }
+      if (!lang) {
+        const remembered = getLastLanguage()
+        const seeded = remembered && languages.some((l) => l.name === remembered)
+          ? remembered
+          : (languages[0]?.name ?? '')
+        lang = seeded
+        onLang(lang)
+      }
     } catch (e) { err = String(e?.message ?? e) }
   })
 
@@ -152,7 +160,7 @@
     busy = true
     const mine = ++acqGen
     try {
-      const ref = await ImportImage()
+      const ref = kind === 'audio' ? await ImportAudio() : await ImportImage()
       if (mine !== acqGen) return   // cancelled or superseded while the dialog was open
       if (!ref) return // cancelled
       onPick({ kind, title: '', sourcePage: '', license: '', provider: 'file' }, ref)
@@ -191,7 +199,7 @@
     <button class="ms-btn" class:ms-on={kind === 'audio'}
       on:click={() => setKind('audio')} disabled={busy}>Audio</button>
     {#if kind === 'audio'}
-      <select bind:value={lang} on:change={() => onLang(lang)} disabled={busy} title="Recording language">
+      <select bind:value={lang} on:change={() => { onLang(lang); setLastLanguage(lang) }} disabled={busy} title="Recording language">
         {#each languages as l}<option value={l.name}>{l.name}</option>{/each}
       </select>
     {/if}
