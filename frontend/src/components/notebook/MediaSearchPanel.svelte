@@ -208,7 +208,7 @@
     <select bind:value={providerId} disabled={busy || !providers.length}>
       {#each providers as p}<option value={p.id}>{p.name}</option>{/each}
     </select>
-    <input class="ms-q" type="text" placeholder="Search for a picture…"
+    <input class="ms-q" type="text" placeholder={kind === 'audio' ? 'Search for a pronunciation…' : 'Search for a picture…'}
       bind:value={query} on:input={() => onQuery(query)} on:keydown={onKey} />
     <button class="ms-btn" on:click={search} disabled={busy || !query.trim() || !providerId}>
       {busy ? 'Searching…' : 'Search'}
@@ -216,7 +216,7 @@
   </div>
   <div class="ms-alt">
     <button class="ms-btn" on:click={importFile} disabled={busy}>Import file…</button>
-    <input class="ms-q" type="text" placeholder="…or paste an image URL"
+    <input class="ms-q" type="text" placeholder={kind === 'audio' ? '…or paste an audio URL' : '…or paste an image URL'}
       bind:value={pasteURL} on:keydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); fetchPasted() } }} />
     <button class="ms-btn" on:click={fetchPasted} disabled={busy || !pasteURL.trim()}>Fetch</button>
   </div>

@@ -21,10 +21,9 @@ for TC-10/TC-11 to resolve correctly (this branch adds them).
      next to the kind buttons; the Commons image results grid from step 2 is
      gone and the panel shows no results (not even a stale "No results"
      message, since `searched` is reset to false).
-   - NOTE: the search box placeholder ("Search for a picture…") and the paste
-     field placeholder ("…or paste an image URL") do **not** change when the
-     kind is Audio — this is cosmetic only; both fields still operate
-     correctly for audio (see TC-3, TC-13).
+   - EXPECT: the search box placeholder changes to "Search for a
+     pronunciation…" and the paste field placeholder changes to "…or paste an
+     audio URL" (both depend on `kind`; see TC-3, TC-13).
 4. Click **Image** again.
    - EXPECT: the provider dropdown reverts to Wikimedia Commons/Openverse, the
      language selector disappears, and results are still empty (switching
@@ -162,46 +161,61 @@ for TC-10/TC-11 to resolve correctly (this branch adds them).
      *(Deferred to human verification — see report; not exercised by this
      agent, which cannot run the GUI.)*
 
-## TC-12 Language selection: per-cell persistence, not cross-cell stickiness
+## TC-12 Language selection: last-chosen language carries to a new cell
 
-1. Add a Media cell, switch kind to Audio.
+1. Clear any remembered language first (in the webview's devtools/console,
+   `localStorage.removeItem('texere.lastLanguage.v1')`), or note whatever
+   language is currently remembered so step 4's expectation can be adjusted.
+   Add a Media cell, switch kind to Audio.
    - EXPECT: the language selector defaults to "French" — the first entry in
      the language list (`internal/mediasearch/languages.go`), since this
-     cell's `lang` starts empty.
+     cell's `lang` starts empty and nothing is remembered yet.
 2. Change the language to Spanish and search.
+   - EXPECT: the change is persisted on this cell's own `lang` field, and also
+     recorded as the last-chosen language in `localStorage`
+     (`texere.lastLanguage.v1`, via `setLastLanguage()` in
+     `frontend/src/lib/last-language.js`).
 3. Reload the notebook (restart the app or reopen the extract).
    - EXPECT: reopening, this same cell's kind is still Audio and its language
      selector still shows Spanish — the choice is persisted on the cell
-     itself and restored on load.
+     itself and restored on load (this per-cell persistence is unchanged).
 4. Add a **second**, brand-new Media cell and switch it to Audio.
-   - EXPECT: its language selector defaults to "French" again, **not**
-     Spanish — a new cell's `lang` field starts empty independently of any
-     other cell, so the language choice does not carry over to a new Media
-     cell. (This differs from a literal reading of "a new Media cell defaults
-     to it" — verified against `MediaSearchPanel.svelte`'s `onMount` and
-     `newMediaCell()` in `notebook.js`; there is no cross-cell or
-     localStorage-backed language memory in this slice.)
+   - EXPECT: its language selector defaults to "Spanish", **not** French — a
+     new cell's `lang` field starts empty, but `MediaSearchPanel.svelte`'s
+     `onMount` now seeds it from `getLastLanguage()` when a remembered name is
+     present and still exists in the current language list, falling back to
+     the list's first entry only when nothing is remembered or the remembered
+     name is no longer valid.
+5. Change the second cell's language to Italian.
+   - EXPECT: the first cell (from steps 1–3) still shows Spanish — an existing
+     cell's already-set `lang` is never overwritten by the remembered value;
+     only a cell whose `lang` starts empty consults it on mount.
 
-## TC-13 Paste URL for audio; Import file for audio is not wired
+## TC-13 Import file for audio (audio-filtered dialog)
 
 1. Set kind to Audio. Find a direct `.wav` URL (e.g. a Commons upload URL) and
-   paste it into the "…or paste an image URL" field (the placeholder text is
-   unchanged from Image mode — see TC-1 note); click Fetch.
+   paste it into the "…or paste an audio URL" field; click Fetch.
    - EXPECT: the file is fetched (via `FetchMediaURL(url, 'audio')`) and the
      cell fills with the audio player (TC-8); the Promote button reads
      `Promote to N4L (aud)`, not `(pron)` (a pasted URL's provider is `'url'`,
      never `'pronunciation'`).
 2. With kind set to Audio, click "Import file…".
-   - EXPECT: **this opens the image file picker, not an audio one** — the OS
-     dialog is filtered to `*.jpg;*.jpeg;*.png;*.gif;*.webp`
-     (`MediaSearchPanel.svelte`'s `importFile()` unconditionally calls the
-     `ImportImage` binding regardless of `kind`; a separate `ImportAudio`
-     backend method exists but is never invoked from this panel). Selecting
-     an audio file is not offered by the dialog's filter; if one is chosen
-     anyway (e.g. by typing its name) the image-import path will sniff its
-     content type and report "unsupported type", not import it. Importing a
-     local audio file into an Audio-kind Media cell is not currently possible
-     from this button — Paste URL is the only manual-entry path for audio.
+   - EXPECT: the OS file dialog opens titled "Add audio" and filtered to audio
+     types (`*.webm;*.ogg;*.oga;*.wav;*.mp3;*.m4a;*.mp4;*.aac;*.flac`) —
+     `MediaSearchPanel.svelte`'s `importFile()` now calls the `ImportAudio`
+     Wails binding when `kind === 'audio'`, not `ImportImage`.
+3. Select a local `.wav` file in that dialog.
+   - EXPECT: the file is copied into `<collection>/media/`, the acquisition
+     panel is replaced by `MediaAudioView`'s `<audio controls>` element
+     (as in TC-8), and it plays back correctly.
+   - EXPECT: the subject field is empty (a file import supplies no query/
+     title) and the Promote button reads `Promote to N4L (aud)`, **not**
+     `(pron)` — `importFile()`'s `onPick` call sets `provider: 'file'`, and
+     `mediaArrow` only returns `pron` when `provider === 'pronunciation'`.
+4. With kind set to Image, click "Import file…".
+   - EXPECT: the OS dialog is filtered to image types
+     (`*.jpg;*.jpeg;*.png;*.gif;*.webp`), unchanged from slice 1 —
+     `importFile()` calls `ImportImage` whenever `kind !== 'audio'`.
 
 ## TC-14 Oversize and wrong-extension
 
@@ -246,22 +260,3 @@ for TC-10/TC-11 to resolve correctly (this branch adds them).
      slice (only `MediaCell.svelte`, `MediaSearchPanel.svelte`, the new
      `MediaAudioView.svelte`, and the media-fact/media-error/notebook.js
      library files changed).
-
-## Known limitations
-
-- **Import file does not support audio.** `MediaSearchPanel.svelte`'s
-  `importFile()` calls the `ImportImage` Wails binding unconditionally,
-  regardless of the cell's `kind`. A backend `ImportAudio` method exists
-  (`app.go`) but nothing in the frontend calls it. For an Audio-kind Media
-  cell, "Import file…" opens an image-only file picker and cannot be used to
-  import a local audio file. See TC-13 step 2.
-- **Kind-mode placeholders are not relabelled.** The search box
-  ("Search for a picture…") and paste-URL field ("…or paste an image URL")
-  keep their image-oriented placeholder text even when kind is Audio. This is
-  cosmetic — both fields function correctly for audio — but a tester should
-  not read the wording as a sign the audio path is broken. See TC-1, TC-13.
-- **Language choice does not carry over to a new Media cell.** Each Media
-  cell's `lang` is independent, persisted-per-cell state; it survives reload
-  of the same cell but a new cell always starts unset and defaults to
-  "French" (the first entry in `internal/mediasearch/languages.go`), not to
-  whatever language was last chosen elsewhere. See TC-12.
