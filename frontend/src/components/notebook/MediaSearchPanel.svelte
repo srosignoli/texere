@@ -1,15 +1,19 @@
 <script>
   import { onMount, onDestroy } from 'svelte'
-  import { ListMediaProviders, SearchMedia, FetchMediaURL, ImportImage } from '../../../wailsjs/go/main/App'
+  import { ListMediaProviders, ListLanguages, SearchMedia, FetchMediaURL, ImportImage } from '../../../wailsjs/go/main/App'
 
   export let kind = 'image'
   export let query = ''
+  export let lang = ''
   export let onQuery = () => {}   // (q) => persist the query on the cell
+  export let onLang = () => {}    // (lang) => persist the language on the cell
+  export let onKind = () => {}    // (kind) => persist the kind on the cell
   export let onPick = () => {}    // (result, {asset, mime}) => void
 
   const LIMIT = 24
 
-  let providers = []
+  let allProviders = []
+  let languages = []
   let providerId = ''
   let results = []
   let searched = false      // distinguishes "no results" from "not searched yet"
@@ -29,20 +33,40 @@
 
   onMount(async () => {
     try {
-      providers = (await ListMediaProviders()).filter((p) => p.kinds?.includes(kind))
-      providerId = providers[0]?.id ?? ''
+      allProviders = await ListMediaProviders()
+      languages = await ListLanguages()
+      if (!lang) { lang = languages[0]?.name ?? ''; onLang(lang) }
     } catch (e) { err = String(e?.message ?? e) }
   })
 
+  // Re-filter whenever the kind changes; a provider that cannot serve the
+  // current kind must never stay selected, or Search queries the wrong one.
+  $: providers = allProviders.filter((p) => p.kinds?.includes(kind))
+  $: if (providers.length && !providers.some((p) => p.id === providerId)) {
+    providerId = providers[0].id
+  }
+
   onDestroy(() => { acqGen++ })
+
+  function setKind(k) {
+    if (k === kind) return
+    kind = k
+    results = []
+    searched = false
+    err = ''
+    onKind(k)
+  }
 
   async function search() {
     const q = query.trim()
     if (!q || !providerId) return
     const mine = ++seq
     busy = true; err = ''; results = []
+    // The pronunciation provider takes "language|word"; every other provider
+    // takes the bare word.
+    const arg = providerId === 'pronunciation' ? `${lang}|${q}` : q
     try {
-      const rs = await SearchMedia(providerId, q, kind, LIMIT)
+      const rs = await SearchMedia(providerId, arg, kind, LIMIT)
       if (mine !== seq) return       // a newer search superseded this one
       results = rs ?? []
       searched = true
@@ -64,7 +88,7 @@
     err = ''
     const mine = ++acqGen
     try {
-      const ref = await FetchMediaURL(r.fullUrl)
+      const ref = await FetchMediaURL(r.fullUrl, kind)
       if (mine !== acqGen) return   // cancelled or superseded while fetching
       onPick({ ...r, provider: providerId }, ref)
     } catch (e) {
@@ -106,7 +130,7 @@
     busy = true
     const mine = ++acqGen
     try {
-      const ref = await FetchMediaURL(u)
+      const ref = await FetchMediaURL(u, kind)
       if (mine !== acqGen) return   // cancelled or superseded while fetching
       onPick({ kind, title: '', sourcePage: u, license: '', provider: 'url' }, ref)
     } catch (e) {
@@ -119,6 +143,17 @@
 </script>
 
 <div class="ms-panel">
+  <div class="ms-kinds">
+    <button class="ms-btn" class:ms-on={kind === 'image'}
+      on:click={() => setKind('image')} disabled={busy}>Image</button>
+    <button class="ms-btn" class:ms-on={kind === 'audio'}
+      on:click={() => setKind('audio')} disabled={busy}>Audio</button>
+    {#if kind === 'audio'}
+      <select bind:value={lang} on:change={() => onLang(lang)} disabled={busy} title="Recording language">
+        {#each languages as l}<option value={l.name}>{l.name}</option>{/each}
+      </select>
+    {/if}
+  </div>
   <div class="ms-bar">
     <select bind:value={providerId} disabled={busy || !providers.length}>
       {#each providers as p}<option value={p.id}>{p.name}</option>{/each}
@@ -156,6 +191,8 @@
 
 <style>
   .ms-panel { padding: 8px; }
+  .ms-kinds { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+  .ms-on { background: #24334a; border-color: #4a7aa8; color: #cfe6ff; }
   .ms-bar { display: flex; gap: 6px; align-items: center; }
   .ms-alt { display: flex; gap: 6px; align-items: center; margin-top: 6px; }
   .ms-q { flex: 1 1 auto; background: #0b1220; color: #cde; border: 1px solid #2a3a4a; border-radius: 4px; padding: 4px 8px; }

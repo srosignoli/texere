@@ -48,6 +48,8 @@
   }
 
   function onQuery(q) { cell.query = q; persist() }
+  function onLang(l) { cell.lang = l; persist() }
+  function onKind(k) { cell.kind = k; persist() }
 
   // cell.sourcePage is verbatim provider JSON (Commons' descriptionurl,
   // Openverse's foreign_landing_url) — remote-controlled text, not a trusted
@@ -92,7 +94,7 @@
     {#if readOnly}
       <div class="me-empty">No asset.</div>
     {:else}
-      <MediaSearchPanel kind={cell.kind} query={cell.query} {onQuery} {onPick} />
+      <MediaSearchPanel kind={cell.kind} query={cell.query} lang={cell.lang} {onQuery} {onLang} {onKind} {onPick} />
     {/if}
   {:else}
     <svelte:component this={views[cell.kind]} {cell} {cropping} {onMeta} onCrop={applyCrop} />
