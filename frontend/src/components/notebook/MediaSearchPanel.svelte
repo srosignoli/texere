@@ -47,6 +47,15 @@
     return s.replace(/^x-/, '')
   }
 
+  // Stop and forget any preview. Must run before anything sets `busy` or clears
+  // `results`: both tear the shared <audio> out of the DOM, and a stale
+  // previewURL would leave a row rendering as if it were still playing.
+  function stopPreview() {
+    audioEl?.pause()
+    previewURL = ''
+    previewErr = ''
+  }
+
   async function togglePreview(r) {
     previewErr = ''
     if (previewURL === r.fullUrl) { audioEl?.pause(); previewURL = ''; return }
@@ -79,10 +88,7 @@
 
   function setKind(k) {
     if (k === kind) return
-    // Stop and forget any preview: the shared <audio> is about to be torn out
-    // of the DOM, and a stale previewURL would leave a row rendering as if it
-    // were still playing.
-    audioEl?.pause(); previewURL = ''; previewErr = ''
+    stopPreview()
     kind = k
     results = []
     searched = false
@@ -93,10 +99,7 @@
   async function search() {
     const q = query.trim()
     if (!q || !providerId) return
-    // Stop and forget any preview: the shared <audio> is about to be torn out
-    // of the DOM, and a stale previewURL would leave a row rendering as if it
-    // were still playing.
-    audioEl?.pause(); previewURL = ''; previewErr = ''
+    stopPreview()
     const mine = ++seq
     busy = true; err = ''; results = []
     // The pronunciation provider takes "language|word"; every other provider
@@ -144,6 +147,7 @@
   }
 
   async function importFile() {
+    stopPreview()
     err = ''
     busy = true
     const mine = ++acqGen
@@ -163,6 +167,7 @@
   async function fetchPasted() {
     const u = pasteURL.trim()
     if (!u) return
+    stopPreview()
     err = ''
     busy = true
     const mine = ++acqGen
