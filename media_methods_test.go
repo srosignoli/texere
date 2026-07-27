@@ -10,8 +10,8 @@ import (
 
 func TestListMediaProvidersReturnsBoth(t *testing.T) {
 	got := (&App{}).ListMediaProviders()
-	if len(got) != 2 {
-		t.Fatalf("got %d providers, want 2", len(got))
+	if len(got) != 4 {
+		t.Fatalf("got %d providers, want 4", len(got))
 	}
 	if got[0].ID == "" || got[0].Name == "" || len(got[0].Kinds) == 0 {
 		t.Errorf("provider info incomplete: %+v", got[0])
@@ -22,6 +22,16 @@ func TestSearchMediaUnknownProvider(t *testing.T) {
 	_, err := (&App{}).SearchMedia("nope", "apple", "image", 24)
 	if err == nil {
 		t.Fatal("expected error for unknown provider, got nil")
+	}
+}
+
+func TestListLanguagesIsPopulated(t *testing.T) {
+	got := (&App{}).ListLanguages()
+	if len(got) < 25 {
+		t.Fatalf("got %d languages, want at least 25", len(got))
+	}
+	if got[0].Name == "" || got[0].Code == "" {
+		t.Errorf("incomplete first entry: %+v", got[0])
 	}
 }
 

@@ -2,23 +2,29 @@ package mediasearch
 
 import "testing"
 
-func TestProvidersIncludesBothAndAllServeImages(t *testing.T) {
+func TestProvidersCoverBothKinds(t *testing.T) {
 	ps := Providers()
-	if len(ps) != 2 {
-		t.Fatalf("got %d providers, want 2", len(ps))
+	if len(ps) != 4 {
+		t.Fatalf("got %d providers, want 4", len(ps))
 	}
-	seen := map[string]bool{}
+	byID := map[string]Provider{}
 	for _, p := range ps {
-		seen[p.ID()] = true
-		if p.Name() == "" {
-			t.Errorf("provider %q has an empty Name", p.ID())
+		if p.Name() == "" || len(p.Kinds()) == 0 {
+			t.Errorf("provider %q is incompletely described", p.ID())
 		}
-		if len(p.Kinds()) == 0 || p.Kinds()[0] != "image" {
-			t.Errorf("provider %q Kinds = %v, want image first", p.ID(), p.Kinds())
+		byID[p.ID()] = p
+	}
+	for _, id := range []string{"commons", "openverse", "pronunciation", "commons-audio"} {
+		if _, ok := byID[id]; !ok {
+			t.Errorf("missing provider %q", id)
 		}
 	}
-	if !seen["commons"] || !seen["openverse"] {
-		t.Errorf("providers = %v, want commons and openverse", seen)
+	// Openverse's audio endpoint indexes music, so it stays image-only.
+	if k := byID["openverse"].Kinds(); len(k) != 1 || k[0] != "image" {
+		t.Errorf("openverse Kinds = %v, want [image] only", k)
+	}
+	if k := byID["pronunciation"].Kinds(); k[0] != "audio" {
+		t.Errorf("pronunciation Kinds = %v, want audio", k)
 	}
 }
 

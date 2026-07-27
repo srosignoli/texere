@@ -47,6 +47,12 @@ func (a *App) SearchMedia(providerID, query, kind string, limit int) ([]mediasea
 	return p.Search(ctx, query, kind, limit)
 }
 
+// ListLanguages returns the selectable pronunciation languages, ordered by
+// Lingua Libre recording volume.
+func (a *App) ListLanguages() []mediasearch.Language {
+	return mediasearch.Languages()
+}
+
 // FetchMediaURL downloads rawURL into the collection's media/ directory and
 // returns {asset, mime}. Serves both "clicked a search result" and "pasted a
 // URL" — they are the same operation.
