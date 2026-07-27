@@ -4,8 +4,8 @@ import {main} from '../models';
 import {content} from '../models';
 import {explorer} from '../models';
 import {learning} from '../models';
-import {search} from '../models';
 import {mediasearch} from '../models';
+import {search} from '../models';
 
 export function BuildGraph():Promise<main.BuildGraphResult>;
 
@@ -31,7 +31,7 @@ export function ExplorerOpen(arg1:string,arg2:string):Promise<explorer.LayoutRes
 
 export function ExplorerReanchor(arg1:string,arg2:string,arg3:string):Promise<explorer.LayoutResult>;
 
-export function FetchMediaURL(arg1:string):Promise<Record<string, any>>;
+export function FetchMediaURL(arg1:string,arg2:string):Promise<Record<string, any>>;
 
 export function GetArrowRegistry():Promise<Array<content.ArrowDef>>;
 
@@ -90,6 +90,8 @@ export function ListArrowCodes():Promise<Array<string>>;
 export function ListChapters():Promise<Array<string>>;
 
 export function ListContextTags():Promise<Array<string>>;
+
+export function ListLanguages():Promise<Array<mediasearch.Language>>;
 
 export function ListMediaProviders():Promise<Array<main.ProviderInfo>>;
 

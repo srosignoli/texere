@@ -36,7 +36,7 @@ func TestListLanguagesIsPopulated(t *testing.T) {
 }
 
 func TestFetchMediaURLRequiresCollection(t *testing.T) {
-	_, err := (&App{}).FetchMediaURL("https://example.org/a.png")
+	_, err := (&App{}).FetchMediaURL("https://example.org/a.png", "image")
 	if err == nil {
 		t.Fatal("expected error when no collection is open, got nil")
 	}
@@ -59,7 +59,7 @@ func TestFetchMediaURLStoresAsset(t *testing.T) {
 	defer srv.Close()
 
 	dir := t.TempDir()
-	got, err := (&App{collectionDir: dir}).FetchMediaURL(srv.URL + "/a.png")
+	got, err := (&App{collectionDir: dir}).FetchMediaURL(srv.URL+"/a.png", "image")
 	if err != nil {
 		t.Fatalf("FetchMediaURL: %v", err)
 	}
@@ -72,5 +72,21 @@ func TestFetchMediaURLStoresAsset(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(dir, "media", name)); err != nil {
 		t.Errorf("asset not on disk: %v", err)
+	}
+}
+
+func TestFetchMediaURLPassesKindThrough(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(append([]byte("RIFF$\x00\x00\x00WAVEfmt "), make([]byte, 32)...))
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	got, err := (&App{collectionDir: dir}).FetchMediaURL(srv.URL+"/manzana.wav", "audio")
+	if err != nil {
+		t.Fatalf("FetchMediaURL: %v", err)
+	}
+	if got["mime"] != "audio/wav" {
+		t.Errorf("mime = %v, want audio/wav", got["mime"])
 	}
 }

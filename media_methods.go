@@ -54,16 +54,16 @@ func (a *App) ListLanguages() []mediasearch.Language {
 }
 
 // FetchMediaURL downloads rawURL into the collection's media/ directory and
-// returns {asset, mime}. Serves both "clicked a search result" and "pasted a
-// URL" — they are the same operation.
-func (a *App) FetchMediaURL(rawURL string) (map[string]any, error) {
+// returns {asset, mime}. kind is "image" or "audio". Serves both "clicked a
+// search result" and "pasted a URL" — they are the same operation.
+func (a *App) FetchMediaURL(rawURL, kind string) (map[string]any, error) {
 	a.dirMu.RLock()
 	dir := a.collectionDir
 	a.dirMu.RUnlock()
 	if dir == "" {
 		return nil, fmt.Errorf("no collection open")
 	}
-	asset, err := media.FetchRemote(dir, rawURL)
+	asset, err := media.FetchRemote(dir, rawURL, kind)
 	if err != nil {
 		return nil, err
 	}
