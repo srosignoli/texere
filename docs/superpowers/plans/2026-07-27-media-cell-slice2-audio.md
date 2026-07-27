@@ -1830,11 +1830,15 @@ git commit -m "feat(notebook): pron/aud arrow selection for promoted audio"
 In `SSTconfig/arrows-EP-3.sst`, in the `:: attributes, supporting information ::` section beside the existing `has picture` line, add two lines matching the column alignment of their neighbours:
 
 ```
- + has pronunciation (pron)         - is the pronunciation of (pron-of)
- + has audio         (aud)          - is audio for            (aud-for)
+ + has pronunciation (pron)         - has pronunciation recording of (pron-rec)
+ + has audio         (aud)          - is audio for                   (aud-for)
 ```
 
 Verify the alignment matches the surrounding lines rather than trusting the spacing above — the file is read by hand and its columns are deliberate.
+
+**Do not use `pron-of` as the reverse code.** `SSTconfig/arrows-EP-3.sst:88` already declares `+ is pronounced as (pronas) - is the pronunciation for (pron-of)`, and the registry (`internal/content/registry.go`) is a map keyed by code, so redeclaring `pron-of` would silently overwrite that existing relation. Verified against the loaded registry: `pronas` and `pron-of` are registered; `pron`, `aud`, `aud-for` and `pron-rec` are free.
+
+The pre-existing `pronas` is left untouched. It plausibly denotes a phonetic rendering in text (`manzana (pronas) /manˈθana/`), which is a different relation from "here is a stored recording", so the two coexist deliberately.
 
 - [ ] **Step 2: Verify the arrows resolve and the promoted fact parses**
 

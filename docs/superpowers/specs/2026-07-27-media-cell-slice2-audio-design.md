@@ -79,8 +79,13 @@ this design was written.
   speakers means hearing them. Downloading every candidate would write a dozen
   permanent files per search.
 - **Kind-specific arrows, defaulted by provider.** `has pronunciation (pron)`
-  and `has audio (aud)`. Provenance sets a **default in editable text**, not a
-  hidden affordance — the distinction that made provenance-driven behaviour
+  and `has audio (aud)`. Note `SSTconfig` already declares an unrelated
+  `is pronounced as (pronas)` whose reverse is `pron-of`; that almost certainly
+  means a phonetic rendering in text rather than a stored recording, so the two
+  coexist and the new arrow takes the free reverse code `pron-rec`. Reusing
+  `pron-of` would silently overwrite the existing relation, since the arrow
+  registry is keyed by code. Provenance sets a **default in editable text**, not
+  a hidden affordance — the distinction that made provenance-driven behaviour
   wrong in slice 1 does not apply, because the output is a draft you are already
   reviewing.
 - **Audio is keyed by URL extension, never by sniffing or Content-Type.**
@@ -180,8 +185,8 @@ Lingua Libre clip is ~100 KB, but a general Commons recording can run minutes.
 Added to `SSTconfig/arrows-EP-3.sst`, matching its column alignment:
 
 ```
- + has pronunciation (pron)     - is the pronunciation of (pron-of)
- + has audio         (aud)      - is audio for            (aud-for)
+ + has pronunciation (pron)     - has pronunciation recording of (pron-rec)
+ + has audio         (aud)      - is audio for                   (aud-for)
 ```
 
 `buildMediaFact` derives the code from the cell instead of hardcoding `pic`:
