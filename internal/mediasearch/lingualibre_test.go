@@ -1,6 +1,10 @@
 package mediasearch
 
-import "testing"
+import (
+	"strings"
+	"testing"
+	"unicode/utf8"
+)
 
 func TestMatchesWord(t *testing.T) {
 	cases := []struct {
@@ -76,6 +80,49 @@ func TestParseLinguaLibreNonExactMakesNoGuess(t *testing.T) {
 	}
 	if label != "Nattes à chat-femme" {
 		t.Errorf("label = %q, want the full remainder", label)
+	}
+}
+
+// Real crash: the matched suffix ("Q1321 (spa)-Rdrg109-manzana") reaches back
+// into the "LL-Q…(iso)-" prefix that matchesWord tested against but that
+// parseLinguaLibre's `rest` already excludes, so len(rest) < len(word). The
+// naive `rest[len(rest)-len(w):]` slice went negative and panicked. The fix
+// scans for the split instead of trusting a byte length, so this must now
+// return cleanly: no valid split exists, so it falls back to the honest
+// no-guess case rather than crashing.
+func TestParseLinguaLibreQueryReachesIntoPrefixDoesNotPanic(t *testing.T) {
+	lang, speaker, label := parseLinguaLibre("LL-Q1321 (spa)-Rdrg109-manzana.wav", "Q1321 (spa)-Rdrg109-manzana")
+	if lang != "spa" {
+		t.Errorf("lang = %q, want spa", lang)
+	}
+	if speaker != "" {
+		t.Errorf("speaker = %q, want empty (no valid split found)", speaker)
+	}
+	if label != "Rdrg109-manzana" {
+		t.Errorf("label = %q, want the full remainder", label)
+	}
+}
+
+// Real corruption: case folding can change a query's UTF-8 byte length
+// (Turkish İ is 2 bytes, its folded "i" is 1), so slicing by len(word) can
+// land mid-rune. strings.ToLower folds İ to plain "i" (so matchesWord's
+// suffix test passes) but strings.EqualFold does not consider İ and i
+// equivalent, so the split scan finds no matching hyphen and must fall back
+// to the no-guess case — never a corrupt label, and never a speaker that
+// swallows the word.
+func TestParseLinguaLibreTurkishFoldingNeverCorruptsUTF8(t *testing.T) {
+	lang, speaker, label := parseLinguaLibre("LL-Q256 (tur)-Speaker-İstanbul.wav", "istanbul")
+	if lang != "tur" {
+		t.Errorf("lang = %q, want tur", lang)
+	}
+	if !utf8.ValidString(speaker) {
+		t.Errorf("speaker = %q is not valid UTF-8", speaker)
+	}
+	if !utf8.ValidString(label) {
+		t.Errorf("label = %q is not valid UTF-8", label)
+	}
+	if strings.Contains(strings.ToLower(speaker), "istanbul") {
+		t.Errorf("speaker = %q must not contain the word", speaker)
 	}
 }
 

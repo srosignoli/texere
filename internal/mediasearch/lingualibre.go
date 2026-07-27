@@ -41,8 +41,16 @@ func parseLinguaLibre(name, word string) (lang, speaker, label string) {
 	rest := base[len(m[0]):] // "{speaker}-{word}", ambiguous on its own
 	if matchesWord(name, word) {
 		w := strings.TrimSpace(word)
-		speaker = strings.TrimSuffix(rest, "-"+rest[len(rest)-len(w):])
-		return lang, speaker, rest[len(rest)-len(w):]
+		// Locate the hyphen that starts the trailing word by comparing candidate
+		// suffixes. Slicing by len(w) is wrong twice over: `rest` excludes the
+		// LL-Q…(iso)- prefix that matchesWord searched, so the index can go
+		// negative; and case folding can change UTF-8 byte length (Turkish
+		// İ→i), which slices mid-rune.
+		for i := len(rest) - 1; i >= 0; i-- {
+			if rest[i] == '-' && strings.EqualFold(rest[i+1:], w) {
+				return lang, rest[:i], rest[i+1:]
+			}
+		}
 	}
 	return lang, "", rest
 }

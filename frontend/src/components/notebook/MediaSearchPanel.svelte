@@ -66,6 +66,7 @@
   }
 
   function onPreviewError(e) {
+    if (!previewURL) return
     previewErr = mediaErrorMessage(e.target?.error, 'Preview')
     previewURL = ''
   }
@@ -132,6 +133,7 @@
 
   async function pick(r) {
     if (fetchingURL) return
+    stopPreview()
     fetchingURL = r.fullUrl
     err = ''
     const mine = ++acqGen
@@ -229,7 +231,7 @@
     <div class="ms-note">No results for “{query.trim()}”. Try another provider, or Paste URL.</div>
   {:else if results.length}
     {#if kind === 'audio'}
-      <audio bind:this={audioEl} src={previewURL} on:error={onPreviewError} on:ended={() => (previewURL = '')} hidden></audio>
+      <audio bind:this={audioEl} src={previewURL || null} on:error={onPreviewError} on:ended={() => (previewURL = '')} hidden></audio>
       {#if previewErr}<div class="ms-err">{previewErr}</div>{/if}
       <div class="ms-rows">
         {#each results as r (r.fullUrl)}
