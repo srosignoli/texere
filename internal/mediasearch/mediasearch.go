@@ -17,9 +17,9 @@ import (
 // Result is one search hit, normalized across providers. Field tags match the
 // camelCase the Svelte frontend expects from the Wails binding.
 type Result struct {
-	Kind       string `json:"kind"`       // "image" | "audio"
-	ThumbURL   string `json:"thumbUrl"`   // small preview for the results grid (images)
-	FullURL    string `json:"fullUrl"`    // what gets downloaded on pick
+	Kind       string `json:"kind"`     // "image" | "audio"
+	ThumbURL   string `json:"thumbUrl"` // small preview for the results grid (images)
+	FullURL    string `json:"fullUrl"`  // what gets downloaded on pick
 	Title      string `json:"title"`
 	SourcePage string `json:"sourcePage"` // human-facing page, for attribution
 	License    string `json:"license"`
