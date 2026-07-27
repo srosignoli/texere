@@ -79,6 +79,10 @@
 
   function setKind(k) {
     if (k === kind) return
+    // Stop and forget any preview: the shared <audio> is about to be torn out
+    // of the DOM, and a stale previewURL would leave a row rendering as if it
+    // were still playing.
+    audioEl?.pause(); previewURL = ''; previewErr = ''
     kind = k
     results = []
     searched = false
@@ -89,6 +93,10 @@
   async function search() {
     const q = query.trim()
     if (!q || !providerId) return
+    // Stop and forget any preview: the shared <audio> is about to be torn out
+    // of the DOM, and a stale previewURL would leave a row rendering as if it
+    // were still playing.
+    audioEl?.pause(); previewURL = ''; previewErr = ''
     const mine = ++seq
     busy = true; err = ''; results = []
     // The pronunciation provider takes "language|word"; every other provider
