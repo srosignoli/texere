@@ -2,7 +2,7 @@
   import MediaSearchPanel from './MediaSearchPanel.svelte'
   import MediaImageView from './media/MediaImageView.svelte'
   import MediaAudioView from './media/MediaAudioView.svelte'
-  import { buildMediaFact } from '../../lib/media-fact.js'
+  import { buildMediaFact, mediaArrow } from '../../lib/media-fact.js'
   import { BrowserOpenURL } from '../../../wailsjs/runtime/runtime'
 
   export let cell
@@ -112,7 +112,10 @@
         <span class="me-spacer"></span>
         <input class="me-subj" type="text" placeholder="subject" value={cell.subject}
           on:input={setSubject} title="The N4L node this asset is about" />
-        <button class="me-btn" on:click={promote} disabled={!cell.subject.trim()}>Promote to N4L</button>
+        <button class="me-btn" on:click={promote} disabled={!cell.subject.trim()}
+          title={`Insert an N4L draft using the (${mediaArrow(cell)}) arrow`}>
+          Promote to N4L ({mediaArrow(cell)})
+        </button>
       </div>
     {/if}
     {#if cell.sourcePage}
