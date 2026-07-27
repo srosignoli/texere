@@ -1,6 +1,7 @@
 <script>
-  import { onMount, onDestroy } from 'svelte'
+  import { onMount, onDestroy, tick } from 'svelte'
   import { ListMediaProviders, ListLanguages, SearchMedia, FetchMediaURL, ImportImage } from '../../../wailsjs/go/main/App'
+  import { mediaErrorMessage } from '../../lib/media-error.js'
 
   export let kind = 'image'
   export let query = ''
@@ -31,6 +32,34 @@
   // onPick and overwrite the cell out from under the user.
   let acqGen = 0
 
+  let previewURL = ''     // FullURL of the row currently previewing
+  let previewErr = ''
+  let audioEl              // the single shared <audio>
+
+  function fmtDuration(ms) {
+    if (!ms) return ''
+    return (ms / 1000).toFixed(1) + 's'
+  }
+  // "audio/wav" -> "wav"; "application/ogg" -> "ogg"
+  function fmtFormat(mime) {
+    if (!mime) return ''
+    const s = mime.split('/')[1] ?? mime
+    return s.replace(/^x-/, '')
+  }
+
+  async function togglePreview(r) {
+    previewErr = ''
+    if (previewURL === r.fullUrl) { audioEl?.pause(); previewURL = ''; return }
+    previewURL = r.fullUrl
+    await tick() // let the src binding apply before playing
+    audioEl?.play().catch(() => {})
+  }
+
+  function onPreviewError(e) {
+    previewErr = mediaErrorMessage(e.target?.error, 'Preview')
+    previewURL = ''
+  }
+
   onMount(async () => {
     try {
       allProviders = await ListMediaProviders()
@@ -46,7 +75,7 @@
     providerId = providers[0].id
   }
 
-  onDestroy(() => { acqGen++ })
+  onDestroy(() => { acqGen++; audioEl?.pause() })
 
   function setKind(k) {
     if (k === kind) return
@@ -178,14 +207,35 @@
   {:else if searched && !results.length && !err}
     <div class="ms-note">No results for “{query.trim()}”. Try another provider, or Paste URL.</div>
   {:else if results.length}
-    <div class="ms-grid">
-      {#each results as r (r.fullUrl)}
-        <button class="ms-hit" class:ms-loading={fetchingURL === r.fullUrl}
-          on:click={() => pick(r)} title={`${r.title}${r.license ? ' — ' + r.license : ''}`}>
-          <img src={r.thumbUrl} alt={r.title} loading="lazy" />
-        </button>
-      {/each}
-    </div>
+    {#if kind === 'audio'}
+      <audio bind:this={audioEl} src={previewURL} on:error={onPreviewError} on:ended={() => (previewURL = '')} hidden></audio>
+      {#if previewErr}<div class="ms-err">{previewErr}</div>{/if}
+      <div class="ms-rows">
+        {#each results as r (r.fullUrl)}
+          <div class="ms-row" class:ms-loading={fetchingURL === r.fullUrl}>
+            <button class="ms-play" on:click={() => togglePreview(r)}
+              title={previewURL === r.fullUrl ? 'Stop' : 'Preview'}>
+              {previewURL === r.fullUrl ? '■' : '▶'}
+            </button>
+            <button class="ms-pick" on:click={() => pick(r)} title={r.sourcePage}>
+              <span class="ms-word">{r.title}</span>
+              <span class="ms-meta">
+                {[r.lang, r.speaker, fmtDuration(r.durationMs), fmtFormat(r.mime)].filter(Boolean).join(' · ')}
+              </span>
+            </button>
+          </div>
+        {/each}
+      </div>
+    {:else}
+      <div class="ms-grid">
+        {#each results as r (r.fullUrl)}
+          <button class="ms-hit" class:ms-loading={fetchingURL === r.fullUrl}
+            on:click={() => pick(r)} title={`${r.title}${r.license ? ' — ' + r.license : ''}`}>
+            <img src={r.thumbUrl} alt={r.title} loading="lazy" />
+          </button>
+        {/each}
+      </div>
+    {/if}
   {/if}
 </div>
 
@@ -206,4 +256,13 @@
   .ms-hit:hover { border-color: #4a7aa8; }
   .ms-hit.ms-loading { opacity: 0.4; cursor: default; }
   .ms-hit img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .ms-rows { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; max-height: 320px; overflow-y: auto; }
+  .ms-row { display: flex; align-items: stretch; gap: 6px; }
+  .ms-row.ms-loading { opacity: 0.4; }
+  .ms-play { width: 32px; flex: 0 0 auto; background: #1b2636; color: #cde; border: 1px solid #2a3a4a; border-radius: 4px; cursor: pointer; }
+  .ms-play:hover { background: #24334a; }
+  .ms-pick { flex: 1 1 auto; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 4px 8px; background: #0b1220; color: #cde; border: 1px solid #2a3a4a; border-radius: 4px; cursor: pointer; text-align: left; }
+  .ms-pick:hover { border-color: #4a7aa8; }
+  .ms-word { font-size: 13px; }
+  .ms-meta { font-size: 11px; color: #8aa; }
 </style>
