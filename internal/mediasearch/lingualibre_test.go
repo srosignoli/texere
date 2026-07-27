@@ -46,6 +46,17 @@ func TestParseLinguaLibreSpeakerContainingHyphen(t *testing.T) {
 	}
 }
 
+// The word itself contains a hyphen AND the speaker contains spaces. This is
+// the case that distinguishes the real implementation from a naive split on the
+// last hyphen, which would yield speaker="I learned some phrases-pie",
+// label="eyed". It is a real filename returned by a search for "pie".
+func TestParseLinguaLibreWordContainingHyphen(t *testing.T) {
+	lang, speaker, label := parseLinguaLibre("LL-Q1860 (eng)-I learned some phrases-pie-eyed.wav", "pie-eyed")
+	if lang != "eng" || speaker != "I learned some phrases" || label != "pie-eyed" {
+		t.Errorf("got (%q, %q, %q), want (eng, I learned some phrases, pie-eyed)", lang, speaker, label)
+	}
+}
+
 func TestParseLinguaLibreWordContainingSpace(t *testing.T) {
 	lang, speaker, label := parseLinguaLibre("LL-Q1860 (eng)-Neøn-pie chart.wav", "pie chart")
 	if lang != "eng" || speaker != "Neøn" || label != "pie chart" {
