@@ -260,3 +260,22 @@ for TC-10/TC-11 to resolve correctly (this branch adds them).
      slice (only `MediaCell.svelte`, `MediaSearchPanel.svelte`, the new
      `MediaAudioView.svelte`, and the media-fact/media-error/notebook.js
      library files changed).
+
+## Known limitation
+
+**Local audio playback fails in the Wails window on Linux/WSL** — a picked or
+pasted recording downloads and stores correctly, but the cell's player reports
+`MediaError 4` ("format/codec not supported in this webview"). The message is
+misleading; the stored files are valid and the results-list preview plays the
+same bytes fine. It is very likely a Wails/WebKitGTK transport limitation
+affecting all local audio in the app, including the pre-existing Audio cell, and
+it is **not** introduced by this slice.
+
+Full diagnosis, the evidence, and the one-variable experiment that would confirm
+it are in `2026-07-27-media-cell-slice2-audio-design.md`, section
+"OPEN: local audio does not play in the Wails window on Linux".
+
+Consequence for this plan: the playback half of TC-3, TC-7 and TC-8 cannot pass
+on Linux. Everything up to and including the download — search, filtering,
+preview, pick, storage, promotion and the graph edge — is unaffected and does
+pass.
