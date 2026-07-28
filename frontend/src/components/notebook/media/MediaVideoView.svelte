@@ -1,5 +1,7 @@
 <script>
   import { mediaErrorMessage } from '../../../lib/media-error.js'
+  import { buildVideoURL } from '../../../lib/media-fact.js'
+  import { BrowserOpenURL } from '../../../../wailsjs/runtime/runtime'
 
   export let cell
   export let onStart = () => {}
@@ -11,19 +13,22 @@
   let playErr = ''
 
   $: isFile = cell.playerKind !== 'iframe'
-  // youtube-nocookie avoids setting tracking cookies until playback starts.
-  // Build the embed URL only when an id was actually extracted. Returning the
-  // bare prefix would keep this string truthy and make the "not recognised"
-  // branch below unreachable, silently rendering an iframe with no video.
-  $: ytId = cell.playerKind === 'iframe' ? youtubeId(cell.embedURL) : ''
-  $: embedSrc = ytId
-    ? `https://www.youtube-nocookie.com/embed/${ytId}${cell.startSec ? `?start=${cell.startSec}` : ''}`
-    : ''
 
-  // Accepts both watch?v=<id> and youtu.be/<id> forms.
-  function youtubeId(url) {
-    const m = String(url ?? '').match(/(?:youtube\.com\/.*[?&]v=|youtu\.be\/)([A-Za-z0-9_-]{6,})/)
-    return m ? m[1] : ''
+  // YouTube is NOT embedded. Its player refuses to configure itself in this
+  // window ("Error 153"): it validates the embedding origin, and this window's
+  // origin is the wails:// custom scheme, so there is no https origin to
+  // present. A Referrer-Policy cannot help — that governs how much referrer is
+  // sent, not what it is. So a YouTube link is offered as a link instead of a
+  // broken player, opened in the real browser where it works.
+  //
+  // The same button is offered for ordinary video files, because fullscreen
+  // renders black in this webview; opening in a browser is the way to watch
+  // one full-screen. See the design doc's known-limitations section.
+  $: watchURL = buildVideoURL(cell)
+  $: canWatch = /^https?:\/\//i.test(watchURL)
+
+  function openWatch() {
+    if (canWatch) BrowserOpenURL(watchURL)
   }
 
   // Resume at the marked moment, so reopening a cell lands where it left off.
@@ -53,9 +58,11 @@
   {#if isFile}
     <video bind:this={videoEl} class="vv-player" src={cell.embedURL} controls preload="metadata"
       on:loadedmetadata={onLoaded} on:error={onVideoError}></video>
-  {:else if embedSrc}
-    <iframe class="vv-player" src={embedSrc} title={cell.title || 'video'}
-      allow="fullscreen; encrypted-media" frameborder="0"></iframe>
+  {:else if canWatch}
+    <div class="vv-ext">
+      <div class="vv-exttitle">{cell.title || 'YouTube video'}</div>
+      <div class="vv-extnote">YouTube cannot be embedded in this window; it opens in your browser.</div>
+    </div>
   {:else}
     <div class="vv-err">Not a recognised video link: {cell.embedURL}</div>
   {/if}
@@ -66,6 +73,12 @@
         Set start here
       </button>
     {/if}
+    {#if canWatch}
+      <button class="vv-btn" on:click={openWatch}
+        title={isFile ? 'Open in your browser, at the marked start — also the way to watch fullscreen' : 'Open on YouTube at the marked start'}>
+        {isFile ? 'Open in browser' : 'Watch on YouTube'}
+      </button>
+    {/if}
     <span class="vv-start">start {cell.startSec || 0}s</span>
   </div>
 </div>
@@ -73,13 +86,19 @@
 <style>
   .vv-wrap { padding: 8px; }
   .vv-player { width: 100%; aspect-ratio: 16 / 9; background: #000; border: 0; border-radius: 4px; display: block; }
-  /* In fullscreen the browser sizes the element itself. Leaving width:100% and
-     a fixed aspect-ratio in force fights that and can letterbox the picture down
-     to nothing, leaving an all-black screen. Fill the viewport instead. */
+  /* Correct fullscreen sizing: the browser sizes the element itself, so
+     width:100% plus a fixed aspect-ratio would fight it. NOTE this did NOT fix
+     the black fullscreen observed in the Wails window on Linux/WSLg — that is
+     an open platform issue recorded in the slice 3 design doc, and "Open in
+     browser" above is the working way to watch fullscreen. The rule is kept
+     because it is correct regardless. */
   .vv-player:fullscreen { width: 100%; height: 100%; aspect-ratio: auto; border-radius: 0; }
   .vv-tools { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
   .vv-btn { background: #1b2636; color: #cde; border: 1px solid #2a3a4a; border-radius: 4px; padding: 2px 8px; cursor: pointer; }
   .vv-btn:hover { background: #24334a; }
   .vv-start { font-size: 11px; color: #8aa; }
   .vv-err { padding: 8px 0; color: #d88; font-size: 13px; }
+  .vv-ext { padding: 14px 12px; background: #0b1220; border: 1px solid #2a3a4a; border-radius: 4px; }
+  .vv-exttitle { color: #cde; font-size: 13px; }
+  .vv-extnote { color: #8aa; font-size: 11px; margin-top: 4px; }
 </style>

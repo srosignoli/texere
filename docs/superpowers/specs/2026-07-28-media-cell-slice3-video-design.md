@@ -259,6 +259,46 @@ proves false, this slice has no fallback, because local storage is the thing it
 routes around. It is therefore the first case in the manual test plan, ahead of
 anything else worth checking.
 
+## Known limitations, found in manual testing (2026-07-28)
+
+Inline playback of searched videos **works** — the platform risk the whole slice
+rested on is resolved. Two other things do not.
+
+### YouTube cannot be embedded — resolved by not embedding it
+
+An embedded YouTube player reports **Error 153**, *"Erreur de configuration du
+lecteur vidéo"*. YouTube validates the embedding origin, and this window's
+origin is the `wails://` custom scheme, so there is no https origin to present.
+A `Referrer-Policy` cannot help: it governs how *much* referrer is sent, not
+what it is. (The meta tag added while probing this is left in place; it is the
+browser default and harmless.)
+
+**Resolution:** YouTube is not embedded. A pasted YouTube link renders its title
+and a **Watch on YouTube** button that opens the timestamped URL in the real
+browser via `BrowserOpenURL`. The reference, the start time and the promoted
+`&t=` link all still work; only a player that cannot function is removed —
+consistent with this codebase's habit of dropping an affordance rather than
+explaining when not to use it.
+
+### Fullscreen renders black — OPEN
+
+Taking an inline video fullscreen shows a black screen in the Wails window on
+Linux/WSLg. Inline playback in the same element is fine.
+
+A CSS cause was ruled out: `.vv-player` was keeping `width: 100%` and a fixed
+`aspect-ratio` in fullscreen, where the browser sizes the element itself. A
+`:fullscreen` rule correcting that **did not fix it**, so the remaining suspect
+is WebKitGTK/WSLg compositing, which is environmental and outside this app. The
+rule is kept because it is correct regardless.
+
+**Mitigation, not a fix:** every video cell now also offers **Open in browser**,
+which opens the timestamped URL in a real browser where fullscreen works. That
+button exists for this reason as much as for YouTube's.
+
+**Untested on native Linux and on Windows.** As with the slice 2 audio issue, a
+green result on another platform would confirm it is environmental but would not
+identify which layer is responsible.
+
 ## Out of scope for this slice
 
 - **YouTube search and its API key** — slice 4.
