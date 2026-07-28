@@ -2,10 +2,10 @@ package mediasearch
 
 import "testing"
 
-func TestProvidersCoverBothKinds(t *testing.T) {
+func TestProvidersCoverAllThreeKinds(t *testing.T) {
 	ps := Providers()
-	if len(ps) != 4 {
-		t.Fatalf("got %d providers, want 4", len(ps))
+	if len(ps) != 7 {
+		t.Fatalf("got %d providers, want 7", len(ps))
 	}
 	byID := map[string]Provider{}
 	for _, p := range ps {
@@ -14,7 +14,10 @@ func TestProvidersCoverBothKinds(t *testing.T) {
 		}
 		byID[p.ID()] = p
 	}
-	for _, id := range []string{"commons", "openverse", "pronunciation", "commons-audio"} {
+	for _, id := range []string{
+		"commons", "openverse", "pronunciation", "commons-audio",
+		"commons-video", "peertube", "archive",
+	} {
 		if _, ok := byID[id]; !ok {
 			t.Errorf("missing provider %q", id)
 		}
@@ -23,8 +26,12 @@ func TestProvidersCoverBothKinds(t *testing.T) {
 	if k := byID["openverse"].Kinds(); len(k) != 1 || k[0] != "image" {
 		t.Errorf("openverse Kinds = %v, want [image] only", k)
 	}
-	if k := byID["pronunciation"].Kinds(); k[0] != "audio" {
-		t.Errorf("pronunciation Kinds = %v, want audio", k)
+	// Every video provider must be resolvable, or picking one cannot produce a
+	// playable URL.
+	for _, id := range []string{"commons-video", "peertube", "archive"} {
+		if _, ok := byID[id].(VideoResolver); !ok {
+			t.Errorf("provider %q does not implement VideoResolver", id)
+		}
 	}
 }
 

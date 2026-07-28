@@ -113,6 +113,8 @@ export function RescheduleReading(arg1:string,arg2:string):Promise<main.ReadingV
 
 export function ResolveReminder(arg1:string,arg2:number):Promise<content.WriteBackResult>;
 
+export function ResolveVideoPlayURL(arg1:string,arg2:mediasearch.Result):Promise<string>;
+
 export function SaveFile(arg1:string,arg2:string):Promise<main.SaveFileResult>;
 
 export function SaveLLMProfile(arg1:main.LLMProfile):Promise<void>;

@@ -47,6 +47,23 @@ func (a *App) SearchMedia(providerID, query, kind string, limit int) ([]mediasea
 	return p.Search(ctx, query, kind, limit)
 }
 
+// ResolveVideoPlayURL turns a chosen video search result into a URL a <video>
+// element can play. It is called once per pick rather than for every result,
+// because PeerTube and the Internet Archive each need an extra request.
+func (a *App) ResolveVideoPlayURL(providerID string, r mediasearch.Result) (string, error) {
+	p, ok := mediasearch.Find(providerID)
+	if !ok {
+		return "", fmt.Errorf("unknown media provider %q", providerID)
+	}
+	vr, ok := p.(mediasearch.VideoResolver)
+	if !ok {
+		return "", fmt.Errorf("provider %q cannot resolve video URLs", providerID)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), searchCallTimeout)
+	defer cancel()
+	return vr.ResolvePlayURL(ctx, r)
+}
+
 // ListLanguages returns the selectable pronunciation languages, ordered by
 // Lingua Libre recording volume.
 func (a *App) ListLanguages() []mediasearch.Language {
