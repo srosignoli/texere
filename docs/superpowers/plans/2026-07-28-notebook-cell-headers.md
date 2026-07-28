@@ -4,7 +4,7 @@
 
 **Goal:** Give every stacked notebook cell a slim header naming its type, so a pile of cells can be scanned at a glance.
 
-**Architecture:** One pure function, `cellLabel(cell)`, in `frontend/src/lib/notebook.js` beside the existing `cellRegistry`, returning the finished header text. `NotebookPane` renders it once per cell in the wrapper it already owns. No cell component gains anything; two that currently name themselves lose their now-duplicated labels.
+**Architecture:** One pure function, `cellLabel(cell)`, in its own dependency-free module `frontend/src/lib/cell-label.js`, returning the finished header text. `NotebookPane` renders it once per cell in the wrapper it already owns. No cell component gains anything; two that currently name themselves lose their now-duplicated labels.
 
 **Tech Stack:** Svelte 3.49, `node:test`.
 
@@ -23,23 +23,34 @@
 ### Task 1: `cellLabel`
 
 **Files:**
-- Modify: `frontend/src/lib/notebook.js` (add below the existing `cellRegistry`)
-- Modify: `frontend/src/lib/notebook.test.js` — **create it if absent**; there is currently no test file for this module, so check first with `ls frontend/src/lib/`
+- Create: `frontend/src/lib/cell-label.js`
+- Create: `frontend/src/lib/cell-label.test.js`
 
 **Interfaces:**
 - Consumes: nothing.
-- Produces: `cellLabel(cell) -> string`, exported from `frontend/src/lib/notebook.js`. Task 2 imports it.
+- Produces: `cellLabel(cell) -> string`, exported from `frontend/src/lib/cell-label.js`. Task 2 imports it from there.
 
-`make test-js` runs `node --test frontend/src/lib/*.test.js`, so a new `notebook.test.js` in that directory is picked up automatically with no Makefile change.
+**Why its own module, and NOT `notebook.js`.** `notebook.js` statically imports
+nine `.svelte` components for `cellRegistry`. Node's test runner cannot parse
+`.svelte`, so a `node:test` file can never import anything from that module.
+`cellLabel` therefore lives in its own dependency-free file.
+
+**Do not** attempt to make `notebook.js` importable from Node — its
+`cellRegistry` must stay a plain, synchronously-populated object. `NotebookPane`
+reads `cellRegistry[cell.type]` directly in `<svelte:component>`, and an object
+populated later by a promise triggers no Svelte reactivity, so every cell would
+render blank.
+
+`make test-js` runs `node --test frontend/src/lib/*.test.js`, so a new `cell-label.test.js` in that directory is picked up automatically with no Makefile change.
 
 - [ ] **Step 1: Write the failing test**
 
-Create `frontend/src/lib/notebook.test.js` (or append if it already exists):
+Create `frontend/src/lib/cell-label.test.js`:
 
 ```js
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { cellLabel } from './notebook.js'
+import { cellLabel } from './cell-label.js'
 
 test('each stacked cell type gets the name of the button that creates it', () => {
   assert.equal(cellLabel({ type: 'n4l' }), 'N4L draft')
@@ -99,11 +110,11 @@ test('the header is never empty', () => {
 - [ ] **Step 2: Run the test to verify it fails**
 
 Run: `make test-js`
-Expected: FAIL — `The requested module './notebook.js' does not provide an export named 'cellLabel'`.
+Expected: FAIL — `Cannot find module '.../frontend/src/lib/cell-label.js'`.
 
 - [ ] **Step 3: Write the implementation**
 
-Append to `frontend/src/lib/notebook.js`, below `cellRegistry`:
+Create `frontend/src/lib/cell-label.js`. It imports nothing — that is the point:
 
 ```js
 // Display name per stacked cell type, matching the button that creates it — the
@@ -157,7 +168,7 @@ Expected: PASS — the seven new tests plus every pre-existing suite in `fronten
 - [ ] **Step 5: Commit**
 
 ```bash
-git add frontend/src/lib/notebook.js frontend/src/lib/notebook.test.js
+git add frontend/src/lib/cell-label.js frontend/src/lib/cell-label.test.js
 git commit -m "feat(notebook): cellLabel — type name plus a detail where it varies"
 ```
 
@@ -169,7 +180,7 @@ git commit -m "feat(notebook): cellLabel — type name plus a detail where it va
 - Modify: `frontend/src/components/notebook/NotebookPane.svelte`
 
 **Interfaces:**
-- Consumes: `cellLabel(cell)` from `frontend/src/lib/notebook.js` (Task 1).
+- Consumes: `cellLabel(cell)` from `frontend/src/lib/cell-label.js` (Task 1).
 - Produces: a `.nb-cellhead` element above every stacked cell.
 
 **The placement trap — read this before editing.** The design doc says the header goes "inside the existing `.nb-cellwrap`", which is **wrong** and would produce a visible layout bug. `.nb-cellwrap` is a **horizontal flex row** (`display: flex; gap: 6px`) whose children are the `▲▼` reorder gutter and `.nb-cell`. A header added as a third child of that row would render *beside* the cell, not above it.
@@ -178,10 +189,10 @@ The header must go **inside `.nb-cell`**, as the first child, before `<svelte:co
 
 - [ ] **Step 1: Import the helper**
 
-`NotebookPane.svelte` already imports from this module. Extend that existing import — do not add a second one:
+Add a new import line beside the existing `notebook.js` import. `cellLabel` lives in its own module, so this is a separate import, not an extension of the existing one:
 
 ```js
-  import { newDraftCell, newLLMCell, newGraphCell, newComputeCell, newSketchCell, newImageCell, newAudioCell, newMediaCell, cellRegistry, cellLabel } from '../../lib/notebook.js'
+  import { cellLabel } from '../../lib/cell-label.js'
 ```
 
 - [ ] **Step 2: Render the header inside `.nb-cell`**
