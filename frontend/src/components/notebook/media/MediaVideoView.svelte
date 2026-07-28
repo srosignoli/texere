@@ -73,6 +73,10 @@
 <style>
   .vv-wrap { padding: 8px; }
   .vv-player { width: 100%; aspect-ratio: 16 / 9; background: #000; border: 0; border-radius: 4px; display: block; }
+  /* In fullscreen the browser sizes the element itself. Leaving width:100% and
+     a fixed aspect-ratio in force fights that and can letterbox the picture down
+     to nothing, leaving an all-black screen. Fill the viewport instead. */
+  .vv-player:fullscreen { width: 100%; height: 100%; aspect-ratio: auto; border-radius: 0; }
   .vv-tools { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
   .vv-btn { background: #1b2636; color: #cde; border: 1px solid #2a3a4a; border-radius: 4px; padding: 2px 8px; cursor: pointer; }
   .vv-btn:hover { background: #24334a; }

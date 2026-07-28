@@ -253,7 +253,7 @@
     <select bind:value={providerId} disabled={busy || !providers.length}>
       {#each providers as p}<option value={p.id}>{p.name}</option>{/each}
     </select>
-    <input class="ms-q" type="text" placeholder={kind === 'audio' ? 'Search for a pronunciation…' : 'Search for a picture…'}
+    <input class="ms-q" type="text" placeholder={kind === 'video' ? 'Search for a video…' : kind === 'audio' ? 'Search for a pronunciation…' : 'Search for a picture…'}
       bind:value={query} on:input={() => onQuery(query)} on:keydown={onKey} />
     <button class="ms-btn" on:click={search} disabled={busy || !query.trim() || !providerId}>
       {busy ? 'Searching…' : 'Search'}
