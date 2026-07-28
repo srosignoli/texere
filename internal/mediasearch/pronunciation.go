@@ -30,6 +30,7 @@ type llResponse struct {
 			ImageInfo []struct {
 				URL            string  `json:"url"`
 				DescriptionURL string  `json:"descriptionurl"`
+				ThumbURL       string  `json:"thumburl"`
 				Mime           string  `json:"mime"`
 				Duration       float64 `json:"duration"`
 			} `json:"imageinfo"`

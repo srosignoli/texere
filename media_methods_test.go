@@ -6,15 +6,31 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"texere/internal/mediasearch"
 )
 
 func TestListMediaProvidersReturnsBoth(t *testing.T) {
 	got := (&App{}).ListMediaProviders()
-	if len(got) != 4 {
-		t.Fatalf("got %d providers, want 4", len(got))
+	if len(got) != 7 {
+		t.Fatalf("got %d providers, want 7", len(got))
 	}
 	if got[0].ID == "" || got[0].Name == "" || len(got[0].Kinds) == 0 {
 		t.Errorf("provider info incomplete: %+v", got[0])
+	}
+}
+
+func TestResolveVideoPlayURLUnknownProvider(t *testing.T) {
+	if _, err := (&App{}).ResolveVideoPlayURL("nope", mediasearch.Result{}); err == nil {
+		t.Fatal("expected an error for an unknown provider")
+	}
+}
+
+// An image provider cannot resolve a play URL; asking must fail loudly rather
+// than returning an empty string the frontend would treat as a valid URL.
+func TestResolveVideoPlayURLNonVideoProvider(t *testing.T) {
+	if _, err := (&App{}).ResolveVideoPlayURL("commons", mediasearch.Result{}); err == nil {
+		t.Fatal("expected an error for a provider that is not a VideoResolver")
 	}
 }
 

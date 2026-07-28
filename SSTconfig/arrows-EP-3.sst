@@ -23,6 +23,7 @@
  + has picture       (pic)          - is a picture of      (pic-of)
  + has pronunciation (pron)         - has pronunciation recording of (pron-rec)
  + has audio         (aud)          - is audio for         (aud-for)
+ + has video         (vid)          - is video for         (vid-for)
  + has version       (version)      - is a version of      (is-version)
  + has status        (status)       - is the status of     (status-of)
  + has data          (data)         - is data for          (data-for)

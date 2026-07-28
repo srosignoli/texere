@@ -54,6 +54,9 @@ export function newMediaCell() {
     id: `cell-${Date.now()}-${seq}`, type: 'media',
     kind: 'image',
     asset: '', mime: '', embedURL: '',
+    playerKind: '',    // 'file' | 'iframe'; video only
+    title: '',         // video only; drives the promoted (note) line
+    startSec: 0,       // video only; the marked moment
     crop: null, naturalW: 0, naturalH: 0,
     query: '', subject: '', lang: '',
     provider: '', sourcePage: '', license: '',

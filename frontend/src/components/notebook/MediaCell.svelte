@@ -2,7 +2,8 @@
   import MediaSearchPanel from './MediaSearchPanel.svelte'
   import MediaImageView from './media/MediaImageView.svelte'
   import MediaAudioView from './media/MediaAudioView.svelte'
-  import { buildMediaFact, mediaArrow } from '../../lib/media-fact.js'
+  import MediaVideoView from './media/MediaVideoView.svelte'
+  import { buildMediaFact, mediaArrow, hasContent } from '../../lib/media-fact.js'
   import { BrowserOpenURL } from '../../../wailsjs/runtime/runtime'
 
   export let cell
@@ -14,9 +15,8 @@
   export let onPush = () => {} // unused
   export let onInsert = () => {}
 
-  // kind -> render component. Audio and video slot in here in later slices
-  // without MediaCell changing.
-  const views = { image: MediaImageView, audio: MediaAudioView }
+  // kind -> render component.
+  const views = { image: MediaImageView, audio: MediaAudioView, video: MediaVideoView }
 
   let replacing = false
   let cropping = false
@@ -42,6 +42,11 @@
     cell.crop = null
     cell.naturalW = 0
     cell.naturalH = 0
+    cell.embedURL = result.embedURL ?? ''
+    cell.playerKind = result.playerKind ?? ''
+    cell.title = result.title ?? ''
+    cell.startSec = 0
+    cell.durationMs = result.durationMs ?? 0
     cell = cell
     replacing = false
     cropping = false
@@ -75,6 +80,12 @@
     cell = cell
     persist()
   }
+
+  function onStart(sec) {
+    cell.startSec = Math.max(0, Math.round(sec || 0))
+    cell = cell
+    persist()
+  }
 </script>
 
 <div class="me-cell">
@@ -82,23 +93,23 @@
     <span class="me-label">Media</span>
     {#if cell.license}<span class="me-lic">{cell.license}</span>{/if}
     <span class="me-spacer"></span>
-    {#if !readOnly && cell.asset && !replacing}
+    {#if !readOnly && hasContent(cell) && !replacing}
       <button class="me-btn" on:click={replace} title="Pick a different asset">Replace</button>
     {/if}
-    {#if !readOnly && replacing && cell.asset}
+    {#if !readOnly && replacing && hasContent(cell)}
       <button class="me-btn" on:click={() => (replacing = false)} title="Keep the current asset">Cancel</button>
     {/if}
     {#if !readOnly}<button class="me-btn" on:click={onDelete} title="Delete cell">✕</button>{/if}
   </div>
 
-  {#if !cell.asset || replacing}
+  {#if !hasContent(cell) || replacing}
     {#if readOnly}
       <div class="me-empty">No asset.</div>
     {:else}
       <MediaSearchPanel kind={cell.kind} query={cell.query} lang={cell.lang} {onQuery} {onLang} {onKind} {onPick} />
     {/if}
   {:else}
-    <svelte:component this={views[cell.kind]} {cell} {cropping} {onMeta} onCrop={applyCrop} />
+    <svelte:component this={views[cell.kind]} {cell} {cropping} {onMeta} {onStart} onCrop={applyCrop} />
     {#if !readOnly}
       <div class="me-tools">
         {#if cell.kind === 'image'}
@@ -112,7 +123,7 @@
         <span class="me-spacer"></span>
         <input class="me-subj" type="text" placeholder="subject" value={cell.subject}
           on:input={setSubject} title="The N4L node this asset is about" />
-        <button class="me-btn" on:click={promote} disabled={!cell.subject.trim()}
+        <button class="me-btn" on:click={promote} disabled={!cell.subject.trim() || !hasContent(cell)}
           title={`Insert an N4L draft using the (${mediaArrow(cell)}) arrow`}>
           Promote to N4L ({mediaArrow(cell)})
         </button>

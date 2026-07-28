@@ -214,6 +214,10 @@ export function ResolveReminder(arg1, arg2) {
   return window['go']['main']['App']['ResolveReminder'](arg1, arg2);
 }
 
+export function ResolveVideoPlayURL(arg1, arg2) {
+  return window['go']['main']['App']['ResolveVideoPlayURL'](arg1, arg2);
+}
+
 export function SaveFile(arg1, arg2) {
   return window['go']['main']['App']['SaveFile'](arg1, arg2);
 }

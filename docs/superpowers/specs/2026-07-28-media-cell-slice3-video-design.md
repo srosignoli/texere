@@ -71,7 +71,11 @@ was written; every arrow code was checked against the loaded registry.
 - **The timestamp is captured from the player, not typed.** Because the three
   search providers expose direct file URLs, the player is *our own* `<video>`
   element, so `currentTime` is readable with no per-provider API. Scrub, click
-  **Set start here**, done. A typed `mm:ss` field remains for override.
+  **Set start here**, done. A typed field remains for override, accepting
+  `m:ss`, `h:mm:ss` or bare seconds. That field is not merely a convenience:
+  it is the **only** way to mark a moment on a YouTube cell, whose position
+  cannot be read back. Unusable input restores the previous value rather than
+  resetting the mark to zero.
 - **The fact carries a note line.** A bare URL is unreadable months later, so
   promotion emits the link plus a `(note)` line with the title and time. This
   departs from the "provenance stays out of the N4L" rule of slice 1, and does
@@ -258,6 +262,46 @@ through Wails' non-seekable pipe — but it is **not verified for video**. If it
 proves false, this slice has no fallback, because local storage is the thing it
 routes around. It is therefore the first case in the manual test plan, ahead of
 anything else worth checking.
+
+## Known limitations, found in manual testing (2026-07-28)
+
+Inline playback of searched videos **works** — the platform risk the whole slice
+rested on is resolved. Two other things do not.
+
+### YouTube cannot be embedded — resolved by not embedding it
+
+An embedded YouTube player reports **Error 153**, *"Erreur de configuration du
+lecteur vidéo"*. YouTube validates the embedding origin, and this window's
+origin is the `wails://` custom scheme, so there is no https origin to present.
+A `Referrer-Policy` cannot help: it governs how *much* referrer is sent, not
+what it is. (The meta tag added while probing this is left in place; it is the
+browser default and harmless.)
+
+**Resolution:** YouTube is not embedded. A pasted YouTube link renders its title
+and a **Watch on YouTube** button that opens the timestamped URL in the real
+browser via `BrowserOpenURL`. The reference, the start time and the promoted
+`&t=` link all still work; only a player that cannot function is removed —
+consistent with this codebase's habit of dropping an affordance rather than
+explaining when not to use it.
+
+### Fullscreen renders black — OPEN
+
+Taking an inline video fullscreen shows a black screen in the Wails window on
+Linux/WSLg. Inline playback in the same element is fine.
+
+A CSS cause was ruled out: `.vv-player` was keeping `width: 100%` and a fixed
+`aspect-ratio` in fullscreen, where the browser sizes the element itself. A
+`:fullscreen` rule correcting that **did not fix it**, so the remaining suspect
+is WebKitGTK/WSLg compositing, which is environmental and outside this app. The
+rule is kept because it is correct regardless.
+
+**Mitigation, not a fix:** every video cell now also offers **Open in browser**,
+which opens the timestamped URL in a real browser where fullscreen works. That
+button exists for this reason as much as for YouTube's.
+
+**Untested on native Linux and on Windows.** As with the slice 2 audio issue, a
+green result on another platform would confirm it is environmental but would not
+identify which layer is responsible.
 
 ## Out of scope for this slice
 

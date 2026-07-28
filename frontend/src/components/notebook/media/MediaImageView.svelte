@@ -5,6 +5,7 @@
   export let cropping = false
   export let onCrop = () => {}   // ({x,y,w,h}) => void
   export let onMeta = () => {}   // (w, h) => record and persist the intrinsic size
+  export let onStart = () => {}  // unused; video only
 
   let missing = false
   let imgEl

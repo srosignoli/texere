@@ -1603,10 +1603,18 @@ Replace `fetchPasted()` so a pasted link is referenced rather than downloaded wh
     stopPreview()
     err = ''
     busy = true
-    const mine = ++acqGen
+    acqGen++ // supersede any in-flight acquisition
     try {
       if (kind === 'video') {
-        // Video is referenced, never stored, so nothing is fetched here.
+        // Video is referenced, never stored, so nothing is fetched here — which
+        // is exactly why the scheme is checked: this string becomes a <video>
+        // src or an iframe target unexamined otherwise. Same discipline as
+        // openSource() in MediaCell, and it also catches the common mistake of
+        // pasting a title or a file path.
+        if (!/^https?:\/\//i.test(u)) {
+          err = 'Paste an http(s) video or YouTube URL.'
+          return
+        }
         const isYT = YOUTUBE_RE.test(u)
         onPick(
           { kind, title: '', sourcePage: u, license: '', provider: isYT ? 'youtube' : 'url',
@@ -1614,11 +1622,12 @@ Replace `fetchPasted()` so a pasted link is referenced rather than downloaded wh
           { embedURL: u })
         return
       }
+      // Bound only on the path that actually awaits and therefore needs it.
+      const mine = acqGen
       const ref = await FetchMediaURL(u, kind)
       if (mine !== acqGen) return
       onPick({ kind, title: '', sourcePage: u, license: '', provider: 'url' }, ref)
     } catch (e) {
-      if (mine !== acqGen) return
       err = String(e?.message ?? e)
     } finally { busy = false }
   }
