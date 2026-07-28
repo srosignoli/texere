@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy, tick } from 'svelte'
-  import { ListMediaProviders, ListLanguages, SearchMedia, FetchMediaURL, ImportImage, ImportAudio } from '../../../wailsjs/go/main/App'
+  import { ListMediaProviders, ListLanguages, SearchMedia, FetchMediaURL, ImportImage, ImportAudio, ResolveVideoPlayURL } from '../../../wailsjs/go/main/App'
   import { mediaErrorMessage } from '../../lib/media-error.js'
   import { getLastLanguage, setLastLanguage } from '../../lib/last-language.js'
 
@@ -40,6 +40,13 @@
   function fmtDuration(ms) {
     if (!ms) return ''
     return (ms / 1000).toFixed(1) + 's'
+  }
+  // Video durations are minutes long, so a clock reads better than seconds.
+  function fmtClock(ms) {
+    const s = Math.round((ms || 0) / 1000)
+    if (!s) return ''
+    const m = Math.floor(s / 60)
+    return `${m}:${String(s % 60).padStart(2, '0')}`
   }
   // "audio/wav" -> "wav"; "application/ogg" -> "ogg"
   function fmtFormat(mime) {
@@ -134,13 +141,24 @@
   async function pick(r) {
     if (fetchingURL) return
     stopPreview()
-    fetchingURL = r.fullUrl
+    fetchingURL = r.fullUrl || r.sourcePage
     err = ''
     const mine = ++acqGen
     try {
-      const ref = await FetchMediaURL(r.fullUrl, kind)
-      if (mine !== acqGen) return   // cancelled or superseded while fetching
-      onPick({ ...r, provider: providerId }, ref)
+      if (kind === 'video') {
+        // Resolved here rather than during search: PeerTube and the Internet
+        // Archive each need an extra request, which would be dozens per search.
+        const playURL = await ResolveVideoPlayURL(providerId, r)
+        if (mine !== acqGen) return
+        // MediaCell.onPick(result, ref) reads embedURL/playerKind off `result`
+        // (the first argument) — the same object playerKind is already merged
+        // into — not off `ref`; `ref` is only ever asset/mime for stored kinds.
+        onPick({ ...r, provider: providerId, playerKind: 'file', embedURL: playURL }, {})
+      } else {
+        const ref = await FetchMediaURL(r.fullUrl, kind)
+        if (mine !== acqGen) return
+        onPick({ ...r, provider: providerId }, ref)
+      }
     } catch (e) {
       if (mine !== acqGen) return
       const msg = String(e?.message ?? e)
@@ -174,6 +192,8 @@
     }
   }
 
+  const YOUTUBE_RE = /(?:youtube\.com\/.*[?&]v=|youtu\.be\/)([A-Za-z0-9_-]{6,})/
+
   async function fetchPasted() {
     const u = pasteURL.trim()
     if (!u) return
@@ -182,6 +202,25 @@
     busy = true
     const mine = ++acqGen
     try {
+      if (kind === 'video') {
+        // Video is referenced, never stored, so nothing is fetched here — which
+        // is exactly why the scheme is checked: this string becomes a <video>
+        // src or an iframe target unexamined otherwise. Same discipline as
+        // openSource() in MediaCell, and it also catches the common mistake of
+        // pasting a title or a file path.
+        if (!/^https?:\/\//i.test(u)) {
+          err = 'Paste an http(s) video or YouTube URL.'
+          return
+        }
+        const isYT = YOUTUBE_RE.test(u)
+        // embedURL/playerKind are read off this first object by MediaCell's
+        // onPick(result, ref) — see the same note in pick().
+        onPick(
+          { kind, title: '', sourcePage: u, license: '', provider: isYT ? 'youtube' : 'url',
+            playerKind: isYT ? 'iframe' : 'file', embedURL: u },
+          {})
+        return
+      }
       const ref = await FetchMediaURL(u, kind)
       if (mine !== acqGen) return   // cancelled or superseded while fetching
       onPick({ kind, title: '', sourcePage: u, license: '', provider: 'url' }, ref)
@@ -200,6 +239,8 @@
       on:click={() => setKind('image')} disabled={busy}>Image</button>
     <button class="ms-btn" class:ms-on={kind === 'audio'}
       on:click={() => setKind('audio')} disabled={busy}>Audio</button>
+    <button class="ms-btn" class:ms-on={kind === 'video'}
+      on:click={() => setKind('video')} disabled={busy}>Video</button>
     {#if kind === 'audio'}
       <select bind:value={lang} on:change={() => { onLang(lang); setLastLanguage(lang) }} disabled={busy} title="Recording language">
         {#each languages as l}<option value={l.name}>{l.name}</option>{/each}
@@ -217,8 +258,12 @@
     </button>
   </div>
   <div class="ms-alt">
-    <button class="ms-btn" on:click={importFile} disabled={busy}>Import file…</button>
-    <input class="ms-q" type="text" placeholder={kind === 'audio' ? '…or paste an audio URL' : '…or paste an image URL'}
+    <!-- Video is referenced, never stored, so importing a local file has no
+         meaning for it. The paste field stays available for every kind. -->
+    {#if kind !== 'video'}
+      <button class="ms-btn" on:click={importFile} disabled={busy}>Import file…</button>
+    {/if}
+    <input class="ms-q" type="text" placeholder={kind === 'video' ? '…or paste a video or YouTube URL' : kind === 'audio' ? '…or paste an audio URL' : '…or paste an image URL'}
       bind:value={pasteURL} on:keydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); fetchPasted() } }} />
     <button class="ms-btn" on:click={fetchPasted} disabled={busy || !pasteURL.trim()}>Fetch</button>
   </div>
@@ -247,6 +292,20 @@
               </span>
             </button>
           </div>
+        {/each}
+      </div>
+    {:else if kind === 'video'}
+      <!-- Keyed on sourcePage, NOT fullUrl: every video result carries an empty
+           fullUrl until it is resolved on pick, so fullUrl would give every
+           tile the same key. -->
+      <div class="ms-grid ms-vgrid">
+        {#each results as r (r.sourcePage)}
+          <button class="ms-hit ms-vhit" class:ms-loading={fetchingURL === (r.fullUrl || r.sourcePage)}
+            on:click={() => pick(r)} title={r.title}>
+            {#if r.thumbUrl}<img src={r.thumbUrl} alt={r.title} loading="lazy" />{/if}
+            {#if r.durationMs}<span class="ms-dur">{fmtClock(r.durationMs)}</span>{/if}
+            <span class="ms-vtitle">{r.title}</span>
+          </button>
         {/each}
       </div>
     {:else}
@@ -283,6 +342,15 @@
   .ms-hit:hover { border-color: #4a7aa8; }
   .ms-hit.ms-loading { opacity: 0.4; cursor: default; }
   .ms-hit img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  /* MUST stay after every .ms-hit rule above: equal specificity, so source
+     order decides which wins. Declared earlier these are silently dead and the
+     video tiles render as squares with stretched thumbnails — the same mistake
+     that once made .ms-on invisible in this file. */
+  .ms-vgrid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+  .ms-vhit { position: relative; aspect-ratio: auto; display: flex; flex-direction: column; align-items: stretch; padding: 0 0 4px; }
+  .ms-vhit img { width: 100%; aspect-ratio: 16 / 9; height: auto; object-fit: cover; display: block; }
+  .ms-dur { position: absolute; right: 4px; top: 4px; background: rgba(0,0,0,0.75); color: #fff; font-size: 10px; padding: 1px 4px; border-radius: 3px; }
+  .ms-vtitle { padding: 4px 6px 0; font-size: 11px; color: #cde; text-align: left; line-height: 1.25; max-height: 2.6em; overflow: hidden; }
   .ms-rows { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; max-height: 320px; overflow-y: auto; }
   .ms-row { display: flex; align-items: stretch; gap: 6px; }
   .ms-row.ms-loading { opacity: 0.4; }
