@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { cellLabel } from './notebook.js'
+import { cellLabel } from './cell-label.js'
 
 test('each stacked cell type gets the name of the button that creates it', () => {
   assert.equal(cellLabel({ type: 'n4l' }), 'N4L draft')
