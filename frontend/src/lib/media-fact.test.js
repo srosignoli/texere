@@ -105,7 +105,7 @@ test('a video fact is the link plus a readable note line', () => {
       title: 'Dr. Binocs Show — Photosynthesis', startSec: 223,
     }),
     'photosynthesis\n"  (vid) https://diler.tube/videos/watch/abc?start=223\n' +
-    '"  (note) Dr. Binocs Show — Photosynthesis (3:43)\n')
+    '"  (note) Dr. Binocs Show — Photosynthesis @ 3:43\n')
 })
 
 test('the note line carries no time when the start is zero', () => {
@@ -132,7 +132,7 @@ test('an hour-long start time is clocked as h:mm:ss', () => {
       subject: 'x', kind: 'video', provider: 'peertube',
       sourcePage: 'https://x.tube/w', title: 'Long lecture', startSec: 3723,
     }),
-    'x\n"  (vid) https://x.tube/w?start=3723\n"  (note) Long lecture (1:02:03)\n')
+    'x\n"  (vid) https://x.tube/w?start=3723\n"  (note) Long lecture @ 1:02:03\n')
 })
 
 test('a video with no source page yields no fact', () => {

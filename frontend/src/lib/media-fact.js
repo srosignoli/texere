@@ -68,7 +68,10 @@ export function buildMediaFact(cell) {
     const title = (cell.title ?? '').trim()
     if (title) {
       const t = Math.max(0, Math.round(cell.startSec ?? 0))
-      out += `"  (note) ${t ? `${title} (${clock(t)})` : title}\n`
+      // The clock is appended with "@", never wrapped in parentheses: N4L reads
+      // "(...)" as arrow syntax, so a parenthesised clock is silently consumed
+      // by the parser and never reaches the graph.
+      out += `"  (note) ${t ? `${title} @ ${clock(t)}` : title}\n`
     }
     return out
   }
