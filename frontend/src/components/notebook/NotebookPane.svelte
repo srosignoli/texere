@@ -84,20 +84,22 @@
     <ContextCell {context} />
     {#each cells as cell, i (cell.id)}
       <div class="nb-cellwrap">
-        {#if !readOnly}
-          <div class="nb-reorder">
-            <button on:click={() => move(i, -1)} title="Move up">▲</button>
-            <button on:click={() => move(i, 1)} title="Move down">▼</button>
-          </div>
-        {/if}
-        <div class="nb-cell">
-          <div class="nb-cellhead">{cellLabel(cell)}</div>
-          <svelte:component this={cellRegistry[cell.type]} {cell} {readOnly} {context} cells={cells}
-            onChange={(t) => (typeof t === 'string' ? updateCell(i, t) : updateCellObj(i, t))}
-            onPush={(t) => onPush(t)}
-            onDelete={() => deleteCell(i)}
-            onInsert={(text) => insertAfter(i, newDraftCell(text))} />
+        <div class="nb-cellhead">
+          <span class="nb-cellname">{cellLabel(cell)}</span>
+          {#if !readOnly}
+            <span class="nb-headspacer"></span>
+            <div class="nb-reorder">
+              <button on:click={() => move(i, -1)} disabled={i === 0} title="Move up">▲</button>
+              <button on:click={() => move(i, 1)} disabled={i === cells.length - 1} title="Move down">▼</button>
+            </div>
+            <button class="nb-del" on:click={() => deleteCell(i)} title="Delete cell">✕</button>
+          {/if}
         </div>
+        <svelte:component this={cellRegistry[cell.type]} {cell} {readOnly} {context} cells={cells}
+          onChange={(t) => (typeof t === 'string' ? updateCell(i, t) : updateCellObj(i, t))}
+          onPush={(t) => onPush(t)}
+          onDelete={() => deleteCell(i)}
+          onInsert={(text) => insertAfter(i, newDraftCell(text))} />
       </div>
     {/each}
     {#if !readOnly}
@@ -122,16 +124,24 @@
   .nb-gear { margin-left: auto; background: #14233a; color: #93c5fd; border: 1px solid #2a4a6a; border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
   .nb-error { color: #ff8080; padding: 6px 12px; font-size: 12px; }
   .nb-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 12px; }
-  .nb-cellwrap { display: flex; gap: 6px; }
-  .nb-reorder { display: flex; flex-direction: column; gap: 2px; padding-top: 4px; }
-  .nb-reorder button { background: none; border: none; color: #46586a; cursor: pointer; font-size: 9px; }
-  .nb-reorder button:hover { color: #7dd3fc; }
-  .nb-cell { flex: 1; min-width: 0; }
   /* Reads as chrome, not content: the same muted, letter-spaced treatment
      AudioCell already used for its own name, dimmed further. Deliberately has
      no background — nine cell types have their own borders and radii, and a
-     filled strip would have to match each one to avoid looking detached. */
-  .nb-cellhead { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: #5d7186; padding: 0 2px 3px; }
+     filled strip would have to match each one to avoid looking detached. The
+     reorder and delete controls belong to this wrapper rather than to the cell,
+     and sitting outside the cell's border is how that reads honestly. */
+  .nb-cellhead { display: flex; align-items: center; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: #5d7186; padding: 0 2px 3px; }
+  .nb-cellname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nb-headspacer { flex: 1; }
+  .nb-reorder { display: flex; gap: 2px; }
+  .nb-reorder button { background: none; border: none; color: #46586a; cursor: pointer; font-size: 9px; padding: 0 2px; }
+  .nb-reorder button:hover:not(:disabled) { color: #7dd3fc; }
+  .nb-reorder button:disabled { opacity: .35; cursor: default; }
+  /* The gap before ✕ is the whole of the mis-click protection: ▲▼ and delete
+     are neighbours for the first time here, and deleteCell has no undo. Keep it
+     visible — do not collapse it into the .nb-reorder gap. */
+  .nb-del { margin-left: 14px; background: none; border: none; color: #46586a; cursor: pointer; font-size: 11px; padding: 0 2px; }
+  .nb-del:hover { color: #ff8080; }
   .nb-add { background: #14233a; color: #93c5fd; border: 1px dashed #2a4a6a; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 12px; width: 100%; }
   .nb-add:hover { background: #1a2f4a; }
 </style>
