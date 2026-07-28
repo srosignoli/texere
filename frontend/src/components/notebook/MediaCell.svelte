@@ -93,10 +93,10 @@
     <span class="me-label">Media</span>
     {#if cell.license}<span class="me-lic">{cell.license}</span>{/if}
     <span class="me-spacer"></span>
-    {#if !readOnly && cell.asset && !replacing}
+    {#if !readOnly && hasContent(cell) && !replacing}
       <button class="me-btn" on:click={replace} title="Pick a different asset">Replace</button>
     {/if}
-    {#if !readOnly && replacing && cell.asset}
+    {#if !readOnly && replacing && hasContent(cell)}
       <button class="me-btn" on:click={() => (replacing = false)} title="Keep the current asset">Cancel</button>
     {/if}
     {#if !readOnly}<button class="me-btn" on:click={onDelete} title="Delete cell">✕</button>{/if}

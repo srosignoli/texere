@@ -105,6 +105,7 @@
   function setKind(k) {
     if (k === kind) return
     stopPreview()
+    acqGen++ // supersede any in-flight pick: its result no longer belongs here
     kind = k
     results = []
     searched = false
@@ -116,6 +117,7 @@
     const q = query.trim()
     if (!q || !providerId) return
     stopPreview()
+    acqGen++ // supersede any in-flight pick: its result no longer belongs here
     const mine = ++seq
     busy = true; err = ''; results = []
     // The pronunciation provider takes "language|word"; every other provider
