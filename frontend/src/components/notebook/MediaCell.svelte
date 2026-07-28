@@ -90,7 +90,6 @@
 
 <div class="me-cell">
   <div class="me-bar">
-    <span class="me-label">Media</span>
     {#if cell.license}<span class="me-lic">{cell.license}</span>{/if}
     <span class="me-spacer"></span>
     {#if !readOnly && hasContent(cell) && !replacing}
@@ -138,7 +137,6 @@
 <style>
   .me-cell { border: 1px solid #2a3a4a; border-radius: 6px; background: #101826; }
   .me-bar { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-bottom: 1px solid #2a3a4a; }
-  .me-label { font-size: 12px; color: #8aa; }
   .me-lic { font-size: 11px; color: #678; }
   .me-spacer { flex: 1 1 auto; }
   .me-btn { background: #1b2636; color: #cde; border: 1px solid #2a3a4a; border-radius: 4px; padding: 2px 8px; cursor: pointer; }

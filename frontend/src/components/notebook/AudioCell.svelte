@@ -157,7 +157,6 @@
 
 <div class="au-cell">
   <div class="au-bar">
-    <span class="au-title">🎙 Audio</span>
     {#if cell.asset}<span class="au-dur">{fmt(cell.durationMs)}</span>{/if}
     <span class="au-spacer"></span>
     {#if !readOnly && cell.asset}<button on:click={replace} title="Replace">Replace</button>{/if}
@@ -199,7 +198,6 @@
 <style>
   .au-cell { background: #0e1622; border: 1px solid #26374a; border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
   .au-bar { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-bottom: 1px solid #1c2a3a; }
-  .au-title { color: #7dd3fc; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
   .au-dur { color: #93c5fd; font-size: 11px; }
   .au-spacer { flex: 1; }
   .au-bar button { background: #14233a; color: #93c5fd; border: 1px solid #2a3a4a; border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
