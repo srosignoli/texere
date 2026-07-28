@@ -3,6 +3,13 @@
 <head>
     <meta charset="UTF-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <!-- Experiment for the YouTube embed's "Error 153" (player configuration
+         error). The theory is that YouTube rejects the embed because it cannot
+         verify a referrer from this window's wails:// origin. Caveat: this
+         policy only controls how MUCH referrer is sent, not what it is, so it
+         cannot present an https origin we do not have. Harmless either way —
+         it is the standard default in browsers. -->
+    <meta name="referrer" content="strict-origin-when-cross-origin"/>
     <title>texere</title>
 </head>
 <body>
