@@ -2,6 +2,7 @@
   import MediaSearchPanel from './MediaSearchPanel.svelte'
   import MediaImageView from './media/MediaImageView.svelte'
   import MediaAudioView from './media/MediaAudioView.svelte'
+  import MediaVideoView from './media/MediaVideoView.svelte'
   import { buildMediaFact, mediaArrow, hasContent } from '../../lib/media-fact.js'
   import { BrowserOpenURL } from '../../../wailsjs/runtime/runtime'
 
@@ -14,9 +15,8 @@
   export let onPush = () => {} // unused
   export let onInsert = () => {}
 
-  // kind -> render component. Audio and video slot in here in later slices
-  // without MediaCell changing.
-  const views = { image: MediaImageView, audio: MediaAudioView }
+  // kind -> render component.
+  const views = { image: MediaImageView, audio: MediaAudioView, video: MediaVideoView }
 
   let replacing = false
   let cropping = false
