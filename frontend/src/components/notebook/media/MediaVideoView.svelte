@@ -12,8 +12,12 @@
 
   $: isFile = cell.playerKind !== 'iframe'
   // youtube-nocookie avoids setting tracking cookies until playback starts.
-  $: embedSrc = cell.playerKind === 'iframe'
-    ? `https://www.youtube-nocookie.com/embed/${youtubeId(cell.embedURL)}${cell.startSec ? `?start=${cell.startSec}` : ''}`
+  // Build the embed URL only when an id was actually extracted. Returning the
+  // bare prefix would keep this string truthy and make the "not recognised"
+  // branch below unreachable, silently rendering an iframe with no video.
+  $: ytId = cell.playerKind === 'iframe' ? youtubeId(cell.embedURL) : ''
+  $: embedSrc = ytId
+    ? `https://www.youtube-nocookie.com/embed/${ytId}${cell.startSec ? `?start=${cell.startSec}` : ''}`
     : ''
 
   // Accepts both watch?v=<id> and youtu.be/<id> forms.
