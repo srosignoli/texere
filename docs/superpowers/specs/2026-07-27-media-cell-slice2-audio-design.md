@@ -258,9 +258,15 @@ verification curl using `page_size=2` while the app sent 24.
 
 Downloaded audio does not play from the cell on Linux/WSL. Every attempt — `.wav`
 and `.ogg`, from a picked search result or a pasted URL — fails with
-`MediaError 4` (`MEDIA_ERR_SRC_NOT_SUPPORTED`), surfaced as *"format/codec not
-supported in this webview"*. **The message is misleading: this is not a codec
-problem.**
+`MediaError 4` (`MEDIA_ERR_SRC_NOT_SUPPORTED`).
+
+**The message that once accompanied this has since been corrected** — it read
+*"format/codec not supported in this webview"*, which is wrong, and which sent
+this very investigation the wrong way. It now reads *"this webview could not
+play it … the format may be unsupported, or the server may not allow range
+requests"*, which names the actual suspect below. A later slice hit the same
+misdiagnosis on a perfectly encoded H.264/AAC video whose server sent no
+`Accept-Ranges`, which is what prompted the fix.
 
 What is established:
 
