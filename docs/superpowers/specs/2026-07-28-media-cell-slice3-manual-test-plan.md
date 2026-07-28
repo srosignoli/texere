@@ -143,8 +143,12 @@ resolve correctly (this branch adds it).
      ```
      <subject>
      "  (vid) <sourcePage-with-provider-time-param>
-     "  (note) <title> (<m:ss or h:mm:ss>)
+     "  (note) <title> @ <m:ss or h:mm:ss>
      ```
+     The clock is joined with `@`, **never wrapped in parentheses**: N4L reads
+     `(...)` as arrow syntax, so a parenthesised clock is silently consumed by
+     the parser and never reaches the graph. Verified: with `@` the note's
+     target arrives intact as e.g. `Dr. Binocs Show — Photosynthesis @ 3:43`.
      — e.g. for a Commons pick, the `(vid)` target ends in `#t=<seconds>`; for
      a non-Commons file pick, it ends in `?start=<seconds>` or
      `&start=<seconds>` if the URL already has a query string
