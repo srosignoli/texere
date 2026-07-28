@@ -41,6 +41,15 @@ type Provider interface {
 	Search(ctx context.Context, query, kind string, limit int) ([]Result, error)
 }
 
+// VideoResolver is implemented by video providers whose search results do not
+// already carry a playable URL. Resolution is deliberately lazy — SepiaSearch
+// returns only a watch page and the Internet Archive only an identifier, so
+// resolving every result eagerly would mean dozens of extra requests per
+// search instead of one per pick.
+type VideoResolver interface {
+	ResolvePlayURL(ctx context.Context, r Result) (string, error)
+}
+
 const (
 	searchTimeout  = 15 * time.Second
 	searchMaxBytes = 4 << 20 // 4 MB of JSON is far beyond any sane response
