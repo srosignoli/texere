@@ -1,6 +1,7 @@
 <script>
   import { onDestroy, onMount } from 'svelte'
   import { ImportAudio, SaveRecording, GetSTTConfig, TranscribeAudio } from '../../../wailsjs/go/main/App'
+  import { mediaErrorMessage } from '../../lib/media-error.js'
 
   export let cell
   export let onChange = () => {}
@@ -22,14 +23,18 @@
   let transcribing = false
   let transErr = ''
 
-  // <audio> error: distinguish a fetch/404 from a decode/format failure so the
-  // message is accurate (WebKitGTK/WSLg often lacks the codecs to decode audio).
+  // <audio> error: distinguish a fetch/404 from an unplayable resource, via the
+  // helper shared with the media cell's player and search preview so the three
+  // cannot drift apart.
+  //
+  // This deliberately no longer says "codec". MediaError 3/4 also fire when the
+  // audio is perfectly encoded but unreadable — which is the likely situation
+  // here: local assets are served through Wails' asset handler over a pipe that
+  // cannot seek, and a media element needs to seek. An earlier version of this
+  // message blamed the codec and sent that investigation the wrong way.
   function onAudioError(e) {
     missing = true
-    const code = e.target && e.target.error ? e.target.error.code : 0
-    if (code === 3 || code === 4) playErr = `Can’t play this audio in this webview — format/codec not supported here (MediaError ${code}).`
-    else if (code === 2) playErr = `Audio failed to load (MediaError 2).`
-    else playErr = `Audio error (MediaError ${code}).`
+    playErr = mediaErrorMessage(e.target?.error)
   }
   let chunks = []
   let stream = null
