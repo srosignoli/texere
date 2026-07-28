@@ -71,6 +71,13 @@ export function buildMediaFact(cell) {
       // The clock is appended with "@", never wrapped in parentheses: N4L reads
       // "(...)" as arrow syntax, so a parenthesised clock is silently consumed
       // by the parser and never reaches the graph.
+      //
+      // "@" is safe here despite N4L's "@alias" syntax, which only applies when
+      // "@" is the FIRST character of a line (parser.go's contentSQStart tests
+      // HasPrefix on the trimmed line; "# @id" needs a leading "#"). This line
+      // always begins with the ditto prefix, so the "@" is ordinary text.
+      // Verified: a note target survives intact with "@ 3:43", with "@3:43",
+      // and even when the title itself starts with "@".
       out += `"  (note) ${t ? `${title} @ ${clock(t)}` : title}\n`
     }
     return out
