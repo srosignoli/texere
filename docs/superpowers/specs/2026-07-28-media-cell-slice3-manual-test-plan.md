@@ -296,3 +296,29 @@ through Wails' non-seekable asset pipe — but this has **not been verified for
 avoiding local video storage (and the local-playback bug that comes with it) is
 exactly what the slice is for. TC-1 exists to test this assumption first and
 must halt the rest of the pass if it fails.
+
+## TC-17 Typed start time (added after the first manual pass)
+
+The implementation originally shipped only the **Set start here** button, which
+is absent on the YouTube path — leaving no way at all to mark a moment on a
+YouTube cell. The typed field the design called for was missing.
+
+1. On a **YouTube** cell (paste a `youtube.com/watch?v=…` link), find the start
+   field beside "Watch on YouTube".
+   - EXPECT: the field is present, and **Set start here** is absent.
+2. Type `3:43` and press Enter (or click away).
+   - EXPECT: the field shows `3:43` and it survives a notebook reload.
+3. Click "Watch on YouTube".
+   - EXPECT: the browser opens the video **at 3:43**, i.e. the URL ends `&t=223s`.
+4. Type nonsense (`abc`) and press Enter.
+   - EXPECT: the field reverts to `3:43`. It must NOT reset to `0:00` — that
+     would silently discard the marked moment.
+5. Enter `223` (bare seconds) and then `1:02:03`.
+   - EXPECT: accepted as 3:43 and 1:02:03 respectively.
+6. On a **file** video (a search result), use **Set start here**, then type a
+   different value in the field.
+   - EXPECT: both routes work and agree; the field refreshes after the button
+     is used, and "Open in browser" opens at whichever value is current.
+7. Promote after setting a typed start.
+   - EXPECT: the `(vid)` URL carries the time parameter and the `(note)` line
+     ends `@ <clock>`.

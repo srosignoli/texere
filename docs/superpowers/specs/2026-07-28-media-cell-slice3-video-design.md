@@ -71,7 +71,11 @@ was written; every arrow code was checked against the loaded registry.
 - **The timestamp is captured from the player, not typed.** Because the three
   search providers expose direct file URLs, the player is *our own* `<video>`
   element, so `currentTime` is readable with no per-provider API. Scrub, click
-  **Set start here**, done. A typed `mm:ss` field remains for override.
+  **Set start here**, done. A typed field remains for override, accepting
+  `m:ss`, `h:mm:ss` or bare seconds. That field is not merely a convenience:
+  it is the **only** way to mark a moment on a YouTube cell, whose position
+  cannot be read back. Unusable input restores the previous value rather than
+  resetting the mark to zero.
 - **The fact carries a note line.** A bare URL is unreadable months later, so
   promotion emits the link plus a `(note)` line with the title and time. This
   departs from the "provenance stays out of the N4L" rule of slice 1, and does

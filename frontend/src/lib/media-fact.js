@@ -47,6 +47,32 @@ export function buildVideoURL({ sourcePage, provider, startSec } = {}) {
 }
 
 // clock renders seconds as m:ss, or h:mm:ss past an hour.
+// parseClock turns what a user types into seconds, accepting "m:ss", "h:mm:ss"
+// and a bare count of seconds. Returns null for anything unusable, so the caller
+// can leave the previous value alone rather than silently resetting to zero.
+// Minutes and seconds are not range-checked: "3:99" reads as 3m99s, which is
+// what someone typing quickly means, and normalising is friendlier than
+// refusing.
+export function parseClock(text) {
+  const s = String(text ?? '').trim()
+  if (!s) return null
+  const parts = s.split(':')
+  if (parts.length > 3) return null
+  if (!parts.every((p) => /^\d+$/.test(p.trim()))) return null
+  const n = parts.map((p) => parseInt(p, 10))
+  const total = n.length === 3
+    ? n[0] * 3600 + n[1] * 60 + n[2]
+    : n.length === 2
+      ? n[0] * 60 + n[1]
+      : n[0]
+  return Number.isFinite(total) ? total : null
+}
+
+// formatClock is the inverse, and the same rendering used in the promoted note.
+export function formatClock(sec) {
+  return clock(sec)
+}
+
 function clock(sec) {
   const s = Math.max(0, Math.round(sec))
   const h = Math.floor(s / 3600)

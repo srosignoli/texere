@@ -1,6 +1,6 @@
 <script>
   import { mediaErrorMessage } from '../../../lib/media-error.js'
-  import { buildVideoURL } from '../../../lib/media-fact.js'
+  import { buildVideoURL, parseClock, formatClock } from '../../../lib/media-fact.js'
   import { BrowserOpenURL } from '../../../../wailsjs/runtime/runtime'
 
   export let cell
@@ -55,6 +55,24 @@
   function setStartHere() {
     if (videoEl) onStart(videoEl.currentTime)
   }
+
+  // One-way value binding, so re-deriving on cell.startSec cannot fight the
+  // keystrokes: typing changes only the input, and the field is refreshed from
+  // the cell after a commit or after "Set start here".
+  $: startText = formatClock(cell.startSec || 0)
+
+  // The typed field is the ONLY way to mark a moment on a YouTube cell, whose
+  // position cannot be read back from the embed — and a precise override for
+  // ordinary videos. Unusable input restores the previous value rather than
+  // resetting the marked moment to zero.
+  function commitStart(e) {
+    const sec = parseClock(e.target.value)
+    if (sec === null) {
+      e.target.value = formatClock(cell.startSec || 0)
+      return
+    }
+    onStart(sec)
+  }
 </script>
 
 <div class="vv-wrap">
@@ -86,7 +104,10 @@
         {isFile ? 'Open in browser' : 'Watch on YouTube'}
       </button>
     {/if}
-    <span class="vv-start">start {cell.startSec || 0}s</span>
+    <span class="vv-start">start</span>
+    <input class="vv-time" type="text" value={startText} title="Start time — m:ss, h:mm:ss, or seconds"
+      on:change={commitStart}
+      on:keydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur() } }} />
   </div>
 </div>
 
@@ -104,6 +125,7 @@
   .vv-btn { background: #1b2636; color: #cde; border: 1px solid #2a3a4a; border-radius: 4px; padding: 2px 8px; cursor: pointer; }
   .vv-btn:hover { background: #24334a; }
   .vv-start { font-size: 11px; color: #8aa; }
+  .vv-time { width: 72px; background: #0b1220; color: #cde; border: 1px solid #2a3a4a; border-radius: 4px; padding: 2px 6px; font-size: 12px; }
   .vv-err { padding: 8px 0; color: #d88; font-size: 13px; }
   .vv-ext { padding: 14px 12px; background: #0b1220; border: 1px solid #2a3a4a; border-radius: 4px; }
   .vv-exttitle { color: #cde; font-size: 13px; }

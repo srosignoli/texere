@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { buildMediaFact, mediaArrow, buildVideoURL, hasContent } from './media-fact.js'
+import { buildMediaFact, mediaArrow, buildVideoURL, hasContent, parseClock, formatClock } from './media-fact.js'
 
 test('builds a has-picture fact from subject and asset', () => {
   assert.equal(
@@ -146,4 +146,31 @@ test('hasContent covers both stored assets and referenced URLs', () => {
   assert.equal(hasContent({ asset: '', embedURL: '' }), false)
   assert.equal(hasContent({}), false)
   assert.equal(hasContent(null), false)
+})
+
+test('parseClock accepts m:ss, h:mm:ss and bare seconds', () => {
+  assert.equal(parseClock('3:43'), 223)
+  assert.equal(parseClock('1:02:03'), 3723)
+  assert.equal(parseClock('223'), 223)
+  assert.equal(parseClock('0'), 0)
+  assert.equal(parseClock('  3:43  '), 223)
+})
+
+// A quick typist means 3m99s; normalising beats refusing.
+test('parseClock normalises an out-of-range seconds field', () => {
+  assert.equal(parseClock('3:99'), 279)
+})
+
+// null, not 0 — so the caller keeps the previous value instead of silently
+// resetting the marked moment to the start of the video.
+test('parseClock returns null for anything unusable', () => {
+  for (const bad of ['', '   ', 'abc', '3:', ':43', '1:2:3:4', '3.5', '-5', null, undefined]) {
+    assert.equal(parseClock(bad), null, `input ${JSON.stringify(bad)}`)
+  }
+})
+
+test('formatClock round-trips with parseClock', () => {
+  for (const sec of [0, 5, 65, 223, 3723]) {
+    assert.equal(parseClock(formatClock(sec)), sec)
+  }
 })
