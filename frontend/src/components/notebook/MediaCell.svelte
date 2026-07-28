@@ -8,7 +8,6 @@
 
   export let cell
   export let onChange = () => {}
-  export let onDelete = () => {}
   export let readOnly = false
   export let context = null   // unused; shared cell prop set
   export let cells = []       // unused
@@ -98,7 +97,6 @@
     {#if !readOnly && replacing && hasContent(cell)}
       <button class="me-btn" on:click={() => (replacing = false)} title="Keep the current asset">Cancel</button>
     {/if}
-    {#if !readOnly}<button class="me-btn" on:click={onDelete} title="Delete cell">✕</button>{/if}
   </div>
 
   {#if !hasContent(cell) || replacing}

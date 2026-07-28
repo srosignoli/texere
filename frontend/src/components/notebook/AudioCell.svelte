@@ -5,7 +5,6 @@
 
   export let cell
   export let onChange = () => {}
-  export let onDelete = () => {}
   export let readOnly = false
   export let context = null   // unused; shared cell prop set
   export let cells = []       // unused
@@ -160,7 +159,6 @@
     {#if cell.asset}<span class="au-dur">{fmt(cell.durationMs)}</span>{/if}
     <span class="au-spacer"></span>
     {#if !readOnly && cell.asset}<button on:click={replace} title="Replace">Replace</button>{/if}
-    {#if !readOnly}<button class="au-del" on:click={onDelete} title="Delete cell">✕</button>{/if}
   </div>
 
   {#if cell.asset}
@@ -201,8 +199,6 @@
   .au-dur { color: #93c5fd; font-size: 11px; }
   .au-spacer { flex: 1; }
   .au-bar button { background: #14233a; color: #93c5fd; border: 1px solid #2a3a4a; border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
-  .au-del { background: none !important; border: none !important; color: #6b7a8a !important; }
-  .au-del:hover { color: #ff8080 !important; }
   .au-empty { display: flex; align-items: center; gap: 8px; padding: 10px; flex-wrap: wrap; }
   .au-empty button { background: #14233a; color: #93c5fd; border: 1px solid #2a3a4a; border-radius: 6px; padding: 4px 12px; cursor: pointer; font-size: 12px; }
   .au-empty button:disabled { opacity: .4; cursor: default; }

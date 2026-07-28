@@ -98,7 +98,6 @@
         <svelte:component this={cellRegistry[cell.type]} {cell} {readOnly} {context} cells={cells}
           onChange={(t) => (typeof t === 'string' ? updateCell(i, t) : updateCellObj(i, t))}
           onPush={(t) => onPush(t)}
-          onDelete={() => deleteCell(i)}
           onInsert={(text) => insertAfter(i, newDraftCell(text))} />
       </div>
     {/each}

@@ -5,7 +5,6 @@
 
   export let cell
   export let onChange = () => {}
-  export let onDelete = () => {}
   export let readOnly = false
   export let context = null // unused; shared cell prop set
   export let cells = []      // unused
@@ -54,7 +53,6 @@
     <span class="cc-spacer"></span>
     {#if !readOnly}
       {#if running}<button class="cc-stop" on:click={stop}>Stop</button>{:else}<button class="cc-run" on:click={start}>Run</button>{/if}
-      <button class="cc-del" on:click={onDelete} title="Delete cell">✕</button>
     {/if}
   </div>
   <textarea class="cc-code" value={cell.code ?? ''} on:input={onCodeInput} disabled={readOnly} spellcheck="false"
@@ -77,8 +75,6 @@
   .cc-spacer { flex: 1; }
   .cc-run { background: #1e3a5a; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px; padding: 3px 12px; cursor: pointer; font-size: 12px; }
   .cc-stop { background: #5a1e1e; color: #ffd7d7; border: 1px solid #2a3a4a; border-radius: 6px; padding: 3px 12px; cursor: pointer; font-size: 12px; }
-  .cc-del { background: none; border: none; color: #6b7a8a; cursor: pointer; }
-  .cc-del:hover { color: #ff8080; }
   .cc-code { width: 100%; box-sizing: border-box; background: #0b1220; border: none; color: #e8eaf0; font-family: monospace; font-size: 13px; padding: 8px; resize: vertical; }
   .cc-out { padding: 8px; border-top: 1px solid #1c2a3a; display: flex; flex-direction: column; gap: 4px; }
   .cc-log { font-family: monospace; font-size: 12px; color: #b9c6d6; white-space: pre-wrap; }

@@ -8,7 +8,6 @@
   export let context = null
   export let cells = []
   export let onChange = () => {}
-  export let onDelete = () => {}
   export let readOnly = false
 
   let profiles = []
@@ -112,8 +111,6 @@
       <option value="">active default</option>
       {#each profiles as p}<option value={p.id}>{p.name}</option>{/each}
     </select>
-    <span class="spacer"></span>
-    {#if !readOnly}<button class="del" on:click={onDelete} title="Delete cell">✕</button>{/if}
   </div>
 
   {#if !readOnly && cells.filter((c) => c.id !== cell.id && ['n4l', 'llm', 'graph', 'compute', 'sketch', 'image'].includes(c.type)).length}
@@ -160,9 +157,6 @@
     background-repeat: no-repeat; background-position: right 7px center;
   }
   .prof option { background: #0b1220; color: #cdd6e2; }
-  .spacer { flex: 1; }
-  .del { background: none; border: none; color: #6b7a8a; cursor: pointer; }
-  .del:hover { color: #ff8080; }
   .attach { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 6px 8px; border-bottom: 1px solid #1c2a3a; color: #5a7a9a; font-size: 11px; }
   .attach label { color: #93c5fd; }
   .transcript { padding: 8px; display: flex; flex-direction: column; gap: 8px; max-height: 340px; overflow-y: auto; }

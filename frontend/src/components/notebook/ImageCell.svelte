@@ -5,7 +5,6 @@
 
   export let cell
   export let onChange = () => {}
-  export let onDelete = () => {}
   export let readOnly = false
   export let context = null   // unused; shared cell prop set
   export let cells = []       // unused
@@ -93,8 +92,6 @@
         <button on:click={enterCrop} title="Crop">⛶ Crop</button>
       {/if}
       <button on:click={reset} title="Reset rotation and crop">Reset</button>
-      <span class="im-spacer"></span>
-      <button class="im-del" on:click={onDelete} title="Delete cell">✕</button>
     </div>
   {/if}
   <TranscribeBar {cell} bake={bakeImage} {onInsert} onChange={() => onChange(cell)} {readOnly} />
@@ -127,9 +124,6 @@
   .im-cell { background: #0e1622; border: 1px solid #26374a; border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
   .im-bar { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-bottom: 1px solid #1c2a3a; flex-wrap: wrap; }
   .im-bar button { background: #14233a; color: #93c5fd; border: 1px solid #2a3a4a; border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
-  .im-spacer { flex: 1; }
-  .im-del { background: none !important; border: none !important; color: #6b7a8a !important; }
-  .im-del:hover { color: #ff8080 !important; }
   /* Cap the viewport SIZE uniformly (preserve aspect) so tall images scale down
      instead of being clipped/squished. --ar (from image-view.js) is the crop-box
      aspect. Do NOT put max-width:100% on the <img>: the rotated (90/270) img is
