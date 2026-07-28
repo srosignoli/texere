@@ -79,8 +79,13 @@ this design was written.
   speakers means hearing them. Downloading every candidate would write a dozen
   permanent files per search.
 - **Kind-specific arrows, defaulted by provider.** `has pronunciation (pron)`
-  and `has audio (aud)`. Provenance sets a **default in editable text**, not a
-  hidden affordance — the distinction that made provenance-driven behaviour
+  and `has audio (aud)`. Note `SSTconfig` already declares an unrelated
+  `is pronounced as (pronas)` whose reverse is `pron-of`; that almost certainly
+  means a phonetic rendering in text rather than a stored recording, so the two
+  coexist and the new arrow takes the free reverse code `pron-rec`. Reusing
+  `pron-of` would silently overwrite the existing relation, since the arrow
+  registry is keyed by code. Provenance sets a **default in editable text**, not
+  a hidden affordance — the distinction that made provenance-driven behaviour
   wrong in slice 1 does not apply, because the output is a draft you are already
   reviewing.
 - **Audio is keyed by URL extension, never by sniffing or Content-Type.**
@@ -180,8 +185,8 @@ Lingua Libre clip is ~100 KB, but a general Commons recording can run minutes.
 Added to `SSTconfig/arrows-EP-3.sst`, matching its column alignment:
 
 ```
- + has pronunciation (pron)     - is the pronunciation of (pron-of)
- + has audio         (aud)      - is audio for            (aud-for)
+ + has pronunciation (pron)     - has pronunciation recording of (pron-rec)
+ + has audio         (aud)      - is audio for                   (aud-for)
 ```
 
 `buildMediaFact` derives the code from the cell instead of hardcoding `pic`:
@@ -246,6 +251,68 @@ limit the app actually sends. Slice 1's Openverse failure was caused by a
 verification curl using `page_size=2` while the app sent 24.
 
 **A manual test plan**, per the convention every slice follows.
+
+## OPEN: local audio does not play in the Wails window on Linux
+
+**Status: unresolved, diagnosed but not proven. Found in manual testing 2026-07-27.**
+
+Downloaded audio does not play from the cell on Linux/WSL. Every attempt — `.wav`
+and `.ogg`, from a picked search result or a pasted URL — fails with
+`MediaError 4` (`MEDIA_ERR_SRC_NOT_SUPPORTED`), surfaced as *"format/codec not
+supported in this webview"*. **The message is misleading: this is not a codec
+problem.**
+
+What is established:
+
+- The stored files are valid and unremarkable — verified with `file(1)` as
+  RIFF/WAVE 16-bit PCM mono (48 kHz and 44.1 kHz) and Ogg Vorbis. 16-bit PCM WAV
+  is about as universally supported as audio gets.
+- **Preview works.** The results list plays the *same bytes* from
+  `https://upload.wikimedia.org/...` without trouble, which rules out both the
+  obvious environment-specific explanations: the audio sink works, and the
+  GStreamer decoders are present.
+- Images from the same `/media/<name>` path have worked since slice 1.
+
+Probable cause: Wails v2.12 hands custom-`Handler` responses to WebKitGTK
+through a `g_unix_input_stream` — a **pipe**
+(`pkg/assetserver/webview/responsewriter_linux.go:75-85`). A pipe is not
+seekable. Image decoders read sequentially and are unaffected; media elements
+must seek (demuxer headers, playback seeking), and a non-seekable source makes
+WebKit's media pipeline fail with exactly this error. Preview escapes it by
+loading a real `https://` URL through WebKit's own HTTP stack. The Linux
+webview's start URL is `wails://wails/` (`internal/frontend/desktop/linux/frontend.go:116`)
+in both `wails dev` and a built binary.
+
+This is **not specific to this slice**. It affects any local audio in the app on
+Linux, including the pre-existing `AudioCell`, whose comment about WebKitGTK
+"lacking the codecs" appears to be an earlier misdiagnosis of the same thing.
+
+**The experiment that would settle it** — it changes exactly one variable, since
+the same webview, machine and files are used, and only the scheme changes:
+
+```
+wails dev -frontenddevserverurl http://localhost:34115
+```
+
+(`frontend.go:175` shows the start URL is overridable this way; check
+`wails dev -help` for the exact flag in your version.)
+
+- Audio plays → the transport is confirmed as the cause. Native Linux will fail
+  too, and a fix is needed.
+- Audio still fails → the diagnosis above is wrong and the investigation should
+  restart rather than a workaround being built on it.
+
+Browsing the dev server in Chrome or Firefox is **not** a valid substitute —
+those bring their own media stacks and would not isolate the variable.
+
+If a fix is wanted, the candidates are: read the bytes through a Wails binding
+and play from a `URL.createObjectURL` Blob (seekable in memory; a ~100 KB
+pronunciation clip is trivial, a multi-MB recording less so), or serve `media/`
+from a real localhost HTTP server. Both would also fix `AudioCell`.
+
+Untested on native Linux and on Windows. Windows uses WebView2 with a different
+response mechanism and is expected to work, but a green result there would not
+identify which variable mattered.
 
 ## Out of scope for this slice
 

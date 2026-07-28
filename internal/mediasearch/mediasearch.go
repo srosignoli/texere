@@ -17,12 +17,18 @@ import (
 // Result is one search hit, normalized across providers. Field tags match the
 // camelCase the Svelte frontend expects from the Wails binding.
 type Result struct {
-	Kind       string `json:"kind"`     // "image" (later "audio", "video")
-	ThumbURL   string `json:"thumbUrl"` // small preview for the results grid
+	Kind       string `json:"kind"`     // "image" | "audio"
+	ThumbURL   string `json:"thumbUrl"` // small preview for the results grid (images)
 	FullURL    string `json:"fullUrl"`  // what gets downloaded on pick
 	Title      string `json:"title"`
 	SourcePage string `json:"sourcePage"` // human-facing page, for attribution
 	License    string `json:"license"`
+
+	// Audio-only; empty/zero for images.
+	Lang       string `json:"lang"`       // ISO code parsed from the filename, e.g. "spa"
+	Speaker    string `json:"speaker"`    // contributor who made the recording
+	Mime       string `json:"mime"`       // e.g. "audio/wav"; drives the format label
+	DurationMs int    `json:"durationMs"` // 0 when unknown
 }
 
 // Provider is one searchable source. Implementations must be safe for

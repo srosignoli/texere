@@ -55,7 +55,7 @@ export function newMediaCell() {
     kind: 'image',
     asset: '', mime: '', embedURL: '',
     crop: null, naturalW: 0, naturalH: 0,
-    query: '', subject: '',
+    query: '', subject: '', lang: '',
     provider: '', sourcePage: '', license: '',
   }
 }

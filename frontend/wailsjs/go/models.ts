@@ -1087,6 +1087,20 @@ export namespace main {
 
 export namespace mediasearch {
 	
+	export class Language {
+	    name: string;
+	    code: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Language(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.code = source["code"];
+	    }
+	}
 	export class Result {
 	    kind: string;
 	    thumbUrl: string;
@@ -1094,6 +1108,10 @@ export namespace mediasearch {
 	    title: string;
 	    sourcePage: string;
 	    license: string;
+	    lang: string;
+	    speaker: string;
+	    mime: string;
+	    durationMs: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new Result(source);
@@ -1107,6 +1125,10 @@ export namespace mediasearch {
 	        this.title = source["title"];
 	        this.sourcePage = source["sourcePage"];
 	        this.license = source["license"];
+	        this.lang = source["lang"];
+	        this.speaker = source["speaker"];
+	        this.mime = source["mime"];
+	        this.durationMs = source["durationMs"];
 	    }
 	}
 

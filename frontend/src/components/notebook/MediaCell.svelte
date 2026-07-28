@@ -1,7 +1,8 @@
 <script>
   import MediaSearchPanel from './MediaSearchPanel.svelte'
   import MediaImageView from './media/MediaImageView.svelte'
-  import { buildMediaFact } from '../../lib/media-fact.js'
+  import MediaAudioView from './media/MediaAudioView.svelte'
+  import { buildMediaFact, mediaArrow } from '../../lib/media-fact.js'
   import { BrowserOpenURL } from '../../../wailsjs/runtime/runtime'
 
   export let cell
@@ -15,7 +16,7 @@
 
   // kind -> render component. Audio and video slot in here in later slices
   // without MediaCell changing.
-  const views = { image: MediaImageView }
+  const views = { image: MediaImageView, audio: MediaAudioView }
 
   let replacing = false
   let cropping = false
@@ -48,6 +49,8 @@
   }
 
   function onQuery(q) { cell.query = q; persist() }
+  function onLang(l) { cell.lang = l; persist() }
+  function onKind(k) { cell.kind = k; persist() }
 
   // cell.sourcePage is verbatim provider JSON (Commons' descriptionurl,
   // Openverse's foreign_landing_url) — remote-controlled text, not a trusted
@@ -92,22 +95,27 @@
     {#if readOnly}
       <div class="me-empty">No asset.</div>
     {:else}
-      <MediaSearchPanel kind={cell.kind} query={cell.query} {onQuery} {onPick} />
+      <MediaSearchPanel kind={cell.kind} query={cell.query} lang={cell.lang} {onQuery} {onLang} {onKind} {onPick} />
     {/if}
   {:else}
     <svelte:component this={views[cell.kind]} {cell} {cropping} {onMeta} onCrop={applyCrop} />
     {#if !readOnly}
       <div class="me-tools">
-        {#if cropping}
-          <button class="me-btn" on:click={() => (cropping = false)}>Cancel crop</button>
-        {:else}
-          <button class="me-btn" on:click={() => (cropping = true)}>Crop</button>
+        {#if cell.kind === 'image'}
+          {#if cropping}
+            <button class="me-btn" on:click={() => (cropping = false)}>Cancel crop</button>
+          {:else}
+            <button class="me-btn" on:click={() => (cropping = true)}>Crop</button>
+          {/if}
+          {#if cell.crop}<button class="me-btn" on:click={clearCrop}>Clear crop</button>{/if}
         {/if}
-        {#if cell.crop}<button class="me-btn" on:click={clearCrop}>Clear crop</button>{/if}
         <span class="me-spacer"></span>
         <input class="me-subj" type="text" placeholder="subject" value={cell.subject}
-          on:input={setSubject} title="The N4L node this picture is about" />
-        <button class="me-btn" on:click={promote} disabled={!cell.subject.trim()}>Promote to N4L</button>
+          on:input={setSubject} title="The N4L node this asset is about" />
+        <button class="me-btn" on:click={promote} disabled={!cell.subject.trim()}
+          title={`Insert an N4L draft using the (${mediaArrow(cell)}) arrow`}>
+          Promote to N4L ({mediaArrow(cell)})
+        </button>
       </div>
     {/if}
     {#if cell.sourcePage}

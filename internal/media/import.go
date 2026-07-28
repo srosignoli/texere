@@ -33,6 +33,7 @@ var audioMimeByExt = map[string]string{
 	".webm": "audio/webm", ".ogg": "audio/ogg", ".oga": "audio/ogg",
 	".wav": "audio/wav", ".mp3": "audio/mpeg", ".m4a": "audio/mp4",
 	".mp4": "audio/mp4", ".aac": "audio/aac", ".flac": "audio/flac",
+	".opus": "audio/ogg",
 }
 
 // audioExtByMime maps a normalized audio MIME (no codecs suffix) to an extension

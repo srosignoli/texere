@@ -50,8 +50,8 @@ export function ExplorerReanchor(arg1, arg2, arg3) {
   return window['go']['main']['App']['ExplorerReanchor'](arg1, arg2, arg3);
 }
 
-export function FetchMediaURL(arg1) {
-  return window['go']['main']['App']['FetchMediaURL'](arg1);
+export function FetchMediaURL(arg1, arg2) {
+  return window['go']['main']['App']['FetchMediaURL'](arg1, arg2);
 }
 
 export function GetArrowRegistry() {
@@ -168,6 +168,10 @@ export function ListChapters() {
 
 export function ListContextTags() {
   return window['go']['main']['App']['ListContextTags']();
+}
+
+export function ListLanguages() {
+  return window['go']['main']['App']['ListLanguages']();
 }
 
 export function ListMediaProviders() {
