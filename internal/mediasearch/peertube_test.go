@@ -104,3 +104,65 @@ func TestPeerTubeMetadata(t *testing.T) {
 		t.Error("expected an error for kind=audio")
 	}
 }
+
+func TestPeerTubeResolvePicksAProgressiveFile(t *testing.T) {
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		_, _ = w.Write([]byte(`{
+		  "files": [
+		    {"fileUrl": "https://diler.tube/static/web-videos/low.mp4", "resolution": {"id": 480}},
+		    {"fileUrl": "https://diler.tube/static/web-videos/high.mp4", "resolution": {"id": 1080}}
+		  ],
+		  "streamingPlaylists": []
+		}`))
+	}))
+	defer srv.Close()
+
+	p := PeerTube{BaseURL: "http://unused", DetailBase: srv.URL}
+	got, err := p.ResolvePlayURL(context.Background(), Result{
+		SourcePage: "https://diler.tube/videos/watch/81840642-e10d-4a74-9c02-621061fccbc1",
+	})
+	if err != nil {
+		t.Fatalf("ResolvePlayURL: %v", err)
+	}
+	// Highest resolution wins: the user picked this video deliberately.
+	if got != "https://diler.tube/static/web-videos/high.mp4" {
+		t.Errorf("got %q, want the 1080p file", got)
+	}
+	if !strings.Contains(gotPath, "81840642-e10d-4a74-9c02-621061fccbc1") {
+		t.Errorf("path %q should address the video by uuid", gotPath)
+	}
+}
+
+// Some instances publish only HLS. A bare <video> cannot play .m3u8 and this
+// slice ships no hls.js, so this must be a clear, reportable outcome.
+func TestPeerTubeResolveReportsHLSOnly(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{
+		  "files": [],
+		  "streamingPlaylists": [{"playlistUrl": "https://x.tube/static/streaming/master.m3u8"}]
+		}`))
+	}))
+	defer srv.Close()
+
+	p := PeerTube{BaseURL: "http://unused", DetailBase: srv.URL}
+	got, err := p.ResolvePlayURL(context.Background(), Result{
+		SourcePage: "https://x.tube/videos/watch/abc",
+	})
+	if err == nil {
+		t.Fatalf("expected an error for an HLS-only video, got %q", got)
+	}
+	if !strings.Contains(err.Error(), "no playable file") {
+		t.Errorf("error = %q, want it to say there is no playable file", err)
+	}
+}
+
+func TestPeerTubeResolveRejectsUnusableSourcePage(t *testing.T) {
+	p := PeerTube{BaseURL: "http://unused"}
+	for _, sp := range []string{"", "not a url", "https://x.tube/"} {
+		if _, err := p.ResolvePlayURL(context.Background(), Result{SourcePage: sp}); err == nil {
+			t.Errorf("expected an error for sourcePage %q", sp)
+		}
+	}
+}
