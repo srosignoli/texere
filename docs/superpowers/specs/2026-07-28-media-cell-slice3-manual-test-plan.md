@@ -17,7 +17,8 @@ resolve correctly (this branch adds it).
      element with a remote `src` (`cell.embedURL`, the Commons file URL), and
      the video plays back with picture and sound in the Wails window.
    - **If it fails** — the video frame shows the `.vv-err` banner (e.g.
-     "Video: format/codec not supported in this webview (MediaError 4)." or
+     "Video: this webview could not play it (MediaError 4) — the format may be
+     unsupported, or the server may not allow range requests." or
      "Video failed to load (MediaError 2).") instead of playing, or the frame
      stays black with no controls response — **STOP THE PASS.** Record the
      exact `.vv-err` text (or console error) and do not continue to TC-2. This

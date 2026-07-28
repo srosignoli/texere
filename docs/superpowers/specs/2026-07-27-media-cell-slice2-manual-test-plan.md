@@ -97,7 +97,8 @@ for TC-10/TC-11 to resolve correctly (this branch adds them).
    as Ogg Vorbis/Opus), then click ▶ on a row that turns out to be undecodable
    in this webview (WebKitGTK/WSLg commonly cannot decode certain Ogg codecs).
    - EXPECT: no silent failure and no dead ▶ button — an error line reading
-     "Preview: format/codec not supported in this webview (MediaError 3)." or
+     "Preview: this webview could not play it (MediaError 3) — the format may be
+     unsupported, or the server may not allow range requests." or
      "…(MediaError 4)." appears below the play/pick rows (from
      `mediaErrorMessage`), and the preview `<audio>` element's `previewURL` is
      cleared (the row's icon reverts to ▶).
@@ -265,7 +266,7 @@ for TC-10/TC-11 to resolve correctly (this branch adds them).
 
 **Local audio playback fails in the Wails window on Linux/WSL** — a picked or
 pasted recording downloads and stores correctly, but the cell's player reports
-`MediaError 4` ("format/codec not supported in this webview"). The message is
+`MediaError 4` ("this webview could not play it"). The message is
 misleading; the stored files are valid and the results-list preview plays the
 same bytes fine. It is very likely a Wails/WebKitGTK transport limitation
 affecting all local audio in the app, including the pre-existing Audio cell, and
