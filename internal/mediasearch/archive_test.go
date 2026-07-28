@@ -76,6 +76,31 @@ func TestInternetArchiveResolvePicksAPlayableFile(t *testing.T) {
 	}
 }
 
+// The lower-preference format arrives FIRST here, so this fails against a naive
+// "return the first playable file" implementation while passing against the real
+// preference-ranked selection. The existing test cannot make that distinction,
+// because there the file order and the preference order coincide.
+func TestInternetArchiveResolvePrefersFormatOverArrivalOrder(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"files":[
+		  {"name":"clip.webm","format":"WebM"},
+		  {"name":"clip.mp4","format":"h.264"}
+		]}`))
+	}))
+	defer srv.Close()
+
+	ia := InternetArchive{BaseURL: "http://unused", MetadataBase: srv.URL}
+	got, err := ia.ResolvePlayURL(context.Background(), Result{
+		SourcePage: "https://archive.org/details/x",
+	})
+	if err != nil {
+		t.Fatalf("ResolvePlayURL: %v", err)
+	}
+	if got != "https://archive.org/download/x/clip.mp4" {
+		t.Errorf("got %q, want the h.264 file even though WebM arrived first", got)
+	}
+}
+
 func TestInternetArchiveResolveReportsNoPlayableFile(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"files":[{"name":"scan.pdf","format":"Text PDF"}]}`))
