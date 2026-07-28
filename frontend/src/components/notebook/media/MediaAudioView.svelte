@@ -5,6 +5,7 @@
   export let cropping = false  // unused; images only
   export let onCrop = () => {} // unused; images only
   export let onMeta = () => {} // unused; audio has no intrinsic size
+  export let onStart = () => {} // unused; video only
 
   let missing = false
   let playErr = ''

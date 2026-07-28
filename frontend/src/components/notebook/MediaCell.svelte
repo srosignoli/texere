@@ -2,7 +2,7 @@
   import MediaSearchPanel from './MediaSearchPanel.svelte'
   import MediaImageView from './media/MediaImageView.svelte'
   import MediaAudioView from './media/MediaAudioView.svelte'
-  import { buildMediaFact, mediaArrow } from '../../lib/media-fact.js'
+  import { buildMediaFact, mediaArrow, hasContent } from '../../lib/media-fact.js'
   import { BrowserOpenURL } from '../../../wailsjs/runtime/runtime'
 
   export let cell
@@ -42,6 +42,11 @@
     cell.crop = null
     cell.naturalW = 0
     cell.naturalH = 0
+    cell.embedURL = result.embedURL ?? ''
+    cell.playerKind = result.playerKind ?? ''
+    cell.title = result.title ?? ''
+    cell.startSec = 0
+    cell.durationMs = result.durationMs ?? 0
     cell = cell
     replacing = false
     cropping = false
@@ -75,6 +80,12 @@
     cell = cell
     persist()
   }
+
+  function onStart(sec) {
+    cell.startSec = Math.max(0, Math.round(sec || 0))
+    cell = cell
+    persist()
+  }
 </script>
 
 <div class="me-cell">
@@ -91,14 +102,14 @@
     {#if !readOnly}<button class="me-btn" on:click={onDelete} title="Delete cell">✕</button>{/if}
   </div>
 
-  {#if !cell.asset || replacing}
+  {#if !hasContent(cell) || replacing}
     {#if readOnly}
       <div class="me-empty">No asset.</div>
     {:else}
       <MediaSearchPanel kind={cell.kind} query={cell.query} lang={cell.lang} {onQuery} {onLang} {onKind} {onPick} />
     {/if}
   {:else}
-    <svelte:component this={views[cell.kind]} {cell} {cropping} {onMeta} onCrop={applyCrop} />
+    <svelte:component this={views[cell.kind]} {cell} {cropping} {onMeta} {onStart} onCrop={applyCrop} />
     {#if !readOnly}
       <div class="me-tools">
         {#if cell.kind === 'image'}
@@ -112,7 +123,7 @@
         <span class="me-spacer"></span>
         <input class="me-subj" type="text" placeholder="subject" value={cell.subject}
           on:input={setSubject} title="The N4L node this asset is about" />
-        <button class="me-btn" on:click={promote} disabled={!cell.subject.trim()}
+        <button class="me-btn" on:click={promote} disabled={!cell.subject.trim() || !hasContent(cell)}
           title={`Insert an N4L draft using the (${mediaArrow(cell)}) arrow`}>
           Promote to N4L ({mediaArrow(cell)})
         </button>
