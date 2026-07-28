@@ -2,6 +2,7 @@
   import { createEventDispatcher, onDestroy } from 'svelte'
   import { OpenNotebook, GetNotebook, SaveNotebook, ImportImage } from '../../../wailsjs/go/main/App'
   import { newDraftCell, newLLMCell, newGraphCell, newComputeCell, newSketchCell, newImageCell, newAudioCell, newMediaCell, cellRegistry } from '../../lib/notebook.js'
+  import { cellLabel } from '../../lib/cell-label.js'
   import ContextCell from './ContextCell.svelte'
   import LLMSettings from '../LLMSettings.svelte'
 
@@ -90,6 +91,7 @@
           </div>
         {/if}
         <div class="nb-cell">
+          <div class="nb-cellhead">{cellLabel(cell)}</div>
           <svelte:component this={cellRegistry[cell.type]} {cell} {readOnly} {context} cells={cells}
             onChange={(t) => (typeof t === 'string' ? updateCell(i, t) : updateCellObj(i, t))}
             onPush={(t) => onPush(t)}
@@ -125,6 +127,11 @@
   .nb-reorder button { background: none; border: none; color: #46586a; cursor: pointer; font-size: 9px; }
   .nb-reorder button:hover { color: #7dd3fc; }
   .nb-cell { flex: 1; min-width: 0; }
+  /* Reads as chrome, not content: the same muted, letter-spaced treatment
+     AudioCell already used for its own name, dimmed further. Deliberately has
+     no background — nine cell types have their own borders and radii, and a
+     filled strip would have to match each one to avoid looking detached. */
+  .nb-cellhead { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: #5d7186; padding: 0 2px 3px; }
   .nb-add { background: #14233a; color: #93c5fd; border: 1px dashed #2a4a6a; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 12px; width: 100%; }
   .nb-add:hover { background: #1a2f4a; }
 </style>
