@@ -88,16 +88,18 @@
 </script>
 
 <div class="me-cell">
-  <div class="me-bar">
-    {#if cell.license}<span class="me-lic">{cell.license}</span>{/if}
-    <span class="me-spacer"></span>
-    {#if !readOnly && hasContent(cell) && !replacing}
-      <button class="me-btn" on:click={replace} title="Pick a different asset">Replace</button>
-    {/if}
-    {#if !readOnly && replacing && hasContent(cell)}
-      <button class="me-btn" on:click={() => (replacing = false)} title="Keep the current asset">Cancel</button>
-    {/if}
-  </div>
+  {#if cell.license || (!readOnly && hasContent(cell))}
+    <div class="me-bar">
+      {#if cell.license}<span class="me-lic">{cell.license}</span>{/if}
+      <span class="me-spacer"></span>
+      {#if !readOnly && hasContent(cell) && !replacing}
+        <button class="me-btn" on:click={replace} title="Pick a different asset">Replace</button>
+      {/if}
+      {#if !readOnly && replacing && hasContent(cell)}
+        <button class="me-btn" on:click={() => (replacing = false)} title="Keep the current asset">Cancel</button>
+      {/if}
+    </div>
+  {/if}
 
   {#if !hasContent(cell) || replacing}
     {#if readOnly}

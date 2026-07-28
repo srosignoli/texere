@@ -155,11 +155,13 @@
 </script>
 
 <div class="au-cell">
-  <div class="au-bar">
-    {#if cell.asset}<span class="au-dur">{fmt(cell.durationMs)}</span>{/if}
-    <span class="au-spacer"></span>
-    {#if !readOnly && cell.asset}<button on:click={replace} title="Replace">Replace</button>{/if}
-  </div>
+  {#if cell.asset}
+    <div class="au-bar">
+      <span class="au-dur">{fmt(cell.durationMs)}</span>
+      <span class="au-spacer"></span>
+      {#if !readOnly}<button on:click={replace} title="Replace">Replace</button>{/if}
+    </div>
+  {/if}
 
   {#if cell.asset}
     {#if missing}

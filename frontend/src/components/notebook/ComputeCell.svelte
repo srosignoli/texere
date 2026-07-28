@@ -49,7 +49,6 @@
 
 <div class="cc-cell">
   <div class="cc-bar">
-    <span class="cc-lang">js</span>
     <span class="cc-spacer"></span>
     {#if !readOnly}
       {#if running}<button class="cc-stop" on:click={stop}>Stop</button>{:else}<button class="cc-run" on:click={start}>Run</button>{/if}
@@ -71,7 +70,6 @@
 <style>
   .cc-cell { background: #0e1622; border: 1px solid #26374a; border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
   .cc-bar { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-bottom: 1px solid #1c2a3a; }
-  .cc-lang { color: #7dd3fc; font-size: 11px; font-family: monospace; }
   .cc-spacer { flex: 1; }
   .cc-run { background: #1e3a5a; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px; padding: 3px 12px; cursor: pointer; font-size: 12px; }
   .cc-stop { background: #5a1e1e; color: #ffd7d7; border: 1px solid #2a3a4a; border-radius: 6px; padding: 3px 12px; cursor: pointer; font-size: 12px; }
