@@ -42,7 +42,14 @@
   function onVideoError(e) {
     // Referencing rather than storing means a removed upstream video is a real
     // outcome; say so rather than showing an empty frame.
+    //
+    // MediaError 4 covers several causes this component cannot tell apart — an
+    // unsupported codec (H.265 and AV1 commonly fail in this webview), a server
+    // that does not support range requests, or a resource that would not load.
+    // The remedy is the same for all of them, and it is one button away, so
+    // point at it rather than leaving the user with a dead frame.
     playErr = mediaErrorMessage(e.target?.error, 'Video')
+    if (canWatch) playErr += ' Try "Open in browser".'
   }
 
   function setStartHere() {
