@@ -3,6 +3,7 @@
   import { OpenNotebook, GetNotebook, SaveNotebook, ImportImage } from '../../../wailsjs/go/main/App'
   import { newDraftCell, newLLMCell, newGraphCell, newComputeCell, newSketchCell, newImageCell, newAudioCell, newMediaCell, cellRegistry } from '../../lib/notebook.js'
   import { cellLabel } from '../../lib/cell-label.js'
+  import { cellPreview } from '../../lib/cell-preview.js'
   import ContextCell from './ContextCell.svelte'
   import LLMSettings from '../LLMSettings.svelte'
 
@@ -66,6 +67,16 @@
   function updateCellObj(i, obj) { cells[i] = obj; cells = cells; scheduleSave() }
   function insertAfter(i, newCell) { cells = [...cells.slice(0, i + 1), newCell, ...cells.slice(i + 1)]; scheduleSave() }
   function deleteCell(i) { cells = cells.filter((_, j) => j !== i); scheduleSave() }
+  // Mutated in place, never replaced with a spread copy: folded cells stay
+  // mounted, and components hold non-reactive references into this object —
+  // SketchCell initialises `strokes` from `cell.strokes` in a plain `let`.
+  // scheduleSave() no-ops when readOnly, so folding a read-only notebook works
+  // and simply does not persist.
+  function toggleFold(i) {
+    cells[i].folded = !cells[i].folded
+    cells = cells
+    scheduleSave()
+  }
   function move(i, dir) {
     const j = i + dir
     if (j < 0 || j >= cells.length) return
@@ -83,9 +94,15 @@
   <div class="nb-scroll">
     <ContextCell {context} />
     {#each cells as cell, i (cell.id)}
+      {@const preview = cell.folded ? cellPreview(cell) : ''}
       <div class="nb-cellwrap">
         <div class="nb-cellhead">
-          <span class="nb-cellname">{cellLabel(cell)}</span>
+          <button class="nb-fold" on:click={() => toggleFold(i)}
+            aria-expanded={!cell.folded}
+            title={cell.folded ? 'Unfold cell' : 'Fold cell'}>
+            <span class="nb-chev">{cell.folded ? '▸' : '▾'}</span>
+            <span class="nb-cellname">{cellLabel(cell)}</span>
+          </button>
           {#if !readOnly}
             <span class="nb-headspacer"></span>
             <div class="nb-reorder">
@@ -95,10 +112,13 @@
             <button class="nb-del" on:click={() => deleteCell(i)} title="Delete cell">✕</button>
           {/if}
         </div>
-        <svelte:component this={cellRegistry[cell.type]} {cell} {readOnly} {context} cells={cells}
-          onChange={(t) => (typeof t === 'string' ? updateCell(i, t) : updateCellObj(i, t))}
-          onPush={(t) => onPush(t)}
-          onInsert={(text) => insertAfter(i, newDraftCell(text))} />
+        {#if preview}<div class="nb-preview">{preview}</div>{/if}
+        <div class="nb-cellbody" class:nb-folded={cell.folded}>
+          <svelte:component this={cellRegistry[cell.type]} {cell} {readOnly} {context} cells={cells}
+            onChange={(t) => (typeof t === 'string' ? updateCell(i, t) : updateCellObj(i, t))}
+            onPush={(t) => onPush(t)}
+            onInsert={(text) => insertAfter(i, newDraftCell(text))} />
+        </div>
       </div>
     {/each}
     {#if !readOnly}
@@ -131,6 +151,24 @@
      and sitting outside the cell's border is how that reads honestly. */
   .nb-cellhead { display: flex; align-items: center; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: #5d7186; padding: 0 2px 3px; }
   .nb-cellname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* A button inherits no typography, so every property .nb-cellhead sets has to
+     be restored by hand or the name stops matching the strip it sits in.
+     min-width:0 keeps this flex child shrinkable so .nb-cellname can ellipsis.
+     The name is inside the hit target on purpose: this app supports pen input
+     as a first-class case (SketchCell dispatches on pointerType), and a 9px
+     chevron is a poor pen target. It is on the LEFT so that the one frequently
+     clicked control in this strip is as far as possible from ✕ — see the
+     mis-click note on .nb-del below. */
+  .nb-fold { display: flex; align-items: center; gap: 4px; min-width: 0; background: none; border: none; margin: 0; padding: 2px 4px 2px 0; cursor: pointer; font: inherit; color: inherit; letter-spacing: inherit; text-transform: inherit; }
+  .nb-fold:hover { color: #7dd3fc; }
+  .nb-chev { flex: none; font-size: 8px; }
+  /* Content, not chrome. The strip above is uppercase and letter-spaced because
+     it names a type; this quotes what the user actually wrote, so it inherits
+     none of that. It is 11px against the header's 10px and still reads as
+     subordinate — lowercase x-height at 11px sits below cap height at 10px —
+     while staying legible as prose. Indented to align under the name. */
+  .nb-preview { padding: 0 2px 4px 16px; font-size: 11px; color: #46586a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nb-folded { display: none; }
   .nb-headspacer { flex: 1; }
   .nb-reorder { display: flex; gap: 2px; }
   .nb-reorder button { background: none; border: none; color: #46586a; cursor: pointer; font-size: 9px; padding: 2px 4px; }
