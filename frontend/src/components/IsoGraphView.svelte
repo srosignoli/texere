@@ -63,7 +63,11 @@
 
   onMount(() => {
     sceneCtx = createScene(canvas, {
-      onCameraChange: () => { nodeMeshes?.rescaleLabels?.(); picker?.rescaleAll?.() },
+      // A folded (display:none) cell measures 0 for canvas.clientHeight, so any
+      // layout that arrives/renders while hidden bakes a wrong worldPerPx into
+      // the context-layer labels. Unfolding fires the ResizeObserver → this
+      // callback, so rescale layerPlanes here too, not just node labels/picker.
+      onCameraChange: () => { nodeMeshes?.rescaleLabels?.(); picker?.rescaleAll?.(); layerPlanes?.rescaleLabels?.() },
     })
     picker = createPicker(sceneCtx.camera, canvas)
     ro = new ResizeObserver(() => sceneCtx?.render())

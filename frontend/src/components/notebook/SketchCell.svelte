@@ -69,6 +69,10 @@
   function onResize() {
     // Never persist the fullscreen container height as the cell's inline height.
     if (!expanded) {
+      // The `h &&` below is load-bearing beyond its original purpose. A folded
+      // cell is display:none, so clientHeight reads 0 here, and without the
+      // truthiness test every folded sketch would have its saved height zeroed
+      // and written to disk. Do NOT tidy this to `h !== cell.height`.
       const h = Math.round(wrap.clientHeight)
       if (h && h !== cell.height) { cell.height = h; onChange(cell) }
     }
