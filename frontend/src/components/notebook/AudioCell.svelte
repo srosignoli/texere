@@ -2,6 +2,7 @@
   import { onDestroy, onMount } from 'svelte'
   import { ImportAudio, SaveRecording, GetSTTConfig, TranscribeAudio } from '../../../wailsjs/go/main/App'
   import { mediaErrorMessage } from '../../lib/media-error.js'
+  import { formatDuration } from '../../lib/cell-preview.js'
 
   export let cell
   export let onChange = () => {}
@@ -131,11 +132,6 @@
 
   function replace() { cell.asset = ''; cell.mime = ''; cell.durationMs = 0; missing = false; playErr = ''; persist() }
 
-  function fmt(ms) {
-    const s = Math.floor((ms || 0) / 1000)
-    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
-  }
-
   onMount(async () => { try { const c = await GetSTTConfig(); sttProfiles = c.profiles ?? [] } catch { /* not configured */ } })
 
   function setTransProfile(id) { cell.transcribeProfileId = id || null; cell = cell; onChange(cell) }
@@ -157,7 +153,7 @@
 <div class="au-cell">
   {#if cell.asset}
     <div class="au-bar">
-      <span class="au-dur">{fmt(cell.durationMs)}</span>
+      <span class="au-dur">{formatDuration(cell.durationMs)}</span>
       <span class="au-spacer"></span>
       {#if !readOnly}<button on:click={replace} title="Replace">Replace</button>{/if}
     </div>
@@ -183,7 +179,7 @@
   {:else if !readOnly}
     <div class="au-empty">
       {#if recording}
-        <button class="au-rec" on:click={stopRec}>■ Stop ({fmt(elapsed)})</button>
+        <button class="au-rec" on:click={stopRec}>■ Stop ({formatDuration(elapsed)})</button>
       {:else}
         <button class="au-rec" on:click={startRec} disabled={recUnavailable}>● Record</button>
         <button on:click={importAudio}>+ Import audio</button>
