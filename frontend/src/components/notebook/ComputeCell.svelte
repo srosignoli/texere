@@ -48,12 +48,12 @@
 </script>
 
 <div class="cc-cell">
-  <div class="cc-bar">
-    <span class="cc-spacer"></span>
-    {#if !readOnly}
+  {#if !readOnly}
+    <div class="cc-bar">
+      <span class="cc-spacer"></span>
       {#if running}<button class="cc-stop" on:click={stop}>Stop</button>{:else}<button class="cc-run" on:click={start}>Run</button>{/if}
-    {/if}
-  </div>
+    </div>
+  {/if}
   <textarea class="cc-code" value={cell.code ?? ''} on:input={onCodeInput} disabled={readOnly} spellcheck="false"
     placeholder={"// math.js as `math`, async `graph.query(q)` / `graph.orbit(node)`, `chart(config)`.\n// `print(x)` shows a value; or `return` one.\nprint(math.sqrt(16))"} rows="5"></textarea>
 
