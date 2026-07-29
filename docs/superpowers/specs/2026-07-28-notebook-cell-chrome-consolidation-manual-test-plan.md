@@ -76,9 +76,13 @@ plan is the verification gate.
      behind a single `{#if !readOnly}`.
 2. Look specifically at `N4LDraftCell`, `ImageCell` and `SketchCell`.
    - EXPECT: each of these three also hides its own in-cell toolbar entirely
-     in read-only — `N4LDraftCell`'s editor block, `ImageCell`'s `.im-bar`,
-     and `SketchCell`'s `.sk-bar` are each behind their own `{#if !readOnly}` —
-     so neither the header nor the cell body offers any control.
+     in read-only — `N4LDraftCell`'s `.draft-bar` (the "→ Push to source"
+     button; the `.draft-editor` CodeMirror mount itself stays rendered but
+     becomes non-editable via `EditorView.editable.of(!readOnly)`, rather than
+     being hidden), `ImageCell`'s `.im-bar`, and `SketchCell`'s `.sk-bar`, are
+     each behind their own `{#if !readOnly}` — so neither the header nor any
+     cell's own toolbar offers a control, even though the draft cell's text
+     area remains visible (read-only) underneath.
 
 ## TC-7 Empty-bar suppression, Audio
 
