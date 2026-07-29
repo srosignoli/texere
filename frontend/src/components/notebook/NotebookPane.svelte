@@ -77,6 +77,20 @@
     cells = cells
     scheduleSave()
   }
+
+  $: allFolded = cells.length > 0 && cells.every((c) => c.folded)
+
+  // In place, for the same reason as toggleFold — see its comment. Replacing
+  // every cell object underneath a stack of live components is a class of bug
+  // worth not opening. The keyed {#each} sees unchanged ids, so nothing
+  // remounts either way.
+  function foldAll() {
+    const v = !allFolded
+    for (const c of cells) c.folded = v
+    cells = cells
+    scheduleSave()
+  }
+
   function move(i, dir) {
     const j = i + dir
     if (j < 0 || j >= cells.length) return
@@ -88,6 +102,10 @@
   <div class="nb-head">
     <span class="nb-title">Notebook</span>
     {#if readOnly}<span class="nb-ro">read-only</span>{/if}
+    <span class="nb-headspacer"></span>
+    {#if cells.length}
+      <button class="nb-foldall" on:click={foldAll}>{allFolded ? '▾ Unfold all' : '▸ Fold all'}</button>
+    {/if}
     <button class="nb-gear" on:click={() => (showSettings = true)} title="LLM providers">⚙ Models</button>
   </div>
   {#if error}<div class="nb-error">{error}</div>{/if}
@@ -140,7 +158,9 @@
   .nb-head { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid #2a3a4a; background: #101826; }
   .nb-title { color: #7dd3fc; font-weight: 600; }
   .nb-ro { color: #b58a3a; font-size: 11px; }
-  .nb-gear { margin-left: auto; background: #14233a; color: #93c5fd; border: 1px solid #2a4a6a; border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
+  .nb-gear { background: #14233a; color: #93c5fd; border: 1px solid #2a4a6a; border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
+  .nb-foldall { background: none; color: #5d7186; border: 1px solid #2a3a4a; border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
+  .nb-foldall:hover { color: #7dd3fc; border-color: #2a4a6a; }
   .nb-error { color: #ff8080; padding: 6px 12px; font-size: 12px; }
   .nb-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 12px; }
   /* Reads as chrome, not content: the same muted, letter-spaced treatment
