@@ -23,10 +23,15 @@ notebook/NotebookPane.svelte`, `ComputeCell.svelte`, `AudioCell.svelte`,
      `.nb-cellhead`'s `text-transform: uppercase` applied to `cellLabel(cell)`
      from `frontend/src/lib/cell-label.js`), then `▲ ▼` (`.nb-reorder`), then a
      visible gap, then `✕` (`.nb-del`), all inside the same flex row.
-   - EXPECT: the gap between the `.nb-reorder` block and `.nb-del` (14px
-     `margin-left` on `.nb-del`) is clearly wider than the 2px gap between `▲`
-     and `▼` inside `.nb-reorder` — this gap is the sole mis-click guard
-     between reorder and delete.
+   - EXPECT: the gap between the `.nb-reorder` block and `.nb-del` is clearly
+     wider than the gap between `▲` and `▼` inside `.nb-reorder` — roughly 24px
+     against roughly 10px on screen. Both are wider than the raw CSS values
+     suggest, because the buttons' own padding adds to the whitespace on either
+     side: `.nb-del`'s `margin-left: 14px` plus its `padding: 3px 6px` and
+     `.nb-reorder button`'s `padding: 2px 4px`, against `.nb-reorder`'s
+     `gap: 2px` plus the same button padding twice over. Judge it by eye as
+     well as by the numbers — this separation, together with the size of the
+     `✕` target itself, is the sole mis-click guard between reorder and delete.
    - EXPECT: no cell has a gutter column to its left — `.nb-reorder` no longer
      exists as a separate left-hand column; there is nothing between the pane
      edge and the header/cell content.
@@ -51,25 +56,32 @@ notebook/NotebookPane.svelte`, `ComputeCell.svelte`, `AudioCell.svelte`,
 3. Delete down to a single cell.
    - EXPECT: both `▲` and `▼` are dimmed and inert on that one remaining cell.
 
-## TC-4 Reorder
+## TC-4 Reorder, then delete while displaced
 
 1. With at least three cells including a Sketch cell with some strokes drawn
-   and an LLM cell with a transcript, click `▲` on a middle cell, then `▼` to
-   move it back.
-   - EXPECT: the cell moves position; its header name (`.nb-cellname`) moves
-     with it — the header lives inside the same per-cell `{#each cells as
+   and an LLM cell with a transcript, click `▲` on a middle cell.
+   - EXPECT: the cell moves up one position; its header name (`.nb-cellname`)
+     moves with it — the header lives inside the same per-cell `{#each cells as
      cell, i (cell.id)}` block as the cell body, keyed on `cell.id`, so header
      and content never separate.
    - EXPECT: the sketch's strokes and the LLM's transcript are still present
      after the move — `move(i, dir)` swaps entries in the `cells` array itself
      rather than remounting components by index, so content is preserved, not
      reset to empty.
-2. Then click `✕` on the moved cell.
-   - EXPECT: the moved cell is the one removed, not the cell now occupying its
-     old position — Svelte's keyed `{#each cells as cell, i (cell.id)}` block
-     re-derives `i` when `move()` reassigns `cells`, so the `deleteCell(i)`
-     bound to that header always targets the cell it is currently drawn on,
-     not the index it was created with.
+2. Click `▼` twice on that same cell, so it ends up one position **below**
+   where it started.
+   - EXPECT: it moves down both times, and its content is still intact.
+3. Leave the cell displaced — do **not** move it back — and click `✕` on it.
+   - EXPECT: the displaced cell is the one removed, and the cell now sitting in
+     its original position is left alone. Svelte's keyed `{#each cells as cell,
+     i (cell.id)}` block re-derives `i` when `move()` reassigns `cells`, so the
+     `deleteCell(i)` bound to a header always targets the cell it is currently
+     drawn on, not the index that cell was created at.
+   - Do not "simplify" this case by moving the cell back before deleting. A
+     round trip returns the cell to its starting index, where a `deleteCell(i)`
+     bound to a stale index would compute the same position as a correct one
+     and pass by coincidence. The delete has to happen while the cell sits
+     somewhere it did not start for this case to be able to fail.
 
 ## TC-5 Delete, all eight types
 
