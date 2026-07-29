@@ -118,7 +118,7 @@
           <button class="nb-fold" on:click={() => toggleFold(i)}
             aria-expanded={!cell.folded}
             title={cell.folded ? 'Unfold cell' : 'Fold cell'}>
-            <span class="nb-chev">{cell.folded ? '▸' : '▾'}</span>
+            <span class="nb-chev" aria-hidden="true">{cell.folded ? '▸' : '▾'}</span>
             <span class="nb-cellname">{cellLabel(cell)}</span>
           </button>
           {#if !readOnly}

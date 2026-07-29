@@ -55,6 +55,11 @@ test('an image previews its geometry, since it has no name to show', () => {
   assert.equal(cellPreview({ type: 'image', naturalW: 1024, naturalH: 768 }), '1024×768')
 })
 
+test('an image with only one dimension loaded previews as empty', () => {
+  assert.equal(cellPreview({ type: 'image', naturalW: 1024, naturalH: 0 }), '')
+  assert.equal(cellPreview({ type: 'image', naturalW: 0, naturalH: 768 }), '')
+})
+
 test('an audio cell previews its duration', () => {
   assert.equal(cellPreview({ type: 'audio', durationMs: 14000 }), '0:14')
   assert.equal(cellPreview({ type: 'audio', durationMs: 605000 }), '10:05')
@@ -64,6 +69,13 @@ test('a media cell prefers title, then subject, then query', () => {
   assert.equal(cellPreview({ type: 'media', title: 'T', subject: 'S', query: 'Q' }), 'T')
   assert.equal(cellPreview({ type: 'media', title: '', subject: 'S', query: 'Q' }), 'S')
   assert.equal(cellPreview({ type: 'media', title: '', subject: '', query: 'Q' }), 'Q')
+})
+
+// A whitespace-only title is truthy, so a naive `||` chain picks it and only
+// trims to '' afterwards — the cell would preview as blank despite having a
+// real subject. Each candidate must be clipped before the fallback runs.
+test('a media cell falls through a whitespace-only title to the subject', () => {
+  assert.equal(cellPreview({ type: 'media', title: '   ', subject: 'S', query: 'Q' }), 'S')
 })
 
 // The caller renders no element at all for '', so a cell with nothing in it
@@ -94,8 +106,14 @@ test('an unknown or absent type previews as the empty string', () => {
 // line reaching the DOM for a cell folded specifically to stop looking at it.
 test('an over-long line is capped at 120 characters', () => {
   const long = 'x'.repeat(500)
-  assert.equal(cellPreview({ type: 'n4l', text: long }).length, 120)
-  assert.equal(cellPreview({ type: 'graph', query: long }).length, 120)
+  assert.equal(cellPreview({ type: 'n4l', text: long }), 'x'.repeat(120))
+  assert.equal(cellPreview({ type: 'graph', query: long }), 'x'.repeat(120))
+})
+
+test('a line of exactly 120 characters comes back whole and uncapped', () => {
+  const exact = 'x'.repeat(120)
+  assert.equal(cellPreview({ type: 'n4l', text: exact }), exact)
+  assert.equal(cellPreview({ type: 'graph', query: exact }), exact)
 })
 
 test('formatDuration renders m:ss with a padded seconds field', () => {
