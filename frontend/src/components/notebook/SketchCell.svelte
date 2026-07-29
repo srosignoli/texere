@@ -6,7 +6,6 @@
 
   export let cell
   export let onChange = () => {}
-  export let onDelete = () => {}
   export let readOnly = false
   export let context = null   // unused; shared cell prop set
   export let cells = []       // unused
@@ -190,8 +189,6 @@
       <button on:click={clearAll} title="Clear">Clear</button>
       <label class="sk-mouse" title="Allow mouse/pen to draw. Turn off for pen-only palm rejection (only effective where the platform reports a real pen — not Linux/WebKitGTK)."><input type="checkbox" bind:checked={mouseDraw} /> mouse/pen</label>
       <button class="sk-expand" on:click={toggleExpand} title="Expand to fill the window (Esc to exit)">{expanded ? '🗕 Collapse' : '⛶ Expand'}</button>
-      <span class="sk-spacer"></span>
-      <button class="sk-del" on:click={onDelete} title="Delete cell">✕</button>
     </div>
   {/if}
   <TranscribeBar {cell} bake={bakeSketch} {onInsert} onChange={() => onChange(cell)} {readOnly} />
@@ -212,9 +209,6 @@
   .sw.sel { outline: 2px solid #7dd3fc; }
   .sk-size { width: 80px; }
   .sk-mouse { color: #93c5fd; font-size: 11px; display: flex; align-items: center; gap: 3px; }
-  .sk-spacer { flex: 1; }
-  .sk-del { background: none !important; border: none !important; color: #6b7a8a !important; }
-  .sk-del:hover { color: #ff8080 !important; }
   .sk-wrap { position: relative; height: 240px; min-height: 80px; resize: vertical; overflow: hidden; background: #0b1220; }
   .sk-wrap canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
   .sk-cell.expanded { position: fixed; inset: 0; z-index: 1000; margin: 0; border-radius: 0; display: flex; flex-direction: column; }

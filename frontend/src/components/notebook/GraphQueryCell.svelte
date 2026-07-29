@@ -8,7 +8,6 @@
 
   export let cell
   export let onChange = () => {}
-  export let onDelete = () => {}
   export let readOnly = false
   export let context = null // unused; shared cell prop set
   export let cells = []      // unused
@@ -114,7 +113,6 @@
     </div>
     {#if !readOnly}
       <button class="gq-run" on:click={run} disabled={running}>{running ? '…' : 'Run'}</button>
-      <button class="gq-del" on:click={onDelete} title="Delete cell">✕</button>
     {/if}
   </div>
   {#if error}<div class="gq-error">{error}</div>{/if}
@@ -138,8 +136,6 @@
   .gq-sug li:hover { background: #24374d; }
   .s-sum { color: #5a7a9a; }
   .gq-run { background: #1e3a5a; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px; padding: 5px 12px; cursor: pointer; font-size: 12px; }
-  .gq-del { background: none; border: none; color: #6b7a8a; cursor: pointer; }
-  .gq-del:hover { color: #ff8080; }
   .gq-error { color: #ff8080; font-size: 12px; padding: 0 8px 6px; }
   .gq-results { padding: 6px 8px 8px; border-top: 1px solid #1c2a3a; }
   .gq-view { display: inline-flex; gap: 2px; }

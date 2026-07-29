@@ -5,7 +5,6 @@
 
   export let cell
   export let onChange = () => {}
-  export let onDelete = () => {}
   export let readOnly = false
   export let context = null   // unused; shared cell prop set
   export let cells = []       // unused
@@ -156,13 +155,13 @@
 </script>
 
 <div class="au-cell">
-  <div class="au-bar">
-    <span class="au-title">🎙 Audio</span>
-    {#if cell.asset}<span class="au-dur">{fmt(cell.durationMs)}</span>{/if}
-    <span class="au-spacer"></span>
-    {#if !readOnly && cell.asset}<button on:click={replace} title="Replace">Replace</button>{/if}
-    {#if !readOnly}<button class="au-del" on:click={onDelete} title="Delete cell">✕</button>{/if}
-  </div>
+  {#if cell.asset}
+    <div class="au-bar">
+      <span class="au-dur">{fmt(cell.durationMs)}</span>
+      <span class="au-spacer"></span>
+      {#if !readOnly}<button on:click={replace} title="Replace">Replace</button>{/if}
+    </div>
+  {/if}
 
   {#if cell.asset}
     {#if missing}
@@ -199,12 +198,9 @@
 <style>
   .au-cell { background: #0e1622; border: 1px solid #26374a; border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
   .au-bar { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-bottom: 1px solid #1c2a3a; }
-  .au-title { color: #7dd3fc; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
   .au-dur { color: #93c5fd; font-size: 11px; }
   .au-spacer { flex: 1; }
   .au-bar button { background: #14233a; color: #93c5fd; border: 1px solid #2a3a4a; border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
-  .au-del { background: none !important; border: none !important; color: #6b7a8a !important; }
-  .au-del:hover { color: #ff8080 !important; }
   .au-empty { display: flex; align-items: center; gap: 8px; padding: 10px; flex-wrap: wrap; }
   .au-empty button { background: #14233a; color: #93c5fd; border: 1px solid #2a3a4a; border-radius: 6px; padding: 4px 12px; cursor: pointer; font-size: 12px; }
   .au-empty button:disabled { opacity: .4; cursor: default; }

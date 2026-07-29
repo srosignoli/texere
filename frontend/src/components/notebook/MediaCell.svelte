@@ -8,7 +8,6 @@
 
   export let cell
   export let onChange = () => {}
-  export let onDelete = () => {}
   export let readOnly = false
   export let context = null   // unused; shared cell prop set
   export let cells = []       // unused
@@ -89,18 +88,18 @@
 </script>
 
 <div class="me-cell">
-  <div class="me-bar">
-    <span class="me-label">Media</span>
-    {#if cell.license}<span class="me-lic">{cell.license}</span>{/if}
-    <span class="me-spacer"></span>
-    {#if !readOnly && hasContent(cell) && !replacing}
-      <button class="me-btn" on:click={replace} title="Pick a different asset">Replace</button>
-    {/if}
-    {#if !readOnly && replacing && hasContent(cell)}
-      <button class="me-btn" on:click={() => (replacing = false)} title="Keep the current asset">Cancel</button>
-    {/if}
-    {#if !readOnly}<button class="me-btn" on:click={onDelete} title="Delete cell">✕</button>{/if}
-  </div>
+  {#if cell.license || (!readOnly && hasContent(cell))}
+    <div class="me-bar">
+      {#if cell.license}<span class="me-lic">{cell.license}</span>{/if}
+      <span class="me-spacer"></span>
+      {#if !readOnly && hasContent(cell) && !replacing}
+        <button class="me-btn" on:click={replace} title="Pick a different asset">Replace</button>
+      {/if}
+      {#if !readOnly && replacing && hasContent(cell)}
+        <button class="me-btn" on:click={() => (replacing = false)} title="Keep the current asset">Cancel</button>
+      {/if}
+    </div>
+  {/if}
 
   {#if !hasContent(cell) || replacing}
     {#if readOnly}
@@ -138,7 +137,6 @@
 <style>
   .me-cell { border: 1px solid #2a3a4a; border-radius: 6px; background: #101826; }
   .me-bar { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-bottom: 1px solid #2a3a4a; }
-  .me-label { font-size: 12px; color: #8aa; }
   .me-lic { font-size: 11px; color: #678; }
   .me-spacer { flex: 1 1 auto; }
   .me-btn { background: #1b2636; color: #cde; border: 1px solid #2a3a4a; border-radius: 4px; padding: 2px 8px; cursor: pointer; }

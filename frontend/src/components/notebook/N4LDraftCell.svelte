@@ -8,7 +8,6 @@
   export let cell
   export let onChange = () => {}
   export let onPush = () => {}
-  export let onDelete = () => {}
   export let readOnly = false
   export let context = null   // unused; present so the shared cell prop set matches
   export let cells = []       // unused
@@ -41,7 +40,6 @@
   {#if !readOnly}
     <div class="draft-bar">
       <button class="push-btn" on:click={push} title="Insert this N4L at the editor cursor">→ Push to source</button>
-      <button class="del-btn" on:click={onDelete} title="Delete cell">✕</button>
     </div>
   {/if}
 </div>
@@ -52,6 +50,4 @@
   .draft-bar { display: flex; gap: 6px; padding: 6px 8px; border-top: 1px solid #1c2a3a; }
   .push-btn { background: #1e3a5a; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px; padding: 3px 10px; cursor: pointer; font-size: 12px; }
   .push-btn:hover { background: #244a72; }
-  .del-btn { margin-left: auto; background: none; color: #6b7a8a; border: none; cursor: pointer; font-size: 12px; }
-  .del-btn:hover { color: #ff8080; }
 </style>
