@@ -6,6 +6,13 @@ a search result opened read-only) for TC-6 and TC-12. No automated coverage
 exists for this slice — it moved markup and CSS, added no pure logic — so this
 plan is the verification gate.
 
+**Status: all twelve cases below are deferred to human verification** — this
+agent has no GUI and cannot exercise `make dev`. Every EXPECT was instead
+checked directly against the committed source: `frontend/src/components/
+notebook/NotebookPane.svelte`, `ComputeCell.svelte`, `AudioCell.svelte`,
+`MediaCell.svelte`, `ImageCell.svelte`, `SketchCell.svelte`, and
+`frontend/src/lib/cell-label.js`.
+
 ## TC-1 Header layout, all eight types
 
 1. Add one cell of each of `+ N4L draft cell`, `+ LLM cell`, `+ Graph cell`,
@@ -57,6 +64,12 @@ plan is the verification gate.
      after the move — `move(i, dir)` swaps entries in the `cells` array itself
      rather than remounting components by index, so content is preserved, not
      reset to empty.
+2. Then click `✕` on the moved cell.
+   - EXPECT: the moved cell is the one removed, not the cell now occupying its
+     old position — Svelte's keyed `{#each cells as cell, i (cell.id)}` block
+     re-derives `i` when `move()` reassigns `cells`, so the `deleteCell(i)`
+     bound to that header always targets the cell it is currently drawn on,
+     not the index it was created with.
 
 ## TC-5 Delete, all eight types
 
@@ -152,12 +165,3 @@ entire bar on `{#if !readOnly}` in `ComputeCell.svelte`.
    - EXPECT: `.cc-bar` is present and "Run" (or "Stop") is right-aligned after
      `.cc-spacer`, exactly as in TC-9 — the bar is suppressed only in
      read-only, not removed altogether.
-
----
-
-*(All twelve cases above are deferred to human verification — this agent has
-no GUI and cannot exercise `make dev`. Every EXPECT was instead checked
-directly against the committed source: `frontend/src/components/notebook/
-NotebookPane.svelte`, `ComputeCell.svelte`, `AudioCell.svelte`,
-`MediaCell.svelte`, `ImageCell.svelte`, `SketchCell.svelte`, and
-`frontend/src/lib/cell-label.js`.)*
