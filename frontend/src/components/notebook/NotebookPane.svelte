@@ -133,13 +133,15 @@
   .nb-cellname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .nb-headspacer { flex: 1; }
   .nb-reorder { display: flex; gap: 2px; }
-  .nb-reorder button { background: none; border: none; color: #46586a; cursor: pointer; font-size: 9px; padding: 0 2px; }
+  .nb-reorder button { background: none; border: none; color: #46586a; cursor: pointer; font-size: 9px; padding: 2px 4px; }
   .nb-reorder button:hover:not(:disabled) { color: #7dd3fc; }
   .nb-reorder button:disabled { opacity: .35; cursor: default; }
   /* The gap before ✕ is the whole of the mis-click protection: ▲▼ and delete
      are neighbours for the first time here, and deleteCell has no undo. Keep it
-     visible — do not collapse it into the .nb-reorder gap. */
-  .nb-del { margin-left: 14px; background: none; border: none; color: #46586a; cursor: pointer; font-size: 11px; padding: 0 2px; }
+     visible — do not collapse it into the .nb-reorder gap. Hit areas are sized
+     via padding (not just the gap) for the same reason: pen input gets no
+     hover preview of the delete title to catch an aim error before it lands. */
+  .nb-del { margin-left: 14px; background: none; border: none; color: #46586a; cursor: pointer; font-size: 11px; padding: 3px 6px; }
   .nb-del:hover { color: #ff8080; }
   .nb-add { background: #14233a; color: #93c5fd; border: 1px dashed #2a4a6a; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 12px; width: 100%; }
   .nb-add:hover { background: #1a2f4a; }
