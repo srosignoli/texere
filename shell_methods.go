@@ -101,6 +101,11 @@ func (a *App) StartShellRun(req StartShellRunReq) (string, error) {
 
 		res, err := shell.Run(ctx, sh, req.Cwd, req.Command, batcher.Add)
 		if err != nil && ctx.Err() == nil {
+			// Flush BEFORE the terminal emit: the frontend unsubscribes from
+			// shell:out as soon as it sees shell:error/shell:exit, so any
+			// output still sitting in the batcher must go out first — once
+			// this is emitted, nothing later is observed by the cell.
+			flush()
 			runtime.EventsEmit(a.ctx, "shell:error", map[string]string{
 				"runId": runID, "message": err.Error(),
 			})
@@ -112,6 +117,15 @@ func (a *App) StartShellRun(req StartShellRunReq) (string, error) {
 		if ctx.Err() != nil {
 			exitCode = -1
 		}
+		// Same reasoning as above: shell.Run has already returned, so all of
+		// the command's output is sitting in the batcher (it blocks until
+		// both pipes hit EOF). For a command that finishes inside one
+		// shellEmitInterval tick — echo, pwd, git status — the ticker never
+		// fires at all, so this flush is the ONLY delivery of that output.
+		// It must precede shell:exit; the deferred flush() runs after this
+		// function returns, i.e. after the frontend has already unsubscribed
+		// and stopped listening for shell:out.
+		flush()
 		runtime.EventsEmit(a.ctx, "shell:exit", map[string]any{
 			"runId": runID, "exitCode": exitCode, "durationMs": res.DurationMs,
 		})
