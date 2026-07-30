@@ -3,6 +3,7 @@
   import { ListShells } from '../../../wailsjs/go/main/App'
   import { runShell } from '../../lib/shell-run.js'
   import { appendChunks } from '../../lib/shell-lines.js'
+  import { buildShellFact } from '../../lib/shell-fact.js'
 
   export let cell
   export let onChange = () => {}
@@ -20,6 +21,35 @@
   let run = null
   let status = ''         // "exit 0 · 0.4s", "cancelled", or a spawn error
   let statusBad = false
+
+  let outEl                 // the output pane, for scoping the selection
+  let selectedLines = []    // the lines currently selected, in order
+
+  // No xterm means the output pane is plain DOM, so the browser's own selection
+  // is all that is needed — no addon, no terminal API.
+  //
+  // The selection is intersected with each rendered line rather than read as one
+  // string, so a multi-line selection promotes as separate facts, and a
+  // selection that strays outside the pane contributes nothing.
+  function readSelection() {
+    const sel = window.getSelection()
+    if (!outEl || !sel || sel.isCollapsed || sel.rangeCount === 0) { selectedLines = []; return }
+    const range = sel.getRangeAt(0)
+    if (!outEl.contains(range.commonAncestorContainer)) { selectedLines = []; return }
+    selectedLines = Array.from(outEl.querySelectorAll('.sh-line'))
+      .filter((el) => range.intersectsNode(el))
+      .map((el) => el.textContent)
+  }
+
+  function promote() {
+    const text = buildShellFact({
+      subject: cell.subject, command: cell.command, lines: selectedLines,
+    })
+    if (!text) return
+    onInsert(text)
+  }
+
+  function onSubject(e) { cell.subject = e.target.value; onChange(cell) }
 
   onMount(async () => {
     try {
@@ -120,9 +150,19 @@
       placeholder={'docker ps --format \'{{.Names}}\'\nCtrl+Enter to run'}></textarea>
 
     {#if lines.length || status}
-      <div class="sh-out">
+      <div class="sh-out" bind:this={outEl} on:mouseup={readSelection} on:keyup={readSelection}>
         {#each lines as l, i (i)}<div class="sh-line" class:err={l.stream === 'stderr'}>{l.text}</div>{/each}
         {#if status}<div class="sh-status" class:bad={statusBad}>{status}</div>{/if}
+      </div>
+    {/if}
+
+    {#if !readOnly && selectedLines.length}
+      <div class="sh-promote">
+        <span class="sh-count">{selectedLines.length} line{selectedLines.length === 1 ? '' : 's'}</span>
+        <input class="sh-subj" type="text" placeholder="subject"
+          value={cell.subject ?? ''} on:input={onSubject} />
+        <button class="sh-n4l" on:click={promote} disabled={!cell.subject?.trim()}
+          title="Promote the selection to an N4L draft cell">To N4L</button>
       </div>
     {/if}
   {/if}
@@ -146,4 +186,9 @@
   /* Amber, not red: a missing saved shell is a heads-up to resolve, not a
      failure — discoverErr (no shell found at all) is the failure case. */
   .sh-warn { padding: 6px 8px; color: #b58a3a; font-size: 12px; border-bottom: 1px solid #2a3a4a; }
+  .sh-promote { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-top: 1px solid #2a3a4a; background: #101826; }
+  .sh-count { color: #5d7186; font-size: 11px; white-space: nowrap; }
+  .sh-subj { flex: 1; min-width: 0; background: #14233a; color: #e8eaf0; border: 1px solid #2a4a6a; border-radius: 6px; padding: 2px 6px; font-size: 12px; }
+  .sh-n4l { background: #14233a; color: #93c5fd; border: 1px solid #2a4a6a; border-radius: 6px; padding: 2px 10px; cursor: pointer; font-size: 12px; white-space: nowrap; }
+  .sh-n4l:disabled { opacity: .45; cursor: default; }
 </style>
