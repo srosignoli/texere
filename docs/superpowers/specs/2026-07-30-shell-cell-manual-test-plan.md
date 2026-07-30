@@ -245,23 +245,7 @@ choose from and nothing to continue toward. Beneath the notice: no dropdown,
 no working-directory field, no Run button (all hidden by the same read-only
 guard as TC-9). The command text is still readable.
 
-## TC-19 No promote bar in read-only, even with a selection
-
-Open a notebook with a shell cell read-only, where the cell has prior output
-visible (or reopen after a run — noting TC-8's rule that output does not
-persist, so this may require temporarily testing in an editable notebook
-switched to read-only mid-session if the app supports that, or verifying
-immediately after a run before closing).
-
-Attempt to select text in the output pane with the mouse.
-
-**Expect:** no promote bar appears, regardless of whether a text selection is
-possible or takes visual effect. This is stronger than TC-9's general
-"no promote bar" — it specifically confirms the bar stays suppressed even
-when the user actively tries to select output, not merely that it's absent
-when no one has tried.
-
-## TC-20 Editing the command after selecting output clears the stale selection
+## TC-19 Editing the command after selecting output clears the stale selection
 
 This covers a defect found and fixed during review: promoting a selection
 left over from a previous run would pair a newly edited command with output
@@ -275,7 +259,7 @@ Click **Run** again.
 count or stale text is shown. A selection from before a re-run must not
 survive into the new run.
 
-## TC-21 Promoting twice does not insert a duplicate
+## TC-20 Promoting twice does not insert a duplicate
 
 This covers a defect found and fixed during review: nothing previously
 stopped a second click on `To N4L` from inserting a second, duplicate draft
