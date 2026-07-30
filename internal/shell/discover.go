@@ -1,6 +1,7 @@
 package shell
 
 import (
+	"bytes"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,6 +16,11 @@ import (
 type Env interface {
 	Getenv(key string) string
 	LookPath(file string) (string, error)
+	// EvalSymlinks resolves a path to the real file it names, so two different
+	// strings naming one binary can be recognised as one shell. Part of the
+	// seam because symlink layouts differ per distro and cannot be faked by
+	// LookPath alone.
+	EvalSymlinks(path string) (string, error)
 	GOOS() string
 	WSLDistros() []string
 }
@@ -24,17 +30,21 @@ type osEnv struct{}
 // OSEnv returns the real environment.
 func OSEnv() Env { return osEnv{} }
 
-func (osEnv) Getenv(k string) string            { return os.Getenv(k) }
-func (osEnv) LookPath(f string) (string, error) { return exec.LookPath(f) }
-func (osEnv) GOOS() string                      { return runtime.GOOS }
+func (osEnv) Getenv(k string) string                { return os.Getenv(k) }
+func (osEnv) LookPath(f string) (string, error)     { return exec.LookPath(f) }
+func (osEnv) EvalSymlinks(p string) (string, error) { return filepath.EvalSymlinks(p) }
+func (osEnv) GOOS() string                          { return runtime.GOOS }
 
 // WSLDistros lists installed distros. `wsl -l -q` emits UTF-16 with CRs on many
-// builds, so every NUL and CR is stripped before splitting.
+// builds, so the BOM, every NUL and every CR are stripped before splitting.
+// The BOM matters: without it the first distro's first character is corrupted
+// and `wsl -d <name>` then fails to find it.
 func (osEnv) WSLDistros() []string {
 	out, err := exec.Command("wsl.exe", "-l", "-q").Output()
 	if err != nil {
 		return nil
 	}
+	out = bytes.TrimPrefix(out, []byte{0xFF, 0xFE}) // UTF-16LE BOM
 	cleaned := strings.NewReplacer("\x00", "", "\r", "").Replace(string(out))
 	var names []string
 	for _, line := range strings.Split(cleaned, "\n") {
@@ -61,17 +71,36 @@ func discoverPosix(env Env) []Shell {
 	candidates := []string{env.Getenv("SHELL"), "/bin/bash", "/bin/zsh", "/bin/sh"}
 
 	var out []Shell
-	seen := map[string]bool{}
+	seenPath := map[string]bool{}
+	seenID := map[string]bool{}
 	for _, c := range candidates {
 		if c == "" {
 			continue
 		}
 		path, err := env.LookPath(c)
-		if err != nil || seen[path] {
+		if err != nil {
 			continue
 		}
-		seen[path] = true
+		// Dedupe on the RESOLVED path, not on the string LookPath handed back.
+		// Where /bin is a symlink to usr/bin — Arch, Fedora — a user who ran
+		// `chsh -s /usr/bin/zsh` yields "/usr/bin/zsh" from $SHELL and
+		// "/bin/zsh" from the candidate list: two strings, one binary. If
+		// resolution fails (a dangling link, a permission error) fall back to
+		// the unresolved path rather than dropping the shell.
+		resolved := path
+		if r, err := env.EvalSymlinks(path); err == nil {
+			resolved = r
+		}
+		// The ID is checked separately because two genuinely different binaries
+		// can share a base name — Homebrew's /opt/homebrew/bin/bash alongside
+		// /bin/bash. Either kind of duplicate breaks ShellCell.svelte's
+		// `{#each shells as s (s.id)}`, which throws on a repeated key.
 		name := filepath.Base(path)
+		if seenPath[resolved] || seenID[name] {
+			continue
+		}
+		seenPath[resolved] = true
+		seenID[name] = true
 		out = append(out, Shell{ID: name, Label: name, Path: path, Kind: KindPosix})
 	}
 	return out

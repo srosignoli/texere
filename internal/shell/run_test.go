@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"unicode/utf8"
 )
 
 func TestArgsFor(t *testing.T) {
@@ -172,5 +173,108 @@ func TestRunReportsSpawnFailure(t *testing.T) {
 	bad := Shell{ID: "nope", Path: "/definitely/not/a/shell", Kind: KindPosix}
 	if _, err := Run(context.Background(), bad, "", "echo hi", c.sink); err == nil {
 		t.Fatal("want an error when the shell binary does not exist")
+	}
+}
+
+// A copy-buffer boundary can land in the middle of a multi-byte character. If
+// the writer emitted each half as its own chunk, both would be invalid UTF-8 and
+// the JSON bridge would render one arrow as three replacement characters.
+func TestStreamWriterRejoinsARuneSplitAcrossWrites(t *testing.T) {
+	var mu sync.Mutex
+	var got []Chunk
+	w := &streamWriter{mu: &mu, stream: "stdout", sink: func(c Chunk) { got = append(got, c) }}
+
+	arrow := []byte("→") // 3 bytes: e2 86 92
+	if _, err := w.Write(append([]byte("ab"), arrow[:1]...)); err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].Text != "ab" {
+		t.Fatalf("first write should emit only the complete prefix, got %+v", got)
+	}
+	if _, err := w.Write(append(arrow[1:], []byte("cd")...)); err != nil {
+		t.Fatal(err)
+	}
+	w.flush()
+
+	var joined strings.Builder
+	for _, c := range got {
+		if !utf8.ValidString(c.Text) {
+			t.Fatalf("chunk %q is not valid UTF-8", c.Text)
+		}
+		joined.WriteString(c.Text)
+	}
+	if joined.String() != "ab→cd" {
+		t.Fatalf("got %q, want %q", joined.String(), "ab→cd")
+	}
+}
+
+// Holding bytes back must never lose them: a stream that ends mid-rune has to
+// surface the fragment rather than swallow it.
+func TestStreamWriterFlushesATruncatedFinalRune(t *testing.T) {
+	var mu sync.Mutex
+	var got []Chunk
+	w := &streamWriter{mu: &mu, stream: "stderr", sink: func(c Chunk) { got = append(got, c) }}
+
+	if _, err := w.Write([]byte("x\xe2\x86")); err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].Text != "x" {
+		t.Fatalf("got %+v, want only the complete prefix", got)
+	}
+	w.flush()
+	var joined strings.Builder
+	for _, c := range got {
+		joined.WriteString(c.Text)
+	}
+	if joined.String() != "x\xe2\x86" {
+		t.Fatalf("truncated tail was not flushed: got %q", joined.String())
+	}
+}
+
+// Bytes that are invalid rather than incomplete must pass straight through, or
+// a stray 0xff would stall the stream forever waiting for a rune that is never
+// coming.
+func TestStreamWriterDoesNotHoldBackGenuineGarbage(t *testing.T) {
+	var mu sync.Mutex
+	var got []Chunk
+	w := &streamWriter{mu: &mu, stream: "stdout", sink: func(c Chunk) { got = append(got, c) }}
+	if _, err := w.Write([]byte{'a', 0xff}); err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].Text != "a\xff" {
+		t.Fatalf("got %+v, want the invalid byte emitted immediately", got)
+	}
+}
+
+// End to end: output larger than any one copy buffer, with a multi-byte
+// character straddling the boundary, must reach the sink intact.
+func TestRunKeepsMultiByteCharactersIntactAcrossChunks(t *testing.T) {
+	sh := shTest(t)
+	// EVERY chunk must be valid on its own — concatenating the halves of a
+	// split rune would hide the bug, and it is the individual chunk that
+	// crosses the JSON bridge.
+	var mu sync.Mutex
+	var all strings.Builder
+	sink := func(ch Chunk) {
+		mu.Lock()
+		defer mu.Unlock()
+		if !utf8.ValidString(ch.Text) {
+			t.Errorf("chunk of %d bytes is not valid UTF-8", len(ch.Text))
+		}
+		all.WriteString(ch.Text)
+	}
+
+	// 8190 filler bytes puts the arrow astride the 8192-byte mark, and the
+	// total exceeds exec's 32KiB copy buffer too.
+	cmd := `printf 'x%.0s' $(seq 1 8190); printf '\342\206\222'; printf 'y%.0s' $(seq 1 40000)`
+	if _, err := Run(context.Background(), sh, "", cmd, sink); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	out := all.String()
+	if strings.Count(out, "→") != 1 {
+		t.Fatalf("got %d arrows, want 1", strings.Count(out, "→"))
+	}
+	if strings.ContainsRune(out, utf8.RuneError) {
+		t.Fatal("output contains a replacement character")
 	}
 }

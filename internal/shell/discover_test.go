@@ -10,7 +10,8 @@ import (
 type fakeEnv struct {
 	goos    string
 	env     map[string]string
-	present map[string]string // arg to LookPath -> resolved path
+	present map[string]string // arg to LookPath -> path LookPath returns
+	links   map[string]string // path -> real file it is a symlink to
 	distros []string
 }
 
@@ -22,6 +23,16 @@ func (f fakeEnv) LookPath(name string) (string, error) {
 		return p, nil
 	}
 	return "", errors.New("not found")
+}
+
+// EvalSymlinks models the /bin -> usr/bin layout that string-keyed dedup misses.
+// An unlisted path is its own real file, as filepath.EvalSymlinks returns a
+// non-symlink unchanged.
+func (f fakeEnv) EvalSymlinks(p string) (string, error) {
+	if r, ok := f.links[p]; ok {
+		return r, nil
+	}
+	return p, nil
 }
 
 func ids(shells []Shell) []string {
@@ -74,7 +85,7 @@ func TestDiscoverPosixWithoutSHELL(t *testing.T) {
 
 // $SHELL is usually /bin/bash, which is also a fixed candidate. Listing bash
 // twice in the dropdown would look like a bug.
-func TestDiscoverPosixDedupesByResolvedPath(t *testing.T) {
+func TestDiscoverPosixDedupesIdenticalPaths(t *testing.T) {
 	env := fakeEnv{
 		goos:    "linux",
 		env:     map[string]string{"SHELL": "/bin/bash"},
@@ -85,6 +96,74 @@ func TestDiscoverPosixDedupesByResolvedPath(t *testing.T) {
 		t.Fatalf("got %v, want %v", got, want)
 	}
 }
+
+// The case string-keyed dedup cannot catch. On Arch and Fedora /bin is a
+// symlink to usr/bin, so `chsh -s /usr/bin/zsh` puts "/usr/bin/zsh" in $SHELL
+// while "/bin/zsh" is still a fixed candidate: two different strings naming one
+// binary. Both would be added, both with ID "zsh", and ShellCell.svelte's
+// `{#each shells as s (s.id)}` throws on a duplicate key.
+func TestDiscoverPosixDedupesByResolvedPath(t *testing.T) {
+	env := fakeEnv{
+		goos: "linux",
+		env:  map[string]string{"SHELL": "/usr/bin/zsh"},
+		present: map[string]string{
+			"/usr/bin/zsh": "/usr/bin/zsh",
+			"/bin/zsh":     "/bin/zsh",
+			"/bin/sh":      "/bin/sh",
+		},
+		links: map[string]string{
+			"/bin/zsh": "/usr/bin/zsh",  // /bin -> usr/bin
+			"/bin/sh":  "/usr/bin/dash", // a genuinely different binary
+		},
+	}
+	got := ids(Discover(env))
+	if want := []string{"zsh", "sh"}; !equal(got, want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+}
+
+// Resolution is not enough on its own: /opt/homebrew/bin/bash and /bin/bash are
+// two real, different binaries that both base-name to "bash". The ID is the
+// dropdown's key, so the duplicate has to be dropped even though the paths
+// differ.
+func TestDiscoverPosixDedupesByID(t *testing.T) {
+	env := fakeEnv{
+		goos: "linux",
+		env:  map[string]string{"SHELL": "/opt/homebrew/bin/bash"},
+		present: map[string]string{
+			"/opt/homebrew/bin/bash": "/opt/homebrew/bin/bash",
+			"/bin/bash":              "/bin/bash",
+			"/bin/sh":                "/bin/sh",
+		},
+	}
+	got := ids(Discover(env))
+	if want := []string{"bash", "sh"}; !equal(got, want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	// The one that survives must be the user's own choice, not the fallback.
+	if p := Discover(env)[0].Path; p != "/opt/homebrew/bin/bash" {
+		t.Fatalf("kept %q, want the $SHELL path", p)
+	}
+}
+
+// A path that cannot be resolved must still be offered — a shell behind a
+// permission-denied directory is better listed than silently dropped.
+func TestDiscoverPosixKeepsShellsThatCannotBeResolved(t *testing.T) {
+	env := fakeEnv{
+		goos:    "linux",
+		env:     map[string]string{"SHELL": "/usr/bin/fish"},
+		present: map[string]string{"/usr/bin/fish": "/usr/bin/fish"},
+	}
+	got := ids(Discover(failingResolver{env}))
+	if want := []string{"fish"}; !equal(got, want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+}
+
+// failingResolver is fakeEnv with EvalSymlinks always failing.
+type failingResolver struct{ fakeEnv }
+
+func (failingResolver) EvalSymlinks(string) (string, error) { return "", errors.New("nope") }
 
 func TestDiscoverPosixAllKindPosix(t *testing.T) {
 	env := fakeEnv{goos: "linux", present: map[string]string{"/bin/bash": "/bin/bash"}}

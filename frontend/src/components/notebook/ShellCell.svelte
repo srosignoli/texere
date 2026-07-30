@@ -2,7 +2,7 @@
   import { onDestroy, onMount } from 'svelte'
   import { ListShells } from '../../../wailsjs/go/main/App'
   import { runShell } from '../../lib/shell-run.js'
-  import { appendChunks } from '../../lib/shell-lines.js'
+  import { appendChunks, NOTICE_STREAM } from '../../lib/shell-lines.js'
   import { buildShellFact } from '../../lib/shell-fact.js'
 
   export let cell
@@ -91,8 +91,28 @@
     const s = shells.find((x) => x.id === e.target.value)
     if (s) selectShell(s)
   }
+  // Editing the cwd does NOT clear the selection, and that is deliberate rather
+  // than an oversight. A promoted fact says "this command produced this output";
+  // it records no working directory, so changing the cwd falsifies nothing that
+  // the fact asserts — the command and the output it is paired with are both
+  // still exactly what is on screen. The same reasoning covers the shell picker.
+  // Only the command is part of the assertion, so only the command clears it.
   function onCwd(e) { cell.cwd = e.target.value; onChange(cell) }
-  function onCommand(e) { cell.command = e.target.value; onChange(cell) }
+
+  function onCommand(e) {
+    cell.command = e.target.value
+    // A selection captured against the output of the PREVIOUS command must not
+    // survive an edit to that command. Run `df -h`, select a line, change the
+    // command to `df -i`, click To N4L, and the fact would claim `df -i`
+    // produced `df -h`'s output — the same wrong-fact-that-looks-right already
+    // fixed for the re-run case in start().
+    //
+    // "The user can see both halves on screen" is not a defence: the textarea
+    // stays editable while a run is in flight, so this also fires mid-run, when
+    // the output being pointed at is actively being replaced.
+    selectedLines = []
+    onChange(cell)
+  }
 
   // Ctrl/Cmd+Enter runs, matching LLMCell's send shortcut.
   function onKey(e) {
@@ -157,13 +177,21 @@
       </div>
     {/if}
 
+    <!-- `readonly`, not `disabled`: a disabled textarea cannot be selected, so a
+         read-only notebook's command could not even be copied. readonly keeps it
+         non-editable but selectable. The placeholder is dropped in read-only too
+         — "Ctrl+Enter to run" advertises an action the reader cannot take, and an
+         empty command in a read-only notebook is simply empty. -->
     <textarea class="sh-cmd" value={cell.command ?? ''} on:input={onCommand} on:keydown={onKey}
-      disabled={readOnly} spellcheck="false" rows="2"
-      placeholder={'docker ps --format \'{{.Names}}\'\nCtrl+Enter to run'}></textarea>
+      readonly={readOnly} class:ro={readOnly} spellcheck="false" rows="2"
+      placeholder={readOnly ? '' : 'docker ps --format \'{{.Names}}\'\nCtrl+Enter to run'}></textarea>
 
     {#if lines.length || status}
       <div class="sh-out" bind:this={outEl} on:mouseup={readSelection} on:keyup={readSelection}>
-        {#each lines as l, i (i)}<div class="sh-line" class:err={l.stream === 'stderr'}>{l.text}</div>{/each}
+        <!-- The truncation notice is deliberately NOT a .sh-line: readSelection
+             only collects .sh-line elements, so the notice can never be promoted
+             into an (out) fact. -->
+        {#each lines as l, i (i)}{#if l.stream === NOTICE_STREAM}<div class="sh-trunc">{l.text}</div>{:else}<div class="sh-line" class:err={l.stream === 'stderr'}>{l.text}</div>{/if}{/each}
         {#if status}<div class="sh-status" class:bad={statusBad}>{status}</div>{/if}
       </div>
     {/if}
@@ -192,6 +220,10 @@
   .sh-out { max-height: 320px; overflow: auto; padding: 6px 8px; font-family: ui-monospace, monospace; font-size: 12px; }
   .sh-line { white-space: pre-wrap; word-break: break-word; color: #c9d4e3; }
   .sh-line.err { color: #ffb4a0; }
+  /* Dimmed, italic and ruled off so it reads as a notice about the pane rather
+     than as a line the command printed. */
+  .sh-trunc { color: #5d7186; font-style: italic; border-bottom: 1px dashed #2a3a4a; padding-bottom: 3px; margin-bottom: 3px; user-select: none; }
+  .sh-cmd.ro { color: #93a3b8; }
   .sh-status { margin-top: 4px; color: #5d7186; font-size: 11px; }
   .sh-status.bad { color: #ff8080; }
   .sh-error { padding: 8px; color: #ff8080; font-size: 12px; }

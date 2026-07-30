@@ -1,6 +1,11 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { appendChunks } from './shell-lines.js'
+import { appendChunks, NOTICE_STREAM } from './shell-lines.js'
+
+// Capping now prepends a truncation marker, which is not output. Most tests
+// below care about the output lines, so they read through this.
+const out = (buf) => buf.filter((l) => l.stream !== NOTICE_STREAM)
+const notice = (buf) => buf.find((l) => l.stream === NOTICE_STREAM) || null
 
 test('chunks are split into lines and appended in order', () => {
   const got = appendChunks([], [{ stream: 'stdout', text: 'a\nb\n' }], 100)
@@ -38,15 +43,62 @@ test('carriage returns are stripped so CRLF output does not gain blank lines', (
 test('the buffer is capped, dropping the oldest lines', () => {
   let buf = []
   for (let i = 0; i < 20; i++) buf = appendChunks(buf, [{ stream: 'stdout', text: `${i}\n` }], 5)
-  assert.equal(buf.length, 5)
-  assert.deepEqual(buf.map((l) => l.text), ['15', '16', '17', '18', '19'])
+  assert.equal(out(buf).length, 5)
+  assert.deepEqual(out(buf).map((l) => l.text), ['15', '16', '17', '18', '19'])
 })
 
 test('a single oversized chunk is also capped', () => {
   const text = Array.from({ length: 500 }, (_, i) => `l${i}`).join('\n') + '\n'
   const got = appendChunks([], [{ stream: 'stdout', text }], 10)
-  assert.equal(got.length, 10)
-  assert.equal(got[9].text, 'l499')
+  assert.equal(out(got).length, 10)
+  assert.equal(out(got)[9].text, 'l499')
+})
+
+// The design says the buffer drops from the front "with a truncation marker".
+// Without one a reader cannot tell a short command from a truncated one.
+test('dropping from the front leaves a truncation marker', () => {
+  const text = Array.from({ length: 500 }, (_, i) => `l${i}`).join('\n') + '\n'
+  const got = appendChunks([], [{ stream: 'stdout', text }], 10)
+  const n = notice(got)
+  assert.ok(n, 'expected a truncation marker')
+  assert.equal(got[0], n, 'the marker belongs at the front, where the loss happened')
+  assert.equal(n.dropped, 490)
+  assert.match(n.text, /490 earlier lines dropped/)
+})
+
+test('no truncation means no marker', () => {
+  const got = appendChunks([], [{ stream: 'stdout', text: 'a\nb\n' }], 10)
+  assert.equal(notice(got), null)
+})
+
+// The marker must not itself consume a slot, or "the last N lines" stops being
+// true, and it must not re-trigger truncation on every subsequent append.
+test('the marker is extra to the cap and does not compound', () => {
+  let buf = appendChunks([], [{ stream: 'stdout', text: 'a\nb\nc\nd\n' }], 2)
+  assert.deepEqual(out(buf).map((l) => l.text), ['c', 'd'])
+  assert.equal(notice(buf).dropped, 2)
+  assert.equal(buf.length, 3)
+
+  buf = appendChunks(buf, [{ stream: 'stdout', text: 'e\n' }], 2)
+  assert.deepEqual(out(buf).map((l) => l.text), ['d', 'e'])
+  assert.equal(buf.length, 3, 'still one marker, not two')
+  assert.equal(buf.filter((l) => l.stream === NOTICE_STREAM).length, 1)
+})
+
+// Successive truncations accumulate rather than each reporting only its batch.
+test('the marker counts every line ever dropped', () => {
+  let buf = []
+  for (let i = 0; i < 20; i++) buf = appendChunks(buf, [{ stream: 'stdout', text: `${i}\n` }], 3)
+  assert.equal(notice(buf).dropped, 17)
+  assert.deepEqual(out(buf).map((l) => l.text), ['17', '18', '19'])
+})
+
+// Nothing a command prints can forge a marker: appendChunks coerces every
+// incoming stream to stdout or stderr.
+test('a command cannot forge a truncation marker', () => {
+  const got = appendChunks([], [{ stream: NOTICE_STREAM, text: 'fake\n' }], 10)
+  assert.deepEqual(got.map((l) => l.stream), ['stdout'])
+  assert.equal(notice(got), null)
 })
 
 test('empty and malformed input leaves the buffer alone', () => {
@@ -152,7 +204,7 @@ test('open line survives when buffer is capped', () => {
     buf = appendChunks(buf, [{ stream: 'stdout', text: `line${i}\n` }], 3)
   }
   // Should have the 3 most recent completed lines
-  assert.deepEqual(buf.map((l) => l.text), ['line2', 'line3', 'line4'])
+  assert.deepEqual(out(buf).map((l) => l.text), ['line2', 'line3', 'line4'])
   // Now send an open line (no closing newline)
   buf = appendChunks(buf, [{ stream: 'stdout', text: 'PARTIAL' }], 3)
   // The open line should exist despite the cap
@@ -160,7 +212,7 @@ test('open line survives when buffer is capped', () => {
   assert.equal(buf[buf.length - 1].open, true)
   // Close it
   buf = appendChunks(buf, [{ stream: 'stdout', text: '\n' }], 3)
-  assert.deepEqual(buf.map((l) => l.text), ['line3', 'line4', 'PARTIAL'])
+  assert.deepEqual(out(buf).map((l) => l.text), ['line3', 'line4', 'PARTIAL'])
 })
 
 // When an open line gets evicted by the cap, continuation must start fresh
@@ -172,8 +224,8 @@ test('evicted open line is not resurrected; continuation starts fresh', () => {
   // Push enough stderr to evict the stdout line
   buf = appendChunks(buf, [{ stream: 'stderr', text: 'err1\nerr2\nerr3\n' }], 2)
   // stdout line is gone; buffer has only the 2 most recent stderr lines
-  assert.equal(buf.length, 2)
-  assert.deepEqual(buf.map((l) => l.stream), ['stderr', 'stderr'])
+  assert.equal(out(buf).length, 2)
+  assert.deepEqual(out(buf).map((l) => l.stream), ['stderr', 'stderr'])
   // Now send continuation for stdout; it should NOT rejoin the evicted line
   buf = appendChunks(buf, [{ stream: 'stdout', text: '-continuation\n' }], 2)
   // The continuation should start a new line, not resurrect "out"

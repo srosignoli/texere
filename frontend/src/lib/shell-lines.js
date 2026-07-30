@@ -9,6 +9,27 @@
 // promoted N4L is the durable record; this buffer is scratch.
 export const MAX_LINES = 5000
 
+// The stream name carried by the truncation marker. It cannot collide with real
+// output: appendChunks coerces every incoming chunk's stream to 'stdout' or
+// 'stderr', so no command can print a line that ends up tagged this way. The
+// marker is a separate stream rather than a stdout line with special text
+// because ShellCell.svelte renders it as its own element, OUTSIDE the `.sh-line`
+// class that the selection reads — which is what keeps a truncation notice from
+// ever becoming an `(out)` fact.
+export const NOTICE_STREAM = 'notice'
+
+// truncationNotice is the marker prepended when lines are dropped. It carries
+// the running total so successive truncations accumulate rather than each
+// claiming only its own batch.
+function truncationNotice(dropped, maxLines) {
+  return {
+    stream: NOTICE_STREAM,
+    text: `⋯ ${dropped} earlier line${dropped === 1 ? '' : 's'} dropped — showing the last ${maxLines}`,
+    open: false,
+    dropped,
+  }
+}
+
 // appendChunks folds tagged chunks into a line buffer.
 //
 // A chunk boundary is not a line boundary — the backend reads fixed-size blocks,
@@ -83,6 +104,22 @@ export function appendChunks(buffer, chunks, maxLines = MAX_LINES) {
     }
   }
 
-  if (copied && out.length > maxLines) out = out.slice(out.length - maxLines)
+  // Cap the buffer, and say so. Silently dropping the front leaves a reader
+  // unable to tell a short command from a truncated one — the design calls for
+  // a marker, so one is emitted.
+  //
+  // The marker does NOT count against maxLines: the cap exists to bound memory,
+  // and one extra line is immaterial next to 5,000, whereas letting it consume a
+  // slot would make "the last maxLines lines" quietly untrue.
+  if (copied) {
+    const prev = out.length > 0 && out[0].stream === NOTICE_STREAM ? out[0] : null
+    const real = prev ? out.length - 1 : out.length
+    if (real > maxLines) {
+      out = [
+        truncationNotice((prev ? prev.dropped : 0) + (real - maxLines), maxLines),
+        ...out.slice(out.length - maxLines),
+      ]
+    }
+  }
   return out
 }

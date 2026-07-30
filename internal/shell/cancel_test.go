@@ -69,21 +69,19 @@ func TestCancelKillsTheWholeProcessGroup(t *testing.T) {
 
 	cancel()
 
-	// Check for survivors BEFORE waiting on `done`, not after. Run only
-	// returns once its output pump sees EOF on the child's stdout pipe, and
-	// that pipe's write end stays open for as long as ANY holder of it is
-	// alive — including an orphaned grandchild that killGroup failed to
-	// reach. cmd.Wait()'s WaitDelay-driven pipe-close (the safety valve for
-	// exactly that case) only runs once the pump has already returned, so it
-	// can never fire in time to rescue this ordering. Concretely: gating this
-	// poll behind <-done turns a genuine, unbounded leak into a "Run did not
-	// return after cancel" timeout instead of the leak assertion below —
-	// confirmed by temporarily reverting killGroup to a direct-child-only
-	// kill, which left the leaked pipeline running for its full sleep
-	// duration with Run still blocked, not for lack of trying to detect the
-	// leak, but because Run itself never returned in that ordering. Polling
-	// pgrepCount independently of `done` means the leak assertion is the one
-	// that actually trips, regardless of when (or whether) Run returns.
+	// Check for survivors BEFORE waiting on `done`, not after. Run returns
+	// once cmd.Wait() has reaped the child and joined exec's copying
+	// goroutines, and those goroutines only finish when the write end of the
+	// child's stdout pipe is closed by every holder — including any process
+	// killGroup failed to reach. Run does now bound that wait (cmd.Stdout is a
+	// plain io.Writer, which is what arms cmd.WaitDelay's force-close of the
+	// pipes; see run.go), so a leak costs at most WaitDelay rather than
+	// hanging forever. But bounded is not free: gating this poll behind <-done
+	// would delay the leak check by up to WaitDelay and, worse, report a
+	// genuine leak as a slow return rather than as the leak it is. Polling
+	// pgrepCount independently of `done` keeps the leak assertion below the
+	// one that trips, and leaves "did Run come back?" as the separate,
+	// secondary check it should be.
 	deadline = time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) && pgrepCount(t, marker) > 0 {
 		time.Sleep(50 * time.Millisecond)
@@ -109,11 +107,30 @@ func TestCancelledRunReturnsPromptly(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() { time.Sleep(200 * time.Millisecond); cancel() }()
 
-	start := time.Now()
-	if _, err := Run(ctx, sh, "", "sleep 30", func(Chunk) {}); err == nil {
-		t.Log("cancel surfaced as a non-zero exit rather than an error; acceptable")
+	// Run in a goroutine and bound the wait with a select. Measuring elapsed
+	// time only after Run returns would mean that the one failure this test
+	// exists to catch — Run never returning at all — kills the package on its
+	// timeout instead of reporting "Run took N to return after cancel".
+	type outcome struct {
+		err     error
+		elapsed time.Duration
 	}
-	if elapsed := time.Since(start); elapsed > 5*time.Second {
-		t.Fatalf("Run took %v to return after cancel", elapsed)
+	res := make(chan outcome, 1)
+	start := time.Now()
+	go func() {
+		_, err := Run(ctx, sh, "", "sleep 30", func(Chunk) {})
+		res <- outcome{err: err, elapsed: time.Since(start)}
+	}()
+
+	select {
+	case got := <-res:
+		if got.err == nil {
+			t.Log("cancel surfaced as a non-zero exit rather than an error; acceptable")
+		}
+		if got.elapsed > 5*time.Second {
+			t.Fatalf("Run took %v to return after cancel", got.elapsed)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("Run did not return within 10s of cancel")
 	}
 }
