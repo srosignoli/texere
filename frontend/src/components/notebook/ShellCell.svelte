@@ -47,6 +47,13 @@
     })
     if (!text) return
     onInsert(text)
+    // Clear the selection, not the subject: this makes the promote bar
+    // disappear, which is the visible signal that the promotion happened and
+    // stops a stray second click from inserting a duplicate draft cell. The
+    // subject is left alone — it is persisted on the cell, and a user
+    // promoting several selections from the same run plausibly wants them
+    // all under the same subject.
+    selectedLines = []
   }
 
   function onSubject(e) { cell.subject = e.target.value; onChange(cell) }
@@ -97,6 +104,11 @@
     lines = []
     status = ''
     statusBad = false
+    // A selection captured against the PREVIOUS run's output must not survive
+    // into this one: cell.command may have been edited before Run was
+    // clicked again, and promoting a stale selection would pair the new
+    // command with output it never produced — a wrong fact that looks right.
+    selectedLines = []
     running = true
     run = runShell({
       shellId: cell.shell, cwd: cell.cwd, command: cell.command,
