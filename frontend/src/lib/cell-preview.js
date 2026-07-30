@@ -75,6 +75,7 @@ export function cellPreview(cell) {
     case 'image': return imagePreview(cell)
     case 'audio': return cell.durationMs ? formatDuration(cell.durationMs) : ''
     case 'media': return clip(cell.title) || clip(cell.subject) || clip(cell.query)
+    case 'shell': return firstLine(cell.command)
     default: return ''
   }
 }

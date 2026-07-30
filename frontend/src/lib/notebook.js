@@ -7,6 +7,7 @@ import SketchCell from '../components/notebook/SketchCell.svelte'
 import ImageCell from '../components/notebook/ImageCell.svelte'
 import AudioCell from '../components/notebook/AudioCell.svelte'
 import MediaCell from '../components/notebook/MediaCell.svelte'
+import ShellCell from '../components/notebook/ShellCell.svelte'
 
 let seq = 0
 export function newDraftCell(text = '') {
@@ -63,6 +64,17 @@ export function newMediaCell() {
   }
 }
 
+// Shell cell: runs one command in a chosen OS shell. `shell`/`shellLabel` are
+// the dropdown's id and display text; scrollback is deliberately absent, since
+// it is never persisted. See the shell-cell design doc.
+export function newShellCell() {
+  seq += 1
+  return {
+    id: `cell-${Date.now()}-${seq}`, type: 'shell',
+    shell: '', shellLabel: '', cwd: '', command: '', subject: '',
+  }
+}
+
 // type -> Svelte component. Later slices add: image.
 export const cellRegistry = {
   context: ContextCell,
@@ -74,4 +86,5 @@ export const cellRegistry = {
   image: ImageCell,
   audio: AudioCell,
   media: MediaCell,
+  shell: ShellCell,
 }

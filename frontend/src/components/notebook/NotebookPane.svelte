@@ -1,7 +1,7 @@
 <script>
   import { createEventDispatcher, onDestroy } from 'svelte'
   import { OpenNotebook, GetNotebook, SaveNotebook, ImportImage } from '../../../wailsjs/go/main/App'
-  import { newDraftCell, newLLMCell, newGraphCell, newComputeCell, newSketchCell, newImageCell, newAudioCell, newMediaCell, cellRegistry } from '../../lib/notebook.js'
+  import { newDraftCell, newLLMCell, newGraphCell, newComputeCell, newSketchCell, newImageCell, newAudioCell, newMediaCell, newShellCell, cellRegistry } from '../../lib/notebook.js'
   import { cellLabel } from '../../lib/cell-label.js'
   import { cellPreview } from '../../lib/cell-preview.js'
   import ContextCell from './ContextCell.svelte'
@@ -63,6 +63,7 @@
   }
   function addAudio() { cells = [...cells, newAudioCell()]; scheduleSave() }
   function addMedia() { cells = [...cells, newMediaCell()]; scheduleSave() }
+  function addShell() { cells = [...cells, newShellCell()]; scheduleSave() }
   function updateCell(i, text) { cells[i].text = text; scheduleSave() }
   function updateCellObj(i, obj) { cells[i] = obj; cells = cells; scheduleSave() }
   function insertAfter(i, newCell) { cells = [...cells.slice(0, i + 1), newCell, ...cells.slice(i + 1)]; scheduleSave() }
@@ -148,6 +149,7 @@
       <button class="nb-add" on:click={addImage}>+ Scan</button>
       <button class="nb-add" on:click={addAudio}>+ Audio cell</button>
       <button class="nb-add" on:click={addMedia}>+ Media</button>
+      <button class="nb-add" on:click={addShell}>+ Shell</button>
     {/if}
   </div>
 </div>
