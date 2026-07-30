@@ -18,6 +18,13 @@ export const MAX_LINES = 5000
 //
 // Returns a new array (Svelte reactivity needs the assignment), capped to
 // maxLines by dropping the oldest — without which `yes` exhausts the webview.
+//
+// Ordering: a reunited line stays at its first fragment's array position.
+// For example, {stdout,'AAA'} then {stderr,'BBB'} then {stdout,'CCC\n'} yields
+// ["stdout:AAACCC", "stderr:BBB"] — the stdout line sorts before the stderr that
+// arrived between its halves. This is self-consistent and acceptable: the design
+// accepts cross-stream interleaving as best-effort, and ordering by first arrival
+// of each line is clearer than trying to sort reunited lines by their completion time.
 export function appendChunks(buffer, chunks, maxLines = MAX_LINES) {
   if (!Array.isArray(chunks) || chunks.length === 0) return buffer
 

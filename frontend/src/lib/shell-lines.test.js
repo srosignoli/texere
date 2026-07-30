@@ -80,9 +80,8 @@ test('interleaved streams do not orphan partial lines', () => {
   assert.deepEqual(buf.map((l) => l.stream), ['stdout', 'stderr'])
 })
 
-// Byte-stream invariance: the same output split at different chunk boundaries
-// should yield identical final buffers.
-test('result is independent of chunk boundary positions', () => {
+// Single-stream byte-stream invariance (weaker test, but still useful).
+test('single-stream result is independent of chunk boundary positions', () => {
   const output = 'line1\nline2\nline3\n'
 
   // Split 1: every character
@@ -106,6 +105,36 @@ test('result is independent of chunk boundary positions', () => {
   assert.deepEqual(getText(result2), getText(result3), 'split-per-2-chars should match all-at-once')
 })
 
+// Byte-stream invariance with interleaved streams: same total bytes per stream,
+// but different chunk boundaries and different interleaving orders, must produce
+// identical final buffers. This exercises the per-stream open-line tracking.
+test('interleaved byte-stream result is independent of chunk boundaries', () => {
+  // Fixed byte sequence per stream (in order):
+  // stdout: "out1\nout2\npartial-out"
+  // stderr: "err1\nerr2\npartial-err"
+
+  // Arrangement 1: chunks split exactly on newlines, alternating streams
+  let result1 = []
+  result1 = appendChunks(result1, [{ stream: 'stdout', text: 'out1\n' }], 100)
+  result1 = appendChunks(result1, [{ stream: 'stderr', text: 'err1\n' }], 100)
+  result1 = appendChunks(result1, [{ stream: 'stdout', text: 'out2\n' }], 100)
+  result1 = appendChunks(result1, [{ stream: 'stderr', text: 'err2\n' }], 100)
+  result1 = appendChunks(result1, [{ stream: 'stdout', text: 'partial-out' }], 100)
+  result1 = appendChunks(result1, [{ stream: 'stderr', text: 'partial-err' }], 100)
+
+  // Arrangement 2: chunks split mid-line, alternating streams (same interleaving)
+  let result2 = []
+  result2 = appendChunks(result2, [{ stream: 'stdout', text: 'out' }], 100)
+  result2 = appendChunks(result2, [{ stream: 'stderr', text: 'err' }], 100)
+  result2 = appendChunks(result2, [{ stream: 'stdout', text: '1\nout2' }], 100)
+  result2 = appendChunks(result2, [{ stream: 'stderr', text: '1\nerr2' }], 100)
+  result2 = appendChunks(result2, [{ stream: 'stdout', text: '\npartial-out' }], 100)
+  result2 = appendChunks(result2, [{ stream: 'stderr', text: '\npartial-err' }], 100)
+
+  // Both arrangements should produce identical buffers (same object references)
+  assert.deepEqual(result1, result2, 'different chunk boundaries should produce identical results with interleaved streams')
+})
+
 // Variant of bug 2a: stderr in the middle of an open stdout line
 test('stderr does not close or interfere with open stdout lines', () => {
   let buf = appendChunks([], [{ stream: 'stdout', text: 'out-' }], 100)
@@ -113,4 +142,64 @@ test('stderr does not close or interfere with open stdout lines', () => {
   buf = appendChunks(buf, [{ stream: 'stdout', text: 'put\n' }], 100)
   assert.deepEqual(buf.map((l) => l.text), ['out-put', 'err'])
   assert.deepEqual(buf.map((l) => l.stream), ['stdout', 'stderr'])
+})
+
+// Cap with open lines: an open line should survive truncation if other lines are dropped
+test('open line survives when buffer is capped', () => {
+  let buf = []
+  // Fill past cap with completed lines
+  for (let i = 0; i < 5; i++) {
+    buf = appendChunks(buf, [{ stream: 'stdout', text: `line${i}\n` }], 3)
+  }
+  // Should have the 3 most recent completed lines
+  assert.deepEqual(buf.map((l) => l.text), ['line2', 'line3', 'line4'])
+  // Now send an open line (no closing newline)
+  buf = appendChunks(buf, [{ stream: 'stdout', text: 'PARTIAL' }], 3)
+  // The open line should exist despite the cap
+  assert.equal(buf[buf.length - 1].text, 'PARTIAL')
+  assert.equal(buf[buf.length - 1].open, true)
+  // Close it
+  buf = appendChunks(buf, [{ stream: 'stdout', text: '\n' }], 3)
+  assert.deepEqual(buf.map((l) => l.text), ['line3', 'line4', 'PARTIAL'])
+})
+
+// When an open line gets evicted by the cap, continuation must start fresh
+test('evicted open line is not resurrected; continuation starts fresh', () => {
+  let buf = []
+  // Open an stdout line
+  buf = appendChunks(buf, [{ stream: 'stdout', text: 'out' }], 2)
+  assert.equal(buf[0].open, true)
+  // Push enough stderr to evict the stdout line
+  buf = appendChunks(buf, [{ stream: 'stderr', text: 'err1\nerr2\nerr3\n' }], 2)
+  // stdout line is gone; buffer has only the 2 most recent stderr lines
+  assert.equal(buf.length, 2)
+  assert.deepEqual(buf.map((l) => l.stream), ['stderr', 'stderr'])
+  // Now send continuation for stdout; it should NOT rejoin the evicted line
+  buf = appendChunks(buf, [{ stream: 'stdout', text: '-continuation\n' }], 2)
+  // The continuation should start a new line, not resurrect "out"
+  const stdoutLines = buf.filter((l) => l.stream === 'stdout')
+  assert.equal(stdoutLines.length, 1)
+  assert.equal(stdoutLines[0].text, '-continuation')
+})
+
+// Both streams open at once, under a cap, completing interleaved
+test('both streams open simultaneously under cap with interleaved completion', () => {
+  let buf = []
+  // Open both streams with partial lines
+  buf = appendChunks(buf, [{ stream: 'stdout', text: 'out' }], 100)
+  buf = appendChunks(buf, [{ stream: 'stderr', text: 'err' }], 100)
+  assert.equal(buf[0].open, true)
+  assert.equal(buf[1].open, true)
+
+  // Now push more from both streams, interleaved, all at cap 2
+  buf = appendChunks(buf, [{ stream: 'stdout', text: '-1\nout-2' }], 2)
+  buf = appendChunks(buf, [{ stream: 'stderr', text: '-1\nerr-2' }], 2)
+
+  // Both open lines should exist (cap allows 2 total, both are open)
+  const openLines = buf.filter((l) => l.open)
+  assert.equal(openLines.length, 2)
+  const outOpen = openLines.find((l) => l.stream === 'stdout')
+  const errOpen = openLines.find((l) => l.stream === 'stderr')
+  assert.equal(outOpen.text, 'out-2')
+  assert.equal(errOpen.text, 'err-2')
 })
