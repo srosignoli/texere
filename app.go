@@ -51,6 +51,8 @@ type App struct {
 	learnStore    *learning.Store               // spaced-repetition store; nil until a collection is loaded
 	llmStreams    map[string]context.CancelFunc // active LLM turns, keyed by streamId
 	llmMu         sync.Mutex                    // guards llmStreams
+	shellRuns     map[string]context.CancelFunc // active shell runs, keyed by runId
+	shellMu       sync.Mutex                    // guards shellRuns
 }
 
 // NewApp creates a new App instance.
@@ -63,6 +65,7 @@ func NewApp() *App {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	a.llmStreams = map[string]context.CancelFunc{}
+	a.shellRuns = map[string]context.CancelFunc{}
 
 	// Load the SSTconfig arrow + annotation registry from the directory
 	// adjacent to the binary. In development this is the repo root.
@@ -137,6 +140,11 @@ func (a *App) beforeClose(ctx context.Context) bool {
 	if a.quitConfirmed {
 		return false // allow quit
 	}
+	a.shellMu.Lock()
+	for _, cancel := range a.shellRuns {
+		cancel()
+	}
+	a.shellMu.Unlock()
 	runtime.EventsEmit(ctx, "app:close-requested")
 	return true // keep window open; frontend decides
 }

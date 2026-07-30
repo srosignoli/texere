@@ -10,6 +10,10 @@ export function CancelLLMTurn(arg1) {
   return window['go']['main']['App']['CancelLLMTurn'](arg1);
 }
 
+export function CancelShellRun(arg1) {
+  return window['go']['main']['App']['CancelShellRun'](arg1);
+}
+
 export function ConfirmQuit() {
   return window['go']['main']['App']['ConfirmQuit']();
 }
@@ -178,6 +182,10 @@ export function ListMediaProviders() {
   return window['go']['main']['App']['ListMediaProviders']();
 }
 
+export function ListShells() {
+  return window['go']['main']['App']['ListShells']();
+}
+
 export function OpenCollection(arg1) {
   return window['go']['main']['App']['OpenCollection'](arg1);
 }
@@ -260,6 +268,10 @@ export function SetReadingProjLen(arg1, arg2) {
 
 export function StartLLMTurn(arg1) {
   return window['go']['main']['App']['StartLLMTurn'](arg1);
+}
+
+export function StartShellRun(arg1) {
+  return window['go']['main']['App']['StartShellRun'](arg1);
 }
 
 export function SyncStudyItems() {
