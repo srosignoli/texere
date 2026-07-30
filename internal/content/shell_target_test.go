@@ -65,6 +65,7 @@ func TestShellPromotedTargetsSurviveTheParser(t *testing.T) {
 		{"docker go template", "docker ps --format '{{.Names}}'"},
 		{"brackets from sanitised parens", "at foo[bar] line 3"},
 		{"quotes", `he said "hello"`},
+		{"leading quote", `"quoted string" is what it said`},
 		{"path with slashes", "/var/log/nginx/access.log"},
 		{"equals and ampersand", "ENV=prod && echo done"},
 		{"unicode", "café → ok"},
@@ -103,5 +104,41 @@ func TestRawParensDoNotRoundTrip(t *testing.T) {
 		t.Fatalf("raw parens round-tripped intact (%q) — if the parser now preserves "+
 			"them, sanitizeTarget's paren replacement is no longer required and both "+
 			"this test and that comment should be revisited", got.Target)
+	}
+}
+
+// TestShellArrowsAreDeclaredInRealConfig exists so that deleting the cmd/out
+// declarations from SSTconfig/arrows-EP-3.sst breaks the build instead of
+// silently downgrading promoted shell facts to "unknown" arrows.
+//
+// shellReg() above is a synthetic registry used to isolate parser behaviour
+// from config loading in the table test — it does NOT verify the real
+// SSTconfig declarations exist. This test closes that gap by loading the
+// actual registry the same way TestLoadRegistryArrows does, and asserting the
+// four codes this feature relies on are present with the right pairing.
+func TestShellArrowsAreDeclaredInRealConfig(t *testing.T) {
+	reg := loadTestRegistry(t)
+
+	cmd, ok := reg.Arrows["cmd"]
+	if !ok {
+		t.Fatal("want 'cmd' arrow declared in SSTconfig/arrows-EP-3.sst")
+	}
+	if cmd.Reverse != "runfor" {
+		t.Errorf("cmd.Reverse = %q, want %q", cmd.Reverse, "runfor")
+	}
+
+	out, ok := reg.Arrows["out"]
+	if !ok {
+		t.Fatal("want 'out' arrow declared in SSTconfig/arrows-EP-3.sst")
+	}
+	if out.Reverse != "outof" {
+		t.Errorf("out.Reverse = %q, want %q", out.Reverse, "outof")
+	}
+
+	if _, ok := reg.Arrows["outof"]; !ok {
+		t.Error("want 'outof' arrow declared in SSTconfig/arrows-EP-3.sst")
+	}
+	if _, ok := reg.Arrows["runfor"]; !ok {
+		t.Error("want 'runfor' arrow declared in SSTconfig/arrows-EP-3.sst")
 	}
 }
