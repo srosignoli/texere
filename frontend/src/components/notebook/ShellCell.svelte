@@ -92,7 +92,13 @@
     <div class="sh-error">{discoverErr}</div>
   {:else}
     {#if shellMissing}
-      <div class="sh-warn">Saved shell "{cell.shellLabel || cell.shell}" was not found on this machine. Choose one below to continue.</div>
+      <div class="sh-warn">
+        {#if readOnly}
+          Saved shell "{cell.shellLabel || cell.shell}" is not installed on this machine.
+        {:else}
+          Saved shell "{cell.shellLabel || cell.shell}" was not found on this machine. Choose one below to continue.
+        {/if}
+      </div>
     {/if}
     {#if !readOnly}
       <div class="sh-bar">
