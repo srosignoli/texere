@@ -14,6 +14,7 @@
 
   let shells = []
   let discoverErr = ''
+  let shellMissing = false // saved cell.shell no longer among discovered shells
   let lines = []          // scrollback — component-local, never persisted
   let running = false
   let run = null
@@ -24,12 +25,20 @@
     try {
       shells = await ListShells()
       if (!shells.length) { discoverErr = 'No shell found on this system.'; return }
-      // Preselect the first discovered shell, or restore a saved choice that is
-      // still installed. A saved shell that has gone away must not silently
-      // become a different one.
+      // A cell that has never had a shell chosen (cell.shell is empty — a
+      // freshly added cell) preselects the first discovered shell: that is a
+      // convenience default, not a substitution, so it is fine to persist.
+      //
+      // A cell with a SAVED shell that is no longer installed is different:
+      // silently falling back to whatever sorts first would mean Run executes
+      // in a different shell than the one the user believes they picked, and
+      // persisting that swap would destroy the original choice with no
+      // visible trace. So the saved id is left untouched and `shellMissing`
+      // drives a visible notice instead — the user must resolve it explicitly.
+      if (!cell.shell) { selectShell(shells[0]); return }
       const saved = shells.find((s) => s.id === cell.shell)
-      if (!saved) selectShell(shells[0])
-      else if (saved.label !== cell.shellLabel) selectShell(saved)
+      if (!saved) { shellMissing = true; return }
+      if (saved.label !== cell.shellLabel) selectShell(saved)
     } catch (e) { discoverErr = String(e?.message ?? e) }
   })
 
@@ -38,6 +47,7 @@
   function selectShell(s) {
     cell.shell = s.id
     cell.shellLabel = s.label
+    shellMissing = false
     onChange(cell)
   }
   function onPickShell(e) {
@@ -53,7 +63,7 @@
   }
 
   function start() {
-    if (readOnly || running || !cell.command?.trim() || !cell.shell) return
+    if (readOnly || running || !cell.command?.trim() || !cell.shell || shellMissing) return
     lines = []
     status = ''
     statusBad = false
@@ -81,6 +91,9 @@
   {#if discoverErr}
     <div class="sh-error">{discoverErr}</div>
   {:else}
+    {#if shellMissing}
+      <div class="sh-warn">Saved shell "{cell.shellLabel || cell.shell}" was not found on this machine. Choose one below to continue.</div>
+    {/if}
     {#if !readOnly}
       <div class="sh-bar">
         <select class="sh-shell" value={cell.shell} on:change={onPickShell} disabled={running}>
@@ -88,11 +101,10 @@
         </select>
         <input class="sh-cwd" type="text" placeholder="working directory"
           value={cell.cwd ?? ''} on:input={onCwd} disabled={running} />
-        <span class="sh-spacer"></span>
         {#if running}
           <button class="sh-stop" on:click={stop}>Stop</button>
         {:else}
-          <button class="sh-run" on:click={start} disabled={!cell.command?.trim()}>Run</button>
+          <button class="sh-run" on:click={start} disabled={!cell.command?.trim() || shellMissing}>Run</button>
         {/if}
       </div>
     {/if}
@@ -115,7 +127,6 @@
   .sh-bar { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-bottom: 1px solid #2a3a4a; }
   .sh-shell, .sh-cwd { background: #14233a; color: #93c5fd; border: 1px solid #2a4a6a; border-radius: 6px; padding: 2px 6px; font-size: 12px; }
   .sh-cwd { flex: 1; min-width: 0; }
-  .sh-spacer { flex: none; }
   .sh-run, .sh-stop { background: #14233a; color: #93c5fd; border: 1px solid #2a4a6a; border-radius: 6px; padding: 2px 10px; cursor: pointer; font-size: 12px; }
   .sh-run:disabled { opacity: .45; cursor: default; }
   .sh-stop { color: #ff8080; border-color: #5a2a2a; }
@@ -126,4 +137,7 @@
   .sh-status { margin-top: 4px; color: #5d7186; font-size: 11px; }
   .sh-status.bad { color: #ff8080; }
   .sh-error { padding: 8px; color: #ff8080; font-size: 12px; }
+  /* Amber, not red: a missing saved shell is a heads-up to resolve, not a
+     failure — discoverErr (no shell found at all) is the failure case. */
+  .sh-warn { padding: 6px 8px; color: #b58a3a; font-size: 12px; border-bottom: 1px solid #2a3a4a; }
 </style>
