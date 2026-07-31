@@ -264,9 +264,23 @@ func TestRunKeepsMultiByteCharactersIntactAcrossChunks(t *testing.T) {
 		all.WriteString(ch.Text)
 	}
 
-	// 8190 filler bytes puts the arrow astride the 8192-byte mark, and the
-	// total exceeds exec's 32KiB copy buffer too.
-	cmd := `printf 'x%.0s' $(seq 1 8190); printf '\342\206\222'; printf 'y%.0s' $(seq 1 40000)`
+	// The byte count is load-bearing and easy to re-hollow by "tidying" it.
+	//
+	// exec copies into a 32KiB buffer, so the ONLY way to make a rune straddle a
+	// chunk boundary is to have the shell emit the filler, the arrow and the
+	// remainder in ONE write, with the arrow starting at offset 32766 — two
+	// bytes short of 32768, so the copy takes `x`*32766 plus the arrow's first
+	// two bytes and leaves the third for the next chunk. Hence the shell
+	// variables: three separate `printf` calls are three separate writes, and
+	// the arrow then lands at the start of its own write and never straddles
+	// anything. An earlier version of this test did exactly that against an
+	// 8190-byte offset tuned to a `bufio` reader that no longer exists, and
+	// passed with the hold-back logic deleted — it tested nothing.
+	//
+	// Verified: without partialRuneTail's hold-back this yields 2 invalid
+	// chunks; with it, 0.
+	const cmd = `a=$(printf 'x%.0s' $(seq 1 32766)); b=$(printf 'y%.0s' $(seq 1 40000)); ` +
+		`printf '%s\342\206\222%s' "$a" "$b"`
 	if _, err := Run(context.Background(), sh, "", cmd, sink); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
