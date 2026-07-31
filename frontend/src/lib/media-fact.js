@@ -1,3 +1,5 @@
+import { sanitizeSubject, sanitizeTarget } from './n4l-escape.js'
+
 // Builds the N4L text promoted from a media cell. Kept as pure functions so they
 // are unit-testable without mounting Svelte.
 //
@@ -82,7 +84,17 @@ function clock(sec) {
 }
 
 export function buildMediaFact(cell) {
-  const subject = (cell?.subject ?? '').trim()
+  // The subject is the FIRST thing on its line, so N4L's leading-position
+  // markers are live here, and a " #" opens a trailing comment at any column.
+  // The title is a ditto target, where those are inert but `(...)` is arrow
+  // syntax and `//` starts an inline comment. Both hazards are handled in
+  // n4l-escape.js, shared with the shell cell — see the note there on why this
+  // must not be duplicated.
+  //
+  // The URL is deliberately NOT sanitised: the parser exempts a slash run that
+  // follows a colon, so `https://` survives intact, and the target has to stay
+  // byte-exact to remain clickable.
+  const subject = sanitizeSubject(cell?.subject)
   if (!subject) return ''
 
   if (cell.kind === 'video') {
@@ -91,7 +103,7 @@ export function buildMediaFact(cell) {
     let out = `${subject}\n"  (${VIDEO_ARROW}) ${url}\n`
     // A bare URL is unreadable months later, so a title — when there is one —
     // goes on a note line. An empty note line would be worse than none.
-    const title = (cell.title ?? '').trim()
+    const title = sanitizeTarget(cell.title)
     if (title) {
       const t = Math.max(0, Math.round(cell.startSec ?? 0))
       // The clock is appended with "@", never wrapped in parentheses: N4L reads
