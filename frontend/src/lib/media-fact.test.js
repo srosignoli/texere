@@ -174,3 +174,54 @@ test('formatClock round-trips with parseClock', () => {
     assert.equal(parseClock(formatClock(sec)), sec)
   }
 })
+
+// --- N4L escaping ---------------------------------------------------------
+// buildMediaFact sanitised nothing, so a subject or title carrying N4L syntax
+// was silently truncated on its way into the .n4l file. The shell cell hit the
+// identical bugs; these cases mirror the ones proven there against the real Go
+// parser (internal/content/shell_target_test.go).
+
+// A YouTube title with "(Official Video)" is the common case, not an exotic one.
+test('parentheses in a video title are neutralised, not left as arrow syntax', () => {
+  const got = buildMediaFact({
+    kind: 'video', sourcePage: 'https://youtube.com/watch?v=x', provider: 'youtube',
+    subject: 'rickroll', title: 'Never Gonna Give You Up (Official Video)',
+  })
+  assert.ok(got.includes('[Official Video]'), got)
+  assert.ok(!got.includes('(Official Video)'), got)
+})
+
+// " #" opens a trailing comment on a NODE line; the subject is a node line.
+test('a hash in the subject does not truncate the fact', () => {
+  const got = buildMediaFact({ subject: 'incident #4312', asset: 'a3.jpg', kind: 'image' })
+  assert.ok(got.startsWith('incident [#]4312\n'), got)
+})
+
+// Leading markers are only safe in a ditto target; a subject is first on its line.
+test('leading N4L markers in the subject are neutralised', () => {
+  assert.ok(buildMediaFact({ subject: '- prod runbook', asset: 'a.jpg' }).startsWith('[-] prod runbook\n'))
+  assert.ok(buildMediaFact({ subject: '@prod notes', asset: 'a.jpg' }).startsWith('[@]prod notes\n'))
+  assert.ok(buildMediaFact({ subject: '# incident', asset: 'a.jpg' }).startsWith('[#] incident\n'))
+})
+
+// "//" opens an inline comment on every line type, targets included.
+test('a double slash in the title is separated so it is not read as a comment', () => {
+  const got = buildMediaFact({
+    kind: 'video', sourcePage: 'https://youtube.com/watch?v=x', provider: 'youtube',
+    subject: 'demo', title: 'see docs // internal only',
+  })
+  assert.ok(!got.includes('// internal'), got)
+  assert.ok(got.includes('internal only'), got)
+})
+
+// The parser exempts a slash run after a colon, so URLs must survive untouched.
+test('the asset URL keeps its own double slashes', () => {
+  const got = buildMediaFact({
+    kind: 'video', sourcePage: 'https://youtube.com/watch?v=abc', provider: 'youtube', subject: 'demo',
+  })
+  assert.ok(got.includes('https://youtube.com/watch?v=abc'), got)
+})
+
+test('a subject that sanitises to nothing yields no fact', () => {
+  assert.equal(buildMediaFact({ subject: '   ', asset: 'a.jpg' }), '')
+})
