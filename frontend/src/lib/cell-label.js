@@ -15,6 +15,7 @@ const CELL_NAMES = {
   image: 'Scan',
   audio: 'Audio',
   media: 'Media',
+  shell: 'Shell',
 }
 
 // mediaDetail names what a media cell actually holds. Three stacked cells all
@@ -41,5 +42,6 @@ export function cellLabel(cell) {
   if (type === 'llm') detail = cell.mode || ''
   else if (type === 'compute') detail = cell.language || ''
   else if (type === 'media') detail = mediaDetail(cell)
+  else if (type === 'shell') detail = cell.shellLabel || ''
   return detail ? `${name} · ${detail}` : name
 }

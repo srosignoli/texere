@@ -101,6 +101,19 @@ test('an unknown or absent type previews as the empty string', () => {
   assert.equal(cellPreview(undefined), '')
 })
 
+test('a shell cell previews its command', () => {
+  assert.equal(cellPreview({ type: 'shell', command: 'docker ps' }), 'docker ps')
+})
+
+test('a multi-line shell command previews its first non-empty line', () => {
+  assert.equal(cellPreview({ type: 'shell', command: '\n\ncd /tmp\nls -la' }), 'cd /tmp')
+})
+
+test('a shell cell with no command yet previews as the empty string', () => {
+  assert.equal(cellPreview({ type: 'shell', command: '' }), '')
+  assert.equal(cellPreview({ type: 'shell' }), '')
+})
+
 // Not cosmetic: CSS does the visible ellipsis at the pane's real width, which
 // is the only place that width is known. This cap stops a huge draft's first
 // line reaching the DOM for a cell folded specifically to stop looking at it.

@@ -5,11 +5,14 @@ import {content} from '../models';
 import {explorer} from '../models';
 import {learning} from '../models';
 import {mediasearch} from '../models';
+import {shell} from '../models';
 import {search} from '../models';
 
 export function BuildGraph():Promise<main.BuildGraphResult>;
 
 export function CancelLLMTurn(arg1:string):Promise<void>;
+
+export function CancelShellRun(arg1:string):Promise<void>;
 
 export function ConfirmQuit():Promise<void>;
 
@@ -95,6 +98,8 @@ export function ListLanguages():Promise<Array<mediasearch.Language>>;
 
 export function ListMediaProviders():Promise<Array<main.ProviderInfo>>;
 
+export function ListShells():Promise<Array<shell.Shell>>;
+
 export function OpenCollection(arg1:string):Promise<Array<content.ChapterSummary>>;
 
 export function OpenNotebook(arg1:string):Promise<main.NotebookView>;
@@ -136,6 +141,8 @@ export function SetActiveSTTProfile(arg1:string):Promise<void>;
 export function SetReadingProjLen(arg1:string,arg2:number):Promise<void>;
 
 export function StartLLMTurn(arg1:main.StartTurnReq):Promise<string>;
+
+export function StartShellRun(arg1:main.StartShellRunReq):Promise<string>;
 
 export function SyncStudyItems():Promise<learning.SyncResult>;
 

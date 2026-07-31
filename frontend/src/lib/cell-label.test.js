@@ -49,6 +49,17 @@ test('an unknown type stays identifiable rather than blank', () => {
   assert.equal(cellLabel({ type: 'context' }), 'context')
 })
 
+test('a shell cell is named, with the chosen shell as its detail', () => {
+  assert.equal(cellLabel({ type: 'shell', shellLabel: 'Ubuntu (WSL)' }), 'Shell · Ubuntu (WSL)')
+  assert.equal(cellLabel({ type: 'shell', shellLabel: 'bash' }), 'Shell · bash')
+})
+
+// A cell created before a shell was picked must still name itself.
+test('a shell cell with no shell chosen shows no dangling separator', () => {
+  assert.equal(cellLabel({ type: 'shell' }), 'Shell')
+  assert.equal(cellLabel({ type: 'shell', shellLabel: '' }), 'Shell')
+})
+
 test('the header is never empty', () => {
   assert.equal(cellLabel({}), 'Cell')
   assert.equal(cellLabel({ type: '' }), 'Cell')

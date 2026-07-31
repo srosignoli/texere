@@ -1048,6 +1048,22 @@ export namespace main {
 		}
 	}
 	
+	export class StartShellRunReq {
+	    shellId: string;
+	    cwd: string;
+	    command: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new StartShellRunReq(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.shellId = source["shellId"];
+	        this.cwd = source["cwd"];
+	        this.command = source["command"];
+	    }
+	}
 	export class StartTurnReq {
 	    profileId: string;
 	    system: string;
@@ -1398,6 +1414,31 @@ export namespace search {
 		    }
 		    return a;
 		}
+	}
+
+}
+
+export namespace shell {
+	
+	export class Shell {
+	    id: string;
+	    label: string;
+	    path: string;
+	    kind: string;
+	    distro?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Shell(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.label = source["label"];
+	        this.path = source["path"];
+	        this.kind = source["kind"];
+	        this.distro = source["distro"];
+	    }
 	}
 
 }
