@@ -1443,3 +1443,34 @@ export namespace shell {
 
 }
 
+export namespace skills {
+	
+	export class Skill {
+	    id: string;
+	    name: string;
+	    description: string;
+	    placeholder: string;
+	    body: string;
+	    builtin: boolean;
+	    overridden: boolean;
+	    path: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Skill(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.placeholder = source["placeholder"];
+	        this.body = source["body"];
+	        this.builtin = source["builtin"];
+	        this.overridden = source["overridden"];
+	        this.path = source["path"];
+	    }
+	}
+
+}
+
