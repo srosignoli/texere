@@ -53,12 +53,15 @@
   // cell (mode set, skill unset) resolves its skill for display and for the
   // system prompt without ever being written to disk just for being opened.
   //
-  // This is the ONE thing that must be true before a turn can be sent — not
-  // "loading finished", not "nothing flagged missing" (two flag-based guards
-  // already proved leaky: a promise race, then a fetch rejection). Whether
-  // still loading, the fetch rejected, the saved skill was deleted, or the
-  // list is simply empty, `skills` never contains a match and activeSkill
-  // stays undefined, so gating on it alone covers every case in one place.
+  // NOTE: a resolved activeSkill is NOT itself sufficient to send — the Go
+  // side deliberately lists a skill with an empty body rather than dropping
+  // it (see internal/skills/load_test.go, TestListKeepsAnEmptyBodySkill), so
+  // activeSkill can be a real, truthy object whose .body is ''. The actual
+  // precondition for sending is a NON-EMPTY resolved body, checked directly
+  // via activeSkill?.body?.trim() at both guarded call sites below — not
+  // "activeSkill exists", which two rounds of narrower flags (a promise
+  // race, then a fetch rejection) already showed is the wrong boundary to
+  // draw this at.
   $: activeSkill = skills.find((s) => s.id === skillIdForCell(cell))
 
   function persist() { onChange(cell) }
@@ -82,7 +85,7 @@
 
   async function send() {
     const text = input.trim()
-    if (!text || streaming || !activeSkill) return
+    if (!text || streaming || !activeSkill?.body?.trim()) return
     lastSent = text
     cell.messages = [...cell.messages, { role: 'user', content: text }]
     cell = cell
@@ -157,6 +160,17 @@
         Skill "{cell.skillName || skillIdForCell(cell)}" was not found. Choose one below to continue.
       {/if}
     </div>
+  {:else if activeSkill && !activeSkill.body?.trim()}
+    <!-- The backend deliberately lists a skill with an empty body rather than
+         dropping it (a half-edited .md — frontmatter written, prompt not).
+         Sending would otherwise go out with no framing at all, silently. -->
+    <div class="llm-warn">
+      {#if readOnly}
+        Skill "{activeSkill.name}" has no content, so it cannot frame a conversation.
+      {:else}
+        Skill "{activeSkill.name}" has no content yet. Edit its file to add a system prompt, or choose a different skill below.
+      {/if}
+    </div>
   {/if}
   <div class="llm-bar">
     <!-- Bound to activeSkill's id, not cell.skill directly: a legacy cell (mode
@@ -198,7 +212,7 @@
         <textarea bind:value={input} on:keydown={onKey}
           placeholder={activeSkill?.placeholder || 'Ask…'} rows="2"
           disabled={streaming || skillMissing}></textarea>
-        {#if streaming}<button class="stop" on:click={stop}>Stop</button>{:else}<button class="send" on:click={send} disabled={!activeSkill}>Send</button>{/if}
+        {#if streaming}<button class="stop" on:click={stop}>Stop</button>{:else}<button class="send" on:click={send} disabled={!activeSkill?.body?.trim()}>Send</button>{/if}
       </div>
     {/if}
   {/if}
