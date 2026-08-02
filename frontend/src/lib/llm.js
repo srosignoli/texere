@@ -27,34 +27,6 @@ export const TRANSCRIBE_SYSTEM =
   '```mermaid code block that best represents its structure, in addition to any surrounding text. ' +
   'Output only the transcription — no preamble or commentary.'
 
-// buildSystem composes the system prompt: mode framing + a context block built
-// from the pinned context cell and any attached cells' text.
-export function buildSystem(mode, context, attachedCells) {
-  const parts = [mode === 'tutor' ? TUTOR_SYSTEM : ASK_SYSTEM]
-  const ctx = []
-  if (context?.extractText) ctx.push(`# Extract\n${context.extractText}`)
-  if (context?.tags?.length) ctx.push(`# Tags\n${context.tags.join(', ')}`)
-  if (context?.orbit?.length) {
-    ctx.push('# Neighbours\n' + context.orbit.map((o) => `- ${o.arrowLong} ${o.neighborText}`).join('\n'))
-  }
-  if (context?.source?.passage) ctx.push(`# Source passage\n${context.source.passage}`)
-  for (const c of attachedCells ?? []) {
-    if (c.type === 'n4l' && c.text) ctx.push(`# Attached N4L draft\n${c.text}`)
-    else if (c.type === 'llm' && c.messages?.length) {
-      ctx.push('# Attached conversation\n' + c.messages.map((m) => `${m.role}: ${m.content}`).join('\n'))
-    }
-    else if (c.type === 'graph' && c.resultText) ctx.push(`# Attached graph result\n${c.resultText}`)
-    else if (c.type === 'compute' && (c.code || c.resultText)) {
-      let s = '# Attached compute cell'
-      if (c.code) s += `\n\`\`\`js\n${c.code}\n\`\`\``
-      if (c.resultText) s += `\n\nOutput:\n${c.resultText}`
-      ctx.push(s)
-    }
-  }
-  if (ctx.length) parts.push('--- Context ---\n' + ctx.join('\n\n'))
-  return parts.join('\n\n')
-}
-
 // streamTurn starts a streamed turn and wires the delta/done/error events,
 // filtered to this turn's streamId. Returns a cancel() that stops the stream
 // and unsubscribes.

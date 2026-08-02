@@ -1,7 +1,8 @@
 <script>
   import { onMount, onDestroy } from 'svelte'
   import { GetLLMConfig } from '../../../wailsjs/go/main/App'
-  import { buildSystem, streamTurn } from '../../lib/llm.js'
+  import { streamTurn, ASK_SYSTEM, TUTOR_SYSTEM } from '../../lib/llm.js'
+  import { buildSystem } from '../../lib/llm-prompt.js'
   import { bakeSketch, bakeImage } from '../../lib/bake.js'
 
   export let cell
@@ -65,7 +66,7 @@
       return
     }
 
-    const system = buildSystem(cell.mode, context, attached)
+    const system = buildSystem(cell.mode === 'tutor' ? TUTOR_SYSTEM : ASK_SYSTEM, context, attached)
     turn = streamTurn({
       profileId: cell.profileId,
       system,
