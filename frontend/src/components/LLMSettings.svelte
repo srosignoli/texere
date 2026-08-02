@@ -3,6 +3,7 @@
   import {
     GetLLMConfig, SaveLLMProfile, DeleteLLMProfile, SetActiveProfile, TestLLMProfile,
     GetSTTConfig, SaveSTTProfile, DeleteSTTProfile, SetActiveSTTProfile,
+    ListSkills, DuplicateSkill, RevealSkillsDir,
   } from '../../wailsjs/go/main/App'
 
   export let onClose = () => {}
@@ -33,6 +34,7 @@
   let editing = null
   let testMsg = {}
   let error = ''
+  let skills = []
 
   onMount(load)
   async function load() {
@@ -40,7 +42,28 @@
     try { const c = await apiFor(tab).get(); profiles = c.profiles ?? []; activeId = c.activeProfileId ?? '' }
     catch (e) { error = String(e?.message ?? e) }
   }
-  function setTab(t) { tab = t; editing = null; testMsg = {}; load() }
+
+  // Read on demand rather than watched: this is a folder edited a handful of
+  // times ever, in the user's own editor, so re-listing when the tab opens is
+  // enough and costs nothing.
+  async function loadSkills() {
+    error = ''
+    try { skills = await ListSkills() } catch (e) { error = String(e?.message ?? e) }
+  }
+  async function duplicate(id) {
+    error = ''
+    try { await DuplicateSkill(id); await loadSkills() } catch (e) { error = String(e?.message ?? e) }
+  }
+  async function revealSkills() {
+    error = ''
+    try { await RevealSkillsDir() } catch (e) { error = String(e?.message ?? e) }
+  }
+
+  function setTab(t) {
+    tab = t; editing = null; testMsg = {}
+    if (t === 'skills') loadSkills()
+    else load()
+  }
 
   function addFrom(preset) {
     editing = { id: `p-${Date.now()}`, name: preset.name, kind: preset.kind, baseUrl: preset.baseUrl, model: preset.model, apiKey: '', apiKeyEnv: '' }
@@ -68,10 +91,33 @@
   <div class="ov-tabs">
     <button class:sel={tab === 'llm'} on:click={() => setTab('llm')}>LLM Providers</button>
     <button class:sel={tab === 'stt'} on:click={() => setTab('stt')}>Speech-to-text</button>
+    <button class:sel={tab === 'skills'} on:click={() => setTab('skills')}>Skills</button>
   </div>
   {#if error}<div class="ov-error">{error}</div>{/if}
 
-  {#if editing}
+  {#if tab === 'skills'}
+    <div class="skills">
+      <p class="hint">
+        Skills are Markdown files holding the system prompt that frames an LLM
+        cell. Edit them in your own editor — the list refreshes when you reopen
+        this tab.
+      </p>
+      {#each skills as s (s.id)}
+        <div class="skill-row">
+          <div class="skill-main">
+            <span class="skill-name">{s.name}</span>
+            <span class="skill-origin">{s.builtin ? 'built-in' : (s.overridden ? 'yours, overrides built-in' : 'yours')}</span>
+            {#if !s.body}<span class="skill-empty">(no content)</span>{/if}
+            {#if s.description}<div class="skill-desc">{s.description}</div>{/if}
+          </div>
+          {#if s.builtin}
+            <button on:click={() => duplicate(s.id)} title="Write an editable copy you can change">Duplicate</button>
+          {/if}
+        </div>
+      {/each}
+      <button class="reveal" on:click={revealSkills}>Open skills folder</button>
+    </div>
+  {:else if editing}
     <div class="ov-form">
       <label>Name<input bind:value={editing.name} /></label>
       {#if apiFor(tab).hasKind}
@@ -138,4 +184,13 @@
   }
   .ov-form select option { background: #0b1220; color: #e8eaf0; }
   .ov-actions { flex-direction: row; display: flex; gap: 8px; }
+  .skills { display: flex; flex-direction: column; gap: 8px; }
+  .hint { color: #5d7186; font-size: 12px; margin: 0 0 4px; }
+  .skill-row { display: flex; align-items: flex-start; gap: 8px; padding: 6px 8px; border: 1px solid #2a3a4a; border-radius: 6px; }
+  .skill-main { flex: 1; min-width: 0; }
+  .skill-name { color: #e8eaf0; font-size: 13px; }
+  .skill-origin { color: #5d7186; font-size: 11px; margin-left: 6px; }
+  .skill-empty { color: #b58a3a; font-size: 11px; margin-left: 6px; }
+  .skill-desc { color: #5d7186; font-size: 11px; margin-top: 2px; }
+  .reveal { align-self: flex-start; background: #14233a; color: #93c5fd; border: 1px solid #2a4a6a; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 12px; }
 </style>
