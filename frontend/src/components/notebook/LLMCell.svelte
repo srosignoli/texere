@@ -20,27 +20,40 @@
   let lastSent = ''
 
   let skills = []
-  let skillMissing = false // cell.skill names a file that is no longer present
+  // ListSkills is async and races GetLLMConfig's onMount; without this gate a
+  // click landing in that window sends a turn framed by buildSystem('', ...) —
+  // an empty system prompt, silently, since activeSkill is still undefined.
+  // Set true in both the success AND failure path below, or a fetch error
+  // would disable Send forever with no way out.
+  let skillsLoaded = false
+  let skillMissing = false // the resolved skill id names a file that is no longer present
 
   onMount(async () => { try { const c = await GetLLMConfig(); profiles = c.profiles ?? [] } catch { /* settings not configured */ } })
   onMount(async () => {
     try {
       skills = await ListSkills()
-      const want = skillIdForCell(cell)
-      const found = skills.find((s) => s.id === want)
+      const found = skills.find((s) => s.id === skillIdForCell(cell))
       // A saved skill that has gone away must NOT be silently swapped for
       // another: the conversation would continue under a different teaching
       // method with nothing to say so, and persisting the swap would destroy
       // the original choice. Surface it and let the user decide.
-      if (!found) { skillMissing = true; return }
-      if (cell.skill !== found.id || cell.skillName !== found.name) selectSkill(found)
+      //
+      // Resolution here is READ-ONLY: activeSkill below re-derives the same
+      // lookup from cell + skills, so merely opening a cell — legacy or not —
+      // never calls selectSkill and never writes to the notebook. Only a real
+      // pick via onPickSkill persists.
+      if (!found) skillMissing = true
     } catch (e) { error = String(e?.message ?? e) }
+    finally { skillsLoaded = true }
   })
   onDestroy(() => turn?.cancel())
 
   $: attached = (cell.attachments ?? []).map((id) => cells.find((c) => c.id === id)).filter(Boolean)
   $: hasProvider = profiles.length > 0
-  $: activeSkill = skills.find((s) => s.id === cell.skill)
+  // Derived from skillIdForCell(cell), not cell.skill directly, so a legacy
+  // cell (mode set, skill unset) resolves its skill for display and for the
+  // system prompt without ever being written to disk just for being opened.
+  $: activeSkill = skills.find((s) => s.id === skillIdForCell(cell))
 
   function persist() { onChange(cell) }
   function selectSkill(s) {
@@ -63,7 +76,7 @@
 
   async function send() {
     const text = input.trim()
-    if (!text || streaming || skillMissing) return
+    if (!text || streaming || skillMissing || !skillsLoaded) return
     lastSent = text
     cell.messages = [...cell.messages, { role: 'user', content: text }]
     cell = cell
@@ -133,14 +146,18 @@
   {#if skillMissing}
     <div class="llm-warn">
       {#if readOnly}
-        Skill "{cell.skillName || cell.skill}" is not installed on this machine.
+        Skill "{cell.skillName || skillIdForCell(cell)}" is not installed on this machine.
       {:else}
-        Skill "{cell.skillName || cell.skill}" was not found. Choose one below to continue.
+        Skill "{cell.skillName || skillIdForCell(cell)}" was not found. Choose one below to continue.
       {/if}
     </div>
   {/if}
   <div class="llm-bar">
-    <select class="skill" value={cell.skill || ''} on:change={onPickSkill}
+    <!-- Bound to activeSkill's id, not cell.skill directly: a legacy cell (mode
+         set, skill unset) resolves via skillIdForCell without ever being
+         written to, so the picker must read the same derived value to show
+         the right option selected instead of a blank one. -->
+    <select class="skill" value={activeSkill?.id ?? ''} on:change={onPickSkill}
       disabled={readOnly || streaming} title="Learning skill">
       {#each skills as s (s.id)}<option value={s.id}>{s.name}</option>{/each}
     </select>
@@ -175,7 +192,7 @@
         <textarea bind:value={input} on:keydown={onKey}
           placeholder={activeSkill?.placeholder || 'Ask…'} rows="2"
           disabled={streaming || skillMissing}></textarea>
-        {#if streaming}<button class="stop" on:click={stop}>Stop</button>{:else}<button class="send" on:click={send} disabled={skillMissing}>Send</button>{/if}
+        {#if streaming}<button class="stop" on:click={stop}>Stop</button>{:else}<button class="send" on:click={send} disabled={skillMissing || !skillsLoaded}>Send</button>{/if}
       </div>
     {/if}
   {/if}
