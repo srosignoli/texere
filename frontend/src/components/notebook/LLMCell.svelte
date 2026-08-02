@@ -1,8 +1,8 @@
 <script>
   import { onMount, onDestroy } from 'svelte'
-  import { GetLLMConfig } from '../../../wailsjs/go/main/App'
-  import { streamTurn, ASK_SYSTEM, TUTOR_SYSTEM } from '../../lib/llm.js'
-  import { buildSystem } from '../../lib/llm-prompt.js'
+  import { GetLLMConfig, ListSkills } from '../../../wailsjs/go/main/App'
+  import { streamTurn } from '../../lib/llm.js'
+  import { buildSystem, skillIdForCell } from '../../lib/llm-prompt.js'
   import { bakeSketch, bakeImage } from '../../lib/bake.js'
 
   export let cell
@@ -19,14 +19,41 @@
   let error = ''
   let lastSent = ''
 
+  let skills = []
+  let skillMissing = false // cell.skill names a file that is no longer present
+
   onMount(async () => { try { const c = await GetLLMConfig(); profiles = c.profiles ?? [] } catch { /* settings not configured */ } })
+  onMount(async () => {
+    try {
+      skills = await ListSkills()
+      const want = skillIdForCell(cell)
+      const found = skills.find((s) => s.id === want)
+      // A saved skill that has gone away must NOT be silently swapped for
+      // another: the conversation would continue under a different teaching
+      // method with nothing to say so, and persisting the swap would destroy
+      // the original choice. Surface it and let the user decide.
+      if (!found) { skillMissing = true; return }
+      if (cell.skill !== found.id || cell.skillName !== found.name) selectSkill(found)
+    } catch (e) { error = String(e?.message ?? e) }
+  })
   onDestroy(() => turn?.cancel())
 
   $: attached = (cell.attachments ?? []).map((id) => cells.find((c) => c.id === id)).filter(Boolean)
   $: hasProvider = profiles.length > 0
+  $: activeSkill = skills.find((s) => s.id === cell.skill)
 
   function persist() { onChange(cell) }
-  function setMode(m) { cell.mode = m; cell = cell; persist() }
+  function selectSkill(s) {
+    cell.skill = s.id
+    cell.skillName = s.name
+    cell = cell
+    skillMissing = false
+    persist()
+  }
+  function onPickSkill(e) {
+    const s = skills.find((x) => x.id === e.target.value)
+    if (s) selectSkill(s)
+  }
   function setProfile(id) { cell.profileId = id || null; cell = cell; persist() }
   function toggleAttach(id) {
     const a = new Set(cell.attachments ?? [])
@@ -36,7 +63,7 @@
 
   async function send() {
     const text = input.trim()
-    if (!text || streaming) return
+    if (!text || streaming || skillMissing) return
     lastSent = text
     cell.messages = [...cell.messages, { role: 'user', content: text }]
     cell = cell
@@ -66,7 +93,7 @@
       return
     }
 
-    const system = buildSystem(cell.mode === 'tutor' ? TUTOR_SYSTEM : ASK_SYSTEM, context, attached)
+    const system = buildSystem(activeSkill?.body ?? '', context, attached)
     turn = streamTurn({
       profileId: cell.profileId,
       system,
@@ -103,11 +130,20 @@
 </script>
 
 <div class="llm-cell">
-  <div class="llm-bar">
-    <div class="modes">
-      <button class:active={cell.mode === 'ask'} on:click={() => setMode('ask')} disabled={readOnly}>Ask</button>
-      <button class:active={cell.mode === 'tutor'} on:click={() => setMode('tutor')} disabled={readOnly}>Tutor</button>
+  {#if skillMissing}
+    <div class="llm-warn">
+      {#if readOnly}
+        Skill "{cell.skillName || cell.skill}" is not installed on this machine.
+      {:else}
+        Skill "{cell.skillName || cell.skill}" was not found. Choose one below to continue.
+      {/if}
     </div>
+  {/if}
+  <div class="llm-bar">
+    <select class="skill" value={cell.skill || ''} on:change={onPickSkill}
+      disabled={readOnly || streaming} title="Learning skill">
+      {#each skills as s (s.id)}<option value={s.id}>{s.name}</option>{/each}
+    </select>
     <select class="prof" value={cell.profileId || ''} on:change={(e) => setProfile(e.target.value)} disabled={readOnly} title="Model profile">
       <option value="">active default</option>
       {#each profiles as p}<option value={p.id}>{p.name}</option>{/each}
@@ -136,8 +172,10 @@
       <div class="llm-hint">No LLM provider configured — open ⚙ Models to add one.</div>
     {:else}
       <div class="composer">
-        <textarea bind:value={input} on:keydown={onKey} placeholder={cell.mode === 'tutor' ? 'Explain your understanding, or draft a card…' : 'Ask…'} rows="2" disabled={streaming}></textarea>
-        {#if streaming}<button class="stop" on:click={stop}>Stop</button>{:else}<button class="send" on:click={send}>Send</button>{/if}
+        <textarea bind:value={input} on:keydown={onKey}
+          placeholder={activeSkill?.placeholder || 'Ask…'} rows="2"
+          disabled={streaming || skillMissing}></textarea>
+        {#if streaming}<button class="stop" on:click={stop}>Stop</button>{:else}<button class="send" on:click={send} disabled={skillMissing}>Send</button>{/if}
       </div>
     {/if}
   {/if}
@@ -146,8 +184,8 @@
 <style>
   .llm-cell { background: #0e1622; border: 1px solid #26374a; border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
   .llm-bar { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-bottom: 1px solid #1c2a3a; }
-  .modes button { background: #14233a; color: #93c5fd; border: 1px solid #2a3a4a; border-radius: 6px; padding: 2px 10px; cursor: pointer; font-size: 12px; }
-  .modes button.active { background: #244a72; color: #e8eaf0; }
+  .llm-warn { padding: 6px 8px; color: #b58a3a; font-size: 12px; border-bottom: 1px solid #2a3a4a; }
+  .skill { background: #14233a; color: #93c5fd; border: 1px solid #2a4a6a; border-radius: 6px; padding: 2px 6px; font-size: 12px; }
   /* appearance:none lets WebKitGTK apply the app's dark-blue background to the
      select and its popup instead of the UA grey; data-URI chevron replaces the
      removed native arrow. */

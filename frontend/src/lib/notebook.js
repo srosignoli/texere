@@ -15,9 +15,13 @@ export function newDraftCell(text = '') {
   return { id: `cell-${Date.now()}-${seq}`, type: 'n4l', text }
 }
 
-export function newLLMCell(mode = 'ask') {
+export function newLLMCell() {
   seq += 1
-  return { id: `cell-${Date.now()}-${seq}`, type: 'llm', mode, profileId: null, messages: [], attachments: [] }
+  return {
+    id: `cell-${Date.now()}-${seq}`, type: 'llm',
+    skill: 'thinking-partner', skillName: 'Thinking partner',
+    profileId: null, messages: [], attachments: [],
+  }
 }
 
 export function newGraphCell() {

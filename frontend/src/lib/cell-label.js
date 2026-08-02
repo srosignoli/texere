@@ -39,7 +39,9 @@ export function cellLabel(cell) {
   const type = cell?.type ?? ''
   const name = CELL_NAMES[type] || type || 'Cell'
   let detail = ''
-  if (type === 'llm') detail = cell.mode || ''
+  // skillName is persisted on the cell so this stays a pure function; mode is
+  // the legacy field, kept as a fallback so old notebooks still label sensibly.
+  if (type === 'llm') detail = cell.skillName || cell.mode || ''
   else if (type === 'compute') detail = cell.language || ''
   else if (type === 'media') detail = mediaDetail(cell)
   else if (type === 'shell') detail = cell.shellLabel || ''

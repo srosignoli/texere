@@ -49,7 +49,7 @@
   })
 
   function addDraft() { cells = [...cells, newDraftCell('')]; scheduleSave() }
-  function addLLM() { cells = [...cells, newLLMCell('ask')]; scheduleSave() }
+  function addLLM() { cells = [...cells, newLLMCell()]; scheduleSave() }
   function addGraph() { cells = [...cells, newGraphCell()]; scheduleSave() }
   function addCompute() { cells = [...cells, newComputeCell()]; scheduleSave() }
   function addSketch() { cells = [...cells, newSketchCell()]; scheduleSave() }

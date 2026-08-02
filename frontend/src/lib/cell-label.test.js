@@ -60,6 +60,19 @@ test('a shell cell with no shell chosen shows no dangling separator', () => {
   assert.equal(cellLabel({ type: 'shell', shellLabel: '' }), 'Shell')
 })
 
+test('an LLM cell is labelled with its skill name', () => {
+  assert.equal(cellLabel({ type: 'llm', skillName: 'Socratic tutor' }), 'LLM · Socratic tutor')
+})
+
+// A notebook saved before skills existed still labels sensibly.
+test('a legacy LLM cell falls back to its mode', () => {
+  assert.equal(cellLabel({ type: 'llm', mode: 'tutor' }), 'LLM · tutor')
+})
+
+test('an LLM cell with neither shows no dangling separator', () => {
+  assert.equal(cellLabel({ type: 'llm' }), 'LLM')
+})
+
 test('the header is never empty', () => {
   assert.equal(cellLabel({}), 'Cell')
   assert.equal(cellLabel({ type: '' }), 'Cell')
