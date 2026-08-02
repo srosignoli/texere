@@ -201,6 +201,34 @@ func TestDuplicateCreatesTheDirectory(t *testing.T) {
 	}
 }
 
+// An unreadable file (dangling symlink, bad permissions) must not prevent
+// the built-ins and other readable skills from appearing. One bad file should
+// not take down the entire list.
+func TestListSkipsUnreadableFiles(t *testing.T) {
+	dir := t.TempDir()
+	// Create a good user skill
+	write(t, dir, "exam-drill.md", "---\nname: Exam drill\n---\nDrill me.\n")
+	// Create an unreadable file (dangling symlink is portable)
+	if err := os.Symlink("/nonexistent", filepath.Join(dir, "broken.md")); err != nil {
+		t.Fatal(err)
+	}
+	list, err := List(dir)
+	if err != nil {
+		t.Fatalf("List should not fail due to an unreadable file: %v", err)
+	}
+	if len(list) != 3 {
+		t.Fatalf("got %v, want 3 (two builtins + one good user skill)", ids(list))
+	}
+	// Verify the readable user skill is there
+	s := find(t, list, "exam-drill")
+	if s.Name != "Exam drill" {
+		t.Fatalf("good user skill should be readable: got %+v", s)
+	}
+	// Verify both built-ins are there
+	find(t, list, "socratic-tutor")
+	find(t, list, "thinking-partner")
+}
+
 func mustList(t *testing.T, dir string) []Skill {
 	t.Helper()
 	list, err := List(dir)

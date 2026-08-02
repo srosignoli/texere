@@ -65,7 +65,10 @@ func List(dir string) ([]Skill, error) {
 		path := filepath.Join(dir, e.Name())
 		data, err := os.ReadFile(path)
 		if err != nil {
-			return nil, fmt.Errorf("skills: read %s: %w", path, err)
+			// Skip files that cannot be read (bad permissions, broken symlink, etc).
+			// One bad file must not prevent the built-ins and other user files from
+			// being listed. The file simply does not appear in the list.
+			continue
 		}
 		id := strings.TrimSuffix(e.Name(), skillExt)
 		s := Parse(id, data)
