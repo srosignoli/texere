@@ -20,12 +20,6 @@
   let lastSent = ''
 
   let skills = []
-  // ListSkills is async and races GetLLMConfig's onMount; without this gate a
-  // click landing in that window sends a turn framed by buildSystem('', ...) —
-  // an empty system prompt, silently, since activeSkill is still undefined.
-  // Set true in both the success AND failure path below, or a fetch error
-  // would disable Send forever with no way out.
-  let skillsLoaded = false
   let skillMissing = false // the resolved skill id names a file that is no longer present
 
   onMount(async () => { try { const c = await GetLLMConfig(); profiles = c.profiles ?? [] } catch { /* settings not configured */ } })
@@ -43,8 +37,13 @@
       // never calls selectSkill and never writes to the notebook. Only a real
       // pick via onPickSkill persists.
       if (!found) skillMissing = true
-    } catch (e) { error = String(e?.message ?? e) }
-    finally { skillsLoaded = true }
+    } catch (e) {
+      // A failed fetch must not leave Send clickable: activeSkill below stays
+      // undefined because `skills` is still [], which is what actually gates
+      // send() and the button — not a separate "did the call settle" flag.
+      // Named here so the disabled Send button has a visible reason on screen.
+      error = 'Could not load skills: ' + String(e?.message ?? e)
+    }
   })
   onDestroy(() => turn?.cancel())
 
@@ -53,6 +52,13 @@
   // Derived from skillIdForCell(cell), not cell.skill directly, so a legacy
   // cell (mode set, skill unset) resolves its skill for display and for the
   // system prompt without ever being written to disk just for being opened.
+  //
+  // This is the ONE thing that must be true before a turn can be sent — not
+  // "loading finished", not "nothing flagged missing" (two flag-based guards
+  // already proved leaky: a promise race, then a fetch rejection). Whether
+  // still loading, the fetch rejected, the saved skill was deleted, or the
+  // list is simply empty, `skills` never contains a match and activeSkill
+  // stays undefined, so gating on it alone covers every case in one place.
   $: activeSkill = skills.find((s) => s.id === skillIdForCell(cell))
 
   function persist() { onChange(cell) }
@@ -76,7 +82,7 @@
 
   async function send() {
     const text = input.trim()
-    if (!text || streaming || skillMissing || !skillsLoaded) return
+    if (!text || streaming || !activeSkill) return
     lastSent = text
     cell.messages = [...cell.messages, { role: 'user', content: text }]
     cell = cell
@@ -192,7 +198,7 @@
         <textarea bind:value={input} on:keydown={onKey}
           placeholder={activeSkill?.placeholder || 'Ask…'} rows="2"
           disabled={streaming || skillMissing}></textarea>
-        {#if streaming}<button class="stop" on:click={stop}>Stop</button>{:else}<button class="send" on:click={send} disabled={skillMissing || !skillsLoaded}>Send</button>{/if}
+        {#if streaming}<button class="stop" on:click={stop}>Stop</button>{:else}<button class="send" on:click={send} disabled={!activeSkill}>Send</button>{/if}
       </div>
     {/if}
   {/if}
