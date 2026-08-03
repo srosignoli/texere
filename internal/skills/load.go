@@ -59,7 +59,12 @@ func List(dir string) ([]Skill, error) {
 		return nil, fmt.Errorf("skills: read %s: %w", dir, err)
 	}
 	for _, e := range userEntries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), skillExt) {
+		// Case-insensitive: editors on Windows and macOS readily save ".MD" or
+		// ".Md". A skill must never silently vanish (see parse.go), and a
+		// case-sensitive suffix check is exactly that — the file is skipped
+		// with no error and no log, so it just never appears.
+		ext := filepath.Ext(e.Name())
+		if e.IsDir() || !strings.EqualFold(ext, skillExt) {
 			continue
 		}
 		path := filepath.Join(dir, e.Name())
@@ -70,7 +75,11 @@ func List(dir string) ([]Skill, error) {
 			// being listed. The file simply does not appear in the list.
 			continue
 		}
-		id := strings.TrimSuffix(e.Name(), skillExt)
+		// Strip the file's ACTUAL extension (whatever case it was saved in),
+		// not a lowercased guess: the id is what a notebook persists, and
+		// lowercasing it would silently rename a user's skill out from under
+		// any notebook already pointing at it.
+		id := strings.TrimSuffix(e.Name(), ext)
 		s := Parse(id, data)
 		s.Path = path
 		_, shadows := byID[id]

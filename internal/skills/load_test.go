@@ -124,6 +124,43 @@ func TestListIgnoresNonMarkdownFiles(t *testing.T) {
 	}
 }
 
+// A skill really must not vanish because an editor saved an uppercase
+// extension — Windows and macOS editors do this readily, and load.go's own
+// design principle (see parse.go) is that a skill is never silently dropped.
+func TestListFindsAnUppercaseExtension(t *testing.T) {
+	dir := t.TempDir()
+	write(t, dir, "Drill.MD", "---\nname: Drill\n---\nDrill me.\n")
+	list, err := List(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := find(t, list, "Drill")
+	if s.Name != "Drill" || s.Body != "Drill me." {
+		t.Fatalf("got %+v", s)
+	}
+}
+
+// A mixed-case extension must also be recognised, and the id must have the
+// actual extension stripped — not a lowercased guess — so it matches whatever
+// a notebook already persisted for this skill.
+func TestListFindsAMixedCaseExtensionAndStripsIt(t *testing.T) {
+	dir := t.TempDir()
+	write(t, dir, "notes.Md", "---\nname: Notes\n---\nBody.\n")
+	list, err := List(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := find(t, list, "notes")
+	if s.Name != "Notes" {
+		t.Fatalf("got %+v", s)
+	}
+	for _, other := range list {
+		if other.ID == "notes.Md" {
+			t.Fatalf("id must have the extension stripped, got %q", other.ID)
+		}
+	}
+}
+
 func TestListIsSortedByName(t *testing.T) {
 	dir := t.TempDir()
 	write(t, dir, "aaa.md", "---\nname: Zebra\n---\nB.\n")
