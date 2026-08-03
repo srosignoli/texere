@@ -85,12 +85,27 @@ func TestNodeSpansHandlesConsecutiveNodes(t *testing.T) {
 	}
 }
 
+// Both paths must return an empty NON-NIL slice: this crosses into JSON in
+// Task 2, where nil marshals to `null` rather than `[]`. The nil-ness is the
+// point, so it is asserted separately from the length — a combined
+// `got != nil && len(got) != 0` short-circuits to false on a nil return and
+// silently passes the regression it exists to catch.
 func TestNodeSpansEmptyInputs(t *testing.T) {
-	if got := NodeSpans(nil); got != nil && len(got) != 0 {
-		t.Fatalf("NodeSpans(nil) = %+v, want empty", got)
-	}
-	if got := spansOf(t, "- C\n\n"); len(got) != 0 {
-		t.Fatalf("got %+v, want none for a file with no nodes", got)
+	for _, tc := range []struct {
+		name  string
+		spans []NodeSpan
+	}{
+		{"nil ParsedFile", NodeSpans(nil)},
+		{"file with no nodes", spansOf(t, "- C\n\n")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.spans == nil {
+				t.Fatal("returned a nil slice; want empty non-nil, which marshals to [] not null")
+			}
+			if len(tc.spans) != 0 {
+				t.Fatalf("got %+v, want no spans", tc.spans)
+			}
+		})
 	}
 }
 
