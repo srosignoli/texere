@@ -3,7 +3,7 @@
   import {
     GetLLMConfig, SaveLLMProfile, DeleteLLMProfile, SetActiveProfile, TestLLMProfile,
     GetSTTConfig, SaveSTTProfile, DeleteSTTProfile, SetActiveSTTProfile,
-    ListSkills, DuplicateSkill, RevealSkillsDir,
+    ListSkills, DuplicateSkill, RevealSkillsDir, SkillsDir,
   } from '../../wailsjs/go/main/App'
 
   export let onClose = () => {}
@@ -35,6 +35,7 @@
   let testMsg = {}
   let error = ''
   let skills = []
+  let skillsDir = ''
 
   onMount(load)
   async function load() {
@@ -48,7 +49,12 @@
   // enough and costs nothing.
   async function loadSkills() {
     error = ''
-    try { skills = await ListSkills() } catch (e) { error = String(e?.message ?? e) }
+    try {
+      skills = await ListSkills()
+      // Fetched here rather than on mount so it is always current, and so a
+      // failure to resolve it cannot stop the list from rendering.
+      skillsDir = await SkillsDir()
+    } catch (e) { error = String(e?.message ?? e) }
   }
   async function duplicate(id) {
     error = ''
@@ -115,6 +121,14 @@
           {/if}
         </div>
       {/each}
+      <!-- The path is shown outright, not just behind the button: there is no
+           file manager to open on a headless box, in a container, or under WSL
+           without extra tooling, and the folder is useless if you cannot find
+           it. The button is a convenience on top of this, not the way in. -->
+      <div class="skills-path">
+        <span class="skills-path-label">Folder</span>
+        <code class="skills-path-value">{skillsDir || '…'}</code>
+      </div>
       <button class="reveal" on:click={revealSkills}>Open skills folder</button>
     </div>
   {:else if editing}
@@ -192,5 +206,8 @@
   .skill-origin { color: #5d7186; font-size: 11px; margin-left: 6px; }
   .skill-empty { color: #b58a3a; font-size: 11px; margin-left: 6px; }
   .skill-desc { color: #5d7186; font-size: 11px; margin-top: 2px; }
+  .skills-path { display: flex; align-items: baseline; gap: 8px; margin-top: 2px; }
+  .skills-path-label { color: #5d7186; font-size: 11px; }
+  .skills-path-value { color: #93c5fd; font-size: 11px; font-family: ui-monospace, monospace; word-break: break-all; user-select: text; }
   .reveal { align-self: flex-start; background: #14233a; color: #93c5fd; border: 1px solid #2a4a6a; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 12px; }
 </style>

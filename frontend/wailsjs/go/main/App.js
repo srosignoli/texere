@@ -278,6 +278,10 @@ export function SetReadingProjLen(arg1, arg2) {
   return window['go']['main']['App']['SetReadingProjLen'](arg1, arg2);
 }
 
+export function SkillsDir() {
+  return window['go']['main']['App']['SkillsDir']();
+}
+
 export function StartLLMTurn(arg1) {
   return window['go']['main']['App']['StartLLMTurn'](arg1);
 }

@@ -147,6 +147,8 @@ export function SetActiveSTTProfile(arg1:string):Promise<void>;
 
 export function SetReadingProjLen(arg1:string,arg2:number):Promise<void>;
 
+export function SkillsDir():Promise<string>;
+
 export function StartLLMTurn(arg1:main.StartTurnReq):Promise<string>;
 
 export function StartShellRun(arg1:main.StartShellRunReq):Promise<string>;
