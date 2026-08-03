@@ -42,6 +42,10 @@ export function DismissExtract(arg1) {
   return window['go']['main']['App']['DismissExtract'](arg1);
 }
 
+export function DuplicateSkill(arg1) {
+  return window['go']['main']['App']['DuplicateSkill'](arg1);
+}
+
 export function ExplorerClose() {
   return window['go']['main']['App']['ExplorerClose']();
 }
@@ -186,6 +190,10 @@ export function ListShells() {
   return window['go']['main']['App']['ListShells']();
 }
 
+export function ListSkills() {
+  return window['go']['main']['App']['ListSkills']();
+}
+
 export function OpenCollection(arg1) {
   return window['go']['main']['App']['OpenCollection'](arg1);
 }
@@ -226,6 +234,10 @@ export function ResolveVideoPlayURL(arg1, arg2) {
   return window['go']['main']['App']['ResolveVideoPlayURL'](arg1, arg2);
 }
 
+export function RevealSkillsDir() {
+  return window['go']['main']['App']['RevealSkillsDir']();
+}
+
 export function SaveFile(arg1, arg2) {
   return window['go']['main']['App']['SaveFile'](arg1, arg2);
 }
@@ -264,6 +276,10 @@ export function SetActiveSTTProfile(arg1) {
 
 export function SetReadingProjLen(arg1, arg2) {
   return window['go']['main']['App']['SetReadingProjLen'](arg1, arg2);
+}
+
+export function SkillsDir() {
+  return window['go']['main']['App']['SkillsDir']();
 }
 
 export function StartLLMTurn(arg1) {

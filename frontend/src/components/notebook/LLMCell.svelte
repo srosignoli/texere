@@ -1,7 +1,8 @@
 <script>
   import { onMount, onDestroy } from 'svelte'
-  import { GetLLMConfig } from '../../../wailsjs/go/main/App'
-  import { buildSystem, streamTurn } from '../../lib/llm.js'
+  import { GetLLMConfig, ListSkills } from '../../../wailsjs/go/main/App'
+  import { streamTurn } from '../../lib/llm.js'
+  import { buildSystem, skillIdForCell } from '../../lib/llm-prompt.js'
   import { bakeSketch, bakeImage } from '../../lib/bake.js'
 
   export let cell
@@ -18,14 +19,63 @@
   let error = ''
   let lastSent = ''
 
+  let skills = []
+  let skillMissing = false // the resolved skill id names a file that is no longer present
+
   onMount(async () => { try { const c = await GetLLMConfig(); profiles = c.profiles ?? [] } catch { /* settings not configured */ } })
+  onMount(async () => {
+    try {
+      skills = await ListSkills()
+      const found = skills.find((s) => s.id === skillIdForCell(cell))
+      // A saved skill that has gone away must NOT be silently swapped for
+      // another: the conversation would continue under a different teaching
+      // method with nothing to say so, and persisting the swap would destroy
+      // the original choice. Surface it and let the user decide.
+      //
+      // Resolution here is READ-ONLY: activeSkill below re-derives the same
+      // lookup from cell + skills, so merely opening a cell — legacy or not —
+      // never calls selectSkill and never writes to the notebook. Only a real
+      // pick via onPickSkill persists.
+      if (!found) skillMissing = true
+    } catch (e) {
+      // A failed fetch must not leave Send clickable: activeSkill below stays
+      // undefined because `skills` is still [], which is what actually gates
+      // send() and the button — not a separate "did the call settle" flag.
+      // Named here so the disabled Send button has a visible reason on screen.
+      error = 'Could not load skills: ' + String(e?.message ?? e)
+    }
+  })
   onDestroy(() => turn?.cancel())
 
   $: attached = (cell.attachments ?? []).map((id) => cells.find((c) => c.id === id)).filter(Boolean)
   $: hasProvider = profiles.length > 0
+  // Derived from skillIdForCell(cell), not cell.skill directly, so a legacy
+  // cell (mode set, skill unset) resolves its skill for display and for the
+  // system prompt without ever being written to disk just for being opened.
+  //
+  // NOTE: a resolved activeSkill is NOT itself sufficient to send — the Go
+  // side deliberately lists a skill with an empty body rather than dropping
+  // it (see internal/skills/load_test.go, TestListKeepsAnEmptyBodySkill), so
+  // activeSkill can be a real, truthy object whose .body is ''. The actual
+  // precondition for sending is a NON-EMPTY resolved body, checked directly
+  // via activeSkill?.body?.trim() at both guarded call sites below — not
+  // "activeSkill exists", which two rounds of narrower flags (a promise
+  // race, then a fetch rejection) already showed is the wrong boundary to
+  // draw this at.
+  $: activeSkill = skills.find((s) => s.id === skillIdForCell(cell))
 
   function persist() { onChange(cell) }
-  function setMode(m) { cell.mode = m; cell = cell; persist() }
+  function selectSkill(s) {
+    cell.skill = s.id
+    cell.skillName = s.name
+    cell = cell
+    skillMissing = false
+    persist()
+  }
+  function onPickSkill(e) {
+    const s = skills.find((x) => x.id === e.target.value)
+    if (s) selectSkill(s)
+  }
   function setProfile(id) { cell.profileId = id || null; cell = cell; persist() }
   function toggleAttach(id) {
     const a = new Set(cell.attachments ?? [])
@@ -35,7 +85,7 @@
 
   async function send() {
     const text = input.trim()
-    if (!text || streaming) return
+    if (!text || streaming || !activeSkill?.body?.trim()) return
     lastSent = text
     cell.messages = [...cell.messages, { role: 'user', content: text }]
     cell = cell
@@ -65,7 +115,7 @@
       return
     }
 
-    const system = buildSystem(cell.mode, context, attached)
+    const system = buildSystem(activeSkill?.body ?? '', context, attached)
     turn = streamTurn({
       profileId: cell.profileId,
       system,
@@ -102,11 +152,35 @@
 </script>
 
 <div class="llm-cell">
-  <div class="llm-bar">
-    <div class="modes">
-      <button class:active={cell.mode === 'ask'} on:click={() => setMode('ask')} disabled={readOnly}>Ask</button>
-      <button class:active={cell.mode === 'tutor'} on:click={() => setMode('tutor')} disabled={readOnly}>Tutor</button>
+  {#if skillMissing}
+    <div class="llm-warn">
+      {#if readOnly}
+        Skill "{cell.skillName || skillIdForCell(cell)}" is not installed on this machine.
+      {:else}
+        Skill "{cell.skillName || skillIdForCell(cell)}" was not found. Choose one below to continue.
+      {/if}
     </div>
+  {:else if activeSkill && !activeSkill.body?.trim()}
+    <!-- The backend deliberately lists a skill with an empty body rather than
+         dropping it (a half-edited .md — frontmatter written, prompt not).
+         Sending would otherwise go out with no framing at all, silently. -->
+    <div class="llm-warn">
+      {#if readOnly}
+        Skill "{activeSkill.name}" has no content, so it cannot frame a conversation.
+      {:else}
+        Skill "{activeSkill.name}" has no content yet. Edit its file to add a system prompt, or choose a different skill below.
+      {/if}
+    </div>
+  {/if}
+  <div class="llm-bar">
+    <!-- Bound to activeSkill's id, not cell.skill directly: a legacy cell (mode
+         set, skill unset) resolves via skillIdForCell without ever being
+         written to, so the picker must read the same derived value to show
+         the right option selected instead of a blank one. -->
+    <select class="skill" value={activeSkill?.id ?? ''} on:change={onPickSkill}
+      disabled={readOnly || streaming} title="Learning skill">
+      {#each skills as s (s.id)}<option value={s.id}>{s.name}</option>{/each}
+    </select>
     <select class="prof" value={cell.profileId || ''} on:change={(e) => setProfile(e.target.value)} disabled={readOnly} title="Model profile">
       <option value="">active default</option>
       {#each profiles as p}<option value={p.id}>{p.name}</option>{/each}
@@ -135,8 +209,10 @@
       <div class="llm-hint">No LLM provider configured — open ⚙ Models to add one.</div>
     {:else}
       <div class="composer">
-        <textarea bind:value={input} on:keydown={onKey} placeholder={cell.mode === 'tutor' ? 'Explain your understanding, or draft a card…' : 'Ask…'} rows="2" disabled={streaming}></textarea>
-        {#if streaming}<button class="stop" on:click={stop}>Stop</button>{:else}<button class="send" on:click={send}>Send</button>{/if}
+        <textarea bind:value={input} on:keydown={onKey}
+          placeholder={activeSkill?.placeholder || 'Ask…'} rows="2"
+          disabled={streaming || skillMissing}></textarea>
+        {#if streaming}<button class="stop" on:click={stop}>Stop</button>{:else}<button class="send" on:click={send} disabled={!activeSkill?.body?.trim()}>Send</button>{/if}
       </div>
     {/if}
   {/if}
@@ -145,8 +221,8 @@
 <style>
   .llm-cell { background: #0e1622; border: 1px solid #26374a; border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
   .llm-bar { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-bottom: 1px solid #1c2a3a; }
-  .modes button { background: #14233a; color: #93c5fd; border: 1px solid #2a3a4a; border-radius: 6px; padding: 2px 10px; cursor: pointer; font-size: 12px; }
-  .modes button.active { background: #244a72; color: #e8eaf0; }
+  .llm-warn { padding: 6px 8px; color: #b58a3a; font-size: 12px; border-bottom: 1px solid #2a3a4a; }
+  .skill { background: #14233a; color: #93c5fd; border: 1px solid #2a4a6a; border-radius: 6px; padding: 2px 6px; font-size: 12px; }
   /* appearance:none lets WebKitGTK apply the app's dark-blue background to the
      select and its popup instead of the UA grey; data-URI chevron replaces the
      removed native arrow. */

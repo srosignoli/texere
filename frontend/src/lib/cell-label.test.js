@@ -12,8 +12,10 @@ test('each stacked cell type gets the name of the button that creates it', () =>
 })
 
 test('a detail is appended where the type has meaningful variants', () => {
-  assert.equal(cellLabel({ type: 'llm', mode: 'tutor' }), 'LLM · tutor')
-  assert.equal(cellLabel({ type: 'llm', mode: 'ask' }), 'LLM · ask')
+  // llm resolves mode through skillIdForCell, not by echoing it raw — see the
+  // dedicated legacy-cell tests below for why.
+  assert.equal(cellLabel({ type: 'llm', mode: 'tutor' }), 'LLM · socratic-tutor')
+  assert.equal(cellLabel({ type: 'llm', mode: 'ask' }), 'LLM · thinking-partner')
   assert.equal(cellLabel({ type: 'compute', language: 'js' }), 'Compute · js')
 })
 
@@ -36,9 +38,12 @@ test('a pronunciation is named as one, not as audio', () => {
 
 // Media cells saved before the audio slice have no `kind`. A dangling
 // separator would look like a rendering bug.
+//
+// llm is excluded here: skillIdForCell always resolves to a real skill id
+// (falling back to DEFAULT_SKILL_ID), so an llm cell always has a detail —
+// see the dedicated tests below for that behaviour.
 test('a missing detail appends nothing, not a dangling separator', () => {
   assert.equal(cellLabel({ type: 'media' }), 'Media')
-  assert.equal(cellLabel({ type: 'llm' }), 'LLM')
   assert.equal(cellLabel({ type: 'compute' }), 'Compute')
 })
 
@@ -58,6 +63,34 @@ test('a shell cell is named, with the chosen shell as its detail', () => {
 test('a shell cell with no shell chosen shows no dangling separator', () => {
   assert.equal(cellLabel({ type: 'shell' }), 'Shell')
   assert.equal(cellLabel({ type: 'shell', shellLabel: '' }), 'Shell')
+})
+
+// Modern cell: skillName is persisted at pick time (see LLMCell.svelte's
+// selectSkill), so it is used as-is — the friendliest text available.
+test('an LLM cell is labelled with its skill name', () => {
+  assert.equal(cellLabel({ type: 'llm', skillName: 'Socratic tutor' }), 'LLM · Socratic tutor')
+})
+
+// A notebook saved before skills existed carries `mode`, not `skill`/
+// `skillName` — and opening it must not write to it (no migration on read).
+// LLMCell.svelte's picker resolves the cell's skill via skillIdForCell and
+// shows the resolved skill's friendly name (e.g. "Socratic tutor" for
+// mode: 'tutor'). The header must resolve through the SAME function, so it
+// can never show a different skill than the one the picker has selected.
+// Echoing the raw legacy `mode` string instead — the previous behaviour —
+// produced "LLM · tutor" beside a picker reading "Socratic tutor": two labels
+// for one cell, permanently disagreeing.
+test('a legacy LLM cell resolves its mode through skillIdForCell, matching the picker', () => {
+  assert.equal(cellLabel({ type: 'llm', mode: 'tutor' }), 'LLM · socratic-tutor')
+  assert.equal(cellLabel({ type: 'llm', mode: 'ask' }), 'LLM · thinking-partner')
+})
+
+// A cell with neither skillName nor mode still resolves through
+// skillIdForCell's own default (DEFAULT_SKILL_ID), which is exactly what the
+// picker's activeSkill would resolve to for the same cell — so even this
+// corner case cannot disagree with the picker.
+test('an LLM cell with neither falls back to skillIdForCell\'s default', () => {
+  assert.equal(cellLabel({ type: 'llm' }), 'LLM · thinking-partner')
 })
 
 test('the header is never empty', () => {

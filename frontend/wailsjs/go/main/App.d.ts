@@ -6,6 +6,7 @@ import {explorer} from '../models';
 import {learning} from '../models';
 import {mediasearch} from '../models';
 import {shell} from '../models';
+import {skills} from '../models';
 import {search} from '../models';
 
 export function BuildGraph():Promise<main.BuildGraphResult>;
@@ -27,6 +28,8 @@ export function DeleteLLMProfile(arg1:string):Promise<void>;
 export function DeleteSTTProfile(arg1:string):Promise<void>;
 
 export function DismissExtract(arg1:string):Promise<void>;
+
+export function DuplicateSkill(arg1:string):Promise<void>;
 
 export function ExplorerClose():Promise<void>;
 
@@ -100,6 +103,8 @@ export function ListMediaProviders():Promise<Array<main.ProviderInfo>>;
 
 export function ListShells():Promise<Array<shell.Shell>>;
 
+export function ListSkills():Promise<Array<skills.Skill>>;
+
 export function OpenCollection(arg1:string):Promise<Array<content.ChapterSummary>>;
 
 export function OpenNotebook(arg1:string):Promise<main.NotebookView>;
@@ -120,6 +125,8 @@ export function ResolveReminder(arg1:string,arg2:number):Promise<content.WriteBa
 
 export function ResolveVideoPlayURL(arg1:string,arg2:mediasearch.Result):Promise<string>;
 
+export function RevealSkillsDir():Promise<void>;
+
 export function SaveFile(arg1:string,arg2:string):Promise<main.SaveFileResult>;
 
 export function SaveLLMProfile(arg1:main.LLMProfile):Promise<void>;
@@ -139,6 +146,8 @@ export function SetActiveProfile(arg1:string):Promise<void>;
 export function SetActiveSTTProfile(arg1:string):Promise<void>;
 
 export function SetReadingProjLen(arg1:string,arg2:number):Promise<void>;
+
+export function SkillsDir():Promise<string>;
 
 export function StartLLMTurn(arg1:main.StartTurnReq):Promise<string>;
 
