@@ -86,6 +86,59 @@ func (a *App) OpenNotebook(nodeID string) (*NotebookView, error) {
 	}, nil
 }
 
+// PeekNotebook returns the notebook for a node WITHOUT creating one, or nil when
+// the node has none.
+//
+// This is OpenNotebook minus its UpsertNotebook, and that difference is the
+// whole point. The Process view calls this as the caret moves, so a creating
+// lookup would write a notebook row for every node scrolled past, and
+// GetNotebookLinks would then mark those lines as having notebooks — after one
+// visit a node WOULD have one, so the pane would start showing it. The feature
+// would defeat itself.
+//
+// Absence returns (nil, nil) rather than an error. Resting the caret on a plain
+// line is the common case, not a failure, and an error would flash the pane's
+// error banner constantly while navigating.
+//
+// Note GetNotebookByExtract is misnamed: it is a plain lookup on
+// extract_node_id with no validation that the node is a registered extract, so
+// it already serves any node id.
+func (a *App) PeekNotebook(nodeID string) (*NotebookView, error) {
+	if a.learnStore == nil {
+		return nil, errors.New("no collection open")
+	}
+	nb, ok, err := a.learnStore.GetNotebookByExtract(nodeID)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, nil
+	}
+	return &NotebookView{
+		NotebookID: nb.NotebookID, NodeID: nodeID, Chapter: nb.Chapter,
+		Cells: json.RawMessage(nb.CellsJSON), Context: a.assembleContext(nodeID),
+	}, nil
+}
+
+// FileNodeSpans gives the frontend the line range of every id-bearing node in a
+// file, so a caret position can be resolved to a node id locally.
+//
+// Fetched once per file rather than queried per keystroke: caret movement is
+// constant, and a round trip plus a file parse on every arrow key would be a
+// stream of work for a read that changes nothing.
+//
+// A missing or unparseable file yields an empty slice, not an error — the
+// caller is a navigation aid, not an editor, and has nothing useful to do with
+// the failure.
+func (a *App) FileNodeSpans(filePath string) ([]content.NodeSpan, error) {
+	pf, _ := content.ParseFile(filePath, a.registry)
+	spans := content.NodeSpans(pf)
+	if spans == nil {
+		return []content.NodeSpan{}, nil
+	}
+	return spans, nil
+}
+
 // SaveNotebook persists just the user cells (debounced autosave from the pane).
 func (a *App) SaveNotebook(notebookID, cellsJSON string) error {
 	if a.learnStore == nil {

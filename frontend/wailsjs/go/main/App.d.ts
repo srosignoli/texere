@@ -39,6 +39,8 @@ export function ExplorerReanchor(arg1:string,arg2:string,arg3:string):Promise<ex
 
 export function FetchMediaURL(arg1:string,arg2:string):Promise<Record<string, any>>;
 
+export function FileNodeSpans(arg1:string):Promise<Array<content.NodeSpan>>;
+
 export function GetArrowRegistry():Promise<Array<content.ArrowDef>>;
 
 export function GetDueQueue(arg1:number):Promise<Array<learning.CardView>>;
@@ -112,6 +114,8 @@ export function OpenNotebook(arg1:string):Promise<main.NotebookView>;
 export function OpenSourceURL(arg1:string):Promise<void>;
 
 export function ParseFileForUI(arg1:string):Promise<content.ParsedFile|Array<content.ParseError>>;
+
+export function PeekNotebook(arg1:string):Promise<main.NotebookView>;
 
 export function PickCollectionDir():Promise<string>;
 
