@@ -183,6 +183,11 @@
     view.destroy()
     view = new EditorView({ parent: container, state: EditorState.create({ doc, extensions: buildExtensions() }) })
     view.focus()
+    // Constructing a view does not fire updateListener (only view.dispatch does),
+    // and the cursor resets to the top here — so without an explicit report the
+    // pane would keep showing the pre-toggle node's notebook while the caret sits
+    // on line 1.
+    reportCaret(view)
     refreshDots()
   }
 
