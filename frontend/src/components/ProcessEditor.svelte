@@ -22,6 +22,20 @@
   let recentCodesRef = []
   $: arrowDefsRef = $workbenchStore.arrowDefs ?? []
 
+  // Caret reporting is debounced because it fires on every keystroke and arrow
+  // key, and the consumer does a backend peek. Resting on a line should report
+  // once; scrolling through fifty should report once at the end.
+  let caretTimer = null
+  let lastCaretLine = 0
+
+  function reportCaret(view) {
+    const line = view.state.doc.lineAt(view.state.selection.main.head).number
+    if (line === lastCaretLine) return
+    lastCaretLine = line
+    clearTimeout(caretTimer)
+    caretTimer = setTimeout(() => dispatch('caret', { line }), 150)
+  }
+
   function handleArrowSelected(code) {
     recentCodesRef = pushRecentArrow(recentCodesRef, code)
     UpdateRecentArrows(recentCodesRef).catch(() => {})
@@ -152,7 +166,12 @@
       onArrowSelected: handleArrowSelected,
       vim: vimMode,
       keymap: [{ key: 'Mod-s', run: () => { flush().catch(() => {}); return true }, preventDefault: true }],
-      extra: [notebookDotsGutter(() => {})],
+      extra: [
+        notebookDotsGutter(() => {}),
+        EditorView.updateListener.of((u) => {
+          if (u.selectionSet || u.docChanged) reportCaret(u.view)
+        }),
+      ],
     })
   }
 
@@ -184,6 +203,14 @@
         state: EditorState.create({ doc: text, extensions: buildExtensions() }),
       })
       selectExtract(target)
+      // Report the initial caret explicitly. selectExtract fires the update
+      // listener on its success path, but its fallback branches (line out of
+      // range, or no line at all) only call view.focus(), which dispatches
+      // nothing — the pane would then never learn where the caret started and
+      // would sit on the empty state until the user moved it by hand.
+      // Harmless on the common path: reportCaret's same-line guard collapses
+      // the duplicate.
+      reportCaret(view)
       await refreshDots()
     } catch (e) { error = String(e?.message ?? e) }
   })
@@ -193,6 +220,7 @@
   // drop them. flush() captures the doc synchronously and is a no-op when clean.
   onDestroy(() => {
     flush().catch(() => {})
+    clearTimeout(caretTimer)
     view?.destroy()
   })
 </script>
