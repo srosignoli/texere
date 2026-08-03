@@ -50,6 +50,17 @@ type DittoLine struct {
 	Arrows []Arrow // All arrows declared on this ditto line
 }
 
+// NodeSpan is the line range a node occupies, for mapping a caret position back
+// to the node it sits in — the reverse of looking a node up by its id.
+//
+// Only nodes with an ID get a span: the id is the only handle a notebook can
+// hang on, so a node without one has nothing to resolve to.
+type NodeSpan struct {
+	ID       string `json:"id"`
+	FromLine int    `json:"fromLine"` // 1-indexed, inclusive
+	ToLine   int    `json:"toLine"`   // 1-indexed, inclusive
+}
+
 // CardType enumerates the study card types a node can produce.
 type CardType int
 
