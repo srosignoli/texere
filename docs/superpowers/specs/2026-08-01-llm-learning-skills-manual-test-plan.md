@@ -92,7 +92,11 @@ changes how the model responds.
 
 **Expect:** a file appears at `~/.config/texere/skills/socratic-tutor.md`
 containing the full prompt WITH its frontmatter. The row now reads
-`yours, overrides built-in`.
+`yours, overrides built-in`, and its **Duplicate** button is gone. This
+matters beyond tidiness: the button's disappearance is the only thing that
+makes a second Duplicate on this skill impossible through the UI — without it
+there would be nothing stopping a second click from being attempted, only the
+backend's refusal to fall back on.
 
 Edit that file — change one sentence — and reopen the tab.
 
@@ -184,11 +188,17 @@ Open a notebook, add a new LLM cell, and try to click Send (or press
 Ctrl/Cmd+Enter) as fast as you can the instant the cell appears.
 
 **Expect:** Send stays disabled until the skill list finishes loading and a
-skill resolves — no turn goes out during the window before that. (This is
-inherently timing-sensitive. If you cannot catch the disabled instant on a
-fast machine, the structural fact worth knowing is that Send's guard is
-`!activeSkill?.body?.trim()`, true for the entirety of that loading window by
-construction — not a separate "loaded yet?" flag that could race it.)
+skill resolves — no turn goes out during the window before that.
+
+This is inherently timing-sensitive: on a fast machine with a warm disk cache
+the window may be too short to catch even with 1000 dummy files. If you
+cannot observe the disabled instant, record this case as **not verified**,
+not as passing — do not substitute source-level reasoning for an observation.
+To make the window wider and more reliably observable, test on a cold start
+(quit the app fully, drop OS disk caches if you can, or simply be the first
+one to open an LLM cell after a fresh boot) rather than reopening a cell in an
+already-warm session, since `ListSkills()` has furthest to travel the first
+time it runs.
 
 Clean up afterward, or later cases will be slower than necessary:
 
@@ -281,3 +291,17 @@ non-empty) skill selected — not the missing or empty-body cases above.
 notebook), the skill dropdown is visible but disabled, and there is no
 composer or Send button at all — read-only notebooks render no composer, so
 there is nothing to click, not merely something disabled.
+
+## TC-21 The header updates live when you switch skills, no reopen required
+
+TC-3 checks the placeholder changes when you switch skills; this checks the
+cell's own header label, in the same session, without closing or reopening
+anything. Add an LLM cell (header reads `LLM · Thinking partner`), then switch
+its picker to Socratic tutor.
+
+**Expect:** the header changes to `LLM · Socratic tutor` immediately, in the
+same view, with no reopen. This is deliberately distinct from TC-1 (fresh
+cell) and TC-4 (persistence across a reopen) — both of those would still pass
+even if `selectSkill` persisted the new skill correctly but the header simply
+failed to re-render until the notebook was closed and reopened. Only this
+case catches that specific defect.
