@@ -55,6 +55,12 @@
     if (cur !== savedContent) {
       const res = await SaveFile(target.filePath, cur)
       savedContent = res?.finalContent ?? cur
+      // A save can shift every line below an edit, so any line->node map a
+      // consumer holds is now stale. Ctrl+S, Make card and the action bar all
+      // reach the file through here, and none of them dispatched anything
+      // before, so a caret->notebook map had no way to learn a save had
+      // happened and stayed wrong for the rest of the session.
+      dispatch('saved')
     }
   }
 

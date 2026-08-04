@@ -64,9 +64,14 @@
 
   async function handlePush(text) {
     if (!editorRef) return
+    // Captured BEFORE the await: insertAndSave moves the caret itself, which
+    // fires the caret event, can change focusedId, and nulls notebookId via the
+    // reactive clear below — so reading it afterwards can silently skip the
+    // provenance record for a push that plainly succeeded.
+    const pushedFrom = notebookId
     const inserted = await editorRef.insertAndSave(text)
-    if (notebookId && filePath && inserted) {
-      try { await RecordPush(notebookId, filePath, inserted) } catch { /* provenance is best-effort */ }
+    if (pushedFrom && filePath && inserted) {
+      try { await RecordPush(pushedFrom, filePath, inserted) } catch { /* provenance is best-effort */ }
     }
     await loadSpans()   // the insert moved every line below it
   }
@@ -75,7 +80,7 @@
 <div class="pv-split">
   <div class="pv-pane pv-left" style="width: {leftWidth}px;">
     <ProcessEditor bind:this={editorRef} {extractId} {onAdvance}
-                   on:ready={onEditorReady} on:caret={onCaret} />
+                   on:ready={onEditorReady} on:caret={onCaret} on:saved={loadSpans} />
   </div>
   <Splitter orientation="vertical" size={leftWidth} min={340} max={1000}
             on:resize={(e) => (leftWidth = e.detail)} />

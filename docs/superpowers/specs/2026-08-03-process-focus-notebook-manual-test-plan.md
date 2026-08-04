@@ -211,14 +211,42 @@ a caret report that never comes.
 *(This exercises the fallback branch where the editor only focuses and dispatches
 no selection event.)*
 
-## TC-17 Push provenance during a caret move — known limitation
+## TC-17 A push records provenance even though it moves the caret
 
-With the caret in extract 1, start a push and move the caret into extract 3 while
-the save is still in flight.
+With the caret in extract 1, push an N4L draft from that notebook into the file.
 
-**Expect:** the text is inserted correctly and no error appears. The provenance
-link for that push **may** be dropped.
+**Expect:** the text is inserted, and the push is recorded against **extract 1's**
+notebook — the one that pushed it — even though inserting moves the caret and can
+change which node is focused mid-save.
 
-*(Known and accepted: `handlePush` reads the notebook id after the save round
-trip. The file write always succeeds; only the provenance record is at risk.
-Recorded so it is not mistaken for corruption.)*
+*(`insertAndSave` moves the caret itself, so this is not an exotic race: it was
+reachable on an ordinary push with no user input at all. The notebook id is now
+captured before the save begins.)*
+
+## TC-18 Saving corrects a stale span map
+
+This is the other half of TC-9 and is worth doing as its own case, because until
+recently only a *push* refreshed the map, never a plain save.
+
+Insert several blank lines above an extract, press **Ctrl+S**, then move the
+caret into that extract.
+
+**Expect:** the correct notebook for that extract. Repeat using **Make card** and
+the action bar's **Later** instead of Ctrl+S — each of these also writes the file
+and must leave the map correct.
+
+## TC-19 A caret move cancels an in-flight cell — known limitation
+
+In a peeked notebook, start something long-running: send an LLM turn, or run a
+shell cell with a slow command. While it is still running, press an arrow key to
+move the caret onto a different node.
+
+**Expect:** the pane switches and the in-flight work is **cancelled** — the LLM
+turn stops and its partial output and your prompt are lost; a shell run is
+killed; a recording audio cell stops.
+
+*(Known and accepted. The pane is deliberately remounted per focused node, and
+teardown cancels. Cell *text* is debounce-persisted and survives; in-flight work
+does not. Recorded so it is not mistaken for a crash — and so that anyone who
+finds it unacceptable changes the remount strategy deliberately rather than
+patching a symptom.)*
