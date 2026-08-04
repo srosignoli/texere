@@ -314,6 +314,61 @@ type NotebookLinkMark struct {
 	NotebookIDs []string `json:"notebookIds"`
 }
 
+// NotebookMark is one gutter dot: a line whose node has a notebook.
+//
+// This replaces NotebookLinkMark as the gutter's source. The old mark meant
+// "text on this line was pushed out of a notebook" and was keyed by
+// (chapter, node_text), so any edit to the line silently dropped the dot. This
+// one is keyed by node id, which is stable across edits.
+type NotebookMark struct {
+	Line       int    `json:"line"`
+	NotebookID string `json:"notebookId"`
+}
+
+// NotebookMarks returns the lines of nodes in filePath that have a notebook.
+//
+// Read-only: it never creates a notebook. One store query for the file, then a
+// single parse to turn node ids into line numbers.
+func (a *App) NotebookMarks(filePath string) ([]NotebookMark, error) {
+	if a.learnStore == nil {
+		return nil, errors.New("no collection open")
+	}
+	out := []NotebookMark{}
+	pf, _ := content.ParseFile(filePath, a.registry)
+	if pf == nil {
+		return out, nil
+	}
+	// Ask for exactly the ids this file contains. A node id is
+	// "<path>:<chapter>:id:<short>" and a colon is legal in a filename, so a
+	// prefix range over extract_node_id could match a different file entirely.
+	var ids []string
+	for _, ch := range pf.Chapters {
+		for _, n := range ch.Nodes {
+			if n.ID != "" {
+				ids = append(ids, n.ID)
+			}
+		}
+	}
+	if len(ids) == 0 {
+		return out, nil
+	}
+	byNode, err := a.learnStore.NotebooksForNodes(ids)
+	if err != nil {
+		return nil, err
+	}
+	for _, ch := range pf.Chapters {
+		for _, n := range ch.Nodes {
+			if n.ID == "" {
+				continue
+			}
+			if nbID, ok := byNode[n.ID]; ok {
+				out = append(out, NotebookMark{Line: n.Line, NotebookID: nbID})
+			}
+		}
+	}
+	return out, nil
+}
+
 // GetNotebookLinks resolves this file's links to line marks by re-parsing and
 // matching each linked (chapter, text) tuple to a current node line.
 func (a *App) GetNotebookLinks(filePath string) ([]NotebookLinkMark, error) {
