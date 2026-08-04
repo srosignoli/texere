@@ -36,7 +36,13 @@
 
   async function resolve(line) {
     caretLine = line
-    const id = nodeIdAtLine(spans, line)
+    // An empty map means the file's nodes could not be read at all — the queued
+    // extract is in this file and has an id, so a genuinely empty map is a parse
+    // or IPC failure, not a file without nodes. Falling back to the queued
+    // extract degrades to the pre-feature behaviour; resolving to null instead
+    // would pin the pane to the empty state for the whole session, with no error
+    // shown anywhere.
+    const id = spans.length ? nodeIdAtLine(spans, line) : extractId
     if (id === focusedId) return
     focusedId = id
     // The queued extract keeps its creating path; nothing else is peeked until
@@ -87,7 +93,7 @@
   <div class="pv-pane pv-right">
     {#if focusedId !== extractId}
       <div class="pv-focus">
-        Processing <b>{shortId(extractId)}</b> · reading <b>{shortId(focusedId) ?? 'a line with no note'}</b>
+        Processing <b>{shortId(extractId)}</b> · reading <b>{shortId(focusedId) ?? 'a line with no id'}</b>
       </div>
     {/if}
 
