@@ -111,3 +111,70 @@ func TestClosedMultiLineQuoteBlocksAreUnchanged(t *testing.T) {
 		})
 	}
 }
+
+// The EOF recovery was not enough. A stray quote can also be "closed" by an
+// unrelated quote character further down the file — a `"` inside ordinary prose,
+// or an anchor with an odd number of them. The block then ends mid-file and every
+// line in between is absorbed as one node's text, silently: no error at all,
+// because from the scanner's point of view the block closed normally.
+//
+// Reported symptom: adding a stray quote above a "# @id" made that node's
+// notebook disappear ("No notebook for this line"), because the node itself no
+// longer existed.
+func TestQuoteBlockDoesNotSwallowStructuralLines(t *testing.T) {
+	pf := parseBody(t, "- Ch\n\n\"an unclosed quotation\n\n# @id keepme\nthe node with a notebook\n\nhe said \" and stopped\n\n# @id later\ntail node\n")
+
+	if !hasErr(pf, ErrUnterminatedQuote) {
+		t.Errorf("no %q error; a mid-file close is as silent as the EOF case was (errors: %+v)", ErrUnterminatedQuote, pf.Errors)
+	}
+	var keep, later bool
+	for _, ch := range pf.Chapters {
+		for _, n := range ch.Nodes {
+			if strings.Contains(n.Text, "# @id") {
+				t.Errorf("marker line swallowed into node text: %.80q", n.Text)
+			}
+			if strings.HasSuffix(n.ID, ":id:keepme") {
+				keep = true
+			}
+			if strings.HasSuffix(n.ID, ":id:later") {
+				later = true
+			}
+		}
+	}
+	if !keep {
+		t.Errorf("node keepme was swallowed; its notebook would show \"No notebook for this line\". nodes = %q", nodeTexts(pf))
+	}
+	if !later {
+		t.Error("node later was lost too")
+	}
+
+	// The reported symptom was the notebook pane, which resolves a caret line
+	// through NodeSpans — so assert the span exists, not merely the node. A node
+	// present but unspanned would still show "No notebook for this line".
+	var spanned bool
+	for _, s := range NodeSpans(pf) {
+		if strings.HasSuffix(s.ID, ":id:keepme") {
+			spanned = true
+		}
+	}
+	if !spanned {
+		t.Errorf("keepme has no NodeSpan, so no caret line resolves to it; spans = %+v", NodeSpans(pf))
+	}
+}
+
+// A blank line ends a paragraph. The block is documented as a "multi-line
+// paragraph", so it must not run past one, or a single stray quote silently
+// merges unrelated notes.
+func TestQuoteBlockStopsAtABlankLine(t *testing.T) {
+	pf := parseBody(t, "- Ch\n\n\"a stray quote\n\nplain note A\n\nplain note B\n\nhe said \" here\n")
+	if !hasErr(pf, ErrUnterminatedQuote) {
+		t.Errorf("no %q error reported (errors: %+v)", ErrUnterminatedQuote, pf.Errors)
+	}
+	for _, ch := range pf.Chapters {
+		for _, n := range ch.Nodes {
+			if strings.Contains(n.Text, "plain note A") && strings.Contains(n.Text, "plain note B") {
+				t.Errorf("unrelated notes merged into one node: %.80q", n.Text)
+			}
+		}
+	}
+}
