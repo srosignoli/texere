@@ -55,11 +55,12 @@ func TestSeedBasicCardNode(t *testing.T) {
 		t.Fatal(err)
 	}
 	// The extract node is on line 3.
-	if err := SeedBasicCardNode(p, 3, "extracted sentence"); err != nil {
+	if err := SeedBasicCardNode(p, 3, "extracted sentence", "sources/x.txt char=0"); err != nil {
 		t.Fatal(err)
 	}
 	got, _ := os.ReadFile(p)
-	want := "- Ch\n# @id e1\n# @card\n  extracted sentence >> \n"
+	// The (from) anchor moves onto a ditto line rather than being discarded.
+	want := "- Ch\n# @id e1\n# @card\n  extracted sentence >> \n  \" (from) \"sources/x.txt char=0\"\n"
 	if string(got) != want {
 		t.Fatalf("seeded file:\n%q\nwant:\n%q", got, want)
 	}

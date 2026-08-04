@@ -33,9 +33,12 @@ func InsertMarkerAboveNode(path string, nodeLine int, marker string) error {
 // basic card: the line becomes "<front> >> " (back left empty for the author),
 // preserving the original line's leading indentation, and a "# @card" marker is
 // inserted directly above it — in a single atomic rewrite. Used when promoting an
-// extract to a basic card; the caller passes the extract's passage text as front
-// and the original (from) anchor is intentionally dropped from the file.
-func SeedBasicCardNode(path string, nodeLine int, front string) error {
+// extract to a basic card; the caller passes the extract's passage text as front.
+//
+// fromAnchor, when non-empty, is written as a (from) ditto line beneath the card
+// so the passage keeps its source reference in the file. Pass "" for a node that
+// has no provenance to carry, such as a hand-written note promoted to a card.
+func SeedBasicCardNode(path string, nodeLine int, front, fromAnchor string) error {
 	lines, err := readLines(path)
 	if err != nil {
 		return fmt.Errorf("content: SeedBasicCardNode: %w", err)
@@ -45,10 +48,21 @@ func SeedBasicCardNode(path string, nodeLine int, front string) error {
 	}
 	idx := nodeLine - 1
 	indent := lines[idx][:len(lines[idx])-len(strings.TrimLeft(lines[idx], " \t"))]
-	out := make([]string, 0, len(lines)+1)
+	out := make([]string, 0, len(lines)+2)
 	out = append(out, lines[:idx]...)
 	out = append(out, "# @card")
 	out = append(out, indent+front+" >> ")
+	// Carry the source anchor onto a ditto continuation line rather than dropping
+	// it. It cannot stay on the node line: basicCards splits node.Text on the
+	// first ">>", so an anchor there would land inside the card's back. A ditto
+	// keeps it out of node.Text while nodeHasFromArrow still finds it.
+	//
+	// It is preserved at all because this app's durable store is the .n4l file.
+	// Leaving provenance only in the retired extracts row meant a rebuilt
+	// learning.db lost it for good, with nothing in the file able to restore it.
+	if fromAnchor != "" {
+		out = append(out, indent+`" (from) "`+fromAnchor+`"`)
+	}
 	out = append(out, lines[idx+1:]...)
 	if err := writeLines(path, out); err != nil {
 		return fmt.Errorf("content: SeedBasicCardNode: write: %w", err)
