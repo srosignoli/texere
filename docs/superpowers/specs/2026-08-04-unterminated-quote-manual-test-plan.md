@@ -1,6 +1,7 @@
 # Unterminated quote recovery — manual test plan
 
-**Fix:** `47ff368` — `internal/content/parser.go`, `internal/content/errors.go`
+**Fix:** `2be5452` (EOF recovery) and `96e20a8` (paragraph bound) —
+`internal/content/parser.go`, `internal/content/errors.go`
 **Build:** `make dev`
 
 ## What changed and why it matters
@@ -17,10 +18,19 @@ The parser now recovers: the buffered lines are parsed individually, exactly as
 they would have been read had the quote never opened, and the opening line is
 reported as `unterminated quote`.
 
+A quoted block also now ends at any line that cannot be inside quoted prose: a
+blank line, a chapter title, a context marker, or a `# @` marker. Without that,
+a stray quote was closed by an unrelated quote further down and everything
+between was absorbed **with no error at all** — the case that produced the
+reported "No notebook for this line".
+
 Automated coverage: `internal/content/unterminated_quote_test.go` — recovery for
-both quote forms, and a regression test pinning that **closed** multi-line blocks
-still join into one node. Verified by negative control: restoring the old
-join-at-EOF makes both recovery tests fail.
+both quote forms, the mid-file closure, the blank-line bound, and a regression
+test pinning that **closed** multi-line blocks still join into one node. The
+mid-file test asserts the recovered node has a `NodeSpan`, since the notebook
+pane resolves a caret through spans. Verified by negative control: removing the
+paragraph guard fails both new tests; restoring the old join-at-EOF fails the
+other two.
 
 **The risk this plan exists to check** is the regression direction, not the fix.
 The fix is unit-tested; what unit tests cannot tell you is whether any file in
@@ -81,6 +91,47 @@ quotes instead of `"` — same result.
 
 *(This is the property most at risk. If it fails, the fix has broken legitimate
 multi-line quoting.)*
+
+## TC-3b A stray quote must not eat the node below it — the reported case
+
+This is the case that got through the first version of the fix, which only
+handled a quote block running to end of file. A stray quote can instead be
+"closed" by an unrelated quote further down — one inside ordinary prose, or an
+anchor with an odd number of them — and everything between was absorbed
+**silently**, with no error at all.
+
+Take a note file where some node with a `# @id` has a notebook. Add a line
+containing a single stray `"` **above** that node, and make sure some later line
+in the file also contains an odd number of `"`. Save, then put the caret on the
+node.
+
+**Expect:** the node's notebook still shows. It must **not** fall back to
+`No notebook for this line.` An `unterminated quote` error is reported against
+the stray line.
+
+Now delete the stray quote line.
+
+**Expect:** the notebook still shows and the error disappears.
+
+*(Before the fix the node stopped existing entirely, taking its notebook — and
+its card and extract — with it, and nothing was reported.)*
+
+## TC-3c A quoted paragraph does not run past a blank line
+
+```
+- Quote Test
+
+"a stray quote
+
+plain note A
+
+plain note B
+
+he said " here
+```
+
+**Expect:** `plain note A` and `plain note B` remain **separate** nodes — they are
+not merged into one. An `unterminated quote` error names line 3.
 
 ## TC-4 Your real collection — the point of the whole exercise
 
