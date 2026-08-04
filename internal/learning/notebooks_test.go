@@ -117,3 +117,71 @@ func TestNotebookLinks(t *testing.T) {
 		t.Fatalf("want 2 links for a.n4l, got %d: %+v", len(got), got)
 	}
 }
+
+func TestNotebooksForFileReturnsOnlyThatFilesNotebooks(t *testing.T) {
+	st, err := Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	for _, nodeID := range []string{
+		"/c/a.n4l:Ch:id:one",
+		"/c/a.n4l:Ch:id:two",
+		"/c/b.n4l:Ch:id:three",
+	} {
+		if err := st.UpsertNotebook(Notebook{
+			NotebookID: "nb-" + nodeID, ExtractNodeID: nodeID,
+			Chapter: "Ch", ContextTags: "[]", CellsJSON: "[]",
+			CreatedAt: now, UpdatedAt: now,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := st.NotebooksForFile("/c/a.n4l")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("got %d notebooks, want 2 (b.n4l must not leak in): %+v", len(got), got)
+	}
+	if got["/c/a.n4l:Ch:id:one"] != "nb-/c/a.n4l:Ch:id:one" {
+		t.Errorf("wrong notebook id for :one: %q", got["/c/a.n4l:Ch:id:one"])
+	}
+}
+
+// A path is not a LIKE pattern. A file literally named with % or _ must not
+// match its neighbours, which is why the query uses a range rather than LIKE.
+func TestNotebooksForFileTreatsThePathLiterally(t *testing.T) {
+	st, _ := Open(t.TempDir())
+	now := time.Now()
+	for _, nodeID := range []string{"/c/a%b.n4l:Ch:id:one", "/c/axxb.n4l:Ch:id:two"} {
+		if err := st.UpsertNotebook(Notebook{
+			NotebookID: "nb-" + nodeID, ExtractNodeID: nodeID,
+			Chapter: "Ch", ContextTags: "[]", CellsJSON: "[]",
+			CreatedAt: now, UpdatedAt: now,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := st.NotebooksForFile("/c/a%b.n4l")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("got %d, want 1 — the %% was treated as a wildcard: %+v", len(got), got)
+	}
+}
+
+func TestNotebooksForFileEmptyIsNotAnError(t *testing.T) {
+	st, _ := Open(t.TempDir())
+	got, err := st.NotebooksForFile("/c/none.n4l")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got == nil {
+		t.Fatal("returned a nil map; callers index it directly, so it must be usable")
+	}
+	if len(got) != 0 {
+		t.Fatalf("got %+v, want empty", got)
+	}
+}

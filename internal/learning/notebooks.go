@@ -114,3 +114,36 @@ func (s *Store) LinksForFile(filePath string) ([]NotebookLink, error) {
 	}
 	return out, rows.Err()
 }
+
+// NotebooksForFile returns node id -> notebook id for every notebook whose node
+// lives in filePath.
+//
+// Node ids are "<path>:<chapter>:id:<short>", so a file's notebooks form a
+// contiguous range on the indexed extract_node_id column. A range scan is used
+// rather than LIKE because a file path may legitimately contain % or _, which
+// LIKE would treat as wildcards and silently match other files. ';' is ':'+1,
+// so [path+":", path+";") bounds the prefix exactly.
+//
+// Where a node somehow has two notebooks, the earliest wins — matching
+// GetNotebookByExtract's "ORDER BY created_at ASC LIMIT 1".
+func (s *Store) NotebooksForFile(filePath string) (map[string]string, error) {
+	rows, err := s.db.Query(
+		`SELECT extract_node_id, notebook_id FROM notebooks
+		 WHERE extract_node_id >= ? AND extract_node_id < ?
+		 ORDER BY created_at ASC`, filePath+":", filePath+";")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]string{}
+	for rows.Next() {
+		var nodeID, nbID string
+		if err := rows.Scan(&nodeID, &nbID); err != nil {
+			return nil, err
+		}
+		if _, dup := out[nodeID]; !dup {
+			out[nodeID] = nbID
+		}
+	}
+	return out, rows.Err()
+}
