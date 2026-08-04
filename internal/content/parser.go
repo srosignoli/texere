@@ -118,17 +118,26 @@ func ParseFile(path string, registry *SSTRegistry) (*ParsedFile, []ParseError) {
 
 		processLine(pf, state, path, line, lineNum, registry)
 	}
-	// Flush any unclosed blocks at EOF (treat as complete).
-	if inSQ && len(mlBuf) > 0 {
-		processLine(pf, state, path, strings.Join(mlBuf, "\n"), mlStart, registry)
-	}
-	if inDQ && len(mlBuf) > 0 {
-		joined := strings.Join(mlBuf, "\n")
-		tj := strings.TrimSpace(joined)
-		if len(tj) >= 2 && tj[0] == '"' && tj[len(tj)-1] == '"' {
-			tj = tj[1 : len(tj)-1]
+	// An unclosed block at EOF is a typo, not a construct. Joining the buffer into
+	// a single line silently absorbed every line below the opening quote — node
+	// text, "# @id" and "# @card" markers, arrows, all of it — so one stray
+	// leading quote made the remainder of the file invisible: no nodes, no ids,
+	// no cards, no extracts, and not one ParseError to explain it.
+	//
+	// Recover instead: parse the buffered lines individually, exactly as they
+	// would have been read had the quote never opened, and report the opening
+	// line. The opening line itself is reparsed verbatim, so a lone `"` there
+	// still reads as a ditto (or an orphan-ditto error) — which is what an
+	// unmatched quote line means in N4L anyway.
+	if (inSQ || inDQ) && len(mlBuf) > 0 {
+		pf.Errors = append(pf.Errors, ParseError{
+			File: path,
+			Line: mlStart,
+			Msg:  ErrUnterminatedQuote + ": quoted block opened here is never closed; its lines were read individually",
+		})
+		for i, raw := range mlBuf {
+			processLine(pf, state, path, raw, mlStart+i, registry)
 		}
-		processLine(pf, state, path, tj, mlStart, registry)
 	}
 
 	if err := scanner.Err(); err != nil {
