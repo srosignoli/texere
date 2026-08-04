@@ -246,6 +246,22 @@ export namespace content {
 	    }
 	}
 	
+	export class NodeSpan {
+	    id: string;
+	    fromLine: number;
+	    toLine: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new NodeSpan(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.fromLine = source["fromLine"];
+	        this.toLine = source["toLine"];
+	    }
+	}
 	export class ParseError {
 	    File: string;
 	    Line: number;

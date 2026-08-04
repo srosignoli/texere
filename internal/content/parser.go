@@ -48,7 +48,21 @@ func ParseFile(path string, registry *SSTRegistry) (*ParsedFile, []ParseError) {
 		lineNum++
 		line := scanner.Text()
 
-		if inSQ {
+		// A quoted block is a paragraph, not a file-wide mode. If a structural line
+		// or a blank line arrives before the closing quote, the opening quote was a
+		// typo — abandon the block, recover its lines, and parse this one normally.
+		//
+		// Without this, a stray quote is "closed" by the next unrelated quote
+		// character further down (a `"` in ordinary prose, or an anchor with an odd
+		// number of them) and every line between them is absorbed as one node's
+		// text. That is silent: the scanner sees a block that closed normally, so
+		// no error is reported, and any "# @id" in the range stops existing —
+		// taking its notebook, card and extract with it.
+		if (inSQ || inDQ) && endsQuotedBlock(line) {
+			recoverQuotedBlock(pf, state, path, mlBuf, mlStart, registry)
+			mlBuf, inSQ, inDQ = nil, false, false
+			// fall through — this line is parsed normally below
+		} else if inSQ {
 			// Accumulate continuation lines; toggle inSQ for each ' encountered.
 			mlBuf = append(mlBuf, line)
 			for _, ch := range line {
@@ -62,9 +76,7 @@ func ParseFile(path string, registry *SSTRegistry) (*ParsedFile, []ParseError) {
 				mlBuf = nil
 			}
 			continue
-		}
-
-		if inDQ {
+		} else if inDQ {
 			// Accumulate continuation lines; toggle inDQ for each " encountered.
 			mlBuf = append(mlBuf, line)
 			for _, ch := range line {
@@ -118,17 +130,19 @@ func ParseFile(path string, registry *SSTRegistry) (*ParsedFile, []ParseError) {
 
 		processLine(pf, state, path, line, lineNum, registry)
 	}
-	// Flush any unclosed blocks at EOF (treat as complete).
-	if inSQ && len(mlBuf) > 0 {
-		processLine(pf, state, path, strings.Join(mlBuf, "\n"), mlStart, registry)
-	}
-	if inDQ && len(mlBuf) > 0 {
-		joined := strings.Join(mlBuf, "\n")
-		tj := strings.TrimSpace(joined)
-		if len(tj) >= 2 && tj[0] == '"' && tj[len(tj)-1] == '"' {
-			tj = tj[1 : len(tj)-1]
-		}
-		processLine(pf, state, path, tj, mlStart, registry)
+	// An unclosed block at EOF is a typo, not a construct. Joining the buffer into
+	// a single line silently absorbed every line below the opening quote — node
+	// text, "# @id" and "# @card" markers, arrows, all of it — so one stray
+	// leading quote made the remainder of the file invisible: no nodes, no ids,
+	// no cards, no extracts, and not one ParseError to explain it.
+	//
+	// Recover instead: parse the buffered lines individually, exactly as they
+	// would have been read had the quote never opened, and report the opening
+	// line. The opening line itself is reparsed verbatim, so a lone `"` there
+	// still reads as a ditto (or an orphan-ditto error) — which is what an
+	// unmatched quote line means in N4L anyway.
+	if inSQ || inDQ {
+		recoverQuotedBlock(pf, state, path, mlBuf, mlStart, registry)
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -1136,3 +1150,40 @@ var (
 	_ = isAllUpper
 	_ = isReminderLine
 )
+
+// endsQuotedBlock reports whether line cannot be part of a multi-line quoted
+// paragraph, and therefore proves the opening quote was never closed.
+//
+// A blank line ends a paragraph by definition. A chapter title, context marker
+// or "# @" marker is file structure and cannot appear inside quoted prose —
+// these are the lines whose loss is destructive, because swallowing a "# @id"
+// deletes the node's identity along with its notebook, card and extract.
+func endsQuotedBlock(line string) bool {
+	t := strings.TrimSpace(line)
+	if t == "" {
+		return true
+	}
+	return strings.HasPrefix(t, "# @") ||
+		strings.HasPrefix(t, "- ") ||
+		strings.HasPrefix(t, "::")
+}
+
+// recoverQuotedBlock abandons an unterminated quoted block: it reports the line
+// that opened it and reparses the buffered lines individually, exactly as they
+// would have been read had the quote never opened.
+//
+// Reparsing rather than discarding matters — the buffer routinely holds whole
+// nodes, "# @id" markers and arrows that the author expects to exist.
+func recoverQuotedBlock(pf *ParsedFile, state *parserState, path string, buf []string, start int, registry *SSTRegistry) {
+	if len(buf) == 0 {
+		return
+	}
+	pf.Errors = append(pf.Errors, ParseError{
+		File: path,
+		Line: start,
+		Msg:  ErrUnterminatedQuote + ": quoted block opened here is never closed; its lines were read individually",
+	})
+	for i, raw := range buf {
+		processLine(pf, state, path, raw, start+i, registry)
+	}
+}

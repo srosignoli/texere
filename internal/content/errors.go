@@ -26,4 +26,9 @@ const (
 	ErrInvalidPriority = "invalid priority"
 	ErrMalformedMarker = "malformed marker"
 	ErrEncoding        = "encoding error"
+	// ErrUnterminatedQuote reports a '...' or "..." block that reaches EOF
+	// without closing. The block's lines are recovered and parsed individually,
+	// so the rest of the file is still read; the error exists because the
+	// author's intent is genuinely ambiguous and used to be silently discarded.
+	ErrUnterminatedQuote = "unterminated quote"
 )

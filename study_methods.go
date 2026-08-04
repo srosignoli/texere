@@ -113,9 +113,12 @@ func (a *App) PromoteExtract(id, kind string) error {
 	a.beginSelfWrite(e.FilePath)
 	var wErr error
 	if kind == "card" {
-		// Seed a basic card stub "<passage> >> " for the author to complete; the
-		// (from) anchor is dropped (provenance stays in the retired extract row).
-		wErr = content.SeedBasicCardNode(e.FilePath, line, e.Text)
+		// Seed a basic card stub "<passage> >> " for the author to complete, and
+		// carry the (from) anchor onto a ditto line beneath it. The anchor also
+		// lives on the retired extracts row, but the file is this app's durable
+		// store — leaving provenance only in the database meant a rebuilt
+		// learning.db lost where the passage came from, permanently.
+		wErr = content.SeedBasicCardNode(e.FilePath, line, e.Text, e.FromAnchor)
 	} else {
 		wErr = content.InsertMarkerAboveNode(e.FilePath, line, "# @cloze")
 	}

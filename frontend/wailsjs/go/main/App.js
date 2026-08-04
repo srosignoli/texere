@@ -62,6 +62,10 @@ export function FetchMediaURL(arg1, arg2) {
   return window['go']['main']['App']['FetchMediaURL'](arg1, arg2);
 }
 
+export function FileNodeSpans(arg1) {
+  return window['go']['main']['App']['FileNodeSpans'](arg1);
+}
+
 export function GetArrowRegistry() {
   return window['go']['main']['App']['GetArrowRegistry']();
 }
@@ -208,6 +212,10 @@ export function OpenSourceURL(arg1) {
 
 export function ParseFileForUI(arg1) {
   return window['go']['main']['App']['ParseFileForUI'](arg1);
+}
+
+export function PeekNotebook(arg1) {
+  return window['go']['main']['App']['PeekNotebook'](arg1);
 }
 
 export function PickCollectionDir() {
