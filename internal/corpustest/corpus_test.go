@@ -1,4 +1,4 @@
-package search_test
+package corpustest
 
 import (
 	"os"
@@ -11,6 +11,15 @@ import (
 	"texere/internal/search"
 )
 
+// This lives in its OWN PACKAGE on purpose. sstorytime-kv keeps process-global
+// state (SST.NODE_DIRECTORY, NODE_CACHE, MemoryInit) that every SearchService
+// resets when it opens, so a service held open across tests corrupts every
+// other service in the same process. Held inside internal/search this fixture
+// broke five unrelated tests — TestPath_ByName, TestPath_WithDepth,
+// TestNotes_DittoFlatten, TestSearchService_ResolvePathEndpoints_Bleve and
+// TestSearchService_ForwardCone — which are green on main. Go runs each package
+// in its own process, which is the only isolation available.
+//
 // The corpus is nine files from sstorytime-kv/examples, chosen for domain
 // spread and route coverage rather than size. It exists so the few-shot
 // examples fed to the LLM are proven to RETURN RESULTS, not merely to parse: a
@@ -33,7 +42,7 @@ func corpus(t *testing.T) *search.SearchService {
 			corpusErr = err
 			return
 		}
-		src := filepath.Join(testFixturesDir(t), "corpus")
+		src := "corpus"
 		entries, err := os.ReadDir(src)
 		if err != nil {
 			corpusErr = err
@@ -50,7 +59,7 @@ func corpus(t *testing.T) *search.SearchService {
 				return
 			}
 		}
-		reg, _ := content.LoadRegistry(filepath.Join(testFixturesDir(t), "corpus_sstconfig"))
+		reg, _ := content.LoadRegistry("corpus_sstconfig")
 		if _, berr := graph.BuildFromCollection(dir, reg); berr != nil {
 			corpusErr = berr
 			return
