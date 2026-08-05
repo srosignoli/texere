@@ -116,9 +116,9 @@ from real upstream N4L files and asserts it returns results**. An example that
 returns nothing teaches the model to produce queries that return nothing, which
 is the failure this feature would otherwise produce most often.
 
-The corpus is six files copied from `sstorytime-kv/examples` into
-`internal/search/testdata/corpus/` (~333KB, builds in under a second), chosen for
-domain spread rather than size:
+The corpus is nine files copied from `sstorytime-kv/examples` into
+`internal/search/testdata/corpus/` (~336KB, builds in under a second), chosen for
+domain spread and route coverage rather than size:
 
 | file | size | domain | exercises |
 |---|---|---|---|
@@ -127,7 +127,10 @@ domain spread rather than size:
 | `kubernetes.n4l` | 6.2K | ops | chapter + context |
 | `brains.n4l` | 4.5K | science | contexts, `\notes` |
 | `music-catalogue.n4l` | 3.6K | catalogue | properties |
-| `doors.n4l` | 2K | physics | paths, cones |
+| `doors.n4l` | 401B | physics | paths, cones |
+| `astronomy.n4l` | 1.1K | astronomy | active `_sequence_` |
+| `Mary.n4l` | 519B | poem | `\story` by name |
+| `integral.n4l` | 1.8K | mathematics | quoted multi-word context |
 
 `MobyDickNotes.n4l` (1.8M) and `Darwin.n4l` (1.6M) were verified to build and
 query correctly (4.4s, 14288 nodes) but are excluded: 3.4MB of repo weight and
@@ -156,26 +159,43 @@ is shown:
 | what chapters are there? | `\chapter any` | 5 listings |
 | what arrows are defined? | `\arrow any` | 591 listings |
 | things near pod, one hop out | `pod \radius 1` | 5 nodes |
+| tell me the story of Mary | `\story Mary` | 1 chain |
+| the steps in the astronomy sequence | `\sequence \chapter astronomy` | 1 chain |
+| what sequences are there? | `\story any` | 5 chains |
+| notes on differentiating under the integral | `\notes \context "differentiate under integral"` | 1 note |
 
-That covers all four routes — node search, listing, notes, structural — and the
+That covers all four routes — node search, listing, notes, structural — every
+directive the prompt teaches except `\page` and `\limit`, and the
 `&`/`!`/`:*`/`!x!`/phrase operators.
 
-**Three things this verification already caught**, which is the argument for
-doing it at all:
+**What this verification caught**, which is the argument for doing it at all:
 
-- `\sequence` has **no working example on this corpus**. `\sequence`,
-  `\sequence \chapter NDA` and `\sequence \context NDA` all return nothing,
-  despite `NDA.n4l` carrying a `:: _sequence_ , NDA::` context. Until an example
-  is found that returns chains, **`\sequence` is described in the prompt but not
-  demonstrated** — and the implementation task must either add
-  `testdata/sequence.n4l` (which the existing suite already uses) to the corpus
-  and find a working example, or record the gap.
-- **A quoted multi-word context tag matches nothing.** `\context oscillations`
-  works; `\context "brain waves"` returns nothing. The prompt must not teach the
-  quoted-multi-word form for `\context`.
-- Earlier drafts of this table used `\chapter astronomy` and `\sequence "create
-  a pod"`. Neither exists in the corpus; both would have shipped as confident
-  nonsense.
+- **`\sequence` had no working example** until the corpus was extended. On the
+  first six files, `\sequence`, `\sequence \chapter NDA` and `\sequence
+  \context NDA` all returned nothing — `NDA.n4l` carries a `:: _sequence_ ,
+  NDA::` line, but a second `::` context immediately replaces it before any node
+  appears, so no node is ever inside the sequence block. Adding `astronomy.n4l`,
+  `Mary.n4l` and `integral.n4l` (3.4KB together, all with `_sequence_` active
+  over real nodes) closed it: `\story Mary` → 1 chain, `\story any` → 5 chains.
+  `\story Mary` is also the example upstream's own docs use.
+- **A well-formed query can be empty for data reasons alone.** `brain \context
+  oscillations` returns nothing while `waves \context oscillations` returns 5
+  nodes — the "brain" nodes live in a different context, so the intersection is
+  genuinely empty. Nothing is wrong with the query. This is the strongest
+  argument for verifying examples rather than composing them from the grammar:
+  they can be syntactically perfect, semantically sensible, and still teach the
+  model a shape that yields nothing.
+- **Earlier drafts of this table were fiction.** `\chapter astronomy` before
+  `astronomy.n4l` was in the corpus; `\sequence "create a pod"`, passing an
+  argument to a flag declared `valueKind: 'none'`; and a multi-word `|deep
+  purple|` where `MATCHING` declares `|…|` as wrapping a word. All three came
+  from the *official* upstream docs — valid there, wrong here.
+- **A claim I made and had to retract.** I first recorded that a quoted
+  multi-word context tag matches nothing. It does not: `\context "brain waves"`
+  returns 2 listings and `\notes \context "differentiate under integral"`
+  returns a note. The empty result I had seen came from the text term, not the
+  quoting. Recorded because the wrong version was already written into this
+  document and would have taught the prompt to avoid a form that works.
 
 **The examples teach shape, not content.** They are proven against the corpus,
 which is not the user's collection — `\chapter Kubernetes` is a demonstration of
