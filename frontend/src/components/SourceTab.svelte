@@ -43,11 +43,19 @@
     } catch { /* best-effort */ }
   }
 
-  // Reopen-notebook overlay state (Task 12: read-only notebook viewer, Resume to edit).
-  let reopenId = null
+  // The overlay is "armed" by a dot click and stays armed until Close. While
+  // armed it shows whatever notebook the focused node has, and hides when that
+  // node has none — so it can never display a notebook for a note you are not
+  // reading. Close is sticky: without that, moving the caret would reopen what
+  // you just dismissed.
+  let armed = false
   let reopenReadOnly = true
-  function openNotebookReadOnly(id) { reopenId = id; reopenReadOnly = true }
-  function closeReopen() { reopenId = null }
+  function openNotebookReadOnly(line) {
+    armed = true
+    reopenReadOnly = true
+    resolveCaret(line)
+  }
+  function closeReopen() { armed = false; reopenReadOnly = true }
   function resumeReopen() { reopenReadOnly = false }
 
   // Caret -> node -> notebook, for the read-only overlay. Same approach as
@@ -415,7 +423,7 @@
     </div>
   {/if}
   <div class="editor-container" bind:this={container} />
-  {#if reopenId}
+  {#if armed && focusedNb && focusedNbFor === focusedId}
     <div class="nb-overlay">
       <div class="nb-overlay-bar">
         <span>Notebook</span>
@@ -423,8 +431,8 @@
         <button on:click={closeReopen}>✕ Close</button>
       </div>
       <div class="nb-overlay-body">
-        {#key reopenId + reopenReadOnly}
-          <NotebookPane notebookId={reopenId} readOnly={reopenReadOnly} onPush={() => {}} />
+        {#key focusedNb.notebookId + reopenReadOnly}
+          <NotebookPane notebookId={focusedNb.notebookId} readOnly={reopenReadOnly} onPush={() => {}} />
         {/key}
       </div>
     </div>
