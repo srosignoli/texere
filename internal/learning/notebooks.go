@@ -2,6 +2,7 @@ package learning
 
 import (
 	"database/sql"
+	"strings"
 	"time"
 )
 
@@ -113,4 +114,56 @@ func (s *Store) LinksForFile(filePath string) ([]NotebookLink, error) {
 		out = append(out, l)
 	}
 	return out, rows.Err()
+}
+
+// NotebooksForNodes returns node id -> notebook id for the given node ids.
+//
+// Callers pass the ids they parsed out of a file rather than a path prefix. A
+// node id is "<path>:<chapter>:id:<short>", and a file may legally be named with
+// a colon, so a prefix range over extract_node_id can match a DIFFERENT file:
+// "/c/notes.n4l:bak.n4l:Ch:id:x" falls inside the range for "/c/notes.n4l".
+// Exact ids have no such ambiguity, and extract_node_id is indexed either way.
+//
+// Where a node somehow has two notebooks the earliest wins, matching
+// GetNotebookByExtract's "ORDER BY created_at ASC LIMIT 1".
+func (s *Store) NotebooksForNodes(nodeIDs []string) (map[string]string, error) {
+	out := map[string]string{}
+	// Chunked: SQLite caps host parameters per statement (999 by default), and a
+	// large note file can carry more id-bearing nodes than that.
+	const chunk = 500
+	for start := 0; start < len(nodeIDs); start += chunk {
+		end := start + chunk
+		if end > len(nodeIDs) {
+			end = len(nodeIDs)
+		}
+		batch := nodeIDs[start:end]
+		ph := strings.TrimSuffix(strings.Repeat("?,", len(batch)), ",")
+		args := make([]any, len(batch))
+		for i, id := range batch {
+			args[i] = id
+		}
+		rows, err := s.db.Query(
+			`SELECT extract_node_id, notebook_id FROM notebooks
+			 WHERE extract_node_id IN (`+ph+`)
+			 ORDER BY created_at ASC`, args...)
+		if err != nil {
+			return nil, err
+		}
+		for rows.Next() {
+			var nodeID, nbID string
+			if err := rows.Scan(&nodeID, &nbID); err != nil {
+				rows.Close()
+				return nil, err
+			}
+			if _, dup := out[nodeID]; !dup {
+				out[nodeID] = nbID
+			}
+		}
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		rows.Close()
+	}
+	return out, nil
 }

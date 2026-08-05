@@ -946,6 +946,20 @@ export namespace main {
 	        this.notebookIds = source["notebookIds"];
 	    }
 	}
+	export class NotebookMark {
+	    line: number;
+	    notebookId: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new NotebookMark(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.line = source["line"];
+	        this.notebookId = source["notebookId"];
+	    }
+	}
 	export class NotebookView {
 	    notebookId: string;
 	    nodeId: string;

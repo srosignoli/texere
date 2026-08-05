@@ -238,3 +238,132 @@ func TestFileNodeSpansReturnsEmptyNotNilForAnUnparseableFile(t *testing.T) {
 		t.Fatal("got nil, want an empty slice — nil marshals to JSON null")
 	}
 }
+
+func TestNotebookMarksMarksOnlyNodesThatHaveANotebook(t *testing.T) {
+	dir := t.TempDir()
+	st, err := learning.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reg, _ := content.LoadRegistry(filepath.Join(dir, "nonexistent"))
+	a := &App{learnStore: st, registry: reg, collectionDir: dir}
+
+	p := filepath.Join(dir, "f.n4l")
+	body := "- Ch\n\n# @id has\nnode with a notebook\n\n# @id none\nnode without one\n\na node with no id at all\n"
+	if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Give only the "has" node a notebook, via the real creating path.
+	pf, _ := content.ParseFile(p, reg)
+	var hasID string
+	for _, ch := range pf.Chapters {
+		for _, n := range ch.Nodes {
+			if strings.HasSuffix(n.ID, ":id:has") {
+				hasID = n.ID
+			}
+		}
+	}
+	if hasID == "" {
+		t.Fatal("fixture: could not find the has node")
+	}
+	if _, err := a.OpenNotebook(hasID); err != nil {
+		t.Fatal(err)
+	}
+
+	marks, err := a.NotebookMarks(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(marks) != 1 {
+		t.Fatalf("got %+v, want exactly one mark (only the node with a notebook)", marks)
+	}
+	if marks[0].Line != 4 {
+		t.Errorf("mark on line %d, want 4 (the node line, not the # @id marker line)", marks[0].Line)
+	}
+	if marks[0].NotebookID == "" {
+		t.Error("mark carries no notebook id, so a dot click would have nothing to open")
+	}
+}
+
+// The dot must survive an edit to the node's text. That is the whole reason for
+// keying on node id: the previous text-keyed links dropped the dot silently.
+func TestNotebookMarksSurviveANodeTextEdit(t *testing.T) {
+	dir := t.TempDir()
+	st, _ := learning.Open(dir)
+	reg, _ := content.LoadRegistry(filepath.Join(dir, "nonexistent"))
+	a := &App{learnStore: st, registry: reg, collectionDir: dir}
+
+	p := filepath.Join(dir, "f.n4l")
+	os.WriteFile(p, []byte("- Ch\n\n# @id keep\noriginal text\n"), 0o644)
+	pf, _ := content.ParseFile(p, reg)
+	id := pf.Chapters[0].Nodes[0].ID
+	if _, err := a.OpenNotebook(id); err != nil {
+		t.Fatal(err)
+	}
+
+	// Rewrite the node's text, exactly as making a card or any edit would.
+	os.WriteFile(p, []byte("- Ch\n\n# @id keep\ncompletely different text now\n"), 0o644)
+
+	marks, err := a.NotebookMarks(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(marks) != 1 {
+		t.Fatalf("got %+v, want the mark to survive the edit", marks)
+	}
+}
+
+func TestNotebookMarksCreatesNothing(t *testing.T) {
+	dir := t.TempDir()
+	st, _ := learning.Open(dir)
+	reg, _ := content.LoadRegistry(filepath.Join(dir, "nonexistent"))
+	a := &App{learnStore: st, registry: reg, collectionDir: dir}
+
+	p := filepath.Join(dir, "f.n4l")
+	os.WriteFile(p, []byte("- Ch\n\n# @id fresh\nnever opened\n"), 0o644)
+
+	marks, err := a.NotebookMarks(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(marks) != 0 {
+		t.Fatalf("got %+v, want none", marks)
+	}
+	// Asserting the empty result is not enough — query the store to prove no row
+	// was written. A creating implementation would return marks on the SECOND
+	// call and look correct on the first.
+	pf, _ := content.ParseFile(p, reg)
+	var ids []string
+	for _, ch := range pf.Chapters {
+		for _, n := range ch.Nodes {
+			if n.ID != "" {
+				ids = append(ids, n.ID)
+			}
+		}
+	}
+	nbs, err := st.NotebooksForNodes(ids)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(nbs) != 0 {
+		t.Fatalf("NotebookMarks created %d notebook row(s) — it must only read", len(nbs))
+	}
+}
+
+func TestNotebookMarksEmptyNotNilForAFileWithNoNodes(t *testing.T) {
+	dir := t.TempDir()
+	st, _ := learning.Open(dir)
+	reg, _ := content.LoadRegistry(filepath.Join(dir, "nonexistent"))
+	a := &App{learnStore: st, registry: reg, collectionDir: dir}
+	p := filepath.Join(dir, "empty.n4l")
+	os.WriteFile(p, []byte(""), 0o644)
+
+	marks, err := a.NotebookMarks(p)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if marks == nil {
+		t.Fatal("returned a nil slice; it marshals to null instead of [] and the caller indexes it")
+	}
+}

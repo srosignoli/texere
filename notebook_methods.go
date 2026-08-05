@@ -79,6 +79,13 @@ func (a *App) OpenNotebook(nodeID string) (*NotebookView, error) {
 		if err := a.learnStore.UpsertNotebook(nb); err != nil {
 			return nil, err
 		}
+		// A gutter dot means "this node has a notebook", so creating one changes
+		// what every open editor should be drawing. Without this the note editor
+		// keeps its stale marks for as long as it stays mounted — and it stays
+		// mounted while Process mode is open, which is exactly when notebooks get
+		// created. That was the originally reported symptom: process an extract,
+		// switch back, and no dot.
+		a.notebooksChanged()
 	}
 	return &NotebookView{
 		NotebookID: nb.NotebookID, NodeID: nodeID, Chapter: nb.Chapter,
@@ -243,6 +250,20 @@ func (a *App) notebookLinksChanged(filePath string) {
 	}
 }
 
+// notebooksChanged notifies the frontend that the set of nodes having notebooks
+// has changed, so any open editor should re-fetch its gutter marks.
+//
+// Deliberately carries no file path. A node id is "<path>:<chapter>:id:<short>"
+// and a colon is legal in a filename, so splitting a path back out of an id is
+// ambiguous — the same ambiguity that made a prefix range unsafe in
+// NotebooksForNodes. Listeners re-fetch marks for whichever file they have open;
+// that is one indexed query and one parse, and it is always correct.
+func (a *App) notebooksChanged() {
+	if a.ctx != nil {
+		runtime.EventsEmit(a.ctx, "notebook:changed", map[string]string{})
+	}
+}
+
 // pushedNodeKeys returns the (chapterTitle, nodeText) of every parsed node that
 // the pushed text authored as a subject. A node matches when a collapsed
 // inserted line equals its text or begins with "<text> " (text then arrow).
@@ -312,6 +333,61 @@ func (a *App) RecordPush(notebookID, filePath, insertedText string) ([]string, e
 type NotebookLinkMark struct {
 	Line        int      `json:"line"`
 	NotebookIDs []string `json:"notebookIds"`
+}
+
+// NotebookMark is one gutter dot: a line whose node has a notebook.
+//
+// This replaces NotebookLinkMark as the gutter's source. The old mark meant
+// "text on this line was pushed out of a notebook" and was keyed by
+// (chapter, node_text), so any edit to the line silently dropped the dot. This
+// one is keyed by node id, which is stable across edits.
+type NotebookMark struct {
+	Line       int    `json:"line"`
+	NotebookID string `json:"notebookId"`
+}
+
+// NotebookMarks returns the lines of nodes in filePath that have a notebook.
+//
+// Read-only: it never creates a notebook. One store query for the file, then a
+// single parse to turn node ids into line numbers.
+func (a *App) NotebookMarks(filePath string) ([]NotebookMark, error) {
+	if a.learnStore == nil {
+		return nil, errors.New("no collection open")
+	}
+	out := []NotebookMark{}
+	pf, _ := content.ParseFile(filePath, a.registry)
+	if pf == nil {
+		return out, nil
+	}
+	// Ask for exactly the ids this file contains. A node id is
+	// "<path>:<chapter>:id:<short>" and a colon is legal in a filename, so a
+	// prefix range over extract_node_id could match a different file entirely.
+	var ids []string
+	for _, ch := range pf.Chapters {
+		for _, n := range ch.Nodes {
+			if n.ID != "" {
+				ids = append(ids, n.ID)
+			}
+		}
+	}
+	if len(ids) == 0 {
+		return out, nil
+	}
+	byNode, err := a.learnStore.NotebooksForNodes(ids)
+	if err != nil {
+		return nil, err
+	}
+	for _, ch := range pf.Chapters {
+		for _, n := range ch.Nodes {
+			if n.ID == "" {
+				continue
+			}
+			if nbID, ok := byNode[n.ID]; ok {
+				out = append(out, NotebookMark{Line: n.Line, NotebookID: nbID})
+			}
+		}
+	}
+	return out, nil
 }
 
 // GetNotebookLinks resolves this file's links to line marks by re-parsing and

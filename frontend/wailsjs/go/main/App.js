@@ -198,6 +198,10 @@ export function ListSkills() {
   return window['go']['main']['App']['ListSkills']();
 }
 
+export function NotebookMarks(arg1) {
+  return window['go']['main']['App']['NotebookMarks'](arg1);
+}
+
 export function OpenCollection(arg1) {
   return window['go']['main']['App']['OpenCollection'](arg1);
 }

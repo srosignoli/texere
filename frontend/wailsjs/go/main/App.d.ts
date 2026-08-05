@@ -107,6 +107,8 @@ export function ListShells():Promise<Array<shell.Shell>>;
 
 export function ListSkills():Promise<Array<skills.Skill>>;
 
+export function NotebookMarks(arg1:string):Promise<Array<main.NotebookMark>>;
+
 export function OpenCollection(arg1:string):Promise<Array<content.ChapterSummary>>;
 
 export function OpenNotebook(arg1:string):Promise<main.NotebookView>;
