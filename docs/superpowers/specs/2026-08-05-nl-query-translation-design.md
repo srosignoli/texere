@@ -90,10 +90,10 @@ Three pure functions, all testable under `node --test` — which matters because
 this repo has no Svelte component harness, so logic left in a `.svelte` file has
 no tests at all.
 
-- **`buildQueryPrompt()`** → the system prompt, rendered from `DIRECTIVES`,
-  `MATCHING` and `COMBINING`. Each directive contributes its token, aliases,
-  argument shape, summary and example. It ends with the output contract: emit
-  the query string and nothing else.
+- **`buildQueryPrompt(hints)`** → the system prompt, rendered from `DIRECTIVES`,
+  `MATCHING`, `COMBINING`, the worked `EXAMPLES` below, and `hints` — the user's
+  real chapter, context and arrow names. Ends with the output contract: emit the
+  query string and nothing else.
 - **`stripToQuery(raw)`** → the model's reply reduced to a bare query. Models
   routinely wrap output in code fences or add a sentence of explanation despite
   instructions; this removes fences, surrounding backticks, a leading
@@ -102,6 +102,61 @@ no tests at all.
 - **`validateQuery(text)`** → `{ ok, unknown: string[] }`. Every `\token` in the
   text is checked against the canonical tokens and aliases in `DIRECTIVES`.
   Unknown ones are returned for the refusal message.
+- **`EXAMPLES`** → the worked question→query pairs (below).
+
+### Why a grammar reference alone is not enough
+
+`DIRECTIVES` describes each directive in isolation. That teaches the *grammar*
+but never demonstrates the *task* — a question arriving as prose and a query
+leaving as one line. Two things close that gap, and the second matters more.
+
+**Worked examples.** A short `EXAMPLES` list of question→query pairs, drawn from
+upstream's `search_examples.md` and filtered to the vocabulary texere executes:
+
+| question | query |
+|---|---|
+| what do my notes say about fish soup? | `"fish soup"` |
+| recipes with fish and soup in my food chapter | `recipe fish soup \chapter food` |
+| show me everything in the astronomy chapter | `\notes \chapter astronomy` |
+| how do I get from start to port? | `\from start \to port` |
+| what leads to the port node? | `\to port` |
+| what steps make up the tutorial? | `\sequence \chapter Tutorial` |
+| which arrows mean succeed? | `\arrow succeed` |
+| notes tagged elevator in the chinese language chapter | `\notes \chapter "chinese language" \context elevator` |
+| anything about brain but not notes | `brain&!notes` |
+| terms starting with flo | `flo:*` |
+| the exact word cat, not cats | `!cat!` |
+| things near Newton, two hops out | `newton \radius 2` |
+
+**Every example is pinned by a test**: each query must pass `validateQuery`. An
+example teaching syntax we do not execute would be worse than no example at all,
+and this is the one guarantee that cannot rot quietly.
+
+That test checks **vocabulary, not arity** — it would not catch an example
+passing an argument to a flag that takes none. Two drafts of this table did
+exactly that (`\sequence "create a pod"`, where `\sequence` is declared
+`valueKind: 'none'`; and a multi-word `|deep purple|`, where `MATCHING` declares
+`|…|` as wrapping a *word*). Both were corrected against `DIRECTIVES` by hand.
+Anyone editing this table must check the argument shape in `query-grammar.js`,
+not just that the directive exists.
+
+**The user's real vocabulary, which is the bigger lever.** Examples teach shape;
+they cannot tell the model that this collection has a chapter called
+`Incremental learning - SuperMemo Help` and no chapter called `physics`. Without
+that, `\chapter physics` is a plausible-looking guess that returns nothing — and
+"the query looked right but found nothing" is exactly the failure this feature
+would otherwise produce most often.
+
+The app already fetches these: the `queryHints` store
+(`frontend/src/stores/queryHints.js`) holds `{ chapter, context, arrow }`, the
+user's real values, populated from `ListChapters` / `ListContextTags` /
+`ListArrowCodes` for the autocomplete. `buildQueryPrompt` takes that snapshot and
+lists them, instructing the model to prefer an existing name over inventing one.
+
+The lists are unbounded, so each is **capped at 40 entries** in the prompt. When
+truncated the prompt says so explicitly — otherwise the model would infer that an
+unlisted chapter does not exist and avoid a perfectly good one. Empty lists (no
+graph built yet) are omitted rather than rendered as an empty heading.
 
 ### Backend — the translation binding
 
@@ -147,7 +202,7 @@ Changing it calls `SetQueryLLMProfile`, so the choice survives a restart.
 Pressing the button:
 
 1. captures the current text as the question,
-2. calls `TranslateQuery(selectedProfileId, question, buildQueryPrompt())`,
+2. calls `TranslateQuery(selectedProfileId, question, buildQueryPrompt($queryHints))`,
 3. runs `stripToQuery` then `validateQuery` on the reply,
 4. on success replaces the input text with the query, leaving it unrun and
    focused; on failure shows the refusal with `Retry` and `Use anyway`.
@@ -166,6 +221,12 @@ Nothing else about search changes. Enter still runs the literal text.
 - **Generated queries can be wrong while valid.** Validation checks vocabulary,
   not intent — `\chapter physics` when you meant `\context physics` passes. This
   is why the query is shown and not run.
+- **Quality degrades before the graph is built.** With no `sst_data`, the hint
+  lists are empty and the model has only the examples to work from, so it will
+  guess names. Acceptable: graph search does not work then either.
+- **The prompt grows with the collection.** Bounded by the 40-per-list cap, but a
+  collection with hundreds of context tags gives the model a partial view. The
+  cap is a starting point, not a tuned value.
 - **Quality depends on the profile you pick.** A small local model will produce
   worse queries than a frontier one, and the same button will feel different on
   each — which is the reason the choice is yours and is remembered.
@@ -183,6 +244,11 @@ tested through the component:
 - `buildQueryPrompt` mentions every token in `DIRECTIVES` and no token outside
   it. This is the test that pins "only what texere executes": adding `\dna` to
   the prompt by hand would fail it.
+- **Every query in `EXAMPLES` passes `validateQuery`.** This is the test that
+  stops a worked example from teaching unsupported syntax.
+- `buildQueryPrompt` includes the chapter, context and arrow names it is given;
+  caps each list at 40 and says so when it truncates; and omits a list entirely
+  when empty rather than emitting a bare heading.
 - `stripToQuery` unwraps a fenced block, a fenced block with a language tag,
   surrounding backticks, a `Query:` prefix, and leading/trailing whitespace; and
   leaves a bare query untouched.
