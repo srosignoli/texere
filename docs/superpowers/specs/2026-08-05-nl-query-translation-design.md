@@ -110,35 +110,76 @@ no tests at all.
 but never demonstrates the *task* — a question arriving as prose and a query
 leaving as one line. Two things close that gap, and the second matters more.
 
-**Worked examples.** A short `EXAMPLES` list of question→query pairs, drawn from
-upstream's `search_examples.md` and filtered to the vocabulary texere executes:
+**Worked examples, verified against a real corpus.** `EXAMPLES` is a list of
+question→query pairs, and **a test runs every one of them against a graph built
+from real upstream N4L files and asserts it returns results**. An example that
+returns nothing teaches the model to produce queries that return nothing, which
+is the failure this feature would otherwise produce most often.
 
-| question | query |
-|---|---|
-| what do my notes say about fish soup? | `"fish soup"` |
-| recipes with fish and soup in my food chapter | `recipe fish soup \chapter food` |
-| show me everything in the astronomy chapter | `\notes \chapter astronomy` |
-| how do I get from start to port? | `\from start \to port` |
-| what leads to the port node? | `\to port` |
-| what steps make up the tutorial? | `\sequence \chapter Tutorial` |
-| which arrows mean succeed? | `\arrow succeed` |
-| notes tagged elevator in the chinese language chapter | `\notes \chapter "chinese language" \context elevator` |
-| anything about brain but not notes | `brain&!notes` |
-| terms starting with flo | `flo:*` |
-| the exact word cat, not cats | `!cat!` |
-| things near Newton, two hops out | `newton \radius 2` |
+The corpus is six files copied from `sstorytime-kv/examples` into
+`internal/search/testdata/corpus/` (~333KB, builds in under a second), chosen for
+domain spread rather than size:
 
-**Every example is pinned by a test**: each query must pass `validateQuery`. An
-example teaching syntax we do not execute would be worse than no example at all,
-and this is the one guarantee that cannot rot quietly.
+| file | size | domain | exercises |
+|---|---|---|---|
+| `NDA.n4l` | 173K | legal | large flat text |
+| `chinese.n4l` | 143K | language | CJK, phrases |
+| `kubernetes.n4l` | 6.2K | ops | chapter + context |
+| `brains.n4l` | 4.5K | science | contexts, `\notes` |
+| `music-catalogue.n4l` | 3.6K | catalogue | properties |
+| `doors.n4l` | 2K | physics | paths, cones |
 
-That test checks **vocabulary, not arity** — it would not catch an example
-passing an argument to a flag that takes none. Two drafts of this table did
-exactly that (`\sequence "create a pod"`, where `\sequence` is declared
-`valueKind: 'none'`; and a multi-word `|deep purple|`, where `MATCHING` declares
-`|…|` as wrapping a *word*). Both were corrected against `DIRECTIVES` by hand.
-Anyone editing this table must check the argument shape in `query-grammar.js`,
-not just that the directive exists.
+`MobyDickNotes.n4l` (1.8M) and `Darwin.n4l` (1.6M) were verified to build and
+query correctly (4.4s, 14288 nodes) but are excluded: 3.4MB of repo weight and
+4.4s on every suite run, for no query coverage the six above do not already give.
+
+The registry comes from upstream `SSTconfig` via `content.LoadRegistry` — 563
+arrows, no hand-built stubs.
+
+**The verified table** — every row was run against this corpus and returned what
+is shown:
+
+| question | query | returns |
+|---|---|---|
+| what do my notes say about pods? | `pod` | 5 nodes |
+| pods in the kubernetes chapter | `pod \chapter Kubernetes` | 5 nodes |
+| everything in the neuroscience chapter | `\notes \chapter neuroscience` | 1 note |
+| brain waves in the oscillations context | `waves \context oscillations` | 5 nodes |
+| which context tags mention oscillations | `\context oscillations` | 2 listings |
+| memory notes in neuroscience | `\notes \chapter neuroscience \context memory` | 1 note |
+| how do I get from start to target 1? | `\from start \to target 1` | 30 chains |
+| what does door lead to? | `\from door` | 17 chains |
+| the exact phrase thank you | `"thank you"` | 8 nodes |
+| brain but not wave | `brain&!wave` | 5 nodes |
+| terms starting with neuro | `neuro:*` | 1 node |
+| the exact word pod, not pods | `!pod!` | 1 node |
+| what chapters are there? | `\chapter any` | 5 listings |
+| what arrows are defined? | `\arrow any` | 591 listings |
+| things near pod, one hop out | `pod \radius 1` | 5 nodes |
+
+That covers all four routes — node search, listing, notes, structural — and the
+`&`/`!`/`:*`/`!x!`/phrase operators.
+
+**Three things this verification already caught**, which is the argument for
+doing it at all:
+
+- `\sequence` has **no working example on this corpus**. `\sequence`,
+  `\sequence \chapter NDA` and `\sequence \context NDA` all return nothing,
+  despite `NDA.n4l` carrying a `:: _sequence_ , NDA::` context. Until an example
+  is found that returns chains, **`\sequence` is described in the prompt but not
+  demonstrated** — and the implementation task must either add
+  `testdata/sequence.n4l` (which the existing suite already uses) to the corpus
+  and find a working example, or record the gap.
+- **A quoted multi-word context tag matches nothing.** `\context oscillations`
+  works; `\context "brain waves"` returns nothing. The prompt must not teach the
+  quoted-multi-word form for `\context`.
+- Earlier drafts of this table used `\chapter astronomy` and `\sequence "create
+  a pod"`. Neither exists in the corpus; both would have shipped as confident
+  nonsense.
+
+**The examples teach shape, not content.** They are proven against the corpus,
+which is not the user's collection — `\chapter Kubernetes` is a demonstration of
+form. The real names come from the next section.
 
 **The user's real vocabulary, which is the bigger lever.** Examples teach shape;
 they cannot tell the model that this collection has a chapter called
@@ -244,8 +285,9 @@ tested through the component:
 - `buildQueryPrompt` mentions every token in `DIRECTIVES` and no token outside
   it. This is the test that pins "only what texere executes": adding `\dna` to
   the prompt by hand would fail it.
-- **Every query in `EXAMPLES` passes `validateQuery`.** This is the test that
-  stops a worked example from teaching unsupported syntax.
+- **Every query in `EXAMPLES` passes `validateQuery`.** Stops a worked example
+  teaching unsupported *syntax*. Note it checks vocabulary, not arity — it would
+  not catch an argument passed to a flag declared `valueKind: 'none'`.
 - `buildQueryPrompt` includes the chapter, context and arrow names it is given;
   caps each list at 40 and says so when it truncates; and omits a list entirely
   when empty rather than emitting a bare heading.
@@ -255,6 +297,24 @@ tested through the component:
 - `validateQuery` accepts every canonical token and every alias; rejects `\dna`,
   `\theme`, `\bookmarks`; reports multiple unknowns; and treats a query with no
   directives at all as valid (plain text is a legal query).
+
+**Go integration (`internal/search`)** — the load-bearing test, and the reason
+the examples can be trusted:
+
+- Build a graph from `testdata/corpus/` with the upstream `SSTconfig` registry,
+  once per run (~0.9s), then run **every query in `EXAMPLES`** and assert each
+  returns a non-empty result of the expected kind (nodes / listings / notes /
+  structural). An example that stops returning results — because the corpus
+  changed, the library was upgraded, or a route regressed — fails here rather
+  than silently degrading the prompt.
+- The examples live in `query-prompt.js` (JS) and the assertion runs in Go, so
+  the two must be kept in step. The Go test reads the JS list rather than
+  duplicating it; a duplicated copy would drift, which is the failure this whole
+  design is organised against.
+- Assert the build itself succeeds and record `UnknownArrows` as informational.
+  The corpus legitimately references arrows absent from `SSTconfig`
+  (`extract-fr`, `has-frag`, `consists of`), which produce parse errors without
+  blocking ingestion — failing on them would make the test hostage to upstream.
 
 **Go unit** — `TranslateQuery` returns the accumulated text from a stubbed
 provider; surfaces the provider's error; and returns the existing "no LLM
