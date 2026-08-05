@@ -85,8 +85,10 @@
   // leaves the gutter marking lines those nodes no longer occupy. Keeping the
   // pair in one call is what stops the next reload path from remembering half.
   async function refreshFileState(path) {
-    await refreshDots(path)
-    await loadSpans(path)
+    // Concurrent, not sequential: the two fetches are independent, and chaining
+    // them doubled the delay before the overlay settled after every load, save,
+    // reload and Vim toggle.
+    await Promise.all([refreshDots(path), loadSpans(path)])
   }
 
   async function loadSpans(path) {
@@ -436,7 +438,14 @@
     // whole session, which is exactly the reported symptom: process an extract,
     // come back here, and the dot never appears.
     cancelNotebooksChanged = EventsOn('notebook:changed', () => {
-      if (loadedFilePath) refreshDots(loadedFilePath)
+      if (!loadedFilePath) return
+      refreshDots(loadedFilePath)
+      // The overlay may already be focused on the very node whose notebook was
+      // just created. Re-resolve so it appears now rather than on the next caret
+      // move — otherwise the dot arrives while the pane stays stubbornly empty.
+      if (armed && view) {
+        resolveCaret(view.state.doc.lineAt(view.state.selection.main.head).number, true)
+      }
     })
 
     try {
