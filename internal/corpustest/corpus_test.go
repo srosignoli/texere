@@ -98,3 +98,54 @@ func TestCorpusToleratesUnknownArrows(t *testing.T) {
 		t.Fatal(`"pod" returned nothing; ingestion is broken despite unknown arrows`)
 	}
 }
+
+// Every query the prompt teaches must return something on the corpus. The
+// expected kind is asserted too: a query that starts returning listings where
+// it used to return nodes has changed meaning, and the prompt's question would
+// no longer describe it.
+func TestQueryExamplesReturnResults(t *testing.T) {
+	svc := corpus(t)
+	const (
+		nodes = "nodes"
+		list  = "listings"
+		notes = "notes"
+		chain = "structural"
+	)
+	for _, tc := range []struct{ query, want string }{
+		{"pod", nodes},
+		{`pod \chapter Kubernetes`, nodes},
+		{`\notes \chapter neuroscience`, notes},
+		{`waves \context oscillations`, nodes},
+		{`\context oscillations`, list},
+		{`\notes \chapter neuroscience \context memory`, notes},
+		{`\from start \to target 1`, chain},
+		{`\from door`, chain},
+		{`"thank you"`, nodes},
+		{`brain&!wave`, nodes},
+		{`neuro:*`, nodes},
+		{`!pod!`, nodes},
+		{`\chapter any`, list},
+		{`\arrow any`, list},
+		{`pod \radius 1`, nodes},
+		{`\story Mary`, chain},
+		{`\sequence \chapter astronomy`, chain},
+		{`\story any`, chain},
+		{`\notes \context "differentiate under integral"`, notes},
+	} {
+		t.Run(tc.query, func(t *testing.T) {
+			res, err := svc.Search(tc.query)
+			if err != nil {
+				t.Fatalf("search: %v", err)
+			}
+			got := map[string]int{
+				nodes: len(res.Nodes), list: len(res.Listings),
+				notes: len(res.Notes), chain: len(res.Structural),
+			}
+			if got[tc.want] == 0 {
+				t.Fatalf("expected %s, got nodes=%d listings=%d notes=%d structural=%d — "+
+					"this example teaches the model a query that returns nothing",
+					tc.want, got[nodes], got[list], got[notes], got[chain])
+			}
+		})
+	}
+}

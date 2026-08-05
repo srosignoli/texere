@@ -190,6 +190,10 @@ export function ListMediaProviders() {
   return window['go']['main']['App']['ListMediaProviders']();
 }
 
+export function ListQueryExamples() {
+  return window['go']['main']['App']['ListQueryExamples']();
+}
+
 export function ListShells() {
   return window['go']['main']['App']['ListShells']();
 }

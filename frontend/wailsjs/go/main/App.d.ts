@@ -103,6 +103,8 @@ export function ListLanguages():Promise<Array<mediasearch.Language>>;
 
 export function ListMediaProviders():Promise<Array<main.ProviderInfo>>;
 
+export function ListQueryExamples():Promise<Array<main.QueryExample>>;
+
 export function ListShells():Promise<Array<shell.Shell>>;
 
 export function ListSkills():Promise<Array<skills.Skill>>;
