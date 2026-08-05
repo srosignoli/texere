@@ -9,8 +9,9 @@
   import { get } from 'svelte/store'
   import { workbenchStore, filteredNodes } from '../stores/workbench.js'
   import { n4lBaseExtensions, pushRecentArrow, notebookDotsGutter, applyDots } from '../lib/n4l-editor.js'
-  import { SaveFile, GetFileContent, GetRecentArrows, UpdateRecentArrows, NotebookMarks } from '../../wailsjs/go/main/App'
+  import { SaveFile, GetFileContent, GetRecentArrows, UpdateRecentArrows, NotebookMarks, FileNodeSpans, PeekNotebook } from '../../wailsjs/go/main/App'
   import { EventsOn } from '../../wailsjs/runtime/runtime'
+  import { nodeIdAtLine } from '../lib/node-span.js'
   import NotebookPane from './notebook/NotebookPane.svelte'
 
   const dispatch = createEventDispatcher()
@@ -49,6 +50,49 @@
   function closeReopen() { reopenId = null }
   function resumeReopen() { reopenReadOnly = false }
 
+  // Caret -> node -> notebook, for the read-only overlay. Same approach as
+  // ProcessView: fetch the line map once per file and resolve locally, because
+  // caret movement is constant and a round trip per keystroke would be a stream
+  // of work for a read that changes nothing.
+  let spans = []
+  let caretLine = 0
+  let focusedId = null
+  let focusedNb = null      // NotebookView for focusedId, or null when it has none
+  let focusedNbFor = null   // which id focusedNb describes, so a stale reply loses
+  let caretTimer = null
+  let lastCaretLine = 0
+
+  async function loadSpans(path) {
+    if (!path) return
+    try { spans = await FileNodeSpans(path) } catch { spans = [] }
+    if (caretLine) await resolveCaret(caretLine)
+  }
+
+  async function resolveCaret(line) {
+    caretLine = line
+    const id = spans.length ? nodeIdAtLine(spans, line) : null
+    if (id === focusedId) return
+    focusedId = id
+    // Moving to a different node drops back to read-only: "Resume (edit)" was
+    // granted for the notebook you were looking at, not the next one.
+    reopenReadOnly = true
+    if (!id) { focusedNb = null; focusedNbFor = null; return }
+    try {
+      const v = await PeekNotebook(id)
+      if (focusedId !== id) return   // a slower reply for a node we have left
+      focusedNb = v
+      focusedNbFor = id
+    } catch { focusedNb = null; focusedNbFor = null }
+  }
+
+  function reportCaret(v) {
+    const line = v.state.doc.lineAt(v.state.selection.main.head).number
+    if (line === lastCaretLine) return
+    lastCaretLine = line
+    clearTimeout(caretTimer)
+    caretTimer = setTimeout(() => resolveCaret(line), 150)
+  }
+
   // Keep mutable refs that the CM6 completion source can close over
   let arrowDefsRef = []
   let recentCodesRef = []
@@ -79,6 +123,7 @@
           setContent(text ?? '')
           workbenchStore.update((s) => ({ ...s, isDirty: false }))
           refreshDots(loadedFilePath)
+          loadSpans(loadedFilePath)
           // Case A: navigateToLine() already set pendingScrollLine; honour
           // the scroll synchronously after content lands and sync the local
           // _scrollNonce so the Case B reactive doesn't double-fire on the
@@ -242,6 +287,7 @@
       if (result?.finalContent) {
         setContent(result.finalContent)  // setContent also updates savedContent — fine
       }
+      await loadSpans(loadedFilePath)   // a save can shift every line below an edit
       dispatch('saved', { injections: result?.injections ?? [] })
     } catch (e) {
       console.error('SaveFile failed:', e)
@@ -293,6 +339,9 @@
             workbenchStore.update((s) => ({ ...s, editorCursorLine: line }))
           }
         }),
+        EditorView.updateListener.of((u) => {
+          if (u.selectionSet || u.docChanged) reportCaret(u.view)
+        }),
       ],
     })
   }
@@ -303,8 +352,10 @@
     view.destroy()
     const state = EditorState.create({ doc, extensions: buildExtensions() })
     view = new EditorView({ state, parent: container })
+    reportCaret(view)
     view.focus()
     refreshDots(loadedFilePath)
+    loadSpans(loadedFilePath)
   }
 
   // Called by arrowCompletion when a completion is applied — updates LRU list
@@ -319,6 +370,7 @@
       extensions: buildExtensions(),
     })
     view = new EditorView({ state: startState, parent: container })
+    reportCaret(view)
     editorAPI.set({ triggerSave, triggerUndo, insertAtCursor, insertAtLineEnd, openArrowPicker })
 
     cancelLinksChanged = EventsOn('notebook:links-changed', (p) => {
@@ -336,6 +388,7 @@
   onDestroy(() => {
     editorAPI.set(null)
     cancelLinksChanged?.()
+    clearTimeout(caretTimer)
     view?.destroy()
   })
 </script>
