@@ -65,7 +65,15 @@
   async function loadSpans(path) {
     if (!path) return
     try { spans = await FileNodeSpans(path) } catch { spans = [] }
-    if (caretLine) await resolveCaret(caretLine)
+    if (!view) return
+    // Resolve from the view's ACTUAL caret, not the last reported line.
+    // setContent (every save) and rebuildEditor both reset the caret to the top,
+    // and reportCaret's debounce has not fired yet — so caretLine is stale here
+    // and would briefly resolve the node the caret just left.
+    const line = view.state.doc.lineAt(view.state.selection.main.head).number
+    lastCaretLine = line
+    clearTimeout(caretTimer)
+    await resolveCaret(line)
   }
 
   async function resolveCaret(line) {
@@ -191,6 +199,7 @@
       .then((text) => {
         setContent(text ?? '')
         workbenchStore.update((s) => ({ ...s, isDirty: false }))
+        loadSpans(openFilePath)   // ids were just injected — the map is stale
       })
       .catch((e) => console.error('silent reload after # @id injection failed:', e))
   }
@@ -302,6 +311,7 @@
       const text = await GetFileContent(openFilePath)
       setContent(text)
       workbenchStore.update((s) => ({ ...s, externalModification: null, isDirty: false }))
+      loadSpans(openFilePath)   // the file changed on disk; line numbers moved
       externalBanner = null
     } catch (e) {
       console.error('GetFileContent reload failed:', e)
