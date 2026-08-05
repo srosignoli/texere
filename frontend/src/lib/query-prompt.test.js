@@ -1,0 +1,71 @@
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { DIRECTIVES } from './query-grammar.js'
+import { buildQueryPrompt, stripToQuery, validateQuery } from './query-prompt.js'
+
+const EX = [{ question: 'what about pods?', query: 'pod' }]
+const HINTS = { chapter: ['Kubernetes notes'], context: ['pods'], arrow: ['leadsto'] }
+
+test('the prompt teaches every directive we execute', () => {
+  const p = buildQueryPrompt(EX, HINTS)
+  for (const d of DIRECTIVES) assert.ok(p.includes(d.token), `missing ${d.token}`)
+})
+
+// The whole point of confining the model: upstream syntax we do not route must
+// never appear, or it emits queries that parse, return nothing, and look
+// exactly like "no results".
+test('the prompt never mentions syntax texere cannot execute', () => {
+  const p = buildQueryPrompt(EX, HINTS)
+  for (const bad of ['\\theme', '\\bookmarks', '\\dna', '\\terms', '\\concepts']) {
+    assert.ok(!p.includes(bad), `prompt leaks ${bad}`)
+  }
+})
+
+test('the prompt carries the examples and the live vocabulary', () => {
+  const p = buildQueryPrompt(EX, HINTS)
+  assert.ok(p.includes('what about pods?'))
+  assert.ok(p.includes('Kubernetes notes'))
+  assert.ok(p.includes('pods'))
+  assert.ok(p.includes('leadsto'))
+})
+
+test('long hint lists are capped and the truncation is stated', () => {
+  const many = Array.from({ length: 100 }, (_, i) => `chapter-${i}`)
+  const p = buildQueryPrompt(EX, { chapter: many, context: [], arrow: [] })
+  assert.ok(p.includes('chapter-0'))
+  assert.ok(!p.includes('chapter-99'), 'list was not capped')
+  assert.match(p, /some of/i, 'truncation must be stated or the model infers the rest do not exist')
+})
+
+test('empty hint lists are omitted, not rendered as bare headings', () => {
+  const p = buildQueryPrompt(EX, { chapter: [], context: [], arrow: [] })
+  assert.ok(!/chapters:\s*\n\s*\n/i.test(p))
+})
+
+test('stripToQuery unwraps what models actually return', () => {
+  assert.equal(stripToQuery('pod \\chapter Kubernetes'), 'pod \\chapter Kubernetes')
+  assert.equal(stripToQuery('```\npod\n```'), 'pod')
+  assert.equal(stripToQuery('```text\npod\n```'), 'pod')
+  assert.equal(stripToQuery('`pod`'), 'pod')
+  assert.equal(stripToQuery('Query: pod'), 'pod')
+  assert.equal(stripToQuery('   pod   \n'), 'pod')
+})
+
+test('validateQuery accepts every canonical token and alias', () => {
+  for (const d of DIRECTIVES) {
+    assert.ok(validateQuery(`${d.token} x`).ok, `rejected ${d.token}`)
+    for (const a of d.aliases) assert.ok(validateQuery(`${a} x`).ok, `rejected alias ${a}`)
+  }
+})
+
+test('validateQuery rejects upstream-only directives and names them', () => {
+  const r = validateQuery('\\dna \\chapter NDA')
+  assert.equal(r.ok, false)
+  assert.deepEqual(r.unknown, ['\\dna'])
+  assert.deepEqual(validateQuery('\\theme dark \\bookmarks').unknown, ['\\theme', '\\bookmarks'])
+})
+
+test('a query with no directives at all is valid', () => {
+  assert.ok(validateQuery('recipe fish soup').ok)
+  assert.ok(validateQuery('"thank you"').ok)
+})
