@@ -85,6 +85,7 @@ collection/
 # Exception: test fixtures are source code
 !internal/content/testdata/*.n4l
 !internal/search/testdata/*.n4l
+!internal/search/testdata/corpus/*.n4l
 
 # ── OS artifacts ──────────────────────────────────────────────────────────────
 .DS_Store
