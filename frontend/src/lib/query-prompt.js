@@ -84,9 +84,19 @@ export function stripToQuery(raw) {
 
 // Checks vocabulary, not arity: it will not catch an argument passed to a flag
 // that takes none. It exists to stop upstream-only syntax reaching the bar.
+//
+// Backslashes inside a quoted phrase are skipped. A directive is never inside
+// quotes, and search text legitimately contains them — integral.n4l in the
+// corpus holds `"Evaluate \(I(\nu) = \int_0^\infty\)"`, which would otherwise be
+// refused with \nu and \int reported as unknown directives. Refusing a working
+// query is worse than letting an odd token through: a bad query costs a retry,
+// a false refusal blocks the user and tells them something untrue.
 export function validateQuery(text) {
+  const s = String(text ?? '')
+  // Blank out double-quoted spans, preserving length so nothing else shifts.
+  const outsideQuotes = s.replace(/"[^"]*"/g, (m) => ' '.repeat(m.length))
   const unknown = []
-  for (const m of String(text ?? '').matchAll(/\\[a-zA-Z]+/g)) {
+  for (const m of outsideQuotes.matchAll(/\\[a-zA-Z]+/g)) {
     if (!KNOWN.has(m[0]) && !unknown.includes(m[0])) unknown.push(m[0])
   }
   return { ok: unknown.length === 0, unknown }

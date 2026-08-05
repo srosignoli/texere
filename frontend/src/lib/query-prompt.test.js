@@ -69,3 +69,19 @@ test('a query with no directives at all is valid', () => {
   assert.ok(validateQuery('recipe fish soup').ok)
   assert.ok(validateQuery('"thank you"').ok)
 })
+
+// integral.n4l in the corpus contains exactly this. Refusing it would block a
+// working query and blame LaTeX for being a directive.
+test('backslashes inside a quoted phrase are not directives', () => {
+  const r = validateQuery('"Evaluate \\(I(\\nu) = \\int_0^\\infty\\)"')
+  assert.ok(r.ok, `falsely refused: ${JSON.stringify(r.unknown)}`)
+})
+
+test('an unsupported directive is still caught outside quotes', () => {
+  assert.deepEqual(validateQuery('\\dna \\chapter "a \\nu b"').unknown, ['\\dna'])
+})
+
+test('a directive before a quoted phrase is still validated', () => {
+  assert.ok(validateQuery('\\notes \\context "differentiate under integral"').ok)
+  assert.deepEqual(validateQuery('\\theme dark "quoted \\dna"').unknown, ['\\theme'])
+})
