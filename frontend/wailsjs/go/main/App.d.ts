@@ -61,6 +61,8 @@ export function GetNotebook(arg1:string):Promise<main.NotebookView>;
 
 export function GetNotebookLinks(arg1:string):Promise<Array<main.NotebookLinkMark>>;
 
+export function GetQueryLLMProfile():Promise<string>;
+
 export function GetReadingList():Promise<Array<main.ReadingView>>;
 
 export function GetRecentArrows():Promise<Array<string>>;
@@ -153,6 +155,8 @@ export function SetActiveProfile(arg1:string):Promise<void>;
 
 export function SetActiveSTTProfile(arg1:string):Promise<void>;
 
+export function SetQueryLLMProfile(arg1:string):Promise<void>;
+
 export function SetReadingProjLen(arg1:string,arg2:number):Promise<void>;
 
 export function SkillsDir():Promise<string>;
@@ -166,6 +170,8 @@ export function SyncStudyItems():Promise<learning.SyncResult>;
 export function TestLLMProfile(arg1:string):Promise<void>;
 
 export function TranscribeAudio(arg1:string,arg2:string):Promise<string>;
+
+export function TranslateQuery(arg1:string,arg2:string,arg3:string):Promise<string>;
 
 export function UpdateReadingProgress(arg1:string,arg2:string):Promise<void>;
 

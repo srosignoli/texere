@@ -106,6 +106,10 @@ export function GetNotebookLinks(arg1) {
   return window['go']['main']['App']['GetNotebookLinks'](arg1);
 }
 
+export function GetQueryLLMProfile() {
+  return window['go']['main']['App']['GetQueryLLMProfile']();
+}
+
 export function GetReadingList() {
   return window['go']['main']['App']['GetReadingList']();
 }
@@ -290,6 +294,10 @@ export function SetActiveSTTProfile(arg1) {
   return window['go']['main']['App']['SetActiveSTTProfile'](arg1);
 }
 
+export function SetQueryLLMProfile(arg1) {
+  return window['go']['main']['App']['SetQueryLLMProfile'](arg1);
+}
+
 export function SetReadingProjLen(arg1, arg2) {
   return window['go']['main']['App']['SetReadingProjLen'](arg1, arg2);
 }
@@ -316,6 +324,10 @@ export function TestLLMProfile(arg1) {
 
 export function TranscribeAudio(arg1, arg2) {
   return window['go']['main']['App']['TranscribeAudio'](arg1, arg2);
+}
+
+export function TranslateQuery(arg1, arg2, arg3) {
+  return window['go']['main']['App']['TranslateQuery'](arg1, arg2, arg3);
 }
 
 export function UpdateReadingProgress(arg1, arg2) {

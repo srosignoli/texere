@@ -24,6 +24,11 @@ type AppConfig struct {
 	RecentArrows  []string  `json:"recentArrows"`  // LRU list of arrow codes; max 10 entries
 	LLM           LLMConfig `json:"llm"`
 	STT           LLMConfig `json:"stt"`
+	// QueryLLMProfileID selects which LLM profile translates a natural-language
+	// question into a graph query. Empty means "the active profile". It lives on
+	// AppConfig rather than LLMConfig because LLMConfig is reused verbatim for
+	// STT, where this would be meaningless.
+	QueryLLMProfileID string `json:"queryLlmProfileId"`
 }
 
 // SaveFileResult is returned by the SaveFile Wails-bound method.
