@@ -7,9 +7,10 @@
 ## Summary
 
 In graph mode, an optional button turns the text you have typed into a
-searchN4L query using the LLM profile already configured for the LLM cell. The
-generated query is written **into the query bar, not executed** — you read it,
-edit it, and run it yourself.
+searchN4L query. It draws on the same LLM profiles the LLM cell uses, and you
+pick which of them translates — a choice that persists. The generated query is
+written **into the query bar, not executed** — you read it, edit it, and run it
+yourself.
 
 Translation is never automatic. Enter always runs the literal text as a query,
 exactly as today. The button is the only trigger, and it is not rendered at all
@@ -72,9 +73,14 @@ Surveyed before designing:
 - **One-shot, not streamed.** The answer is one line. The backend accumulates
   the provider stream and returns the finished string rather than making the
   frontend reassemble deltas for a single value.
-- **No new configuration.** It reuses the LLM cell's profiles and active
-  profile. Rejected: a separate profile for search, which doubles the settings
-  surface for no benefit.
+- **You choose which model translates, and the choice sticks.** The profile
+  *set* is shared with the LLM cell — no second place to configure providers —
+  but which of them handles translation is its own persisted preference,
+  defaulting to the active profile. Translating a query is a narrow, repetitive
+  task that a small fast model often does well, while the LLM cell may want a
+  stronger one; forcing both through one profile makes that choice impossible.
+  Rejected: a separate provider configuration for search, which would double the
+  settings surface rather than just the selection.
 
 ## Architecture
 
@@ -97,7 +103,7 @@ no tests at all.
   text is checked against the canonical tokens and aliases in `DIRECTIVES`.
   Unknown ones are returned for the refusal message.
 
-### Backend — one new binding
+### Backend — the translation binding
 
 **`TranslateQuery(profileID, question, system string) (string, error)`** in a
 new `search_llm_methods.go`.
@@ -112,13 +118,36 @@ The system prompt is passed **in** rather than built in Go, so the grammar has
 exactly one home. The alternative — duplicating `DIRECTIVES` into Go — is the
 drift this design exists to avoid.
 
+### Backend — remembering the chosen model
+
+`AppConfig` (`app.go:22`) is JSON at `os.UserConfigDir()/texere/config.json`, so
+a new field costs nothing and is backward compatible — absent means empty means
+"use the active profile".
+
+```go
+QueryLLMProfileID string `json:"queryLlmProfileId"`
+```
+
+It goes on `AppConfig` rather than on `LLMConfig`, because `LLMConfig` is reused
+verbatim for `STT` (`app.go:26`) where a query-translation profile would be
+meaningless.
+
+Two thin bindings: **`GetQueryLLMProfile() string`** and
+**`SetQueryLLMProfile(id string) error`**. The id is passed straight to
+`TranslateQuery`, and `providerFor` already treats `""` as "the active profile"
+(`llm_methods.go:68-70`), so the default needs no special case anywhere.
+
 ### `OmniBar.svelte`
 
 In graph mode only, and only when `profiles.length > 0`, a button sits at the
-right of the input. Pressing it:
+right of the input, with a small profile `<select>` beside it — the same shape
+`LLMCell.svelte:184` already uses, where a blank option means "active profile".
+Changing it calls `SetQueryLLMProfile`, so the choice survives a restart.
+
+Pressing the button:
 
 1. captures the current text as the question,
-2. calls `TranslateQuery('', question, buildQueryPrompt())`,
+2. calls `TranslateQuery(selectedProfileId, question, buildQueryPrompt())`,
 3. runs `stripToQuery` then `validateQuery` on the reply,
 4. on success replaces the input text with the query, leaving it unrun and
    focused; on failure shows the refusal with `Retry` and `Use anyway`.
@@ -137,8 +166,12 @@ Nothing else about search changes. Enter still runs the literal text.
 - **Generated queries can be wrong while valid.** Validation checks vocabulary,
   not intent — `\chapter physics` when you meant `\context physics` passes. This
   is why the query is shown and not run.
-- **Quality depends on the profile.** A small local model will produce worse
-  queries than a frontier one, and the same button will feel different on each.
+- **Quality depends on the profile you pick.** A small local model will produce
+  worse queries than a frontier one, and the same button will feel different on
+  each — which is the reason the choice is yours and is remembered.
+- **Deleting the selected profile falls back silently.** `providerFor` resolves
+  an unknown id to a "no LLM profile configured" error, so the picker must treat
+  a missing id as blank rather than showing a stale name.
 - **`\radius` is texere-only.** The prompt teaches it because the app executes
   it; a query copied to upstream searchN4L would not understand it.
 
@@ -159,13 +192,16 @@ tested through the component:
 
 **Go unit** — `TranslateQuery` returns the accumulated text from a stubbed
 provider; surfaces the provider's error; and returns the existing "no LLM
-profile configured" error when none is set.
+profile configured" error when none is set. `SetQueryLLMProfile` round-trips
+through the config file, and an absent field reads back as `""`.
 
 **Manual** — its own test-plan document, matching prior slices: the button is
 absent with no profile and present with one; a question becomes an editable
 query that is not run; Enter still runs literal text unchanged; an unsupported
 directive is refused and `Use anyway` overrides; a provider error surfaces
-without breaking search.
+without breaking search; the picker defaults to the active profile, a chosen
+profile survives a restart, and deleting the chosen profile falls back to the
+active one instead of erroring.
 
 ## Out of scope
 
@@ -173,7 +209,8 @@ without breaking search.
 - Any change to fuzzy mode, to `GraphQueryCell`, or to `compute-host.js`.
 - The explorer's own query bar — same grammar, and worth doing later, but this
   slice proves the shape in one place first.
-- A separate LLM profile for search.
+- A separate provider *configuration* for search — the profile set stays shared;
+  only which profile to use is a search preference.
 - Explaining results, summarising them, or answering the question directly. The
   output is a query, nothing else.
 - Teaching upstream-only syntax (`\theme`, `\bookmarks`, `\dna`, `\terms`,
