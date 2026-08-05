@@ -9,7 +9,7 @@
   import { get } from 'svelte/store'
   import { workbenchStore, filteredNodes } from '../stores/workbench.js'
   import { n4lBaseExtensions, pushRecentArrow, notebookDotsGutter, applyDots } from '../lib/n4l-editor.js'
-  import { SaveFile, GetFileContent, GetRecentArrows, UpdateRecentArrows, GetNotebookLinks } from '../../wailsjs/go/main/App'
+  import { SaveFile, GetFileContent, GetRecentArrows, UpdateRecentArrows, NotebookMarks } from '../../wailsjs/go/main/App'
   import { EventsOn } from '../../wailsjs/runtime/runtime'
   import NotebookPane from './notebook/NotebookPane.svelte'
 
@@ -24,20 +24,20 @@
   let _prevContextFilter = null
   let savedContent = ''      // text at last save/load — used to derive isDirty
 
-  // Provenance gutter dots (purple dots marking lines pushed from Process notebooks)
-  let dotMarks = []      // [{line, notebookIds}]
+  // Gutter dots: lines whose node has a notebook. Keyed by node id server-side,
+  // so a dot survives an edit to the line's text — the text-keyed links this
+  // replaced dropped the dot on any edit, including the rewrite that making a
+  // card performs.
+  let dotMarks = []      // [{line, notebookId}]
 
   function onDotClick(line) {
     const m = dotMarks.find((x) => x.line === line)
-    if (m && m.notebookIds?.length) {
-      // Slice 1: open the first linked notebook read-only (see Task 12).
-      openNotebookReadOnly(m.notebookIds[0])
-    }
+    if (m) openNotebookReadOnly(line)
   }
 
   async function refreshDots(path) {
     try {
-      dotMarks = (await GetNotebookLinks(path)) ?? []
+      dotMarks = (await NotebookMarks(path)) ?? []
       if (view) applyDots(view, dotMarks.map((m) => m.line))
     } catch { /* best-effort */ }
   }
