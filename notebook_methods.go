@@ -79,6 +79,13 @@ func (a *App) OpenNotebook(nodeID string) (*NotebookView, error) {
 		if err := a.learnStore.UpsertNotebook(nb); err != nil {
 			return nil, err
 		}
+		// A gutter dot means "this node has a notebook", so creating one changes
+		// what every open editor should be drawing. Without this the note editor
+		// keeps its stale marks for as long as it stays mounted — and it stays
+		// mounted while Process mode is open, which is exactly when notebooks get
+		// created. That was the originally reported symptom: process an extract,
+		// switch back, and no dot.
+		a.notebooksChanged()
 	}
 	return &NotebookView{
 		NotebookID: nb.NotebookID, NodeID: nodeID, Chapter: nb.Chapter,
@@ -240,6 +247,20 @@ func (a *App) assembleContext(nodeID string) ContextPayload {
 func (a *App) notebookLinksChanged(filePath string) {
 	if a.ctx != nil {
 		runtime.EventsEmit(a.ctx, "notebook:links-changed", map[string]string{"path": filePath})
+	}
+}
+
+// notebooksChanged notifies the frontend that the set of nodes having notebooks
+// has changed, so any open editor should re-fetch its gutter marks.
+//
+// Deliberately carries no file path. A node id is "<path>:<chapter>:id:<short>"
+// and a colon is legal in a filename, so splitting a path back out of an id is
+// ambiguous — the same ambiguity that made a prefix range unsafe in
+// NotebooksForNodes. Listeners re-fetch marks for whichever file they have open;
+// that is one indexed query and one parse, and it is always correct.
+func (a *App) notebooksChanged() {
+	if a.ctx != nil {
+		runtime.EventsEmit(a.ctx, "notebook:changed", map[string]string{})
 	}
 }
 

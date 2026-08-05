@@ -40,13 +40,24 @@ one there creates its notebook.
 
 Cases marked **[DB]** are invisible in the UI.
 
-## TC-1 A notebook makes a dot appear
+## TC-1 A notebook makes a dot appear — with the file already open
 
-Process an extract in Process mode (which creates its notebook), then open that
-file in the note editor.
+Order matters here. Do it exactly.
 
-**Expect:** a purple dot in the gutter on **that node's line** — the line with
-the node's text, not the `# @id` marker line above it.
+1. **First** open the file in the note editor and leave it open.
+2. Now process one of its extracts in Process mode, which creates that extract's
+   notebook.
+3. Return to the note editor **without switching files** and without toggling
+   Vim.
+
+**Expect:** a purple dot has appeared in the gutter on **that node's line** — the
+line holding the node's text, not the `# @id` marker line above it.
+
+*(This is the originally reported symptom and the reason the feature exists.
+Opening the file **afterwards** would pass even with the bug, because the dot
+would be fetched fresh on load — so the test only means something in this order.
+The note editor stays mounted while Process mode is open, so the dot has to
+arrive by notification, not by reload.)*
 
 ## TC-2 The dot survives editing the node's text
 
@@ -199,6 +210,25 @@ notebook, and open/close the overlay several times. Re-run the count.
 
 *(This is invisible on screen. If it fails, every node you look at acquires a
 notebook, dots appear everywhere, and the feature inverts.)*
+
+## TC-16b Switching files does not carry the overlay across
+
+With the overlay open on a node, switch to a different file in the browser.
+
+**Expect:** the overlay is closed and the gutter shows the new file's dots. It
+must not stay open showing the previous file's notebook.
+
+## TC-16c A cell edit survives moving away quickly
+
+With the overlay in Resume (edit) mode, type in a cell and then move the caret to
+another node **within about half a second** — faster than the 600ms save
+debounce. Come back.
+
+**Expect:** the edit is still there.
+
+*(Cells persist on a debounce and the pane is torn down when the focused node
+changes. Whether the pending save flushes before teardown has not been observed
+running — this case exists to find out.)*
 
 ## TC-17 Process mode is unaffected
 

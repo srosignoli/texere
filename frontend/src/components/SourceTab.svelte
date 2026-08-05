@@ -21,6 +21,7 @@
   let externalBanner = null
   let vimMode = false
   let cancelLinksChanged = null
+  let cancelNotebooksChanged = null
   let loadedFilePath = null  // tracks which FILE is currently in the editor
   let _prevContextFilter = null
   let savedContent = ''      // text at last save/load — used to derive isDirty
@@ -79,6 +80,15 @@
   let caretTimer = null
   let lastCaretLine = 0
 
+  // Dots and spans come from two INDEPENDENT parses of the same file, so every
+  // path that replaces the document must refresh both. Refreshing only spans
+  // leaves the gutter marking lines those nodes no longer occupy. Keeping the
+  // pair in one call is what stops the next reload path from remembering half.
+  async function refreshFileState(path) {
+    await refreshDots(path)
+    await loadSpans(path)
+  }
+
   async function loadSpans(path) {
     if (!path) return
     try { spans = await FileNodeSpans(path) } catch { spans = [] }
@@ -101,13 +111,23 @@
     // Moving to a different node drops back to read-only: "Resume (edit)" was
     // granted for the notebook you were looking at, not the next one.
     reopenReadOnly = true
-    if (!id) { focusedNb = null; focusedNbFor = null; return }
+    // No peek until the overlay is armed. Nothing displays the result before
+    // then, and assembleContext behind PeekNotebook re-parses the file, searches
+    // the graph and reads the whole source document — far too much to spend on
+    // every caret move for a pane that is not on screen.
+    if (!id || !armed) { focusedNb = null; focusedNbFor = null; return }
     try {
       const v = await PeekNotebook(id)
       if (focusedId !== id) return   // a slower reply for a node we have left
       focusedNb = v
       focusedNbFor = id
-    } catch { focusedNb = null; focusedNbFor = null }
+    } catch {
+      // Same guard as the success path: a rejection for a node the caret has
+      // already left must not wipe the notebook belonging to the node it is on.
+      if (focusedId !== id) return
+      focusedNb = null
+      focusedNbFor = null
+    }
   }
 
   function reportCaret(v) {
@@ -143,12 +163,21 @@
     const key = $workbenchStore.selectedChapterKey
     if (key && key.filePath !== loadedFilePath) {
       loadedFilePath = key.filePath
+      // Switching files invalidates everything the overlay is built on. Without
+      // this, the overlay stays armed and keeps the previous file's focused node
+      // until the first caret report of the new one.
+      armed = false
+      spans = []
+      dotMarks = []
+      focusedId = null
+      focusedNb = null
+      focusedNbFor = null
+      lastCaretLine = 0
       GetFileContent(key.filePath)
         .then((text) => {
           setContent(text ?? '')
           workbenchStore.update((s) => ({ ...s, isDirty: false }))
-          refreshDots(loadedFilePath)
-          loadSpans(loadedFilePath)
+          refreshFileState(loadedFilePath)
           // Case A: navigateToLine() already set pendingScrollLine; honour
           // the scroll synchronously after content lands and sync the local
           // _scrollNonce so the Case B reactive doesn't double-fire on the
@@ -216,7 +245,7 @@
       .then((text) => {
         setContent(text ?? '')
         workbenchStore.update((s) => ({ ...s, isDirty: false }))
-        loadSpans(openFilePath)   // ids were just injected — the map is stale
+        refreshFileState(openFilePath)   // ids were just injected — dots and map are stale
       })
       .catch((e) => console.error('silent reload after # @id injection failed:', e))
   }
@@ -313,7 +342,7 @@
       if (result?.finalContent) {
         setContent(result.finalContent)  // setContent also updates savedContent — fine
       }
-      await loadSpans(loadedFilePath)   // a save can shift every line below an edit
+      await refreshFileState(loadedFilePath)   // a save can shift every line below an edit
       dispatch('saved', { injections: result?.injections ?? [] })
     } catch (e) {
       console.error('SaveFile failed:', e)
@@ -328,7 +357,7 @@
       const text = await GetFileContent(openFilePath)
       setContent(text)
       workbenchStore.update((s) => ({ ...s, externalModification: null, isDirty: false }))
-      loadSpans(openFilePath)   // the file changed on disk; line numbers moved
+      refreshFileState(openFilePath)   // the file changed on disk; line numbers moved
       externalBanner = null
     } catch (e) {
       console.error('GetFileContent reload failed:', e)
@@ -381,8 +410,7 @@
     view = new EditorView({ state, parent: container })
     reportCaret(view)
     view.focus()
-    refreshDots(loadedFilePath)
-    loadSpans(loadedFilePath)
+    refreshFileState(loadedFilePath)
   }
 
   // Called by arrowCompletion when a completion is applied — updates LRU list
@@ -403,6 +431,13 @@
     cancelLinksChanged = EventsOn('notebook:links-changed', (p) => {
       if (p?.path === loadedFilePath) refreshDots(loadedFilePath)
     })
+    // A notebook was created elsewhere — in Process mode, which leaves this
+    // editor mounted. Without this the gutter keeps its stale marks for the
+    // whole session, which is exactly the reported symptom: process an extract,
+    // come back here, and the dot never appears.
+    cancelNotebooksChanged = EventsOn('notebook:changed', () => {
+      if (loadedFilePath) refreshDots(loadedFilePath)
+    })
 
     try {
       const saved = await GetRecentArrows()
@@ -415,6 +450,7 @@
   onDestroy(() => {
     editorAPI.set(null)
     cancelLinksChanged?.()
+    cancelNotebooksChanged?.()
     clearTimeout(caretTimer)
     view?.destroy()
   })
