@@ -2,6 +2,17 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **⚠️ SUPERSEDED IN PART — read this before trusting the code below.**
+> Task 1 shipped as `NotebooksForNodes(nodeIDs []string)`, **not** the
+> `NotebooksForFile(filePath)` prefix-range design written here. Review found the
+> range `[path+":", path+";")` can return a *different* file's notebooks: a colon
+> is legal in a filename, so `/c/notes.n4l:bak.n4l:Ch:id:x` falls inside the range
+> built for `/c/notes.n4l` (reproduced against the real SQLite engine). Task 2's
+> binding parses the file first and queries by exact ids. Task 4's `loadSpans` and
+> the reload paths also gained fixes not described here. **The shipped code and
+> `.superpowers/sdd/2026-08-04-note-editor-notebook/progress.md` are authoritative;
+> this document records the original plan.**
+
 **Goal:** In the note editor, a gutter dot means "this node has a notebook", and the read-only overlay — once opened by a dot click — follows the caret and hides when the focused node has none.
 
 **Architecture:** A new `NotebookMarks` binding resolves the file's notebooks to line numbers by node id, replacing the text-keyed `GetNotebookLinks` in the gutter. `SourceTab` then reuses the machinery 032 shipped — `FileNodeSpans`, `nodeIdAtLine`, `PeekNotebook` — to resolve the caret locally and route the overlay.
