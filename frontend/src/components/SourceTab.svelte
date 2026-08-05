@@ -53,7 +53,16 @@
   function openNotebookReadOnly(line) {
     armed = true
     reopenReadOnly = true
-    resolveCaret(line)
+    // Move the caret to the clicked line rather than resolving it out of band.
+    // The overlay follows the caret, so leaving the caret where it was would
+    // show a node the user is not on — and reportCaret's same-line guard would
+    // then never fire for their actual line, freezing the overlay there.
+    if (view && line >= 1 && line <= view.state.doc.lines) {
+      const pos = view.state.doc.line(line).from
+      view.dispatch({ selection: { anchor: pos } })
+      view.focus()
+    }
+    resolveCaret(line, true)
   }
   function closeReopen() { armed = false; reopenReadOnly = true }
   function resumeReopen() { reopenReadOnly = false }
@@ -84,10 +93,10 @@
     await resolveCaret(line)
   }
 
-  async function resolveCaret(line) {
+  async function resolveCaret(line, force = false) {
     caretLine = line
     const id = spans.length ? nodeIdAtLine(spans, line) : null
-    if (id === focusedId) return
+    if (id === focusedId && !force) return
     focusedId = id
     // Moving to a different node drops back to read-only: "Resume (edit)" was
     // granted for the notebook you were looking at, not the next one.
