@@ -35,6 +35,17 @@ func RegisterArrows(registry *content.SSTRegistry) {
 
 	ptrByCode := make(map[string]SST.ArrowPtr, len(codes))
 	for _, code := range codes {
+		// The implicit sequence pair is reserved and auto-registered below.
+		// Skipping it here is load-bearing: a collection that merely WRITES
+		// `A (then) B` as an ordinary relationship gets `then` harvested into the
+		// registry by AugmentWithUnknownArrows (which runs first, search.go:176).
+		// Registering it here would make the auto-registration below return -1,
+		// which skipped InsertInverseArrowDirectory and silently emptied \story
+		// and \sequence for the ENTIRE collection — one such arrow in one file
+		// was enough, with no error and the sequence nodes still text-searchable.
+		if code == SequenceArrowCode || code == SequenceInvArrowCode {
+			continue
+		}
 		def := registry.Arrows[code]
 		mt := def.MetaType
 		if mt == "" {
@@ -65,8 +76,19 @@ func RegisterArrows(registry *content.SSTRegistry) {
 	// Auto-register the implicit sequence arrow pair (upstream N4L.go does
 	// the same at line 1388). Used by the builder to wire consecutive nodes
 	// in a `:: _sequence_ ::` block so `\story` / `\sequence` can walk them.
+	// Resolve rather than give up when the insert reports "already present".
+	// Within one process RegisterArrows runs on every lazy open, so the second
+	// call legitimately finds the pair registered — and abandoning the inverse
+	// wiring in that case is the same silent failure as above, just reached by
+	// a different route.
 	fwdSeq := SST.InsertArrowDirectory("leadsto", SequenceArrowCode, SequenceArrowLong, "+")
+	if fwdSeq < 0 {
+		fwdSeq = SST.GetDBArrowByName(SST.PoSST{}, SequenceArrowCode)
+	}
 	invSeq := SST.InsertArrowDirectory("leadsto", SequenceInvArrowCode, SequenceInvArrowLong, "-")
+	if invSeq < 0 {
+		invSeq = SST.GetDBArrowByName(SST.PoSST{}, SequenceInvArrowCode)
+	}
 	if fwdSeq >= 0 && invSeq >= 0 {
 		SST.InsertInverseArrowDirectory(fwdSeq, invSeq)
 	}
