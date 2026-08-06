@@ -21,6 +21,32 @@
   // Read state: activeReading store + library fallback
   let peekAt = null   // anchor for an extract peek, cleared on a normal open
   let sidebar = null  // SourcesSidebar instance, so closing a document can reload its tree
+  let readingView = null
+
+  // The {#key} expression below, so we can tell whether a click will actually
+  // remount the view. Flushing when nothing remounts would mark a still-live
+  // ReadingView as closed, and its real close would then persist nothing.
+  const readingKey = (r, anchor) => (r?.id ?? '') + '|' + (anchor ?? '')
+
+  // Open (anchor null) or peek a document from the sidebar. The sidebar's rows
+  // come from a cache filled on mount, so re-read the reading first: switching
+  // away from a document and back would otherwise reopen it at a stale position
+  // and then write that stale value back over the good one on close.
+  async function switchTo(r, anchor) {
+    if (readingKey(r, anchor) !== readingKey($activeReading, peekAt)) {
+      await readingView?.flush?.()
+    }
+    peekAt = anchor
+    activeReading.set(await freshReading(r))
+    await sidebar?.refresh()
+  }
+
+  async function freshReading(r) {
+    try {
+      const list = await GetReadingList()
+      return (list ?? []).find((x) => x.id === r.id) ?? r
+    } catch { return r }
+  }
 
   async function refresh() {
     try { counts = (await GetStudyCounts()) ?? counts } catch (e) { error = String(e?.message ?? e) }
@@ -102,12 +128,12 @@
       <div class="ss-read">
         <SourcesSidebar
           bind:this={sidebar}
-          on:open={(e) => { peekAt = null; activeReading.set(e.detail) }}
-          on:peek={(e) => { peekAt = e.detail.anchor; activeReading.set(e.detail.reading) }} />
+          on:open={(e) => switchTo(e.detail, null)}
+          on:peek={(e) => switchTo(e.detail.reading, e.detail.anchor)} />
         <div class="ss-reading">
           {#if $activeReading}
             {#key ($activeReading.id ?? '') + '|' + (peekAt ?? '')}
-              <ReadingView reading={$activeReading} {peekAt}
+              <ReadingView bind:this={readingView} reading={$activeReading} {peekAt}
                 onClose={() => { peekAt = null; activeReading.set(null); sidebar?.refresh(); enter('next') }} />
             {/key}
           {:else}

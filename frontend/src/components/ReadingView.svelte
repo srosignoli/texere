@@ -83,6 +83,21 @@
     close('done')
   }
 
+  // Persist the way close() does, but leave the surface alone. StudySurface
+  // awaits this before switching documents: onDestroy's write is
+  // fire-and-forget, so a re-read of this reading would otherwise race it and
+  // see the stale position. Sets `closed` so onDestroy does not write again.
+  export async function flush() {
+    if (closed) return
+    closed = true
+    try {
+      const pos = peekAt ? null : pane?.getProgress?.()
+      if (pos) await UpdateReadingProgress(reading.id, pos)
+      await flushNotes()
+      await RescheduleReading(reading.id, 'continue')
+    } catch (e) { /* best-effort */ }
+  }
+
   async function close(action) {
     closed = true
     try {
