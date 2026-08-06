@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"strings"
+	"time"
 
 	"texere/internal/llm"
 )
@@ -11,12 +12,29 @@ import (
 // a low cap makes a runaway model fail fast rather than bill for an essay.
 const translateQueryMaxTokens = 256
 
+// translateQueryTimeout bounds the call. internal/llm/client.go leaves the
+// streamed body untimed on purpose and relies on the caller's context, so
+// without this a provider that stalls after sending headers blocks forever —
+// and unlike the chat cell there is no Stop button to escape with. Generous
+// enough for a slow local model; short enough that a hang surfaces as an error
+// the user can act on.
+const translateQueryTimeout = 90 * time.Second
+
 // translateWith is the testable core: one non-streamed turn, accumulated.
 // Split from TranslateQuery so a stub provider can drive it without a config
 // file or a real endpoint.
 func translateWith(prov llm.Provider, model, system, question string) (string, error) {
+	return translateWithTimeout(prov, model, system, question, translateQueryTimeout)
+}
+
+// translateWithTimeout is translateWith with an injectable deadline, so a test
+// can prove the context reaches the provider without waiting out the real
+// timeout.
+func translateWithTimeout(prov llm.Provider, model, system, question string, timeout time.Duration) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 	var sb strings.Builder
-	err := prov.Stream(context.Background(), llm.Request{
+	err := prov.Stream(ctx, llm.Request{
 		Model:     model,
 		System:    system,
 		Messages:  []llm.Message{{Role: "user", Content: question}},

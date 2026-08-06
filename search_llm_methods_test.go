@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"texere/internal/llm"
 )
@@ -36,9 +37,39 @@ func TestTranslateQueryAccumulatesTheStream(t *testing.T) {
 }
 
 func TestTranslateQuerySurfacesProviderErrors(t *testing.T) {
-	_, err := translateWith(fakeProvider{chunks: []string{"x"}, err: errors.New("rate limited")}, "m", "sys", "q")
+	got, err := translateWith(fakeProvider{chunks: []string{"x"}, err: errors.New("rate limited")}, "m", "sys", "q")
 	if err == nil || !strings.Contains(err.Error(), "rate limited") {
 		t.Fatalf("err = %v, want the provider's error surfaced", err)
+	}
+	// A partial reply must not reach the caller as if it were a finished query:
+	// it would be written straight into the query bar looking complete.
+	if got != "" {
+		t.Fatalf("got %q alongside the error, want the partial reply discarded", got)
+	}
+}
+
+// A provider that hangs until the context ends. Without a deadline this test
+// would block forever, which is precisely the bug.
+type hangingProvider struct{}
+
+func (hangingProvider) Stream(ctx context.Context, _ llm.Request, _ func(string) error) error {
+	<-ctx.Done()
+	return ctx.Err()
+}
+
+func TestTranslateQueryPassesACancellableContext(t *testing.T) {
+	done := make(chan error, 1)
+	go func() {
+		_, err := translateWithTimeout(hangingProvider{}, "m", "sys", "q", 50*time.Millisecond)
+		done <- err
+	}()
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("want the context deadline surfaced, got nil")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("translateWith ignored its deadline — a stalled provider would hang the app forever")
 	}
 }
 
