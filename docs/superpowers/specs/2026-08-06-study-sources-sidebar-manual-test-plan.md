@@ -1,0 +1,257 @@
+# Study read panel: sources sidebar with extract trees — manual test plan
+
+**Design:** `2026-08-06-study-sources-sidebar-design.md`
+**Build:** `make dev`
+
+**This document is the verification gate for the interactive parts.** This
+repository has **no Svelte component test harness**, so `SourcesSidebar.svelte`,
+the read-focus branch of `StudySurface.svelte`, and the three `peekAt` guards in
+`ReadingView.svelte` have **zero automated coverage** and have never been
+watched running together. Treat any failure below as a new finding.
+
+What *is* automated: `reading_methods_test.go` covers `GetReadingExtracts` —
+grouping by notes path rather than source path, ordering by anchor value
+numerically (`char=9` before `char=100`), passing `page=` anchors through
+unchanged, and returning `{}` rather than `nil` for a collection with no
+readings. `sources-filter.test.js` covers `filterSources` in nine cases: empty
+query, title match, extract match, matches across several documents,
+case-insensitivity, no match, a reading with no extracts, and that expansion
+only happens on an extract-driven survivor. Everything below is what those
+cannot reach — mainly the two click targets, the collapse, the peek, and how
+the three fit together on screen.
+
+## Four things that are deliberate — do not report them as bugs
+
+- **A peeked document does not move your reading progress.** Closing it, or
+  opening a different document, leaves the `%` exactly where it was before you
+  peeked. That is the whole point of the feature — see TC-7 and TC-8.
+- **The tree does not live-update while you are reading.** `extractsByReading`
+  is loaded on mount and reloaded when a document closes (`sidebar?.refresh()`
+  in `StudySurface.svelte`, wired in `1749b68`) — not while `ReadingView` is
+  open. Create an extract mid-read and the sidebar's own copy of that
+  document's tree will not show it until you close.
+- **A row a search auto-expanded cannot be collapsed by its triangle while the
+  query still matches it.** `shown(row)` is `row.autoExpand || expanded[id]`;
+  clicking the triangle only flips the manual half of that OR, and
+  `autoExpand` stays true for as long as the row survived on an extract match.
+  Clear or change the search to get the triangle back.
+- **A freshly-created extract needs a sync pass before it can appear anywhere
+  it's read from the `extracts` table.** `CreateExtract` (Ctrl+E while reading)
+  runs a synchronous sync of just that one notes file, so its own extract is
+  available as soon as the tree next reloads. An extract added by hand-editing
+  a `.n4l` file outside the app waits for the collection's regular sync —
+  the same delay the processing queue already has.
+
+## One thing that is *not* obviously fine — check it, don't assume it
+
+`ReadingView.svelte` passes the peeked anchor to only one pane:
+`<TextSourcePane ... startAt={peekAt} .../>`. `PdfSourcePane` and
+`WebSourcePane` are never given `peekAt` at all — both always open at
+`reading.position`, the reading's last saved position, regardless of which
+extract you clicked. So "clicking an extract opens the document at that
+passage" is demonstrably true for text/markdown and **not wired for PDF or
+web** as far as landing on the right page/passage goes. What *is* guarded for
+all three media is the write-suppression (TC-8) — that part works regardless.
+TC-6 and TC-8 ask you to check navigation explicitly rather than assume it.
+
+## Before you start
+
+You need a collection with Study mode reachable (Ctrl+Shift+S). Useful to have
+going in:
+- a **text or markdown** reading, read part-way, with at least one extract
+  taken from early in it (make one with Ctrl+E if you don't have one)
+- a **PDF** reading, similarly progressed with an early extract
+- one reading with **no** extracts at all
+
+The `+ Text` / `+ PDF` / `+ Web` buttons and Ctrl+E while reading (TC-4/TC-12)
+will produce whatever you're missing.
+
+**[DB]** items read `<collectionDir>/learning.db` with `sqlite3`, e.g.:
+```
+sqlite3 <collectionDir>/learning.db \
+  "SELECT id, title, position, proj_len, due, done FROM reading_elements;"
+sqlite3 <collectionDir>/learning.db \
+  "SELECT id, file_path, from_anchor, active FROM extracts WHERE active=1;"
+```
+
+## TC-1 The sidebar is on the left
+
+Open Study (Ctrl+Shift+S), switch to the **Read** tab.
+
+**Expect:** a ~300px panel titled "Sources" on the **left**, with a search box,
+an import row (`+ Text` / `+ PDF` / `+ Web`), and the document list. Each row
+shows a `▸`/`▾` triangle, the title, a `%`, and a `due` tag (undone, and either
+never scheduled or past due) or a `done` tag (finished) — never both.
+
+## TC-2 Collapse and reopen in one click
+
+Click `‹` at the top-right of the sidebar bar. Then click the `›` chevron on
+the resulting rail.
+
+**Expect:** collapsed, the sidebar becomes a narrow rail and the reading area
+(if a document is open) takes the full width — nothing is left empty beside
+it. Before collapsing, type something into the search box and manually expand
+a document's tree; after reopening, **both are still there** — the search text
+and the expanded tree survive the round trip, because collapsing only swaps
+which markup renders and does not reset the component's own state.
+
+## TC-3 The list stays visible while a document is open
+
+Open a document by its title. With it open, click a **different** document's
+title in the still-visible sidebar.
+
+**Expect:** the sidebar never disappears while reading. The reading area swaps
+to the newly-clicked document without you closing the first one — no prompt,
+no confirmation. (The first document's notes and reschedule are still saved in
+the background as it unmounts.)
+
+## TC-4 The triangle expands to extracts, in document order
+
+Pick a document with two or more extracts taken at different points (or make
+two now with Ctrl+E — see TC-8's setup for how). Click its `▸` triangle, **not**
+the title.
+
+**Expect:** only the tree opens — the document itself does not start reading;
+`▸` becomes `▾`. Extracts are listed earliest-anchor-first (e.g. an extract at
+`char=120` above one at `char=980`; `page=2` above `page=9`), each showing its
+extract text (full text on hover via the `title` attribute). If you just
+created one of these extracts, it will not appear until you close the document
+once — see the "does not live-update" note above.
+
+## TC-5 The title opens at saved progress
+
+Open a document by its title, scroll/page some way in, close it (`×` or Esc),
+and note the `%`.
+
+**Expect:** clicking the title again reopens at the same position you left —
+not the top, not a peeked passage.
+
+**[DB]** `position` in `reading_elements` for that id matches what you scrolled
+to.
+
+## TC-6 Clicking an extract opens the document at that passage (text)
+
+Use a **text or markdown** document — this is the medium that is actually
+wired for it (see the note above; PDF/web are checked separately in TC-8).
+Expand its tree and note the text of an extract taken from early in the
+document. Click that **extract**, not the title.
+
+**Expect:** the document opens scrolled so that early passage sits at/near the
+top of the pane — not wherever you'd last read to.
+
+## TC-7 The peek, for a text document — the load-bearing case
+
+Open a text/markdown document by its **title**. Scroll a genuine way down.
+Close it (`×` or Esc) and write down the `%` shown in its sidebar row — call
+it **P**.
+
+1. Expand that document's tree.
+2. Click an extract taken from **early** in the document — well before where
+   you'd scrolled to.
+3. Confirm the pane opened scrolled to that early passage, not to where you'd
+   left off.
+4. Close it (`×` or Esc) **without** clicking the title first.
+5. Read the `%` on the sidebar row now.
+
+**Expect:** the `%` after step 5 is **exactly P** — unchanged, even though the
+pane just showed you a much earlier position than P.
+
+**[DB]** `SELECT position, proj_len FROM reading_elements WHERE id='<id>';` —
+`position` is the same `char=N` you had before the peek, not the extract's
+anchor.
+
+## TC-8 The peek, for a PDF — the case a partial implementation fails
+
+Open a PDF document by its **title**, page forward into the middle of it,
+close it (`×` or Esc), and write down the `%` — call it **P**. You need one
+extract from an early page: if you don't have one, open it by title, select
+text on an early page, press Ctrl+E, then close and reopen the sidebar's tree
+to confirm it's there.
+
+1. Expand the tree and click that early extract to peek it.
+2. **Record which page actually opens.** Per the note above, only the text
+   pane receives the peeked anchor — a PDF may open on the same middle page you
+   left off at rather than the extract's page. That is worth reporting either
+   way; it is not something to assume is fine.
+3. Regardless of what page it opened on, page forward and back several times
+   with `‹`/`›`. Each page render pushes a `progress` event — this is the step
+   that has no text-document equivalent.
+4. Close (`×` or Esc).
+5. Read the `%` on the sidebar row.
+
+**Expect:** the `%` after step 5 is still **exactly P**, unmoved by all the
+paging you did during the peek. A guard that only covers `close()`/`onDestroy`
+and forgets `onPaneProgress` passes TC-7 and fails here, because PDF pushes
+progress on every page turn instead of handing it over once on leave.
+
+**[DB]** `position` in `reading_elements` is still the page you closed on
+*before* the peek (step 0), not any page reached during steps 1–3.
+
+## TC-9 Opening by title after a peek resumes and saves normally
+
+Right after TC-7 or TC-8, same document.
+
+1. Click the document's **title**, not an extract.
+2. Confirm it reopens at **P** — the saved position — not the peeked passage.
+3. Scroll/page further, then close.
+
+**Expect:** the `%` now reflects the new position. Clicking the title clears
+`peekAt` (`StudySurface.svelte`'s `on:open` sets it to `null`), so this open
+persists like any other.
+
+**[DB]** `position` has changed from what it was in TC-7/TC-8.
+
+## TC-10 Search over titles and extract text
+
+a. Type text that only appears in a document's **title**.
+**Expect:** that document is listed; if you hadn't manually expanded it, its
+tree stays closed — a title match has nothing in the tree to show.
+
+b. Clear the box, then type text that only appears inside an **extract**.
+**Expect:** the owning document is listed and its tree **auto-expands**,
+showing only the matching extract(s) — not the rest of that document's
+extracts.
+
+c. Type something that matches nothing anywhere.
+**Expect:** "Nothing matches."
+
+## TC-11 A document with no extracts
+
+Expand the triangle of a reading that has never had anything extracted from
+it.
+
+**Expect:** "No extracts yet." in place of the extract list.
+
+## TC-12 Importing still works via all three buttons
+
+Click `+ Text` (pick a `.txt`/`.md`/`.html`), `+ PDF` (pick a `.pdf`), `+ Web`
+(paste a URL into the prompt).
+
+**Expect:** each import adds a new row to the list immediately — no manual
+refresh needed — and opens that document for reading. Cancelling a file
+dialog does nothing: no row appears, nothing errors.
+
+## TC-13 Peeking a second extract in the already-open document jumps
+
+With a **text** document open via a peek (mid-TC-7 works, or start fresh), go
+back to the still-visible sidebar and click a **different** extract from the
+same document's tree — without closing the reading first.
+
+**Expect:** the pane re-scrolls to the newly-clicked passage right away. (The
+reading id didn't change, but `StudySurface`'s `{#key}` includes `peekAt` in
+its key, so a changed anchor still remounts the view.)
+
+For a **PDF**, the same click is not expected to move you anywhere — see the
+note above and TC-8; record what you actually see.
+
+## What I most want to hear about
+
+- **TC-7 and TC-8's `%` results.** That's the entire safety property this
+  feature depends on — a peek that silently rewinds a half-read document is
+  the failure mode the whole design exists to prevent.
+- **TC-6/TC-8's page-2 observation.** Whether a PDF or web peek lands on the
+  extract's actual page/passage, or just wherever you'd last read to. The code
+  suggests the latter; I'd like it confirmed rather than assumed.
+- Anything that makes the search-auto-expand and manual-expand states look
+  inconsistent to you in practice, even if it matches what's described above —
+  that's a sign the distinction itself needs rethinking, not just the wording.
