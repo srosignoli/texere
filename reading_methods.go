@@ -192,9 +192,16 @@ func (a *App) GetSourceHTML(refPath string) (string, error) {
 	return string(data), nil
 }
 
-// CreateExtract appends a verbatim extract, advances # @progress + DB position,
-// and signals the notes editor to reload (clean buffer only).
-func (a *App) CreateExtract(id, text, position string) (*CreateExtractView, error) {
+// CreateExtract appends a verbatim extract and signals the notes editor to
+// reload (clean buffer only).
+//
+// advanceProgress moves # @progress and the DB position to where the extract
+// was taken. The sidebar's extract peek passes false: a peek is a glance at one
+// passage, not a reading position, and extracting during one would otherwise
+// rewind a half-read document to wherever the peeked passage happens to be.
+// This is the same safety property the three UpdateReadingProgress call sites
+// in ReadingView.svelte guard, reached by a different route.
+func (a *App) CreateExtract(id, text, position string, advanceProgress bool) (*CreateExtractView, error) {
 	if a.learnStore == nil {
 		return nil, errors.New("no collection open")
 	}
@@ -208,14 +215,16 @@ func (a *App) CreateExtract(id, text, position string) (*CreateExtractView, erro
 	// notes file also happens to be open in the main editor.
 	a.beginSelfWrite(r.NotesPath)
 	exID, err := content.AppendExtract(r.NotesPath, text, anchor)
-	if err == nil {
+	if err == nil && advanceProgress {
 		err = content.UpdateProgressMarker(r.NotesPath, position)
 	}
 	a.endSelfWrite(r.NotesPath)
 	if err != nil {
 		return nil, fmt.Errorf("CreateExtract: %w", err)
 	}
-	_ = a.learnStore.SetReadingProgress(id, position, r.ProjLen)
+	if advanceProgress {
+		_ = a.learnStore.SetReadingProgress(id, position, r.ProjLen)
+	}
 	// Register the new extract in the queue immediately (reuses the classify pass).
 	if _, err := learning.Sync(a.learnStore, []string{r.NotesPath}, a.registry); err != nil {
 		// Non-fatal: it will be picked up on the next Build Graph.

@@ -33,7 +33,7 @@ func TestCreateExtractAppendsAndAdvances(t *testing.T) {
 	a := &App{collectionDir: dir, learnStore: store, registry: &content.SSTRegistry{Arrows: map[string]content.ArrowDef{}}}
 	defer store.Close()
 
-	ev, err := a.CreateExtract(refID, "System 1 is fast", "char=0")
+	ev, err := a.CreateExtract(refID, "System 1 is fast", "char=0", true)
 	if err != nil || ev == nil || ev.ID == "" {
 		t.Fatalf("CreateExtract ev=%+v err=%v", ev, err)
 	}
@@ -92,7 +92,7 @@ func TestImportWebAndCreateExtractPosition(t *testing.T) {
 		t.Fatalf("saved web html not sanitized")
 	}
 	// CreateExtract with a position string writes that exact anchor.
-	if _, err := a.CreateExtract(rv.ID, "A long paragraph", "char=5"); err != nil {
+	if _, err := a.CreateExtract(rv.ID, "A long paragraph", "char=5", true); err != nil {
 		t.Fatalf("CreateExtract: %v", err)
 	}
 	notes, _ := os.ReadFile(rv.NotesPath)
@@ -190,5 +190,77 @@ func TestGetReadingExtractsEmptyIsNotNil(t *testing.T) {
 	}
 	if got == nil {
 		t.Fatal("returned a nil map; it crosses into JSON, where nil marshals to null")
+	}
+}
+
+// A peek is a glance at one passage, not a reading position. Extracting during
+// one must still create the extract but must not move progress — otherwise
+// peeking an early extract and hitting Ctrl+E rewinds a half-read document,
+// silently, in both the DB and the # @progress marker.
+func peekExtractFixture(t *testing.T) (*App, *learning.Store, string, string) {
+	t.Helper()
+	dir := t.TempDir()
+	os.MkdirAll(filepath.Join(dir, "sources"), 0o755)
+	os.MkdirAll(filepath.Join(dir, "reading"), 0o755)
+	os.WriteFile(filepath.Join(dir, "sources", "k.txt"), []byte("System 1 is fast and automatic. System 2 is slow."), 0o644)
+	notes := filepath.Join(dir, "reading", "k.n4l")
+	refID, err := content.CreateReadingNotes(notes, "sources/k.txt", "k")
+	if err != nil {
+		t.Fatal(err)
+	}
+	store, err := learning.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { store.Close() })
+	if err := store.UpsertReading(learning.ReadingElement{
+		ID: refID, RefPath: "sources/k.txt", NotesPath: notes, Title: "k",
+		Position: "char=5000", ProjLen: 10000, IntervalDays: 1,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	a := &App{collectionDir: dir, learnStore: store, registry: &content.SSTRegistry{Arrows: map[string]content.ArrowDef{}}}
+	return a, store, refID, notes
+}
+
+func TestCreateExtractDuringAPeekDoesNotAdvanceProgress(t *testing.T) {
+	a, store, refID, notes := peekExtractFixture(t)
+
+	v, err := a.CreateExtract(refID, "an early passage", "char=200", false)
+	if err != nil {
+		t.Fatalf("CreateExtract during a peek failed: %v", err)
+	}
+	if v == nil || v.ID == "" {
+		t.Fatal("the extract itself must still be created during a peek")
+	}
+	body, _ := os.ReadFile(notes)
+	if !strings.Contains(string(body), "an early passage") {
+		t.Fatalf("extract was not appended to the notes file:\n%s", body)
+	}
+	if strings.Contains(string(body), "char=200") && strings.Contains(string(body), "@progress char=200") {
+		t.Fatalf("# @progress was advanced during a peek:\n%s", body)
+	}
+
+	got, ok, err := store.GetReading(refID)
+	if err != nil || !ok {
+		t.Fatalf("GetReading: %v, ok=%v", err, ok)
+	}
+	if got.Position != "char=5000" {
+		t.Fatalf("position moved to %q during a peek; want it left at char=5000", got.Position)
+	}
+}
+
+func TestCreateExtractWhileReadingAdvancesProgress(t *testing.T) {
+	a, store, refID, _ := peekExtractFixture(t)
+
+	if _, err := a.CreateExtract(refID, "a later passage", "char=7200", true); err != nil {
+		t.Fatalf("CreateExtract: %v", err)
+	}
+	got, _, err := store.GetReading(refID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Position != "char=7200" {
+		t.Fatalf("position = %q, want char=7200 — a normal extract still advances progress", got.Position)
 	}
 }

@@ -38,7 +38,9 @@
     const { text, position } = e.detail
     try {
       await flushNotes()
-      await CreateExtract(reading.id, text, position)
+      // A peek must not advance progress — extracting during one would rewind
+      // the document to the peeked passage. The extract itself is still made.
+      await CreateExtract(reading.id, text, position, !peekAt)
       await reloadNotes()
     } catch (err) { error = String(err?.message ?? err) }
   }
