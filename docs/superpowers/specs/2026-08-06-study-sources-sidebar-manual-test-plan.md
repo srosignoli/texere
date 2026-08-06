@@ -29,12 +29,11 @@ the three fit together on screen.
   is loaded on mount and reloaded when a document is opened or closed from the
   sidebar — not while `ReadingView` sits open. Create an extract mid-read and
   the sidebar's copy of that document's tree will not show it until you leave.
-- **A freshly-created extract needs a sync pass before it can appear anywhere
-  it's read from the `extracts` table.** `CreateExtract` (Ctrl+E while reading)
-  runs a synchronous sync of just that one notes file, so its own extract is
-  available as soon as the tree next reloads. An extract added by hand-editing
-  a `.n4l` file outside the app waits for the collection's regular sync —
-  the same delay the processing queue already has.
+- **A passage already promoted to a card still appears, tagged `card`.** The
+  tree is not the processing queue: it records everything you took from a
+  document, because its job is getting you back to the passage. Clicking one
+  peeks it exactly like any other. No sync is needed for any of this — the tree
+  is parsed from the `.n4l` itself, so hand-edits show up on the next reload.
 
 ## Peek navigation works in all three media — but verify it per medium
 
@@ -112,7 +111,7 @@ the title.
 `▸` becomes `▾`. Extracts are listed earliest-anchor-first (e.g. an extract at
 `char=120` above one at `char=980`; `page=2` above `page=9`), each showing its
 extract text (full text on hover via the `title` attribute). If you just
-created one of these extracts, it will not appear until you close the document
+created one of these extracts, it will not appear until you leave the document
 once — see the "does not live-update" note above.
 
 ## TC-5 The title opens at saved progress
@@ -285,11 +284,28 @@ value back over the good one.
 
 **[DB]** `position` for A after step 3 matches what it was at the end of step 1.
 
+## TC-17 Promoted passages stay in the tree
+
+Take a document where you have already promoted at least one extract to a card
+(`# @card` in its notes file), and expand its tree.
+
+**Expect:** the promoted passages are listed alongside the unpromoted ones, each
+with a small `card` tag, and clicking one peeks it like any other. Count the
+rows against the `# @id` paragraphs in the notes file — every paragraph that
+carries a `(from)` anchor should be there, plus the document's own node should
+not be.
+
+A paragraph that is missing here has lost its `(from)` anchor in the file *and*
+has no row left in the `extracts` table — nothing records where it came from, so
+there is nowhere to jump to. Report which ids, if any.
+
 ## What I most want to hear about
 
 - **TC-7 and TC-8's `%` results.** That's the entire safety property this
   feature depends on — a peek that silently rewinds a half-read document is
   the failure mode the whole design exists to prevent.
+- **TC-17's count.** Whether the tree now matches the `(from)` paragraphs in
+  your notes files. This is the fix for the count mismatch you reported.
 - **TC-15 and TC-16.** Both are fixes for defects found only in the final
   review, after the feature was otherwise finished. Neither has automated
   coverage on the UI side, and both fail silently when wrong.
