@@ -20,6 +20,7 @@
   let recallShownAt = 0
   // Read state: activeReading store + library fallback
   let peekAt = null   // anchor for an extract peek, cleared on a normal open
+  let sidebar = null  // SourcesSidebar instance, so closing a document can reload its tree
 
   async function refresh() {
     try { counts = (await GetStudyCounts()) ?? counts } catch (e) { error = String(e?.message ?? e) }
@@ -100,13 +101,14 @@
     {#if $studyFocus === 'read' || ($studyFocus === 'next' && nextKind() === 'read')}
       <div class="ss-read">
         <SourcesSidebar
+          bind:this={sidebar}
           on:open={(e) => { peekAt = null; activeReading.set(e.detail) }}
           on:peek={(e) => { peekAt = e.detail.anchor; activeReading.set(e.detail.reading) }} />
         <div class="ss-reading">
           {#if $activeReading}
             {#key ($activeReading.id ?? '') + '|' + (peekAt ?? '')}
               <ReadingView reading={$activeReading} {peekAt}
-                onClose={() => { peekAt = null; activeReading.set(null); enter('next') }} />
+                onClose={() => { peekAt = null; activeReading.set(null); sidebar?.refresh(); enter('next') }} />
             {/key}
           {:else}
             <div class="ss-empty">Pick a document to read.</div>
