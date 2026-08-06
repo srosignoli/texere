@@ -110,6 +110,10 @@ export function GetQueryLLMProfile() {
   return window['go']['main']['App']['GetQueryLLMProfile']();
 }
 
+export function GetReadingExtracts() {
+  return window['go']['main']['App']['GetReadingExtracts']();
+}
+
 export function GetReadingList() {
   return window['go']['main']['App']['GetReadingList']();
 }

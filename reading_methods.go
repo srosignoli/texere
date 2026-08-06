@@ -9,6 +9,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -380,6 +381,65 @@ func (a *App) UpdateReadingProgress(id, position string) error {
 		return wErr
 	}
 	return a.learnStore.SetReadingProgress(id, position, r.ProjLen)
+}
+
+// ReadingExtractView is one row in a document's extract tree.
+//
+// Anchor is the extract's from_anchor VERBATIM — "sources/x.txt char=1173" or
+// "sources/p.pdf page=12". It is not parsed into an offset here: the unit
+// depends on the medium and only the source pane knows what to do with it.
+type ReadingExtractView struct {
+	ID     string `json:"id"`
+	Text   string `json:"text"`
+	Anchor string `json:"anchor"`
+}
+
+// GetReadingExtracts returns every reading's extracts, keyed by reading id and
+// ordered by position within the document.
+//
+// One call for the whole library rather than a lookup per document: the sidebar
+// searches extract text across documents whose trees are still collapsed, so it
+// needs them all before any one is expanded.
+//
+// An extract belongs to a reading when its FilePath matches that reading's
+// NotesPath. FilePath is the notes file the extract node lives in; the source
+// appears only inside FromAnchor.
+func (a *App) GetReadingExtracts() (map[string][]ReadingExtractView, error) {
+	if a.learnStore == nil {
+		return nil, errors.New("no collection open")
+	}
+	rs, err := a.learnStore.ListReading()
+	if err != nil {
+		return nil, err
+	}
+	readingIDByNotes := make(map[string]string, len(rs))
+	for _, r := range rs {
+		readingIDByNotes[r.NotesPath] = r.ID
+	}
+
+	exs, err := a.learnStore.ListActiveExtracts()
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string][]ReadingExtractView, len(rs))
+	for _, e := range exs {
+		id, ok := readingIDByNotes[e.FilePath]
+		if !ok {
+			continue // an extract in a notes file that is not a reading
+		}
+		out[id] = append(out[id], ReadingExtractView{ID: e.ID, Text: e.Text, Anchor: e.FromAnchor})
+	}
+	// Document order. parsePositionValue pulls N out of "<unit>=N", so this
+	// sorts numerically — sorting the anchor strings would put char=100 before
+	// char=9 and the tree would read out of order.
+	for id := range out {
+		list := out[id]
+		sort.SliceStable(list, func(i, j int) bool {
+			return parsePositionValue(list[i].Anchor) < parsePositionValue(list[j].Anchor)
+		})
+		out[id] = list
+	}
+	return out, nil
 }
 
 func (a *App) RescheduleReading(id, action string) (*ReadingView, error) {

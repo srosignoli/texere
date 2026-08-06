@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"texere/internal/content"
 	"texere/internal/learning"
@@ -108,5 +109,86 @@ func TestImportWebAndCreateExtractPosition(t *testing.T) {
 	}
 	if !strings.Contains(got, "sufficiently long paragraph") {
 		t.Fatalf("GetSourceHTML did not return saved article html:\n%s", got)
+	}
+}
+
+func TestGetReadingExtractsGroupsByNotesPath(t *testing.T) {
+	dir := t.TempDir()
+	st, err := learning.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := &App{learnStore: st, collectionDir: dir}
+
+	now := time.Now()
+	if err := st.UpsertReading(learning.ReadingElement{
+		ID: "r1", RefPath: "sources/x.txt", NotesPath: "notes/x.n4l",
+		Title: "X", Position: "char=0", ProjLen: 100, Due: now, IntervalDays: 1,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range []learning.Extract{
+		{ID: "e-late", FilePath: "notes/x.n4l", Text: "later passage", FromAnchor: "sources/x.txt char=100", Due: now, Active: true},
+		{ID: "e-early", FilePath: "notes/x.n4l", Text: "early passage", FromAnchor: "sources/x.txt char=9", Due: now, Active: true},
+		{ID: "e-elsewhere", FilePath: "notes/other.n4l", Text: "different doc", FromAnchor: "sources/y.txt char=1", Due: now, Active: true},
+	} {
+		if _, err := st.UpsertExtract(e); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	got, err := a.GetReadingExtracts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	list := got["r1"]
+	if len(list) != 2 {
+		t.Fatalf("got %d extracts for r1, want 2 (grouping is by notes path): %+v", len(list), list)
+	}
+	// Document order, numerically: char=9 comes before char=100. Sorting the
+	// anchors as strings would put "char=100" first and the tree would read out
+	// of order for any document past its hundredth character.
+	if list[0].ID != "e-early" || list[1].ID != "e-late" {
+		t.Fatalf("wrong order: %s then %s — anchors must sort numerically, not lexically", list[0].ID, list[1].ID)
+	}
+	if list[0].Anchor != "sources/x.txt char=9" {
+		t.Errorf("anchor = %q, want it passed through verbatim", list[0].Anchor)
+	}
+}
+
+// PDF anchors use page=N. Nothing may assume char=.
+func TestGetReadingExtractsPassesPageAnchorsThrough(t *testing.T) {
+	dir := t.TempDir()
+	st, _ := learning.Open(dir)
+	a := &App{learnStore: st, collectionDir: dir}
+	now := time.Now()
+	st.UpsertReading(learning.ReadingElement{
+		ID: "r-pdf", RefPath: "sources/p.pdf", NotesPath: "notes/p.n4l",
+		Title: "P", Position: "page=1", ProjLen: 10, Due: now, IntervalDays: 1, Medium: "pdf",
+	})
+	st.UpsertExtract(learning.Extract{
+		ID: "e-p", FilePath: "notes/p.n4l", Text: "from page 12",
+		FromAnchor: "sources/p.pdf page=12", Due: now, Active: true,
+	})
+
+	got, err := a.GetReadingExtracts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got["r-pdf"]) != 1 || got["r-pdf"][0].Anchor != "sources/p.pdf page=12" {
+		t.Fatalf("page anchor not passed through: %+v", got["r-pdf"])
+	}
+}
+
+func TestGetReadingExtractsEmptyIsNotNil(t *testing.T) {
+	dir := t.TempDir()
+	st, _ := learning.Open(dir)
+	a := &App{learnStore: st, collectionDir: dir}
+	got, err := a.GetReadingExtracts()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got == nil {
+		t.Fatal("returned a nil map; it crosses into JSON, where nil marshals to null")
 	}
 }

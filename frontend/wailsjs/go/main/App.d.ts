@@ -63,6 +63,8 @@ export function GetNotebookLinks(arg1:string):Promise<Array<main.NotebookLinkMar
 
 export function GetQueryLLMProfile():Promise<string>;
 
+export function GetReadingExtracts():Promise<Record<string, Array<main.ReadingExtractView>>>;
+
 export function GetReadingList():Promise<Array<main.ReadingView>>;
 
 export function GetRecentArrows():Promise<Array<string>>;
