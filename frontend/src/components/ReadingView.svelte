@@ -12,6 +12,10 @@
 
   export let reading            // ReadingView object
   export let onClose = null
+  // An anchor to open at instead of saved progress, or null for a normal read.
+  // While peeking, progress is NOT persisted: you came to look at one passage,
+  // and closing must leave you where you had actually read up to.
+  export let peekAt = null
 
   let arrowDefsRef = []
   let recentCodesRef = []
@@ -40,6 +44,7 @@
   }
 
   async function onPaneProgress(e) {
+    if (peekAt) return   // PDF/web push as the user navigates; a peek must not record
     try { await UpdateReadingProgress(reading.id, e.detail.position) } catch { /* best-effort */ }
   }
 
@@ -81,7 +86,7 @@
     try {
       // Persist reading progress on leave for panes that report it on demand
       // (text/markdown). PDF/web push progress as the user navigates.
-      const pos = pane?.getProgress?.()
+      const pos = peekAt ? null : pane?.getProgress?.()
       if (pos) await UpdateReadingProgress(reading.id, pos)
       await flushNotes()
       if (action !== 'done') await RescheduleReading(reading.id, action || 'continue')
@@ -127,7 +132,7 @@
     if (!closed) {
       const cur = notesView?.state.doc.toString()
       if (cur != null && cur !== savedNotes) SaveFile(reading.notesPath, cur).catch(() => {})
-      const pos = pane?.getProgress?.()
+      const pos = peekAt ? null : pane?.getProgress?.()
       if (pos) UpdateReadingProgress(reading.id, pos).catch(() => {})
       RescheduleReading(reading.id, 'continue').catch(() => {})
     }
@@ -154,7 +159,7 @@
       {:else if reading.medium === 'web'}
         <WebSourcePane bind:this={pane} {reading} on:extract={onPaneExtract} on:progress={onPaneProgress} />
       {:else}
-        <TextSourcePane bind:this={pane} {reading} on:extract={onPaneExtract} on:progress={onPaneProgress} />
+        <TextSourcePane bind:this={pane} {reading} startAt={peekAt} on:extract={onPaneExtract} on:progress={onPaneProgress} />
       {/if}
     </div>
     <div class="reading-notes" bind:this={notesContainer}></div>

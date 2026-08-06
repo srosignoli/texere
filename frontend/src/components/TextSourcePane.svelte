@@ -3,6 +3,9 @@
   import { GetSourceProjection } from '../../wailsjs/go/main/App'
 
   export let reading
+  // When set, open here instead of the reading's saved position. Used by the
+  // sidebar's extract peek.
+  export let startAt = null
   const dispatch = createEventDispatcher()
 
   let projection = ''
@@ -94,7 +97,7 @@
     try { projection = (await GetSourceProjection(reading.refPath)) ?? '' }
     catch (e) { error = String(e?.message ?? e) }
     await tick()
-    scrollToOffset(parseChar(reading.position))
+    scrollToOffset(parseChar(startAt ?? reading.position))
   })
 </script>
 
