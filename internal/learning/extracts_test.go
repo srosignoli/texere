@@ -104,3 +104,56 @@ func TestUpsertExtractDoesNotResurrectDismissed(t *testing.T) {
 		t.Fatalf("dismissed extract reappeared in due queue: len=%d want 0", len(d))
 	}
 }
+
+func TestListActiveExtractsReturnsOnlyActiveOnes(t *testing.T) {
+	st, err := Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	for _, e := range []Extract{
+		{ID: "/c/n.n4l:C:id:a", FilePath: "/c/n.n4l", Text: "first", FromAnchor: "sources/x.txt char=10", Due: now, Active: true},
+		{ID: "/c/n.n4l:C:id:b", FilePath: "/c/n.n4l", Text: "second", FromAnchor: "sources/x.txt char=200", Due: now, Active: true},
+		{ID: "/c/o.n4l:C:id:c", FilePath: "/c/o.n4l", Text: "other file", FromAnchor: "sources/y.txt char=5", Due: now, Active: true},
+	} {
+		if _, err := st.UpsertExtract(e); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Retiring one must remove it from the listing: a retired extract no longer
+	// exists as far as the reader is concerned, and showing it in the tree would
+	// offer a jump to a passage that is no longer tracked.
+	if _, err := st.RetireMissingExtracts("/c/o.n4l", map[string]bool{}); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := st.ListActiveExtracts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("got %d extracts, want 2 (the retired one must be excluded): %+v", len(got), got)
+	}
+	for _, e := range got {
+		if e.FilePath != "/c/n.n4l" {
+			t.Errorf("unexpected file_path %q", e.FilePath)
+		}
+		if e.FromAnchor == "" {
+			t.Errorf("extract %q lost its anchor; the tree cannot jump without one", e.ID)
+		}
+	}
+}
+
+func TestListActiveExtractsEmptyIsNotAnError(t *testing.T) {
+	st, _ := Open(t.TempDir())
+	got, err := st.ListActiveExtracts()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got == nil {
+		t.Fatal("returned nil; callers range over this directly")
+	}
+	if len(got) != 0 {
+		t.Fatalf("got %+v, want empty", got)
+	}
+}

@@ -132,6 +132,33 @@ func (s *Store) CountDueExtracts(now time.Time) (int, error) {
 	return n, err
 }
 
+// ListActiveExtracts returns every non-retired extract, newest table order.
+//
+// Deliberately unfiltered: the sources sidebar searches extract text across
+// documents whose trees are still collapsed, so the caller needs them all
+// before any one document is opened. Grouping and ordering happen in the
+// caller, which knows how anchors map to readings.
+func (s *Store) ListActiveExtracts() ([]Extract, error) {
+	rows, err := s.db.Query(
+		`SELECT id, file_path, text, from_anchor FROM extracts WHERE active=1`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []Extract{}
+	for rows.Next() {
+		var e Extract
+		var anchor sql.NullString
+		if err := rows.Scan(&e.ID, &e.FilePath, &e.Text, &anchor); err != nil {
+			return nil, err
+		}
+		e.FromAnchor = anchor.String
+		e.Active = true
+		out = append(out, e)
+	}
+	return out, rows.Err()
+}
+
 func scanExtract(sc scanner) (Extract, error) {
 	var (
 		e   Extract
