@@ -29,6 +29,7 @@
   let examples = []
   let translating = false
   let refusal = null      // { query, unknown: string[] } while a bad query is held back
+  let translateError = ''  // provider/binding failure, shown in the bar rather than only logged
   $: canTranslate = llmProfiles.length > 0
 
   // Query autocomplete (graph mode only). Suggests directives after '\' and
@@ -197,6 +198,8 @@
     if (!question || translating) return
     translating = true
     refusal = null
+    translateError = ''
+    translateError = ''
     // The prompt is worthless without the user's real chapter and context names,
     // and the lazy on:focus load can be skipped for a whole session — open in
     // fuzzy mode, then switch to graph with a shortcut, and the input never
@@ -212,7 +215,12 @@
       if (!v.ok) { refusal = { query: q, unknown: v.unknown }; return }
       acceptTranslation(q)
     } catch (e) {
-      appendLog([{ severity: 'error', source: 'search', message: `translate: ${String(e?.message ?? e)}` }])
+      // Surface it where the user is looking. Logging alone made a failure
+      // indistinguishable from nothing happening: the bar kept the question,
+      // the button re-enabled, and the only trace was a line in a panel that is
+      // usually closed.
+      translateError = String(e?.message ?? e)
+      appendLog([{ severity: 'error', source: 'search', message: `translate: ${translateError}` }])
     } finally {
       translating = false
     }
@@ -226,6 +234,7 @@
   // full-DB scan is never fired on their behalf.
   function acceptTranslation(q) {
     refusal = null
+    translateError = ''
     query = q
     inputEl?.focus()
   }
@@ -238,6 +247,7 @@
       selectedIndex = -1
       graphResults = null
       refusal = null
+      translateError = ''
     }
     prevMode = $omnibarMode
   }
@@ -893,6 +903,7 @@
     query = ''
     selectedIndex = -1
     refusal = null
+    translateError = ''
   }
 
   // findNodeIDInLayout returns the wire ID (<chapter>::<text>) of a node
@@ -1042,6 +1053,15 @@
       <button class="omnibar-close" on:click={close} title="Close (Esc)">✕</button>
     </div>
 
+    {#if isGraphMode && translateError}
+      <div class="q-refusal">
+        <div><b>Could not translate:</b> {translateError}</div>
+        <div class="q-refusal-actions">
+          <button on:click={translate}>Retry</button>
+          <button on:click={() => (translateError = '')}>Dismiss</button>
+        </div>
+      </div>
+    {/if}
     {#if isGraphMode && refusal}
       <div class="q-refusal">
         <div><b>Not usable here:</b> {refusal.unknown.join(', ')} — upstream searchN4L syntax texere does not execute.</div>
