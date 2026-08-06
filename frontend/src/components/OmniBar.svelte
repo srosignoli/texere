@@ -30,6 +30,7 @@
   let translating = false
   let refusal = null      // { query, unknown: string[] } while a bad query is held back
   let translateError = ''  // provider/binding failure, shown in the bar rather than only logged
+  let translatedFrom = ''  // the question a query came from, so the change is visible
   $: canTranslate = llmProfiles.length > 0
 
   // Query autocomplete (graph mode only). Suggests directives after '\' and
@@ -213,6 +214,11 @@
       const q = stripToQuery(raw)
       const v = validateQuery(q)
       if (!v.ok) { refusal = { query: q, unknown: v.unknown }; return }
+      // Remember the question. A good translation often reduces prose to bare
+      // search terms — "what do my notes say about incremental reading?" becomes
+      // "incremental reading", which is a correct AND query but looks nothing
+      // like one, so without this there is no sign anything happened.
+      translatedFrom = question
       acceptTranslation(q)
     } catch (e) {
       // Surface it where the user is looking. Logging alone made a failure
@@ -248,6 +254,7 @@
       graphResults = null
       refusal = null
       translateError = ''
+      translatedFrom = ''
     }
     prevMode = $omnibarMode
   }
@@ -904,6 +911,7 @@
     selectedIndex = -1
     refusal = null
     translateError = ''
+    translatedFrom = ''
   }
 
   // findNodeIDInLayout returns the wire ID (<chapter>::<text>) of a node
@@ -1053,6 +1061,12 @@
       <button class="omnibar-close" on:click={close} title="Close (Esc)">✕</button>
     </div>
 
+    {#if isGraphMode && translatedFrom && query.trim() && !refusal && !translateError}
+      <div class="q-from">
+        translated from <i>“{translatedFrom}”</i>
+        <button on:click={() => { query = translatedFrom; translatedFrom = ''; inputEl?.focus() }}>Undo</button>
+      </div>
+    {/if}
     {#if isGraphMode && translateError}
       <div class="q-refusal">
         <div><b>Could not translate:</b> {translateError}</div>
@@ -1442,6 +1456,9 @@
   .q-prof { background: #101826; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px; font-size: 11px; padding: 2px 4px; }
   .q-ask { background: #1e3a5a; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px; padding: 2px 8px; cursor: pointer; }
   .q-ask:disabled { opacity: 0.6; cursor: default; }
+  .q-from { padding: 4px 10px; border-top: 1px solid #2a3a4a; background: #101826; color: #5d7186; font-size: 11px; display: flex; align-items: center; gap: 8px; }
+  .q-from i { color: #93c5fd; font-style: normal; }
+  .q-from button { margin-left: auto; background: #1e3a5a; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px; padding: 1px 8px; cursor: pointer; font-size: 11px; }
   .q-refusal { padding: 6px 10px; border-top: 1px solid #2a3a4a; background: #101826; color: #e8eaf0; font-size: 12px; }
   .q-refusal code { display: block; margin: 4px 0; color: #fbbf24; }
   .q-refusal-actions { display: flex; gap: 6px; }
