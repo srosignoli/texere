@@ -132,7 +132,7 @@ func (s *Store) CountDueExtracts(now time.Time) (int, error) {
 	return n, err
 }
 
-// ListActiveExtracts returns every non-retired extract, newest table order.
+// ListActiveExtracts returns every non-retired extract, in no defined order.
 //
 // Deliberately unfiltered: the sources sidebar searches extract text across
 // documents whose trees are still collapsed, so the caller needs them all
