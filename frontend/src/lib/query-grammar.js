@@ -156,11 +156,15 @@ export const MATCHING = [
     body: 'Quote words to require them adjacent and in order: "fish soup" matches ' +
       '"fish soup recipe" but not "fish curry and soup".',
   },
-  {
-    title: 'Proximity  <->  and  <N>',
-    body: 'a <-> b requires a and b adjacent; a <N> b allows N-1 words between ' +
-      'them. Chains work: "strange <-> kind <-> of <-> woman".',
-  },
+  // Proximity (`a <-> b`, `a <N> b`) is deliberately NOT documented here.
+  // The Bleve translator supports it, but the query never reaches Bleve: any
+  // token starting '<' and ending '>' is taken as node-path shorthand by
+  // SST.DecodeSearchField first, and `<->` has no '|' to split on. Upstream
+  // exits the process on that (SSTorytime.go:6807), so proximity has never
+  // worked through this bar — it used to kill the app. internal/search/dirac.go
+  // now refuses it with an explanation instead. Documenting it here would put
+  // it back in the help panel AND in the LLM query-translation prompt, which is
+  // how it reached users in the first place.
   {
     title: 'Accent folding  (word)',
     body: 'Parentheses fold diacritics: "(fangzi)" matches "fángzi" and "Fangzi". ' +

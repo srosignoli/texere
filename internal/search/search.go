@@ -233,6 +233,15 @@ func (s *SearchService) Search(query string) (result *SearchResult, err error) {
 	// query text produces the same depth on both surfaces — by construction.
 	depth, query := extractOrbitDepth(query)
 
+	// Refuse malformed Dirac notation before decoding. Upstream exits the
+	// process on it rather than returning an error, so this has to be caught
+	// here or not at all — the deferred recover() above cannot see os.Exit.
+	if bad := badDiracToken(query); bad != "" {
+		result = NewSearchResult()
+		result.GraphError = "cannot use " + bad + " — angle brackets are node-path shorthand and must be <a|b> or <a|context|b>"
+		return result, nil
+	}
+
 	params := SST.DecodeSearchField(query)
 	_, maxlimit := SST.MinMaxPolicy(params)
 	if maxlimit <= 0 {
