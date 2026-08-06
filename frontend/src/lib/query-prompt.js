@@ -96,7 +96,28 @@ export function stripToQuery(raw) {
 // query is worse than letting an odd token through: a bad query costs a retry,
 // a false refusal blocks the user and tells them something untrue.
 export function validateQuery(text) {
-  const s = String(text ?? '')
+  let s = String(text ?? '')
+  // A model that wraps its WHOLE reply in quotes would otherwise slip anything
+  // past the check, because the next step blanks quoted spans: `"\dna \chapter
+  // NDA"` validated clean. The prompt's closing line tells the model not to do
+  // this, which is the evidence that models do.
+  //
+  // Unwrapping unconditionally is wrong — it re-breaks the LaTeX case, since
+  // `"Evaluate \(I(\nu)\)"` is also one quoted span and its backslashes are
+  // search text, not directives. The discriminator is whether the inside holds
+  // a KNOWN directive: that only happens when the model wrote a query and
+  // quoted it, never in a phrase someone means literally.
+  const whole = s.trim()
+  if (whole.length > 1 && whole.startsWith('"') && whole.endsWith('"') &&
+      whole.slice(1, -1).indexOf('"') === -1) {
+    const inner = whole.slice(1, -1)
+    for (const m of inner.matchAll(/\\[a-zA-Z]+/g)) {
+      if (KNOWN.has(m[0])) {
+        s = inner
+        break
+      }
+    }
+  }
   // Blank out double-quoted spans, preserving length so nothing else shifts.
   const outsideQuotes = s.replace(/"[^"]*"/g, (m) => ' '.repeat(m.length))
   const unknown = []

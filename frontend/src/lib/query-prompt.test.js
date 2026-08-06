@@ -92,3 +92,24 @@ test('a directive before a quoted phrase is still validated', () => {
   assert.ok(validateQuery('\\notes \\context "differentiate under integral"').ok)
   assert.deepEqual(validateQuery('\\theme dark "quoted \\dna"').unknown, ['\\theme'])
 })
+
+// A model wrapping its whole reply in quotes would otherwise slip anything past
+// the check, since quoted spans are blanked before scanning. The prompt's own
+// closing line asks the model not to, which is why this is worth guarding.
+test('a whole-reply-quoted answer is still validated', () => {
+  const r = validateQuery('"\\dna \\chapter NDA"')
+  assert.equal(r.ok, false)
+  assert.deepEqual(r.unknown, ['\\dna'])
+})
+
+// ...while a legitimate whole-query phrase stays valid. It has no backslash, so
+// looking inside it costs nothing.
+test('a whole-query phrase is unaffected', () => {
+  assert.ok(validateQuery('"thank you"').ok)
+  assert.ok(validateQuery('"differentiate under integral"').ok)
+})
+
+// The LaTeX case must keep working: the quotes there are not the whole reply.
+test('quoted LaTeX inside a larger query is still allowed', () => {
+  assert.ok(validateQuery('\\notes \\context "Evaluate \\(I(\\nu)\\)"').ok)
+})

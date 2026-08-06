@@ -326,7 +326,7 @@
   // not on every keystroke.
   function isListingQuery(q) {
     const stripped = q.replace(/^\\limit\s+\d+\s*/i, '')
-    return /^\\(notes|story|stories|sequence|seq|path|paths|from)(\s|$)/i.test(stripped)
+    return /^\\(notes|browse|story|stories|sequence|seq|path|paths|from)(\s|$)/i.test(stripped)
   }
 
   // Reads `cache` from the second arg (rather than the closed-over `fileCache`)
