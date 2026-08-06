@@ -112,71 +112,161 @@ func TestImportWebAndCreateExtractPosition(t *testing.T) {
 	}
 }
 
-func TestGetReadingExtractsGroupsByNotesPath(t *testing.T) {
+// readingTreeFixture builds a real collection: a source, a scaffolded notes
+// file, and a registered reading. The tree is read from the .n4l, so the tests
+// have to write actual N4L rather than seed the extracts table.
+func readingTreeFixture(t *testing.T) (*App, *learning.Store, string, string) {
+	t.Helper()
 	dir := t.TempDir()
+	os.MkdirAll(filepath.Join(dir, "sources"), 0o755)
+	os.MkdirAll(filepath.Join(dir, "reading"), 0o755)
+	os.WriteFile(filepath.Join(dir, "sources", "k.txt"), []byte("body text"), 0o644)
+	notes := filepath.Join(dir, "reading", "k.n4l")
+	refID, err := content.CreateReadingNotes(notes, "sources/k.txt", "k")
+	if err != nil {
+		t.Fatal(err)
+	}
 	st, err := learning.Open(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	a := &App{learnStore: st, collectionDir: dir}
-
-	now := time.Now()
+	t.Cleanup(func() { st.Close() })
 	if err := st.UpsertReading(learning.ReadingElement{
-		ID: "r1", RefPath: "sources/x.txt", NotesPath: "notes/x.n4l",
-		Title: "X", Position: "char=0", ProjLen: 100, Due: now, IntervalDays: 1,
+		ID: refID, RefPath: "sources/k.txt", NotesPath: notes, Title: "k",
+		Position: "char=0", ProjLen: 10000, IntervalDays: 1,
 	}); err != nil {
 		t.Fatal(err)
 	}
-	for _, e := range []learning.Extract{
-		{ID: "e-late", FilePath: "notes/x.n4l", Text: "later passage", FromAnchor: "sources/x.txt char=100", Due: now, Active: true},
-		{ID: "e-early", FilePath: "notes/x.n4l", Text: "early passage", FromAnchor: "sources/x.txt char=9", Due: now, Active: true},
-		{ID: "e-elsewhere", FilePath: "notes/other.n4l", Text: "different doc", FromAnchor: "sources/y.txt char=1", Due: now, Active: true},
-	} {
-		if _, err := st.UpsertExtract(e); err != nil {
-			t.Fatal(err)
-		}
+	a := &App{collectionDir: dir, learnStore: st,
+		registry: &content.SSTRegistry{Arrows: map[string]content.ArrowDef{}}}
+	return a, st, refID, notes
+}
+
+func TestGetReadingExtractsOrdersByAnchorNumerically(t *testing.T) {
+	a, _, refID, notes := readingTreeFixture(t)
+	// Appended late-first, so a pass-through of file order would fail.
+	if _, err := content.AppendExtract(notes, "later passage", "sources/k.txt char=100"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := content.AppendExtract(notes, "early passage", "sources/k.txt char=9"); err != nil {
+		t.Fatal(err)
 	}
 
 	got, err := a.GetReadingExtracts()
 	if err != nil {
 		t.Fatal(err)
 	}
-	list := got["r1"]
+	list := got[refID]
 	if len(list) != 2 {
-		t.Fatalf("got %d extracts for r1, want 2 (grouping is by notes path): %+v", len(list), list)
+		t.Fatalf("got %d extracts, want 2: %+v", len(list), list)
 	}
-	// Document order, numerically: char=9 comes before char=100. Sorting the
-	// anchors as strings would put "char=100" first and the tree would read out
-	// of order for any document past its hundredth character.
-	if list[0].ID != "e-early" || list[1].ID != "e-late" {
-		t.Fatalf("wrong order: %s then %s — anchors must sort numerically, not lexically", list[0].ID, list[1].ID)
+	// char=9 before char=100. Sorting the anchor strings would invert these.
+	if !strings.HasPrefix(list[0].Text, "early") || !strings.HasPrefix(list[1].Text, "later") {
+		t.Fatalf("wrong order: %q then %q — anchors must sort numerically, not lexically",
+			list[0].Text, list[1].Text)
 	}
-	if list[0].Anchor != "sources/x.txt char=9" {
+	if list[0].Anchor != "sources/k.txt char=9" {
 		t.Errorf("anchor = %q, want it passed through verbatim", list[0].Anchor)
+	}
+	if list[0].Promoted {
+		t.Error("a plain extract must not be flagged promoted")
 	}
 }
 
-// PDF anchors use page=N. Nothing may assume char=.
-func TestGetReadingExtractsPassesPageAnchorsThrough(t *testing.T) {
-	dir := t.TempDir()
-	st, _ := learning.Open(dir)
-	a := &App{learnStore: st, collectionDir: dir}
-	now := time.Now()
-	st.UpsertReading(learning.ReadingElement{
-		ID: "r-pdf", RefPath: "sources/p.pdf", NotesPath: "notes/p.n4l",
-		Title: "P", Position: "page=1", ProjLen: 10, Due: now, IntervalDays: 1, Medium: "pdf",
-	})
-	st.UpsertExtract(learning.Extract{
-		ID: "e-p", FilePath: "notes/p.n4l", Text: "from page 12",
-		FromAnchor: "sources/p.pdf page=12", Due: now, Active: true,
-	})
+// The reason the tree reads the file instead of the extracts table: promoting
+// an extract to a card retires its row, and the tree still has to show it —
+// it is a passage you took from this document either way.
+func TestGetReadingExtractsIncludesPromotedCards(t *testing.T) {
+	a, _, refID, notes := readingTreeFixture(t)
+	if _, err := content.AppendExtract(notes, "a passage worth a card", "sources/k.txt char=50"); err != nil {
+		t.Fatal(err)
+	}
+	before, err := a.GetReadingExtracts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(before[refID]) != 1 {
+		t.Fatalf("setup: got %d extracts, want 1", len(before[refID]))
+	}
+
+	// Promote it in the file, the way the process view does.
+	lines, err := os.ReadFile(notes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nodeLine := 0
+	for i, ln := range strings.Split(string(lines), "\n") {
+		if strings.Contains(ln, "a passage worth a card") {
+			nodeLine = i + 1
+		}
+	}
+	if nodeLine == 0 {
+		t.Fatal("setup: could not find the appended node")
+	}
+	if err := content.SeedBasicCardNode(notes, nodeLine, "a passage worth a card", "sources/k.txt char=50"); err != nil {
+		t.Fatal(err)
+	}
 
 	got, err := a.GetReadingExtracts()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got["r-pdf"]) != 1 || got["r-pdf"][0].Anchor != "sources/p.pdf page=12" {
-		t.Fatalf("page anchor not passed through: %+v", got["r-pdf"])
+	list := got[refID]
+	if len(list) != 1 {
+		t.Fatalf("promoting removed the passage from the tree: got %d, want 1: %+v", len(list), list)
+	}
+	if !list[0].Promoted {
+		t.Error("a promoted passage must be flagged so the tree can mark it")
+	}
+	if list[0].Anchor != "sources/k.txt char=50" {
+		t.Errorf("anchor = %q, want the promoted node's ditto anchor", list[0].Anchor)
+	}
+}
+
+// Promotions made before card provenance was preserved stripped the (from)
+// line, so the DB row is the only surviving record of the anchor.
+func TestGetReadingExtractsFallsBackToTheStoredAnchor(t *testing.T) {
+	a, st, refID, notes := readingTreeFixture(t)
+	if _, err := content.AppendExtract(notes, "legacy card text", "sources/k.txt char=77"); err != nil {
+		t.Fatal(err)
+	}
+	seen, err := a.GetReadingExtracts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(seen[refID]) != 1 {
+		t.Fatalf("setup: got %d, want 1", len(seen[refID]))
+	}
+	nodeID := seen[refID][0].ID
+	if _, err := st.UpsertExtract(learning.Extract{
+		ID: nodeID, FilePath: notes, Text: "legacy card text",
+		FromAnchor: "sources/k.txt char=77", Due: time.Now(), Active: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Strip the (from) line, as the old promote did.
+	body, _ := os.ReadFile(notes)
+	var kept []string
+	for _, ln := range strings.Split(string(body), "\n") {
+		if strings.Contains(ln, "legacy card text") {
+			ln = "legacy card text"
+		}
+		kept = append(kept, ln)
+	}
+	if err := os.WriteFile(notes, []byte(strings.Join(kept, "\n")), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := a.GetReadingExtracts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got[refID]) != 1 {
+		t.Fatalf("a node whose (from) the file lost must fall back to the stored anchor; got %+v", got[refID])
+	}
+	if got[refID][0].Anchor != "sources/k.txt char=77" {
+		t.Errorf("anchor = %q, want the stored one", got[refID][0].Anchor)
 	}
 }
 

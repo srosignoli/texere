@@ -119,7 +119,8 @@
                   <li>
                     <button class="sb-extract"
                             on:click={() => dispatch('peek', { reading: row.reading, anchor: ex.anchor })}
-                            title={ex.text}>⤷ {ex.text}</button>
+                            title={ex.promoted ? ex.text + ' — already promoted to a card' : ex.text}
+                    >⤷ {ex.text}{#if ex.promoted}<span class="sb-card">card</span>{/if}</button>
                   </li>
                 {:else}
                   <li class="sb-noextracts">No extracts yet.</li>
@@ -165,5 +166,9 @@
     cursor: pointer; padding: 3px 8px 3px 0; display: block; width: 100%;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .sb-extract:hover { color: #7dd3fc; }
+  /* A promoted passage stays in the tree — it is still something you took from
+     this document — but reads differently from one still awaiting processing. */
+  .sb-card { margin-left: 6px; font-size: 9px; border-radius: 3px; padding: 0 4px;
+    background: #2a3a4a; color: #8aa7c0; vertical-align: 1px; }
   .sb-noextracts { color: #5d7186; font-size: 11px; padding: 2px 0 4px; }
 </style>

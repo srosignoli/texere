@@ -132,29 +132,29 @@ func (s *Store) CountDueExtracts(now time.Time) (int, error) {
 	return n, err
 }
 
-// ListActiveExtracts returns every non-retired extract, in no defined order.
+// ExtractAnchors returns every extract's from_anchor keyed by extract id,
+// retired rows included.
 //
-// Deliberately unfiltered: the sources sidebar searches extract text across
-// documents whose trees are still collapsed, so the caller needs them all
-// before any one document is opened. Grouping and ordering happen in the
-// caller, which knows how anchors map to readings.
-func (s *Store) ListActiveExtracts() ([]Extract, error) {
-	rows, err := s.db.Query(
-		`SELECT id, file_path, text, from_anchor FROM extracts WHERE active=1`)
+// The retired ones are the point. A promotion made before card provenance was
+// preserved dropped the (from) line from the .n4l, so for those passages this
+// row is the only surviving record of where they came from. The sources tree
+// falls back to it rather than hiding a card whose anchor the file has lost.
+func (s *Store) ExtractAnchors() (map[string]string, error) {
+	rows, err := s.db.Query(`SELECT id, from_anchor FROM extracts`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	out := []Extract{}
+	out := map[string]string{}
 	for rows.Next() {
-		var e Extract
+		var id string
 		var anchor sql.NullString
-		if err := rows.Scan(&e.ID, &e.FilePath, &e.Text, &anchor); err != nil {
+		if err := rows.Scan(&id, &anchor); err != nil {
 			return nil, err
 		}
-		e.FromAnchor = anchor.String
-		e.Active = true
-		out = append(out, e)
+		if anchor.String != "" {
+			out[id] = anchor.String
+		}
 	}
 	return out, rows.Err()
 }
