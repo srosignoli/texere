@@ -29,6 +29,16 @@ function hintBlock(label, values) {
   return `${head}\n${shown.map((v) => `  ${v}`).join('\n')}\n\n`
 }
 
+// Mirrors hintBlock: omit the heading entirely rather than print "Worked
+// examples:" over nothing, which happens whenever ListQueryExamples rejects.
+function examplesBlock(examples) {
+  if (!Array.isArray(examples) || examples.length === 0) return ''
+  const worked = examples
+    .map((e) => `  Q: ${e.question}\n  A: ${e.query}`)
+    .join('\n')
+  return `Worked examples:\n${worked}\n\n`
+}
+
 export function buildQueryPrompt(examples, hints) {
   const h = hints || {}
   const directives = DIRECTIVES.map((d) => {
@@ -38,10 +48,6 @@ export function buildQueryPrompt(examples, hints) {
   }).join('\n')
 
   const matching = MATCHING.map((m) => `  ${m.title}: ${m.body}`).join('\n')
-
-  const worked = (examples || [])
-    .map((e) => `  Q: ${e.question}\n  A: ${e.query}`)
-    .join('\n')
 
   return [
     'You translate a natural-language question into a single search query for an',
@@ -57,9 +63,7 @@ export function buildQueryPrompt(examples, hints) {
     `How they combine: ${COMBINING.rule}`,
     `  e.g. ${COMBINING.example} — ${COMBINING.explanation}`,
     '',
-    'Worked examples:',
-    worked,
-    '',
+    examplesBlock(examples) +
     hintBlock('chapters', h.chapter) +
     hintBlock('context tags', h.context) +
     hintBlock('arrow codes', h.arrow) +

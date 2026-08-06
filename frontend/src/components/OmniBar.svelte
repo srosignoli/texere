@@ -11,7 +11,7 @@
   import VirtualList from './VirtualList.svelte'
   import QueryAutocomplete from './QueryAutocomplete.svelte'
   import { analyzeQuery, getSuggestions } from '../lib/query-grammar.js'
-  import { queryHints, queryHelpOpen, ensureQueryHints } from '../stores/queryHints.js'
+  import { queryHints, queryHelpOpen, ensureQueryHints, refreshQueryHints } from '../stores/queryHints.js'
   import { resolveNodeSource } from '../lib/node-source.js'
   import { buildQueryPrompt, stripToQuery, validateQuery } from '../lib/query-prompt.js'
 
@@ -197,6 +197,14 @@
     if (!question || translating) return
     translating = true
     refusal = null
+    // The prompt is worthless without the user's real chapter and context names,
+    // and the lazy on:focus load can be skipped for a whole session — open in
+    // fuzzy mode, then switch to graph with a shortcut, and the input never
+    // refocuses. Fetch here rather than trust that something else did.
+    const h = $queryHints
+    if (!h.chapter.length && !h.context.length && !h.arrow.length) {
+      await refreshQueryHints()
+    }
     try {
       const raw = await TranslateQuery(queryProfileId, question, buildQueryPrompt(examples, $queryHints))
       const q = stripToQuery(raw)
@@ -225,6 +233,7 @@
       query = ''
       selectedIndex = -1
       graphResults = null
+      refusal = null
     }
     prevMode = $omnibarMode
   }
@@ -879,6 +888,7 @@
     omnibarMode.set(null)
     query = ''
     selectedIndex = -1
+    refusal = null
   }
 
   // findNodeIDInLayout returns the wire ID (<chapter>::<text>) of a node
@@ -1028,7 +1038,7 @@
       <button class="omnibar-close" on:click={close} title="Close (Esc)">✕</button>
     </div>
 
-    {#if refusal}
+    {#if isGraphMode && refusal}
       <div class="q-refusal">
         <div><b>Not usable here:</b> {refusal.unknown.join(', ')} — upstream searchN4L syntax texere does not execute.</div>
         <code>{refusal.query}</code>

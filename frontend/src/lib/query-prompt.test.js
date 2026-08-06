@@ -42,6 +42,13 @@ test('empty hint lists are omitted, not rendered as bare headings', () => {
   assert.ok(!/chapters:\s*\n\s*\n/i.test(p))
 })
 
+// Happens whenever ListQueryExamples rejects: examples comes back [] and the
+// prompt must not tell the model to study examples that are not there.
+test('an empty example list omits the Worked examples heading', () => {
+  const p = buildQueryPrompt([], HINTS)
+  assert.ok(!p.includes('Worked examples:'))
+})
+
 test('stripToQuery unwraps what models actually return', () => {
   assert.equal(stripToQuery('pod \\chapter Kubernetes'), 'pod \\chapter Kubernetes')
   assert.equal(stripToQuery('```\npod\n```'), 'pod')
