@@ -9,8 +9,8 @@
 In graph mode, an optional button turns the text you have typed into a
 searchN4L query. It draws on the same LLM profiles the LLM cell uses, and you
 pick which of them translates — a choice that persists. The generated query is
-written **into the query bar, not executed** — you read it, edit it, and run it
-yourself.
+written **into the query bar**, where you read and edit it. The bar searches as
+you type, so it runs from there like any query you had typed yourself.
 
 Translation is never automatic. Enter always runs the literal text as a query,
 exactly as today. The button is the only trigger, and it is not rendered at all
@@ -66,7 +66,17 @@ Surveyed before designing:
   answer is worse than a refusal.
 - **Translation is explicit, never inferred.** No heuristic decides that text
   "looks like a question". Enter runs what you typed.
-- **The generated query is not auto-run.** It lands in the bar for inspection.
+- **The generated query lands in the bar and runs from there like any other.**
+  An earlier draft of this design said it must never auto-run, on the reasoning
+  that running it would hide the query and any mistake in it. That reasoning was
+  wrong about this bar: `OmniBar` already searches as you type
+  (`OmniBar.svelte:356-373`), so the query is visible in the bar *and* its
+  results appear — which tells you immediately whether the translation actually
+  worked. Suppressing that would make a translated query behave differently from
+  one you typed, for no gain. The expensive listing queries — `\notes`,
+  `\story`, `\sequence`, `\from` — still wait for Enter, exactly as they
+  already do (`isListingQuery`, `:314-317`), so a generated full-DB scan is not
+  fired on your behalf.
 - **Unknown directives are refused, with an override.** The message names what
   was rejected and why; `Use anyway` exists because the validator may lag a
   library upgrade, and being wrong should not be a dead end.
