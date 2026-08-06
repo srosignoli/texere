@@ -218,8 +218,12 @@
     }
   }
 
-  // Never auto-run: the query lands in the bar so it can be read and edited.
-  // Running it would hide both the syntax and any mistake in it.
+  // The query lands in the bar so it can be read and edited. It then runs from
+  // there like any typed query, because the search-as-you-type reactive below
+  // treats this assignment as a keystroke — deliberate: the user sees both the
+  // query and whether it found anything. Listing queries (\notes, \story,
+  // \sequence, \from) still wait for Enter via isListingQuery, so a generated
+  // full-DB scan is never fired on their behalf.
   function acceptTranslation(q) {
     refusal = null
     query = q
