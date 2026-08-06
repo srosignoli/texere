@@ -30,7 +30,7 @@
   let translating = false
   let refusal = null      // { query, unknown: string[] } while a bad query is held back
   let translateError = ''  // provider/binding failure, shown in the bar rather than only logged
-  let translatedFrom = ''  // the question a query came from, so the change is visible
+  let question = ''        // the natural-language ask, deliberately NOT the query
   $: canTranslate = llmProfiles.length > 0
 
   // Query autocomplete (graph mode only). Suggests directives after '\' and
@@ -195,8 +195,8 @@
   }
 
   async function translate() {
-    const question = query.trim()
-    if (!question || translating) return
+    const q0 = question.trim()
+    if (!q0 || translating) return
     translating = true
     refusal = null
     translateError = ''
@@ -210,15 +210,10 @@
       await refreshQueryHints()
     }
     try {
-      const raw = await TranslateQuery(queryProfileId, question, buildQueryPrompt(examples, $queryHints))
+      const raw = await TranslateQuery(queryProfileId, q0, buildQueryPrompt(examples, $queryHints))
       const q = stripToQuery(raw)
       const v = validateQuery(q)
       if (!v.ok) { refusal = { query: q, unknown: v.unknown }; return }
-      // Remember the question. A good translation often reduces prose to bare
-      // search terms — "what do my notes say about incremental reading?" becomes
-      // "incremental reading", which is a correct AND query but looks nothing
-      // like one, so without this there is no sign anything happened.
-      translatedFrom = question
       acceptTranslation(q)
     } catch (e) {
       // Surface it where the user is looking. Logging alone made a failure
@@ -254,7 +249,7 @@
       graphResults = null
       refusal = null
       translateError = ''
-      translatedFrom = ''
+      question = ''
     }
     prevMode = $omnibarMode
   }
@@ -911,7 +906,7 @@
     selectedIndex = -1
     refusal = null
     translateError = ''
-    translatedFrom = ''
+    question = ''
   }
 
   // findNodeIDInLayout returns the wire ID (<chapter>::<text>) of a node
@@ -1014,6 +1009,39 @@
     role="dialog"
     aria-label="Search"
   >
+    {#if isGraphMode && canTranslate}
+      <!-- Deliberately a separate input. Prose typed into the query bar was
+           searched as you type and opened the directive dropdown, so asking a
+           question fought the bar it was typed into. Nothing here searches. -->
+      <div class="omnibar-input-row ask-row">
+        <span class="search-icon" aria-hidden="true">✨</span>
+        <div class="omnibar-input-field">
+          <input
+            bind:value={question}
+            class="omnibar-input"
+            type="text"
+            placeholder="Ask in plain language, e.g. what is in my kubernetes notes?"
+            autocomplete="off"
+            spellcheck="false"
+            on:keydown={(e) => {
+              // Stop Enter reaching the panel handler, which would run the
+              // query bar's search or accept an autocomplete item.
+              if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); translate() }
+            }}
+          />
+        </div>
+        <select class="q-prof" value={queryProfileId}
+                on:change={(e) => setQueryProfile(e.target.value)} title="Model used to translate">
+          <option value="">Default model</option>
+          {#each llmProfiles as p}<option value={p.id}>{p.name}</option>{/each}
+        </select>
+        <button class="q-ask" on:click={translate} disabled={translating}
+                title="Turn this question into a query">
+          {translating ? '…' : '✨'}
+        </button>
+      </div>
+    {/if}
+
     <div class="omnibar-input-row">
       <span class="search-icon" aria-hidden="true">{isFuzzyMode ? '🔍' : '◈'}</span>
       <div class="omnibar-input-field">
@@ -1029,17 +1057,6 @@
           on:focus={() => { if (isGraphMode) ensureQueryHints() }}
           on:blur={() => setTimeout(() => { acOpen = false }, 120)}
         />
-        {#if isGraphMode && canTranslate}
-          <select class="q-prof" value={queryProfileId}
-                  on:change={(e) => setQueryProfile(e.target.value)} title="Model used to translate">
-            <option value="">Default model</option>
-            {#each llmProfiles as p}<option value={p.id}>{p.name}</option>{/each}
-          </select>
-          <button class="q-ask" on:click={translate} disabled={translating}
-                  title="Turn this question into a query">
-            {translating ? '…' : '✨'}
-          </button>
-        {/if}
         {#if isGraphMode}
           <QueryAutocomplete
             open={acOpen}
@@ -1061,12 +1078,6 @@
       <button class="omnibar-close" on:click={close} title="Close (Esc)">✕</button>
     </div>
 
-    {#if isGraphMode && translatedFrom && query.trim() && !refusal && !translateError}
-      <div class="q-from">
-        translated from <i>“{translatedFrom}”</i>
-        <button on:click={() => { query = translatedFrom; translatedFrom = ''; inputEl?.focus() }}>Undo</button>
-      </div>
-    {/if}
     {#if isGraphMode && translateError}
       <div class="q-refusal">
         <div><b>Could not translate:</b> {translateError}</div>
@@ -1456,9 +1467,7 @@
   .q-prof { background: #101826; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px; font-size: 11px; padding: 2px 4px; }
   .q-ask { background: #1e3a5a; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px; padding: 2px 8px; cursor: pointer; }
   .q-ask:disabled { opacity: 0.6; cursor: default; }
-  .q-from { padding: 4px 10px; border-top: 1px solid #2a3a4a; background: #101826; color: #5d7186; font-size: 11px; display: flex; align-items: center; gap: 8px; }
-  .q-from i { color: #93c5fd; font-style: normal; }
-  .q-from button { margin-left: auto; background: #1e3a5a; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px; padding: 1px 8px; cursor: pointer; font-size: 11px; }
+  .ask-row { border-bottom: 1px solid #2a3a4a; }
   .q-refusal { padding: 6px 10px; border-top: 1px solid #2a3a4a; background: #101826; color: #e8eaf0; font-size: 12px; }
   .q-refusal code { display: block; margin: 4px 0; color: #fbbf24; }
   .q-refusal-actions { display: flex; gap: 6px; }
