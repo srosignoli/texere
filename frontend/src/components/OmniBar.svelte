@@ -3,19 +3,33 @@
   import { omnibarMode, workbenchStore, navigateToLine } from '../stores/workbench.js'
   import { explorerOpen, explorerQuery, currentLayout, pendingReanchorID } from '../stores/explorer.js'
   import { get } from 'svelte/store'
-  import { ParseFileForUI, SearchGraph } from '../../wailsjs/go/main/App'
+  import {
+    ParseFileForUI, SearchGraph,
+    TranslateQuery, ListQueryExamples, GetQueryLLMProfile, SetQueryLLMProfile, GetLLMConfig
+  } from '../../wailsjs/go/main/App'
   import { appendLog } from '../stores/logPanel.js'
   import VirtualList from './VirtualList.svelte'
   import QueryAutocomplete from './QueryAutocomplete.svelte'
   import { analyzeQuery, getSuggestions } from '../lib/query-grammar.js'
   import { queryHints, queryHelpOpen, ensureQueryHints } from '../stores/queryHints.js'
   import { resolveNodeSource } from '../lib/node-source.js'
+  import { buildQueryPrompt, stripToQuery, validateQuery } from '../lib/query-prompt.js'
 
   let query = ''
   let selectedIndex = -1
   let inputEl = null
   let virtualListEl = null
   let loading = false
+
+  // Natural-language translation. Absent entirely when no LLM profile exists —
+  // not disabled, not a tooltip: a user who has never configured a provider
+  // should not see a control they cannot use.
+  let llmProfiles = []
+  let queryProfileId = ''
+  let examples = []
+  let translating = false
+  let refusal = null      // { query, unknown: string[] } while a bad query is held back
+  $: canTranslate = llmProfiles.length > 0
 
   // Query autocomplete (graph mode only). Suggests directives after '\' and
   // the user's real chapters/contexts/arrows after the matching directive.
@@ -159,6 +173,50 @@
   // toggling graph mode (which would dirty the file).
   onMount(()  => document.addEventListener('keydown', onGlobalKeydown, true))
   onDestroy(() => document.removeEventListener('keydown', onGlobalKeydown, true))
+
+  // A SECOND onMount, not merged into the existing one. The existing call is a
+  // sync arrow whose return value Svelte treats as the cleanup function; making
+  // it async would return a Promise instead and silently break that teardown.
+  // Svelte allows any number of onMount registrations.
+  onMount(async () => {
+    try { const c = await GetLLMConfig(); llmProfiles = c.profiles ?? [] } catch { /* not configured */ }
+    try { queryProfileId = (await GetQueryLLMProfile()) ?? '' } catch { /* default */ }
+    try { examples = (await ListQueryExamples()) ?? [] } catch { /* prompt degrades to grammar only */ }
+    // A profile deleted since it was chosen must fall back, not persist a stale
+    // name — providerFor resolves an unknown id to an error, not to the default.
+    if (queryProfileId && !llmProfiles.some((p) => p.id === queryProfileId)) queryProfileId = ''
+  })
+
+  function setQueryProfile(id) {
+    queryProfileId = id || ''
+    SetQueryLLMProfile(queryProfileId).catch(() => {})
+  }
+
+  async function translate() {
+    const question = query.trim()
+    if (!question || translating) return
+    translating = true
+    refusal = null
+    try {
+      const raw = await TranslateQuery(queryProfileId, question, buildQueryPrompt(examples, $queryHints))
+      const q = stripToQuery(raw)
+      const v = validateQuery(q)
+      if (!v.ok) { refusal = { query: q, unknown: v.unknown }; return }
+      acceptTranslation(q)
+    } catch (e) {
+      appendLog([{ severity: 'error', source: 'search', message: `translate: ${String(e?.message ?? e)}` }])
+    } finally {
+      translating = false
+    }
+  }
+
+  // Never auto-run: the query lands in the bar so it can be read and edited.
+  // Running it would hide both the syntax and any mistake in it.
+  function acceptTranslation(q) {
+    refusal = null
+    query = q
+    inputEl?.focus()
+  }
 
   // ── Reset query when panel opens ─────────────────────────────────────────────
   let prevMode = null
@@ -938,6 +996,17 @@
           on:focus={() => { if (isGraphMode) ensureQueryHints() }}
           on:blur={() => setTimeout(() => { acOpen = false }, 120)}
         />
+        {#if isGraphMode && canTranslate}
+          <select class="q-prof" value={queryProfileId}
+                  on:change={(e) => setQueryProfile(e.target.value)} title="Model used to translate">
+            <option value="">Default model</option>
+            {#each llmProfiles as p}<option value={p.id}>{p.name}</option>{/each}
+          </select>
+          <button class="q-ask" on:click={translate} disabled={translating}
+                  title="Turn this question into a query">
+            {translating ? '…' : '✨'}
+          </button>
+        {/if}
         {#if isGraphMode}
           <QueryAutocomplete
             open={acOpen}
@@ -958,6 +1027,18 @@
       {/if}
       <button class="omnibar-close" on:click={close} title="Close (Esc)">✕</button>
     </div>
+
+    {#if refusal}
+      <div class="q-refusal">
+        <div><b>Not usable here:</b> {refusal.unknown.join(', ')} — upstream searchN4L syntax texere does not execute.</div>
+        <code>{refusal.query}</code>
+        <div class="q-refusal-actions">
+          <button on:click={translate}>Retry</button>
+          <button on:click={() => acceptTranslation(refusal.query)}>Use anyway</button>
+          <button on:click={() => (refusal = null)}>Dismiss</button>
+        </div>
+      </div>
+    {/if}
 
     {#if query.trim()}
       {#if isGraphMode && graphLoading}
@@ -1323,6 +1404,14 @@
     font-family: inherit;
     caret-color: #7dd3fc;
   }
+
+  .q-prof { background: #101826; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px; font-size: 11px; padding: 2px 4px; }
+  .q-ask { background: #1e3a5a; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px; padding: 2px 8px; cursor: pointer; }
+  .q-ask:disabled { opacity: 0.6; cursor: default; }
+  .q-refusal { padding: 6px 10px; border-top: 1px solid #2a3a4a; background: #101826; color: #e8eaf0; font-size: 12px; }
+  .q-refusal code { display: block; margin: 4px 0; color: #fbbf24; }
+  .q-refusal-actions { display: flex; gap: 6px; }
+  .q-refusal-actions button { background: #1e3a5a; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 11px; }
 
   .omnibar-input::placeholder {
     color: #3a5a7a;
