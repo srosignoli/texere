@@ -6,16 +6,22 @@
   import { ParseFileForUI, SearchGraph } from '../../wailsjs/go/main/App'
   import { appendLog } from '../stores/logPanel.js'
   import VirtualList from './VirtualList.svelte'
+  import AskBox from './AskBox.svelte'
   import QueryAutocomplete from './QueryAutocomplete.svelte'
   import { analyzeQuery, getSuggestions } from '../lib/query-grammar.js'
-  import { queryHints, queryHelpOpen, ensureQueryHints } from '../stores/queryHints.js'
+  import { queryHints, queryHelpOpen, ensureQueryHints, refreshQueryHints } from '../stores/queryHints.js'
   import { resolveNodeSource } from '../lib/node-source.js'
 
   let query = ''
   let selectedIndex = -1
   let inputEl = null
+  let askBox = null   // AskBox instance, so the panel can reset it
   let virtualListEl = null
   let loading = false
+
+  // Natural-language translation. Absent entirely when no LLM profile exists —
+  // not disabled, not a tooltip: a user who has never configured a provider
+  // should not see a control they cannot use.
 
   // Query autocomplete (graph mode only). Suggests directives after '\' and
   // the user's real chapters/contexts/arrows after the matching directive.
@@ -160,6 +166,22 @@
   onMount(()  => document.addEventListener('keydown', onGlobalKeydown, true))
   onDestroy(() => document.removeEventListener('keydown', onGlobalKeydown, true))
 
+  // A SECOND onMount, not merged into the existing one. The existing call is a
+  // sync arrow whose return value Svelte treats as the cleanup function; making
+  // it async would return a Promise instead and silently break that teardown.
+  // Svelte allows any number of onMount registrations.
+  // The query lands in the bar so it can be read and edited. It then runs from
+  // there like any typed query, because the search-as-you-type reactive below
+  // treats this assignment as a keystroke — deliberate: the user sees both the
+  // query and whether it found anything. Listing queries (\notes, \story,
+  // \sequence, \from) still wait for Enter via isListingQuery, so a generated
+  // full-DB scan is never fired on their behalf.
+  function acceptTranslation(q) {
+    askBox?.reset()
+    query = q
+    inputEl?.focus()
+  }
+
   // ── Reset query when panel opens ─────────────────────────────────────────────
   let prevMode = null
   $: {
@@ -167,6 +189,7 @@
       query = ''
       selectedIndex = -1
       graphResults = null
+      askBox?.reset()
     }
     prevMode = $omnibarMode
   }
@@ -255,7 +278,7 @@
   // not on every keystroke.
   function isListingQuery(q) {
     const stripped = q.replace(/^\\limit\s+\d+\s*/i, '')
-    return /^\\(notes|story|stories|sequence|seq|path|paths|from)(\s|$)/i.test(stripped)
+    return /^\\(notes|browse|story|stories|sequence|seq|path|paths|from)(\s|$)/i.test(stripped)
   }
 
   // Reads `cache` from the second arg (rather than the closed-over `fileCache`)
@@ -821,6 +844,7 @@
     omnibarMode.set(null)
     query = ''
     selectedIndex = -1
+    askBox?.reset()
   }
 
   // findNodeIDInLayout returns the wire ID (<chapter>::<text>) of a node
@@ -923,6 +947,10 @@
     role="dialog"
     aria-label="Search"
   >
+    {#if isGraphMode}
+      <AskBox bind:this={askBox} on:translated={(e) => acceptTranslation(e.detail)} />
+    {/if}
+
     <div class="omnibar-input-row">
       <span class="search-icon" aria-hidden="true">{isFuzzyMode ? '🔍' : '◈'}</span>
       <div class="omnibar-input-field">
@@ -958,6 +986,7 @@
       {/if}
       <button class="omnibar-close" on:click={close} title="Close (Esc)">✕</button>
     </div>
+
 
     {#if query.trim()}
       {#if isGraphMode && graphLoading}
@@ -1323,6 +1352,7 @@
     font-family: inherit;
     caret-color: #7dd3fc;
   }
+
 
   .omnibar-input::placeholder {
     color: #3a5a7a;

@@ -1,6 +1,7 @@
 <script>
   import { SearchGraph, GraphLayout } from '../../../wailsjs/go/main/App'
   import { analyzeQuery, getSuggestions } from '../../lib/query-grammar.js'
+  import AskBox from '../AskBox.svelte'
   import { queryHints, ensureQueryHints } from '../../stores/queryHints.js'
   import GraphResults from './GraphResults.svelte'
   import IsoGraphView from '../IsoGraphView.svelte'
@@ -40,6 +41,16 @@
     const to = analysis?.replaceTo ?? caretPos
     const insert = item.apply ?? item.label ?? ''
     cell.query = cell.query.slice(0, from) + insert + cell.query.slice(to)
+    cell = cell
+    showSug = false
+    onChange(cell)
+  }
+
+  // The translated query fills the input and stops there. This cell already
+  // requires an explicit Run (or Enter), and a generated \notes is a full-DB
+  // scan — it should not fire because a question was asked.
+  function onTranslated(e) {
+    cell.query = e.detail
     cell = cell
     showSug = false
     onChange(cell)
@@ -95,6 +106,9 @@
 </script>
 
 <div class="gq-cell">
+  {#if !readOnly}
+    <div class="gq-ask"><AskBox on:translated={onTranslated} /></div>
+  {/if}
   <div class="gq-bar">
     <div class="gq-input-wrap">
       <input class="gq-input" value={cell.query} on:input={onInput} on:keydown={onKey} on:focus={() => ensureQueryHints()}
@@ -128,6 +142,7 @@
 
 <style>
   .gq-cell { background: #0e1622; border: 1px solid #26374a; border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+  .gq-ask { border-bottom: 1px solid #2a3a4a; }
   .gq-bar { display: flex; align-items: flex-start; gap: 6px; padding: 6px 8px; }
   .gq-input-wrap { position: relative; flex: 1; min-width: 0; }
   .gq-input { box-sizing: border-box; width: 100%; background: #0b1220; border: 1px solid #2a3a4a; border-radius: 6px; color: #e8eaf0; font-size: 13px; padding: 5px 8px; font-family: monospace; }

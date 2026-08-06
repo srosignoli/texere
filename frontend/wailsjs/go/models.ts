@@ -1015,6 +1015,20 @@ export namespace main {
 	        this.kinds = source["kinds"];
 	    }
 	}
+	export class QueryExample {
+	    question: string;
+	    query: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new QueryExample(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.question = source["question"];
+	        this.query = source["query"];
+	    }
+	}
 	export class ReadingView {
 	    id: string;
 	    refPath: string;
