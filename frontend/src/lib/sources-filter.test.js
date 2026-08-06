@@ -50,6 +50,18 @@ test('matching is case-insensitive and trims the query', () => {
   assert.equal(filterSources(readings, byReading, 'RECALL').length, 2)
 })
 
+// The existing case-insensitivity test only exercises the QUERY side: every
+// fixture extract is already lowercase, so the .toLowerCase() on e.text is
+// unverified by it. This one has mixed-case extract text and no title match,
+// so it can only pass if both sides are folded.
+test('extract text matching folds case on the extract side too', () => {
+  const mixed = { r1: [{ id: 'eM', text: 'Spaced Repetition Works', anchor: 'char=1' }] }
+  const got = filterSources([{ id: 'r1', title: 'unrelated' }], mixed, 'spaced repetition')
+  assert.equal(got.length, 1, 'a mixed-case extract must match a lowercase query')
+  assert.deepEqual(got[0].extracts.map((e) => e.id), ['eM'])
+  assert.equal(got[0].autoExpand, true)
+})
+
 test('no match returns an empty list', () => {
   assert.deepEqual(filterSources(readings, byReading, 'zzzznotathing'), [])
 })
