@@ -32,12 +32,26 @@
   // come from a cache filled on mount, so re-read the reading first: switching
   // away from a document and back would otherwise reopen it at a stale position
   // and then write that stale value back over the good one on close.
+  // Two clicks inside one flush's IPC round trip would otherwise let the slower
+  // call finish last and display the document the user did NOT click last, so
+  // each call takes a ticket and drops out once a newer one has started.
+  let switchSeq = 0
+  let pendingFlush = null
+
   async function switchTo(r, anchor) {
+    const seq = ++switchSeq
     if (readingKey(r, anchor) !== readingKey($activeReading, peekAt)) {
-      await readingView?.flush?.()
+      pendingFlush = readingView?.flush?.() ?? null
     }
+    // Await whatever flush is outstanding, not just one this call started: a
+    // click that skips the flush can still race an earlier one still in flight,
+    // and reading back a position before its write lands is the whole bug.
+    if (pendingFlush) await pendingFlush
+    if (seq !== switchSeq) return
+    const fresh = await freshReading(r)
+    if (seq !== switchSeq) return
     peekAt = anchor
-    activeReading.set(await freshReading(r))
+    activeReading.set(fresh)
     await sidebar?.refresh()
   }
 
