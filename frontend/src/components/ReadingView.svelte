@@ -155,9 +155,9 @@
   <div class="reading-body">
     <div class="reading-source">
       {#if reading.medium === 'pdf'}
-        <PdfSourcePane bind:this={pane} {reading} on:extract={onPaneExtract} on:progress={onPaneProgress} />
+        <PdfSourcePane bind:this={pane} {reading} startAt={peekAt} on:extract={onPaneExtract} on:progress={onPaneProgress} />
       {:else if reading.medium === 'web'}
-        <WebSourcePane bind:this={pane} {reading} on:extract={onPaneExtract} on:progress={onPaneProgress} />
+        <WebSourcePane bind:this={pane} {reading} startAt={peekAt} on:extract={onPaneExtract} on:progress={onPaneProgress} />
       {:else}
         <TextSourcePane bind:this={pane} {reading} startAt={peekAt} on:extract={onPaneExtract} on:progress={onPaneProgress} />
       {/if}

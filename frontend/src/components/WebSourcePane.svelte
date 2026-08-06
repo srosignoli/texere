@@ -4,6 +4,10 @@
   import { BrowserOpenURL } from '../../wailsjs/runtime/runtime'
 
   export let reading
+  // When set, open here instead of the reading's saved position. Used by the
+  // sidebar's extract peek. parseChar reads the char=N out of it, so an anchor
+  // still carrying its source path is fine.
+  export let startAt = null
   const dispatch = createEventDispatcher()
 
   let html = ''
@@ -103,7 +107,7 @@
     await tick()
     if (articleEl) {
       try { await SetReadingProjLen(reading.id, [...(articleEl.textContent ?? '')].length) } catch { /* best-effort */ }
-      scrollToRune(parseChar(reading.position))
+      scrollToRune(parseChar(startAt ?? reading.position))
     }
   })
 </script>

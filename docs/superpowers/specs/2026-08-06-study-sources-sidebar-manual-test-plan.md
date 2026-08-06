@@ -42,17 +42,20 @@ the three fit together on screen.
   a `.n4l` file outside the app waits for the collection's regular sync —
   the same delay the processing queue already has.
 
-## One thing that is *not* obviously fine — check it, don't assume it
+## Peek navigation works in all three media — but verify it per medium
 
-`ReadingView.svelte` passes the peeked anchor to only one pane:
-`<TextSourcePane ... startAt={peekAt} .../>`. `PdfSourcePane` and
-`WebSourcePane` are never given `peekAt` at all — both always open at
-`reading.position`, the reading's last saved position, regardless of which
-extract you clicked. So "clicking an extract opens the document at that
-passage" is demonstrably true for text/markdown and **not wired for PDF or
-web** as far as landing on the right page/passage goes. What *is* guarded for
-all three media is the write-suppression (TC-8) — that part works regardless.
-TC-6 and TC-8 ask you to check navigation explicitly rather than assume it.
+`ReadingView.svelte` passes the peeked anchor to all three panes as `startAt`
+(lines 158, 160, 162). Each pane parses it with its **own** unit: `PdfSourcePane`
+reads `page=N`, `TextSourcePane` and `WebSourcePane` read `char=N`. The units
+must not be crossed, and the panes reach the anchor by different routes — the
+PDF re-renders a page, the other two scroll a projection — so TC-6 and TC-8 ask
+you to confirm the landing position separately for text and for PDF rather than
+assuming one implies the other.
+
+An anchor whose unit does not match its pane fails safe: the regex finds
+nothing, and the pane opens at the top (page 1, or offset 0). If a peek lands
+you at the very start of a document instead of at the passage, that is the
+symptom to report.
 
 ## Before you start
 
@@ -131,8 +134,7 @@ to.
 
 ## TC-6 Clicking an extract opens the document at that passage (text)
 
-Use a **text or markdown** document — this is the medium that is actually
-wired for it (see the note above; PDF/web are checked separately in TC-8).
+Use a **text or markdown** document; PDF is checked separately in TC-8.
 Expand its tree and note the text of an extract taken from early in the
 document. Click that **extract**, not the title.
 
@@ -169,11 +171,10 @@ text on an early page, press Ctrl+E, then close and reopen the sidebar's tree
 to confirm it's there.
 
 1. Expand the tree and click that early extract to peek it.
-2. **Record which page actually opens.** Per the note above, only the text
-   pane receives the peeked anchor — a PDF may open on the same middle page you
-   left off at rather than the extract's page. That is worth reporting either
-   way; it is not something to assume is fine.
-3. Regardless of what page it opened on, page forward and back several times
+2. **Confirm it opens on the extract's page**, not the middle page you left
+   off at. `PdfSourcePane` parses `page=N` out of the anchor; landing on page 1
+   would mean the anchor's unit did not match.
+3. Page forward and back several times
    with `‹`/`›`. Each page render pushes a `progress` event — this is the step
    that has no text-document equivalent.
 4. Close (`×` or Esc).
@@ -241,15 +242,15 @@ same document's tree — without closing the reading first.
 reading id didn't change, but `StudySurface`'s `{#key}` includes `peekAt` in
 its key, so a changed anchor still remounts the view.)
 
-For a **PDF**, the same click is not expected to move you anywhere — see the
-note above and TC-8; record what you actually see.
+This holds for all three media. For a **PDF** the pane re-renders the
+extract's page rather than scrolling.
 
 ## What I most want to hear about
 
 - **TC-7 and TC-8's `%` results.** That's the entire safety property this
   feature depends on — a peek that silently rewinds a half-read document is
   the failure mode the whole design exists to prevent.
-- **TC-6/TC-8's page-2 observation.** Whether a PDF or web peek lands on the
+- **TC-6/TC-8's landing position.** Whether a PDF or web peek lands on the
   extract's actual page/passage, or just wherever you'd last read to. The code
   suggests the latter; I'd like it confirmed rather than assumed.
 - Anything that makes the search-auto-expand and manual-expand states look
