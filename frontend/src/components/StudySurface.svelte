@@ -4,7 +4,7 @@
   import { studyFocus } from '../stores/study.js'
   import { activeReading } from '../stores/reading.js'
   import ReadingView from './ReadingView.svelte'
-  import SourcesPanel from './SourcesPanel.svelte'
+  import SourcesSidebar from './SourcesSidebar.svelte'
   import ProcessView from './ProcessView.svelte'
   import RecallCard from './RecallCard.svelte'
 
@@ -19,6 +19,7 @@
   let recallCard = null
   let recallShownAt = 0
   // Read state: activeReading store + library fallback
+  let peekAt = null   // anchor for an extract peek, cleared on a normal open
 
   async function refresh() {
     try { counts = (await GetStudyCounts()) ?? counts } catch (e) { error = String(e?.message ?? e) }
@@ -42,7 +43,7 @@
       if ($activeReading) return
       const list = await GetReadingList()
       const due = (list ?? []).find((r) => !r.done && (r.due === 0 || r.due * 1000 <= Date.now()))
-      if (due) activeReading.set(due) // open the next due source; else SourcesPanel shows the library
+      if (due) activeReading.set(due) // open the next due source; else SourcesSidebar shows the library
     } catch (e) { error = String(e?.message ?? e) }
   }
 
@@ -97,11 +98,21 @@
 
   <div class="ss-body">
     {#if $studyFocus === 'read' || ($studyFocus === 'next' && nextKind() === 'read')}
-      {#if $activeReading}
-        <ReadingView reading={$activeReading} onClose={() => { activeReading.set(null); enter('next') }} />
-      {:else}
-        <SourcesPanel onClose={() => onClose?.()} />
-      {/if}
+      <div class="ss-read">
+        <SourcesSidebar
+          on:open={(e) => { peekAt = null; activeReading.set(e.detail) }}
+          on:peek={(e) => { peekAt = e.detail.anchor; activeReading.set(e.detail.reading) }} />
+        <div class="ss-reading">
+          {#if $activeReading}
+            {#key ($activeReading.id ?? '') + '|' + (peekAt ?? '')}
+              <ReadingView reading={$activeReading} {peekAt}
+                onClose={() => { peekAt = null; activeReading.set(null); enter('next') }} />
+            {/key}
+          {:else}
+            <div class="ss-empty">Pick a document to read.</div>
+          {/if}
+        </div>
+      </div>
     {:else if $studyFocus === 'process' || ($studyFocus === 'next' && nextKind() === 'process')}
       {#if processId}
         {#key processId}<ProcessView extractId={processId} onAdvance={onProcessAdvance} />{/key}
@@ -127,5 +138,7 @@
   .ss-close { background: none; border: none; color: #8899aa; font-size: 18px; cursor: pointer; }
   .ss-error { color: #ff8080; padding: 6px 12px; font-size: 12px; }
   .ss-body { flex: 1; min-height: 0; position: relative; }
+  .ss-read { position: absolute; inset: 0; display: flex; min-height: 0; }
+  .ss-reading { position: relative; flex: 1; min-width: 0; }
   .ss-empty { display: flex; align-items: center; justify-content: center; height: 100%; color: #8aa; }
 </style>
