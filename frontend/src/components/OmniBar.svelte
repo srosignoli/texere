@@ -3,6 +3,7 @@
   import { omnibarMode, workbenchStore, navigateToLine } from '../stores/workbench.js'
   import { explorerOpen, explorerQuery, currentLayout, pendingReanchorID } from '../stores/explorer.js'
   import { get } from 'svelte/store'
+  import { ParseFileForUI, SearchGraph } from '../../wailsjs/go/main/App'
   import { appendLog } from '../stores/logPanel.js'
   import VirtualList from './VirtualList.svelte'
   import AskBox from './AskBox.svelte'
