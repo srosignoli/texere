@@ -193,11 +193,27 @@ database — it should not fire on your behalf.)*
 With no profile configured, the ask box is absent and the explorer is exactly as
 before.
 
-## TC-15 Nothing else changed
+## TC-15 The notebook's graph cell has an ask box too
 
-Exercise fuzzy search and a notebook Graph Query cell.
+Add a Graph Query cell to a notebook.
 
-**Expect:** both unchanged. Neither gained an ask box.
+**Expect:** with a profile configured, an ask box sits above the cell's query
+input. Ask a question; the query fills the input and **does not run** — press
+Enter or **Run**.
+
+Then reopen the notebook.
+
+**Expect:** the translated query persisted, like any query typed into the cell.
+
+Open the same notebook **read-only** (via a gutter dot in the note editor).
+
+**Expect:** no ask box — the query cannot be edited there anyway.
+
+## TC-16 Nothing else changed
+
+Exercise fuzzy search.
+
+**Expect:** unchanged. It gained no ask box.
 
 ## What I most want to hear about
 

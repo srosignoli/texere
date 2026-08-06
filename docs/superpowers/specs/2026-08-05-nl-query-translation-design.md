@@ -413,6 +413,13 @@ decides what happens next:
 - **`GraphExplorer`** fills its query bar and stops. That surface never runs a
   query without an explicit submit, and a generated `\notes` scan — a full-DB
   scan — should not be the exception.
+- **`GraphQueryCell`** (notebook) does the same, persisting through the cell's
+  existing `onChange` path. Hidden when the notebook is read-only, since the
+  query cannot be edited there.
+
+All three surfaces that have a query bar now have an ask box, and
+`TranslateQuery`, `buildQueryPrompt`, `validateQuery` and `stripToQuery` appear
+in exactly one file.
 
 `OmniBar` lost 127 lines in the process, and neither host now references
 `TranslateQuery`, `buildQueryPrompt` or `validateQuery`. The alternative was two
