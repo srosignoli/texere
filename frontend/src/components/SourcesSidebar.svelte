@@ -119,8 +119,10 @@
                   <li>
                     <button class="sb-extract"
                             on:click={() => dispatch('peek', { reading: row.reading, anchor: ex.anchor })}
-                            title={ex.promoted ? ex.text + ' — already promoted to a card' : ex.text}
-                    >⤷ {ex.text}{#if ex.promoted}<span class="sb-card">card</span>{/if}</button>
+                            title={ex.promoted ? ex.text + ' — already promoted to a card' : ex.text}>
+                      <span class="sb-extract-text">⤷ {ex.text}</span>
+                      {#if ex.promoted}<span class="sb-card">card</span>{/if}
+                    </button>
                   </li>
                 {:else}
                   <li class="sb-noextracts">No extracts yet.</li>
@@ -163,12 +165,18 @@
   .sb-tag.done { background: #1a3a2a; color: #7ecfa0; }
   .sb-extracts { list-style: none; margin: 0 0 4px; padding: 0 0 0 22px; }
   .sb-extract { background: none; border: none; color: #9fb3c8; font-size: 12px; text-align: left;
-    cursor: pointer; padding: 3px 8px 3px 0; display: block; width: 100%;
+    cursor: pointer; padding: 3px 8px 3px 0; display: flex; align-items: center; gap: 6px; width: 100%; }
+  /* min-width:0 is load-bearing: a flex item will not shrink below its content
+     width without it, so the text would never ellipsise and would instead push
+     the badge past the sidebar's edge — which is exactly how the badge went
+     missing when it was an inline span inside a truncating block. */
+  .sb-extract-text { flex: 1 1 auto; min-width: 0;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .sb-extract:hover { color: #7dd3fc; }
   /* A promoted passage stays in the tree — it is still something you took from
-     this document — but reads differently from one still awaiting processing. */
-  .sb-card { margin-left: 6px; font-size: 9px; border-radius: 3px; padding: 0 4px;
-    background: #2a3a4a; color: #8aa7c0; vertical-align: 1px; }
+     this document — but reads differently from one still awaiting processing.
+     flex:0 0 auto keeps it whole while the text beside it truncates. */
+  .sb-card { flex: 0 0 auto; font-size: 9px; border-radius: 3px; padding: 0 4px;
+    background: #2a3a4a; color: #8aa7c0; }
   .sb-noextracts { color: #5d7186; font-size: 11px; padding: 2px 0 4px; }
 </style>
