@@ -144,14 +144,14 @@
 {/if}
 
 <style>
-  .ask-row { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid #2a3a4a; }
+  .ask-row { display: flex; align-items: center; gap: 8px; padding: 6px 10px; }
   .ask-icon { color: #7dd3fc; font-size: 13px; }
   .ask-input { flex: 1 1 auto; min-width: 0; background: transparent; border: none; outline: none; color: #e8eaf0; font-size: 13px; }
   .ask-input::placeholder { color: #5d7186; }
   .ask-prof { background: #101826; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px; font-size: 11px; padding: 2px 4px; }
   .ask-go { background: #1e3a5a; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px; padding: 2px 8px; cursor: pointer; }
   .ask-go:disabled { opacity: 0.6; cursor: default; }
-  .ask-note { padding: 6px 10px; border-bottom: 1px solid #2a3a4a; background: #101826; color: #e8eaf0; font-size: 12px; }
+  .ask-note { padding: 6px 10px; border-top: 1px solid #2a3a4a; background: #101826; color: #e8eaf0; font-size: 12px; }
   .ask-note code { display: block; margin: 4px 0; color: #fbbf24; }
   .ask-actions { display: flex; gap: 6px; }
   .ask-actions button { background: #1e3a5a; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 11px; }

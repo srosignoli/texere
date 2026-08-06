@@ -1410,36 +1410,40 @@
   <!-- Ask box. Fills the query bar below and stops there: the explorer never
        runs a query without an explicit submit, and a generated \notes scan
        should not be an exception. -->
-  <AskBox on:translated={(e) => { queryDraft = e.detail; queryBarEl?.focus() }} />
-
-  <!-- Always-visible query bar. The query result is always rendered as the
-       whole graph (ExplorerOpen runs the full query and lays out the entire
-       result set). Lives outside the layout-gated overlays below so it stays
-       editable on empty / error / loading states. -->
-  <form class="explorer-querybar" on:submit|preventDefault={submitQuery}>
-    <div class="explorer-querybar-field">
-      <input
-        bind:this={queryBarEl}
-        bind:value={queryDraft}
-        type="text"
-        spellcheck="false"
-        autocomplete="off"
-        placeholder={'e.g.  \\notes \\context "differentiate under integral"'}
-        aria-label="Graph query"
-        on:input={onQueryInput}
-        on:keydown={onQueryKeydown}
-        on:focus={ensureQueryHints}
-        on:blur={() => setTimeout(() => { acOpen = false }, 120)} />
-      <QueryAutocomplete
-        open={acOpen}
-        items={acItems}
-        activeIndex={acIndex}
-        on:select={(e) => applySuggestion(e.detail)}
-        on:hover={(e) => acIndex = e.detail} />
+  <div class="explorer-topbar">
+    <div class="explorer-ask">
+      <AskBox on:translated={(e) => { queryDraft = e.detail; queryBarEl?.focus() }} />
     </div>
-    <button type="button" class="explorer-help" title="Query syntax help" aria-label="Query syntax help" on:click={openQueryHelp}>?</button>
-    <button type="submit" title="Run query (Enter)" aria-label="Run query">↵</button>
-  </form>
+
+    <!-- Always-visible query bar. The query result is always rendered as the
+         whole graph (ExplorerOpen runs the full query and lays out the entire
+         result set). Lives outside the layout-gated overlays below so it stays
+         editable on empty / error / loading states. -->
+    <form class="explorer-querybar" on:submit|preventDefault={submitQuery}>
+      <div class="explorer-querybar-field">
+        <input
+          bind:this={queryBarEl}
+          bind:value={queryDraft}
+          type="text"
+          spellcheck="false"
+          autocomplete="off"
+          placeholder={'e.g.  \\notes \\context "differentiate under integral"'}
+          aria-label="Graph query"
+          on:input={onQueryInput}
+          on:keydown={onQueryKeydown}
+          on:focus={ensureQueryHints}
+          on:blur={() => setTimeout(() => { acOpen = false }, 120)} />
+        <QueryAutocomplete
+          open={acOpen}
+          items={acItems}
+          activeIndex={acIndex}
+          on:select={(e) => applySuggestion(e.detail)}
+          on:hover={(e) => acIndex = e.detail} />
+      </div>
+      <button type="button" class="explorer-help" title="Query syntax help" aria-label="Query syntax help" on:click={openQueryHelp}>?</button>
+      <button type="submit" title="Run query (Enter)" aria-label="Run query">↵</button>
+    </form>
+  </div>
 
   <!-- US7 orientation overlays. Stats / MiniMap / Sidebar suppress
        themselves when there's no layout content; the legend has its
@@ -1592,15 +1596,31 @@
     background: rgba(0, 0, 0, 0.8);
   }
 
-  .explorer-querybar {
+  /* The query bar used to position itself as a floating overlay. It now sits
+     in .explorer-topbar so the ask box can stack above it — a plain-flow child
+     of .explorer-root rendered underneath the canvas and was invisible. */
+  .explorer-topbar {
     position: absolute;
     top: 12px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 10;
     display: flex;
+    flex-direction: column;
     gap: 6px;
     width: min(680px, calc(100vw - 120px));
+  }
+
+  .explorer-ask {
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid #334455;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .explorer-querybar {
+    display: flex;
+    gap: 6px;
     padding: 6px;
     background: rgba(0, 0, 0, 0.6);
     border: 1px solid #334455;
