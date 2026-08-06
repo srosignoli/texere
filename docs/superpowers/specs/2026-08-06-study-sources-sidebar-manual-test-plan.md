@@ -290,7 +290,10 @@ Take a document where you have already promoted at least one extract to a card
 (`# @card` in its notes file), and expand its tree.
 
 **Expect:** the promoted passages are listed alongside the unpromoted ones, each
-with a small `card` tag, and clicking one peeks it like any other. Count the
+with a small `card` tag, and clicking one peeks it like any other. Check a
+passage whose text is long enough to be cut off with an ellipsis — the tag must
+still be there, at the right edge, with the text truncating before it rather
+than pushing it out of view. Count the
 rows against the `# @id` paragraphs in the notes file — every paragraph that
 carries a `(from)` anchor should be there, plus the document's own node should
 not be.
