@@ -6,8 +6,8 @@
 
 ## Summary
 
-In graph mode, an optional button turns the text you have typed into a
-searchN4L query. It draws on the same LLM profiles the LLM cell uses, and you
+In graph mode, an optional **ask box above the query bar** turns a plain-language
+question into a searchN4L query. It draws on the same LLM profiles the LLM cell uses, and you
 pick which of them translates — a choice that persists. The generated query is
 written **into the query bar**, where you read and edit it. The bar searches as
 you type, so it runs from there like any query you had typed yourself.
@@ -265,8 +265,8 @@ Two thin bindings: **`GetQueryLLMProfile() string`** and
 
 ### `OmniBar.svelte`
 
-In graph mode only, and only when `profiles.length > 0`, a button sits at the
-right of the input, with a small profile `<select>` beside it — the same shape
+In graph mode only, and only when `profiles.length > 0`, a **second input row**
+sits above the query bar, with the profile `<select>` and the button beside it — the same shape
 `LLMCell.svelte:184` already uses, where a blank option means "active profile".
 Changing it calls `SetQueryLLMProfile`, so the choice survives a restart.
 
@@ -371,3 +371,28 @@ active one instead of erroring.
   output is a query, nothing else.
 - Teaching upstream-only syntax (`\theme`, `\bookmarks`, `\dna`, `\terms`,
   `\concepts`).
+
+
+## Revision — the ask box was split out of the query bar (2026-08-06)
+
+The design originally put the button *inside* the query bar, so the question was
+typed into the same input as the query. In use that fights itself: the omnibar
+searches as you type and opens the directive autocomplete, so typing *"what is in
+my kubernetes notes?"* ran a literal multi-word search and dropped a match list
+over the input before the button could be reached.
+
+The ask input is now its own row above the query bar. It has no `on:input`, no
+autocomplete and no search — nothing typed there is ever queried. Enter
+translates, stopping propagation so it cannot reach the panel handler that would
+run the query bar's search or accept an autocomplete item. The query bar itself
+is untouched.
+
+This also removed a short-lived "translated from …" line. That existed because
+the question disappeared the moment the query replaced it; with the question
+still on screen above, it was redundant.
+
+Worth recording plainly: this was offered as an option during the original
+brainstorming and not chosen, and the in-bar version had to be built and used
+before the problem was obvious. The translation quality was never the issue —
+*"what is in my kubernetes notes?"* → `\notes \chapter Kubernetes notes` was
+correct from the first try, using a real chapter name from the live hints.

@@ -51,16 +51,30 @@ mode.
 
 **Expect:** no ✨ in fuzzy mode; ✨ and the picker in graph mode.
 
-## TC-3 A question becomes a query
+## TC-3 A question becomes a query, in a separate box
 
-In graph mode, type a plain-English question about your notes — e.g. *"what do my
-notes say about incremental reading?"* — and click ✨.
+In graph mode you should see **two inputs**: an ask box on top and the query bar
+below it. Type a plain-English question into the **ask box** — e.g. *"what is in
+my kubernetes notes?"* — and press Enter or click ✨.
 
-**Expect:** the button shows a busy state, then the text in the bar is **replaced
-by a query** using real directives. Results follow shortly after.
+**Expect:** the question stays where you typed it. The **query bar below** fills
+with a query using real directives, and results follow.
 
 **Read the query.** It should use directives from the help panel (`?`), not
-invented ones.
+invented ones. A short answer is not a failure: bare words are a valid query —
+multiple words mean AND — so *"what do my notes say about incremental reading?"*
+becoming `incremental reading` is correct.
+
+## TC-3b Typing a question searches nothing
+
+Type a long question into the **ask box** slowly and watch the results area.
+
+**Expect:** nothing searches, no dropdown appears, and no results change until
+you translate. The ask box is inert by design.
+
+*(In the first version the question went into the query bar itself, so every
+keystroke ran a literal search and opened the directive autocomplete over the
+input. That is why the box was split out.)*
 
 ## TC-4 Enter still runs literal text — translation never intercepts
 
