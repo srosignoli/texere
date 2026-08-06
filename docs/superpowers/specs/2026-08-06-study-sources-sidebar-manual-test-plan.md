@@ -20,21 +20,15 @@ only happens on an extract-driven survivor. Everything below is what those
 cannot reach — mainly the two click targets, the collapse, the peek, and how
 the three fit together on screen.
 
-## Four things that are deliberate — do not report them as bugs
+## Three things that are deliberate — do not report them as bugs
 
 - **A peeked document does not move your reading progress.** Closing it, or
   opening a different document, leaves the `%` exactly where it was before you
   peeked. That is the whole point of the feature — see TC-7 and TC-8.
 - **The tree does not live-update while you are reading.** `extractsByReading`
-  is loaded on mount and reloaded when a document closes (`sidebar?.refresh()`
-  in `StudySurface.svelte`, wired in `1749b68`) — not while `ReadingView` is
-  open. Create an extract mid-read and the sidebar's own copy of that
-  document's tree will not show it until you close.
-- **A row a search auto-expanded cannot be collapsed by its triangle while the
-  query still matches it.** `shown(row)` is `row.autoExpand || expanded[id]`;
-  clicking the triangle only flips the manual half of that OR, and
-  `autoExpand` stays true for as long as the row survived on an extract match.
-  Clear or change the search to get the triangle back.
+  is loaded on mount and reloaded when a document is opened or closed from the
+  sidebar — not while `ReadingView` sits open. Create an extract mid-read and
+  the sidebar's copy of that document's tree will not show it until you leave.
 - **A freshly-created extract needs a sync pass before it can appear anywhere
   it's read from the `extracts` table.** `CreateExtract` (Ctrl+E while reading)
   runs a synchronous sync of just that one notes file, so its own extract is
@@ -245,14 +239,63 @@ its key, so a changed anchor still remounts the view.)
 This holds for all three media. For a **PDF** the pane re-renders the
 extract's page rather than scrolling.
 
+## TC-14 A search-expanded row can still be collapsed
+
+With a search active that auto-expanded a row (from TC-10), click that row's
+`▾` triangle.
+
+**Expect:** the tree closes even though the query still matches, and clicking
+again reopens it. A manual click overrides the search's expansion rather than
+being swallowed by it.
+
+## TC-15 Extracting during a peek does not rewind the document
+
+The peek's second safety property, and a separate code path from TC-7/TC-8 —
+this one advances progress from the Go side, so the guards those cases exercise
+do not cover it.
+
+1. Open a text document by its **title**, read a genuine way down, close it,
+   and write down the `%` — call it **P**.
+2. Expand its tree and **peek** an extract from early in the document.
+3. Select a sentence in that early passage and press **Ctrl+E** (or the ✂
+   Extract button).
+4. Close the document.
+
+**Expect:** the new extract exists — it appears in the tree once it reloads —
+and the `%` is still **exactly P**. Before this was fixed, step 3 rewound the
+document to the peeked passage in both the database and the `# @progress` line,
+with nothing on screen to show it.
+
+**[DB]** `position` in `reading_elements` is unchanged, and the notes file's
+`# @progress` line still holds the pre-peek value.
+
+## TC-16 Switching documents and coming back keeps your place
+
+The interaction the sidebar exists to make possible — do not skip it.
+
+1. Open document **A** by its title and read a genuine way down. Do **not**
+   close it.
+2. Click document **B**'s title in the still-visible sidebar.
+3. Click **A**'s title again.
+
+**Expect:** A reopens where you left it in step 1, not at the top. Then close A
+and confirm its `%` still reflects how far you had read. Before this was fixed,
+step 3 reopened A at its stale cached position and closing it wrote that stale
+value back over the good one.
+
+**[DB]** `position` for A after step 3 matches what it was at the end of step 1.
+
 ## What I most want to hear about
 
 - **TC-7 and TC-8's `%` results.** That's the entire safety property this
   feature depends on — a peek that silently rewinds a half-read document is
   the failure mode the whole design exists to prevent.
-- **TC-6/TC-8's landing position.** Whether a PDF or web peek lands on the
-  extract's actual page/passage, or just wherever you'd last read to. The code
-  suggests the latter; I'd like it confirmed rather than assumed.
+- **TC-15 and TC-16.** Both are fixes for defects found only in the final
+  review, after the feature was otherwise finished. Neither has automated
+  coverage on the UI side, and both fail silently when wrong.
+- **TC-6/TC-8's landing position.** Whether a PDF peek really lands on the
+  extract's page. PDF and text reach the anchor by different routes, so one
+  working does not imply the other.
 - Anything that makes the search-auto-expand and manual-expand states look
   inconsistent to you in practice, even if it matches what's described above —
   that's a sign the distinction itself needs rethinking, not just the wording.
