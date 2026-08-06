@@ -20,6 +20,7 @@
   $: rows = filterSources(items, extractsByReading, query)
 
   async function load() {
+    error = ''
     try {
       items = (await GetReadingList()) ?? []
       extractsByReading = (await GetReadingExtracts()) ?? {}
@@ -32,8 +33,19 @@
   // both count that as due, so the badge must too.
   const dueNow = (v) => !v.done && (v.due === 0 || v.due * 1000 <= Date.now())
 
-  function toggle(id) { expanded[id] = !expanded[id]; expanded = expanded }
-  function shown(row) { return row.autoExpand || expanded[row.reading.id] }
+  // `expanded` is read from the markup below, not only from here. Svelte
+  // instruments an assignment only when the template references the variable,
+  // so while this state lived purely inside helper functions, clicking a
+  // triangle mutated it and scheduled no re-render at all — the tree never
+  // opened, and a later unrelated update made every clicked row snap open.
+  //
+  // undefined means "never touched by hand", so a row a search auto-expanded
+  // still falls back to autoExpand, and a click can now close it.
+  function toggle(row) {
+    const id = row.reading.id
+    expanded[id] = !(expanded[id] ?? row.autoExpand)
+    expanded = expanded
+  }
   function extractsFor(row) {
     return row.autoExpand ? row.extracts : (extractsByReading[row.reading.id] ?? [])
   }
@@ -83,14 +95,15 @@
     {:else}
       <ul class="sb-list">
         {#each rows as row (row.reading.id)}
+          {@const open = expanded[row.reading.id] ?? row.autoExpand}
           <li class="sb-doc">
             <div class="sb-docrow">
               <!-- Its own control: the triangle reveals the tree, the title opens
                    the document. Making the whole row toggle would mean you could
                    not open a document without also expanding it. -->
-              <button class="sb-tri" on:click|stopPropagation={() => toggle(row.reading.id)}
-                      aria-label={shown(row) ? 'Hide extracts' : 'Show extracts'}>
-                {shown(row) ? '▾' : '▸'}
+              <button class="sb-tri" on:click|stopPropagation={() => toggle(row)}
+                      aria-label={open ? 'Hide extracts' : 'Show extracts'}>
+                {open ? '▾' : '▸'}
               </button>
               <button class="sb-name" on:click={() => dispatch('open', row.reading)} title={row.reading.title}>
                 {row.reading.title}
@@ -100,7 +113,7 @@
               {:else if dueNow(row.reading)}<span class="sb-tag due">due</span>{/if}
             </div>
 
-            {#if shown(row)}
+            {#if open}
               <ul class="sb-extracts">
                 {#each extractsFor(row) as ex (ex.id)}
                   <li>
