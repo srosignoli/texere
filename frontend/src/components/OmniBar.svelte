@@ -3,35 +3,24 @@
   import { omnibarMode, workbenchStore, navigateToLine } from '../stores/workbench.js'
   import { explorerOpen, explorerQuery, currentLayout, pendingReanchorID } from '../stores/explorer.js'
   import { get } from 'svelte/store'
-  import {
-    ParseFileForUI, SearchGraph,
-    TranslateQuery, ListQueryExamples, GetQueryLLMProfile, SetQueryLLMProfile, GetLLMConfig
-  } from '../../wailsjs/go/main/App'
   import { appendLog } from '../stores/logPanel.js'
   import VirtualList from './VirtualList.svelte'
+  import AskBox from './AskBox.svelte'
   import QueryAutocomplete from './QueryAutocomplete.svelte'
   import { analyzeQuery, getSuggestions } from '../lib/query-grammar.js'
   import { queryHints, queryHelpOpen, ensureQueryHints, refreshQueryHints } from '../stores/queryHints.js'
   import { resolveNodeSource } from '../lib/node-source.js'
-  import { buildQueryPrompt, stripToQuery, validateQuery } from '../lib/query-prompt.js'
 
   let query = ''
   let selectedIndex = -1
   let inputEl = null
+  let askBox = null   // AskBox instance, so the panel can reset it
   let virtualListEl = null
   let loading = false
 
   // Natural-language translation. Absent entirely when no LLM profile exists —
   // not disabled, not a tooltip: a user who has never configured a provider
   // should not see a control they cannot use.
-  let llmProfiles = []
-  let queryProfileId = ''
-  let examples = []
-  let translating = false
-  let refusal = null      // { query, unknown: string[] } while a bad query is held back
-  let translateError = ''  // provider/binding failure, shown in the bar rather than only logged
-  let question = ''        // the natural-language ask, deliberately NOT the query
-  $: canTranslate = llmProfiles.length > 0
 
   // Query autocomplete (graph mode only). Suggests directives after '\' and
   // the user's real chapters/contexts/arrows after the matching directive.
@@ -180,53 +169,6 @@
   // sync arrow whose return value Svelte treats as the cleanup function; making
   // it async would return a Promise instead and silently break that teardown.
   // Svelte allows any number of onMount registrations.
-  onMount(async () => {
-    try { const c = await GetLLMConfig(); llmProfiles = c.profiles ?? [] } catch { /* not configured */ }
-    try { queryProfileId = (await GetQueryLLMProfile()) ?? '' } catch { /* default */ }
-    try { examples = (await ListQueryExamples()) ?? [] } catch { /* prompt degrades to grammar only */ }
-    // A profile deleted since it was chosen must fall back, not persist a stale
-    // name — providerFor resolves an unknown id to an error, not to the default.
-    if (queryProfileId && !llmProfiles.some((p) => p.id === queryProfileId)) queryProfileId = ''
-  })
-
-  function setQueryProfile(id) {
-    queryProfileId = id || ''
-    SetQueryLLMProfile(queryProfileId).catch(() => {})
-  }
-
-  async function translate() {
-    const q0 = question.trim()
-    if (!q0 || translating) return
-    translating = true
-    refusal = null
-    translateError = ''
-    translateError = ''
-    // The prompt is worthless without the user's real chapter and context names,
-    // and the lazy on:focus load can be skipped for a whole session — open in
-    // fuzzy mode, then switch to graph with a shortcut, and the input never
-    // refocuses. Fetch here rather than trust that something else did.
-    const h = $queryHints
-    if (!h.chapter.length && !h.context.length && !h.arrow.length) {
-      await refreshQueryHints()
-    }
-    try {
-      const raw = await TranslateQuery(queryProfileId, q0, buildQueryPrompt(examples, $queryHints))
-      const q = stripToQuery(raw)
-      const v = validateQuery(q)
-      if (!v.ok) { refusal = { query: q, unknown: v.unknown }; return }
-      acceptTranslation(q)
-    } catch (e) {
-      // Surface it where the user is looking. Logging alone made a failure
-      // indistinguishable from nothing happening: the bar kept the question,
-      // the button re-enabled, and the only trace was a line in a panel that is
-      // usually closed.
-      translateError = String(e?.message ?? e)
-      appendLog([{ severity: 'error', source: 'search', message: `translate: ${translateError}` }])
-    } finally {
-      translating = false
-    }
-  }
-
   // The query lands in the bar so it can be read and edited. It then runs from
   // there like any typed query, because the search-as-you-type reactive below
   // treats this assignment as a keystroke — deliberate: the user sees both the
@@ -234,8 +176,7 @@
   // \sequence, \from) still wait for Enter via isListingQuery, so a generated
   // full-DB scan is never fired on their behalf.
   function acceptTranslation(q) {
-    refusal = null
-    translateError = ''
+    askBox?.reset()
     query = q
     inputEl?.focus()
   }
@@ -247,9 +188,7 @@
       query = ''
       selectedIndex = -1
       graphResults = null
-      refusal = null
-      translateError = ''
-      question = ''
+      askBox?.reset()
     }
     prevMode = $omnibarMode
   }
@@ -904,9 +843,7 @@
     omnibarMode.set(null)
     query = ''
     selectedIndex = -1
-    refusal = null
-    translateError = ''
-    question = ''
+    askBox?.reset()
   }
 
   // findNodeIDInLayout returns the wire ID (<chapter>::<text>) of a node
@@ -1009,37 +946,8 @@
     role="dialog"
     aria-label="Search"
   >
-    {#if isGraphMode && canTranslate}
-      <!-- Deliberately a separate input. Prose typed into the query bar was
-           searched as you type and opened the directive dropdown, so asking a
-           question fought the bar it was typed into. Nothing here searches. -->
-      <div class="omnibar-input-row ask-row">
-        <span class="search-icon" aria-hidden="true">✨</span>
-        <div class="omnibar-input-field">
-          <input
-            bind:value={question}
-            class="omnibar-input"
-            type="text"
-            placeholder="Ask in plain language, e.g. what is in my kubernetes notes?"
-            autocomplete="off"
-            spellcheck="false"
-            on:keydown={(e) => {
-              // Stop Enter reaching the panel handler, which would run the
-              // query bar's search or accept an autocomplete item.
-              if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); translate() }
-            }}
-          />
-        </div>
-        <select class="q-prof" value={queryProfileId}
-                on:change={(e) => setQueryProfile(e.target.value)} title="Model used to translate">
-          <option value="">Default model</option>
-          {#each llmProfiles as p}<option value={p.id}>{p.name}</option>{/each}
-        </select>
-        <button class="q-ask" on:click={translate} disabled={translating}
-                title="Turn this question into a query">
-          {translating ? '…' : '✨'}
-        </button>
-      </div>
+    {#if isGraphMode}
+      <AskBox bind:this={askBox} on:translated={(e) => acceptTranslation(e.detail)} />
     {/if}
 
     <div class="omnibar-input-row">
@@ -1078,26 +986,6 @@
       <button class="omnibar-close" on:click={close} title="Close (Esc)">✕</button>
     </div>
 
-    {#if isGraphMode && translateError}
-      <div class="q-refusal">
-        <div><b>Could not translate:</b> {translateError}</div>
-        <div class="q-refusal-actions">
-          <button on:click={translate}>Retry</button>
-          <button on:click={() => (translateError = '')}>Dismiss</button>
-        </div>
-      </div>
-    {/if}
-    {#if isGraphMode && refusal}
-      <div class="q-refusal">
-        <div><b>Not usable here:</b> {refusal.unknown.join(', ')} — upstream searchN4L syntax texere does not execute.</div>
-        <code>{refusal.query}</code>
-        <div class="q-refusal-actions">
-          <button on:click={translate}>Retry</button>
-          <button on:click={() => acceptTranslation(refusal.query)}>Use anyway</button>
-          <button on:click={() => (refusal = null)}>Dismiss</button>
-        </div>
-      </div>
-    {/if}
 
     {#if query.trim()}
       {#if isGraphMode && graphLoading}
@@ -1464,14 +1352,6 @@
     caret-color: #7dd3fc;
   }
 
-  .q-prof { background: #101826; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px; font-size: 11px; padding: 2px 4px; }
-  .q-ask { background: #1e3a5a; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px; padding: 2px 8px; cursor: pointer; }
-  .q-ask:disabled { opacity: 0.6; cursor: default; }
-  .ask-row { border-bottom: 1px solid #2a3a4a; }
-  .q-refusal { padding: 6px 10px; border-top: 1px solid #2a3a4a; background: #101826; color: #e8eaf0; font-size: 12px; }
-  .q-refusal code { display: block; margin: 4px 0; color: #fbbf24; }
-  .q-refusal-actions { display: flex; gap: 6px; }
-  .q-refusal-actions button { background: #1e3a5a; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 11px; }
 
   .omnibar-input::placeholder {
     color: #3a5a7a;

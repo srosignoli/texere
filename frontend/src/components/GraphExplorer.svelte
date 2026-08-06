@@ -64,6 +64,7 @@
   import { analyzeQuery, getSuggestions } from '../lib/query-grammar.js'
   import { queryHints, queryHelpOpen, ensureQueryHints } from '../stores/queryHints.js'
   import QueryAutocomplete from './QueryAutocomplete.svelte'
+  import AskBox from './AskBox.svelte'
   import EditCard from './explorer/EditCard.svelte'
   import { resolveNodeSource } from '../lib/node-source.js'
   import { workbenchStore } from '../stores/workbench.js'
@@ -1405,6 +1406,11 @@
     on:click={() => onClose?.()}
     title="Close (Esc)"
     aria-label="Close Graph Explorer">✕</button>
+
+  <!-- Ask box. Fills the query bar below and stops there: the explorer never
+       runs a query without an explicit submit, and a generated \notes scan
+       should not be an exception. -->
+  <AskBox on:translated={(e) => { queryDraft = e.detail; queryBarEl?.focus() }} />
 
   <!-- Always-visible query bar. The query result is always rendered as the
        whole graph (ExplorerOpen runs the full query and lays out the entire
