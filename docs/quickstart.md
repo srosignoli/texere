@@ -155,6 +155,33 @@ texere/
 **`go: module requires Go 1.21`**
 Your Go toolchain is below the minimum version. Install Go 1.21+ from https://go.dev/dl/.
 
+**`internal error: error "package requires newer Go version go1.25" ... without position`**
+Printed by `wails build` during "Generating bindings", then the build succeeds.
+Harmless, and the bindings are complete — but worth knowing why it appears.
+
+The Wails CLI type-checks the project with the `go/types` bundled into its own
+binary. If that binary was compiled with an older Go than `go.mod` requires, it
+cannot parse the `go 1.25.0` directive and reports this. Check with:
+
+```bash
+go version -m "$(go env GOPATH)/bin/wails" | head -1
+```
+
+If that prints a version below the one in `go.mod`, rebuild the CLI with your
+current toolchain — same Wails version, newer compiler:
+
+```bash
+go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+```
+
+To confirm bindings really were generated in full, compare the exported `App`
+methods against the generated file; the two counts must match:
+
+```bash
+grep -rhoE "^func \(a \*App\) [A-Z][A-Za-z0-9]*" *.go | sed 's/.*) //' | sort -u | wc -l
+grep -oE "^export function [A-Z][A-Za-z0-9]*" frontend/wailsjs/go/main/App.js | sort -u | wc -l
+```
+
 **`wails: command not found`**
 Install Wails: `go install github.com/wailsapp/wails/v2/cmd/wails@latest` and ensure
 `$(go env GOPATH)/bin` is on your `PATH`.
