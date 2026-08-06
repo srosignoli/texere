@@ -175,12 +175,29 @@ With the bar empty, click ✨.
 
 **Expect:** nothing happens — no call, no error.
 
-## TC-14 Nothing else changed
+## TC-14 The graph explorer has an ask box too
 
-Exercise fuzzy search, a notebook Graph Query cell, and the explorer's own query
-bar.
+Open the Graph Explorer. It has an always-visible query bar; the ask box sits
+directly above it.
 
-**Expect:** all unchanged. This feature touched only the omnibar's graph mode.
+**Expect:** with a profile configured, the ask box is there. Ask *"what is in my
+kubernetes notes?"* and press Enter.
+
+**The query fills the bar and does NOT run.** Press Enter in the query bar, or
+click ↵, to run it.
+
+*(That is deliberate and differs from the omnibar. The explorer never runs a
+query without an explicit submit, and a generated `\notes` scan reads the whole
+database — it should not fire on your behalf.)*
+
+With no profile configured, the ask box is absent and the explorer is exactly as
+before.
+
+## TC-15 Nothing else changed
+
+Exercise fuzzy search and a notebook Graph Query cell.
+
+**Expect:** both unchanged. Neither gained an ask box.
 
 ## What I most want to hear about
 

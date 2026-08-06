@@ -363,8 +363,7 @@ active one instead of erroring.
 
 - Executing the generated query automatically.
 - Any change to fuzzy mode, to `GraphQueryCell`, or to `compute-host.js`.
-- The explorer's own query bar — same grammar, and worth doing later, but this
-  slice proves the shape in one place first.
+- ~~The explorer's own query bar~~ — done, see the 2026-08-06 revision below.
 - A separate provider *configuration* for search — the profile set stays shared;
   only which profile to use is a search preference.
 - Explaining results, summarising them, or answering the question directly. The
@@ -396,3 +395,27 @@ brainstorming and not chosen, and the in-bar version had to be built and used
 before the problem was obvious. The translation quality was never the issue —
 *"what is in my kubernetes notes?"* → `\notes \chapter Kubernetes notes` was
 correct from the first try, using a real chapter name from the live hints.
+
+
+## Revision — the ask box is shared, and the explorer has one (2026-08-06)
+
+The explorer's always-visible query bar was originally out of scope, on the
+reasoning that one surface should prove the shape first. It has, so it now has an
+ask box too.
+
+Rather than duplicate the block, the input, model picker, button and the
+refusal/error cards were extracted into `AskBox.svelte`. It owns the LLM call,
+the prompt, `stripToQuery`/`validateQuery` and every piece of state, renders
+nothing when no profile is configured, and emits the finished query. Each host
+decides what happens next:
+
+- **`OmniBar`** drops it into its query bar, which searches as you type.
+- **`GraphExplorer`** fills its query bar and stops. That surface never runs a
+  query without an explicit submit, and a generated `\notes` scan — a full-DB
+  scan — should not be the exception.
+
+`OmniBar` lost 127 lines in the process, and neither host now references
+`TranslateQuery`, `buildQueryPrompt` or `validateQuery`. The alternative was two
+copies of prompt-building, validation and refusal handling that had to change
+together forever, which is exactly the drift this design was organised against
+for the grammar itself.
