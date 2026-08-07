@@ -18,8 +18,8 @@ export function ConfirmQuit() {
   return window['go']['main']['App']['ConfirmQuit']();
 }
 
-export function CreateExtract(arg1, arg2, arg3) {
-  return window['go']['main']['App']['CreateExtract'](arg1, arg2, arg3);
+export function CreateExtract(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['CreateExtract'](arg1, arg2, arg3, arg4);
 }
 
 export function CreateNewFile(arg1) {
@@ -108,6 +108,10 @@ export function GetNotebookLinks(arg1) {
 
 export function GetQueryLLMProfile() {
   return window['go']['main']['App']['GetQueryLLMProfile']();
+}
+
+export function GetReadingExtracts() {
+  return window['go']['main']['App']['GetReadingExtracts']();
 }
 
 export function GetReadingList() {

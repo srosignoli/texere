@@ -132,6 +132,33 @@ func (s *Store) CountDueExtracts(now time.Time) (int, error) {
 	return n, err
 }
 
+// ExtractAnchors returns every extract's from_anchor keyed by extract id,
+// retired rows included.
+//
+// The retired ones are the point. A promotion made before card provenance was
+// preserved dropped the (from) line from the .n4l, so for those passages this
+// row is the only surviving record of where they came from. The sources tree
+// falls back to it rather than hiding a card whose anchor the file has lost.
+func (s *Store) ExtractAnchors() (map[string]string, error) {
+	rows, err := s.db.Query(`SELECT id, from_anchor FROM extracts`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]string{}
+	for rows.Next() {
+		var id string
+		var anchor sql.NullString
+		if err := rows.Scan(&id, &anchor); err != nil {
+			return nil, err
+		}
+		if anchor.String != "" {
+			out[id] = anchor.String
+		}
+	}
+	return out, rows.Err()
+}
+
 func scanExtract(sc scanner) (Extract, error) {
 	var (
 		e   Extract

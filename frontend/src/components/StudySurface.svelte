@@ -4,7 +4,7 @@
   import { studyFocus } from '../stores/study.js'
   import { activeReading } from '../stores/reading.js'
   import ReadingView from './ReadingView.svelte'
-  import SourcesPanel from './SourcesPanel.svelte'
+  import SourcesSidebar from './SourcesSidebar.svelte'
   import ProcessView from './ProcessView.svelte'
   import RecallCard from './RecallCard.svelte'
 
@@ -19,6 +19,48 @@
   let recallCard = null
   let recallShownAt = 0
   // Read state: activeReading store + library fallback
+  let peekAt = null   // anchor for an extract peek, cleared on a normal open
+  let sidebar = null  // SourcesSidebar instance, so closing a document can reload its tree
+  let readingView = null
+
+  // The {#key} expression below, so we can tell whether a click will actually
+  // remount the view. Flushing when nothing remounts would mark a still-live
+  // ReadingView as closed, and its real close would then persist nothing.
+  const readingKey = (r, anchor) => (r?.id ?? '') + '|' + (anchor ?? '')
+
+  // Open (anchor null) or peek a document from the sidebar. The sidebar's rows
+  // come from a cache filled on mount, so re-read the reading first: switching
+  // away from a document and back would otherwise reopen it at a stale position
+  // and then write that stale value back over the good one on close.
+  // Two clicks inside one flush's IPC round trip would otherwise let the slower
+  // call finish last and display the document the user did NOT click last, so
+  // each call takes a ticket and drops out once a newer one has started.
+  let switchSeq = 0
+  let pendingFlush = null
+
+  async function switchTo(r, anchor) {
+    const seq = ++switchSeq
+    if (readingKey(r, anchor) !== readingKey($activeReading, peekAt)) {
+      pendingFlush = readingView?.flush?.() ?? null
+    }
+    // Await whatever flush is outstanding, not just one this call started: a
+    // click that skips the flush can still race an earlier one still in flight,
+    // and reading back a position before its write lands is the whole bug.
+    if (pendingFlush) await pendingFlush
+    if (seq !== switchSeq) return
+    const fresh = await freshReading(r)
+    if (seq !== switchSeq) return
+    peekAt = anchor
+    activeReading.set(fresh)
+    await sidebar?.refresh()
+  }
+
+  async function freshReading(r) {
+    try {
+      const list = await GetReadingList()
+      return (list ?? []).find((x) => x.id === r.id) ?? r
+    } catch { return r }
+  }
 
   async function refresh() {
     try { counts = (await GetStudyCounts()) ?? counts } catch (e) { error = String(e?.message ?? e) }
@@ -42,7 +84,7 @@
       if ($activeReading) return
       const list = await GetReadingList()
       const due = (list ?? []).find((r) => !r.done && (r.due === 0 || r.due * 1000 <= Date.now()))
-      if (due) activeReading.set(due) // open the next due source; else SourcesPanel shows the library
+      if (due) activeReading.set(due) // open the next due source; else SourcesSidebar shows the library
     } catch (e) { error = String(e?.message ?? e) }
   }
 
@@ -97,11 +139,22 @@
 
   <div class="ss-body">
     {#if $studyFocus === 'read' || ($studyFocus === 'next' && nextKind() === 'read')}
-      {#if $activeReading}
-        <ReadingView reading={$activeReading} onClose={() => { activeReading.set(null); enter('next') }} />
-      {:else}
-        <SourcesPanel onClose={() => onClose?.()} />
-      {/if}
+      <div class="ss-read">
+        <SourcesSidebar
+          bind:this={sidebar}
+          on:open={(e) => switchTo(e.detail, null)}
+          on:peek={(e) => switchTo(e.detail.reading, e.detail.anchor)} />
+        <div class="ss-reading">
+          {#if $activeReading}
+            {#key ($activeReading.id ?? '') + '|' + (peekAt ?? '')}
+              <ReadingView bind:this={readingView} reading={$activeReading} {peekAt}
+                onClose={() => { peekAt = null; activeReading.set(null); sidebar?.refresh(); enter('next') }} />
+            {/key}
+          {:else}
+            <div class="ss-empty">Pick a document to read.</div>
+          {/if}
+        </div>
+      </div>
     {:else if $studyFocus === 'process' || ($studyFocus === 'next' && nextKind() === 'process')}
       {#if processId}
         {#key processId}<ProcessView extractId={processId} onAdvance={onProcessAdvance} />{/key}
@@ -127,5 +180,7 @@
   .ss-close { background: none; border: none; color: #8899aa; font-size: 18px; cursor: pointer; }
   .ss-error { color: #ff8080; padding: 6px 12px; font-size: 12px; }
   .ss-body { flex: 1; min-height: 0; position: relative; }
+  .ss-read { position: absolute; inset: 0; display: flex; min-height: 0; }
+  .ss-reading { position: relative; flex: 1; min-width: 0; }
   .ss-empty { display: flex; align-items: center; justify-content: center; height: 100%; color: #8aa; }
 </style>

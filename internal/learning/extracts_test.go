@@ -104,3 +104,50 @@ func TestUpsertExtractDoesNotResurrectDismissed(t *testing.T) {
 		t.Fatalf("dismissed extract reappeared in due queue: len=%d want 0", len(d))
 	}
 }
+
+func TestExtractAnchorsIncludesRetiredRows(t *testing.T) {
+	st, err := Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	for _, e := range []Extract{
+		{ID: "/c/n.n4l:C:id:a", FilePath: "/c/n.n4l", Text: "kept", FromAnchor: "sources/x.txt char=10", Due: now, Active: true},
+		{ID: "/c/o.n4l:C:id:c", FilePath: "/c/o.n4l", Text: "promoted away", FromAnchor: "sources/y.txt char=5", Due: now, Active: true},
+	} {
+		if _, err := st.UpsertExtract(e); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Retiring must NOT drop it from this map. A promotion made before card
+	// provenance was preserved stripped the (from) line from the .n4l, leaving
+	// this row as the only record of where the passage came from.
+	if _, err := st.RetireMissingExtracts("/c/o.n4l", map[string]bool{}); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := st.ExtractAnchors()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got["/c/o.n4l:C:id:c"] != "sources/y.txt char=5" {
+		t.Fatalf("retired extract lost its anchor: %+v", got)
+	}
+	if got["/c/n.n4l:C:id:a"] != "sources/x.txt char=10" {
+		t.Fatalf("active extract missing: %+v", got)
+	}
+}
+
+func TestExtractAnchorsEmptyIsNotNil(t *testing.T) {
+	st, _ := Open(t.TempDir())
+	got, err := st.ExtractAnchors()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got == nil {
+		t.Fatal("returned nil; callers index into this directly")
+	}
+	if len(got) != 0 {
+		t.Fatalf("got %+v, want empty", got)
+	}
+}

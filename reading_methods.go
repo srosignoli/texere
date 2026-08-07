@@ -9,6 +9,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -191,9 +192,16 @@ func (a *App) GetSourceHTML(refPath string) (string, error) {
 	return string(data), nil
 }
 
-// CreateExtract appends a verbatim extract, advances # @progress + DB position,
-// and signals the notes editor to reload (clean buffer only).
-func (a *App) CreateExtract(id, text, position string) (*CreateExtractView, error) {
+// CreateExtract appends a verbatim extract and signals the notes editor to
+// reload (clean buffer only).
+//
+// advanceProgress moves # @progress and the DB position to where the extract
+// was taken. The sidebar's extract peek passes false: a peek is a glance at one
+// passage, not a reading position, and extracting during one would otherwise
+// rewind a half-read document to wherever the peeked passage happens to be.
+// This is the same safety property the three UpdateReadingProgress call sites
+// in ReadingView.svelte guard, reached by a different route.
+func (a *App) CreateExtract(id, text, position string, advanceProgress bool) (*CreateExtractView, error) {
 	if a.learnStore == nil {
 		return nil, errors.New("no collection open")
 	}
@@ -207,14 +215,16 @@ func (a *App) CreateExtract(id, text, position string) (*CreateExtractView, erro
 	// notes file also happens to be open in the main editor.
 	a.beginSelfWrite(r.NotesPath)
 	exID, err := content.AppendExtract(r.NotesPath, text, anchor)
-	if err == nil {
+	if err == nil && advanceProgress {
 		err = content.UpdateProgressMarker(r.NotesPath, position)
 	}
 	a.endSelfWrite(r.NotesPath)
 	if err != nil {
 		return nil, fmt.Errorf("CreateExtract: %w", err)
 	}
-	_ = a.learnStore.SetReadingProgress(id, position, r.ProjLen)
+	if advanceProgress {
+		_ = a.learnStore.SetReadingProgress(id, position, r.ProjLen)
+	}
 	// Register the new extract in the queue immediately (reuses the classify pass).
 	if _, err := learning.Sync(a.learnStore, []string{r.NotesPath}, a.registry); err != nil {
 		// Non-fatal: it will be picked up on the next Build Graph.
@@ -380,6 +390,114 @@ func (a *App) UpdateReadingProgress(id, position string) error {
 		return wErr
 	}
 	return a.learnStore.SetReadingProgress(id, position, r.ProjLen)
+}
+
+// ReadingExtractView is one row in a document's extract tree.
+//
+// Anchor is the extract's from_anchor VERBATIM — "sources/x.txt char=1173" or
+// "sources/p.pdf page=12". It is not parsed into an offset here: the unit
+// depends on the medium and only the source pane knows what to do with it.
+type ReadingExtractView struct {
+	ID       string `json:"id"`
+	Text     string `json:"text"`
+	Anchor   string `json:"anchor"`
+	Promoted bool   `json:"promoted"`
+}
+
+// GetReadingExtracts returns every reading's extracts, keyed by reading id and
+// ordered by position within the document.
+//
+// Read from the .n4l files, NOT from the extracts table. That table is the
+// processing QUEUE: GenerateExtracts skips study-marked nodes and Sync retires
+// anything that stops qualifying, so promoting an extract to a card drops it
+// out. The tree means something different — everything you pulled out of this
+// document, promoted or not, because its job is finding your way back to the
+// passage. Parsing also keeps the tree from going stale between syncs.
+//
+// One call for the whole library rather than a lookup per document: the sidebar
+// searches extract text across documents whose trees are still collapsed, so it
+// needs them all before any one is expanded.
+func (a *App) GetReadingExtracts() (map[string][]ReadingExtractView, error) {
+	if a.learnStore == nil {
+		return nil, errors.New("no collection open")
+	}
+	rs, err := a.learnStore.ListReading()
+	if err != nil {
+		return nil, err
+	}
+	// Promotions made before card provenance was preserved dropped the (from)
+	// line from the file, leaving the DB row as the only record of where that
+	// passage came from. Fall back to it rather than hide the card.
+	legacyAnchors, err := a.learnStore.ExtractAnchors()
+	if err != nil {
+		return nil, err
+	}
+
+	// ParseFile dereferences the registry unconditionally; an empty one still
+	// yields the arrows, flagged unregistered, which is all this needs.
+	reg := a.registry
+	if reg == nil {
+		reg = &content.SSTRegistry{Arrows: map[string]content.ArrowDef{}}
+	}
+
+	out := make(map[string][]ReadingExtractView, len(rs))
+	for _, r := range rs {
+		// Parse errors are not fatal here: a notes file with an unknown arrow
+		// still yields the nodes that did parse, and one bad file must not empty
+		// the whole library's trees.
+		pf, _ := content.ParseFile(r.NotesPath, reg)
+		if pf == nil {
+			continue
+		}
+		var list []ReadingExtractView
+		for _, ch := range pf.Chapters {
+			for _, n := range ch.Nodes {
+				if n.ID == "" {
+					continue
+				}
+				anchor, ok := nodeFromAnchor(n)
+				if !ok {
+					// No anchor in the file and none on record means this is an
+					// ordinary note, or the document's own node — not an extract.
+					if anchor, ok = legacyAnchors[n.ID]; !ok {
+						continue
+					}
+				}
+				list = append(list, ReadingExtractView{
+					ID: n.ID, Text: n.Text, Anchor: anchor, Promoted: n.StudyMeta != nil,
+				})
+			}
+		}
+		// Document order. parsePositionValue pulls N out of "<unit>=N", so this
+		// sorts numerically — sorting the anchor strings would put char=100
+		// before char=9 and the tree would read out of order.
+		sort.SliceStable(list, func(i, j int) bool {
+			return parsePositionValue(list[i].Anchor) < parsePositionValue(list[j].Anchor)
+		})
+		if len(list) > 0 {
+			out[r.ID] = list
+		}
+	}
+	return out, nil
+}
+
+// nodeFromAnchor returns a node's (from) target, checking ditto continuation
+// lines as well as the node line: promoting an extract moves its anchor onto a
+// ditto so it stays out of the card's front/back split.
+func nodeFromAnchor(n content.Node) (string, bool) {
+	for _, ar := range n.Arrows {
+		if ar.Code == "from" {
+			return ar.Target, true
+		}
+	}
+	for _, d := range n.Dittos {
+		for _, ar := range d.Arrows {
+			if ar.Code == "from" {
+				return ar.Target, true
+			}
+		}
+	}
+	return "", false
 }
 
 func (a *App) RescheduleReading(id, action string) (*ReadingView, error) {

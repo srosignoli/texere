@@ -7,6 +7,10 @@
   pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
 
   export let reading
+  // When set, open here instead of the reading's saved position. Used by the
+  // sidebar's extract peek. parsePage reads the page=N out of it, so an anchor
+  // still carrying its source path is fine.
+  export let startAt = null
   const dispatch = createEventDispatcher()
 
   let pdf = null
@@ -68,7 +72,7 @@
       pdf = await pdfjsLib.getDocument({ data: base64ToBytes(b64) }).promise
       total = pdf.numPages
       try { await SetReadingProjLen(reading.id, total) } catch { /* best-effort */ }
-      const start = Math.min(Math.max(1, parsePage(reading.position)), total)
+      const start = Math.min(Math.max(1, parsePage(startAt ?? reading.position)), total)
       await renderPage(start)
     } catch (e) { error = String(e?.message ?? e) }
   })

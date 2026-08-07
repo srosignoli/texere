@@ -17,7 +17,7 @@ export function CancelShellRun(arg1:string):Promise<void>;
 
 export function ConfirmQuit():Promise<void>;
 
-export function CreateExtract(arg1:string,arg2:string,arg3:string):Promise<main.CreateExtractView>;
+export function CreateExtract(arg1:string,arg2:string,arg3:string,arg4:boolean):Promise<main.CreateExtractView>;
 
 export function CreateNewFile(arg1:string):Promise<content.ChapterSummary>;
 
@@ -62,6 +62,8 @@ export function GetNotebook(arg1:string):Promise<main.NotebookView>;
 export function GetNotebookLinks(arg1:string):Promise<Array<main.NotebookLinkMark>>;
 
 export function GetQueryLLMProfile():Promise<string>;
+
+export function GetReadingExtracts():Promise<Record<string, Array<main.ReadingExtractView>>>;
 
 export function GetReadingList():Promise<Array<main.ReadingView>>;
 
