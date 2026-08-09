@@ -40,7 +40,18 @@
       activeId = c.activeProfileId ?? ''
     } catch { /* settings not configured; the host hides the entry point anyway */ }
   })
-  onDestroy(() => turn?.cancel())
+  onDestroy(() => {
+    if (!turn) return
+    turn.cancel()
+    // Unmounting mid-stream — which is what parking the chat by opening a
+    // document does — would otherwise leave the transcript ending in an
+    // unanswered user turn. Native Anthropic rejects two consecutive user
+    // roles, so the next send after coming back would fail. Mutating the
+    // object the host still holds is what makes the drop stick past unmount.
+    if (chat.messages.length && chat.messages[chat.messages.length - 1].role === 'user') {
+      chat.messages = chat.messages.slice(0, -1)
+    }
+  })
 
   // The model id, not the profile name: the document's footer should say what
   // actually answered, which outlives a profile someone renames or deletes.

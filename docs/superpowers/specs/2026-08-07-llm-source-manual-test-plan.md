@@ -148,7 +148,19 @@ With an unsaved chat of at least one turn, click `+ LLM` again.
 **Expect:** a confirm before the existing conversation is discarded.
 Cancelling leaves the chat exactly as it was.
 
-## TC-13 Closing Study asks first
+## TC-13 Parking a chat mid-stream, then asking again
+
+Ask a question and, **while the answer is still streaming**, click a document in
+the sidebar. Read a moment, then click `✦ Chat in progress` and ask something
+new.
+
+**Expect:** the interrupted question is gone from the transcript (its answer
+never arrived), and the new question goes through normally. A transcript that
+kept the unanswered question would end in two consecutive user turns, which
+native Anthropic rejects — the symptom would be the *next* send failing with a
+provider error for no apparent reason.
+
+## TC-14 Closing Study asks first
 
 With an unsaved chat of at least one turn, press **Esc**, and separately try
 the **`×`** button.
@@ -159,9 +171,9 @@ gone, by design.
 
 ## What I most want to hear about
 
-- **TC-5 and TC-13.** The chat is held only in memory, so these are the two
+- **TC-5 and TC-14.** The chat is held only in memory, so these are the two
   places a conversation can be lost. TC-5 is the one that makes the feature
-  usable at all; TC-13 is the one that makes losing it a choice.
+  usable at all; TC-14 is the one that makes losing it a choice.
 - **TC-8's footer.** Whether the models named actually match what answered.
   This is the document's only provenance, and the `llm` tag plus that line are
   what stop a model-written study document from passing for one you wrote.
