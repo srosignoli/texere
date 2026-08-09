@@ -145,7 +145,15 @@
   }
   async function advanceNext() { await enter('next') }
 
-  function onKey(e) { if (e.key === 'Escape') onClose?.() }
+  // A chat is persisted nowhere, so closing Study destroys it. Both exits ask
+  // first: this is the only place the conversation can be lost without the user
+  // having chosen to lose it.
+  function closeStudy() {
+    if (chat && chat.messages.length && !window.confirm('Discard the chat in progress?')) return
+    onClose?.()
+  }
+
+  function onKey(e) { if (e.key === 'Escape') closeStudy() }
   onMount(() => enter($studyFocus))
 </script>
 
@@ -160,7 +168,7 @@
       </button>
     {/each}
     <span class="ss-spacer"></span>
-    <button class="ss-close" on:click={() => onClose?.()} title="Close (Esc)">×</button>
+    <button class="ss-close" on:click={closeStudy} title="Close (Esc)">×</button>
   </div>
   {#if error}<div class="ss-error">{error}</div>{/if}
 
