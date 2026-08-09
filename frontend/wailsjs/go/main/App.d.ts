@@ -19,6 +19,8 @@ export function ConfirmQuit():Promise<void>;
 
 export function CreateExtract(arg1:string,arg2:string,arg3:string,arg4:boolean):Promise<main.CreateExtractView>;
 
+export function CreateLLMSource(arg1:string,arg2:string):Promise<main.ReadingView>;
+
 export function CreateNewFile(arg1:string):Promise<content.ChapterSummary>;
 
 export function DeferExtract(arg1:string):Promise<void>;

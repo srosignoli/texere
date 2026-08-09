@@ -192,6 +192,50 @@ func (a *App) GetSourceHTML(refPath string) (string, error) {
 	return string(data), nil
 }
 
+// CreateLLMSource saves an LLM conversation as a markdown reading source.
+//
+// Medium is "llm" rather than "text" on purpose. ReadingView routes anything
+// that is not "pdf" or "web" to the text pane, so the new medium costs no pane
+// work, and it lets the sidebar mark the document as model-generated. That
+// distinction matters more here than for other sources: a PDF's provenance is
+// self-evident and a web article keeps its SourceURL, while a model-written
+// study document can be confidently wrong and is about to become flashcards.
+//
+// ProjLen is the markdown's rune count, which is exact rather than an estimate:
+// source.Projection returns raw file contents for every extension except
+// .html/.htm, so a .md file's projection is its text.
+func (a *App) CreateLLMSource(title, markdown string) (*ReadingView, error) {
+	if a.learnStore == nil || a.collectionDir == "" {
+		return nil, errors.New("no collection open")
+	}
+	title = strings.TrimSpace(title)
+	if title == "" {
+		return nil, errors.New("CreateLLMSource: title is empty")
+	}
+	if strings.TrimSpace(markdown) == "" {
+		return nil, errors.New("CreateLLMSource: nothing to save")
+	}
+	slug := slugify(title)
+	srcRel, srcAbs := uniqueDest(a.collectionDir, "sources", slug+".md")
+	if err := os.WriteFile(srcAbs, []byte(markdown), 0o644); err != nil {
+		return nil, fmt.Errorf("CreateLLMSource: save: %w", err)
+	}
+	_, notesAbs := uniqueDest(a.collectionDir, "reading", slug+".n4l")
+	refID, err := content.CreateReadingNotes(notesAbs, srcRel, title)
+	if err != nil {
+		os.Remove(srcAbs) // best-effort: don't litter sources/ on a failed create
+		return nil, fmt.Errorf("CreateLLMSource: notes: %w", err)
+	}
+	r := learning.ReadingElement{ID: refID, RefPath: srcRel, NotesPath: notesAbs, Title: title,
+		Position: "char=0", ProjLen: utf8.RuneCountInString(markdown), IntervalDays: 1, Medium: "llm"}
+	if err := a.learnStore.UpsertReading(r); err != nil {
+		os.Remove(srcAbs)
+		return nil, fmt.Errorf("CreateLLMSource: register: %w", err)
+	}
+	v := toReadingView(r)
+	return &v, nil
+}
+
 // CreateExtract appends a verbatim extract and signals the notes editor to
 // reload (clean buffer only).
 //
