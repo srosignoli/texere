@@ -5,6 +5,7 @@
   import { activeReading } from '../stores/reading.js'
   import ReadingView from './ReadingView.svelte'
   import SourcesSidebar from './SourcesSidebar.svelte'
+  import LLMChatPane from './LLMChatPane.svelte'
   import ProcessView from './ProcessView.svelte'
   import RecallCard from './RecallCard.svelte'
 
@@ -22,6 +23,9 @@
   let peekAt = null   // anchor for an extract peek, cleared on a normal open
   let sidebar = null  // SourcesSidebar instance, so closing a document can reload its tree
   let readingView = null
+  // The chat lives here, not inside the reading area's {#key} block, so it
+  // survives reading a document and coming back. It dies with Study mode.
+  let chat = null
 
   // The {#key} expression below, so we can tell whether a click will actually
   // remount the view. Flushing when nothing remounts would mark a still-live
@@ -53,6 +57,29 @@
     peekAt = anchor
     activeReading.set(fresh)
     await sidebar?.refresh()
+  }
+
+  async function newChat() {
+    if (chat && chat.messages.length && !window.confirm('Discard the chat in progress?')) return
+    await readingView?.flush?.()
+    peekAt = null
+    activeReading.set(null)
+    chat = { messages: [], profileId: null, models: [] }
+  }
+
+  // $activeReading wins over a parked chat in the markup, so clearing it is
+  // what brings the chat back into view.
+  async function openChat() {
+    await readingView?.flush?.()
+    peekAt = null
+    activeReading.set(null)
+  }
+
+  // The saved document behaves like any other source from here on.
+  async function chatCreated(v) {
+    chat = null
+    await sidebar?.refresh()
+    if (v) await switchTo(v, null)
   }
 
   async function freshReading(r) {
@@ -142,6 +169,9 @@
       <div class="ss-read">
         <SourcesSidebar
           bind:this={sidebar}
+          chatLive={chat !== null}
+          on:newChat={newChat}
+          on:openChat={openChat}
           on:open={(e) => switchTo(e.detail, null)}
           on:peek={(e) => switchTo(e.detail.reading, e.detail.anchor)} />
         <div class="ss-reading">
@@ -150,6 +180,8 @@
               <ReadingView bind:this={readingView} reading={$activeReading} {peekAt}
                 onClose={() => { peekAt = null; activeReading.set(null); sidebar?.refresh(); enter('next') }} />
             {/key}
+          {:else if chat}
+            <LLMChatPane bind:chat on:created={(e) => chatCreated(e.detail)} />
           {:else}
             <div class="ss-empty">Pick a document to read.</div>
           {/if}
