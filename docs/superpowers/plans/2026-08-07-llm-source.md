@@ -206,7 +206,11 @@ export function chatToMarkdown(title, messages, models, date = new Date()) {
 export function defaultTitle(messages) {
   const first = (Array.isArray(messages) ? messages : []).find((m) => m?.role === 'user')
   if (!first) return ''
-  return oneLine(first.content).slice(0, 60)
+  // The first LINE, not the whole question collapsed. A multi-line question's
+  // later lines are supporting detail; the title should be the thing you asked.
+  // (chatToMarkdown's heading differs deliberately — there the whole question
+  // becomes the heading, folded onto one line.)
+  return oneLine(String(first.content ?? '').split('\n')[0]).slice(0, 60)
 }
 
 // A heading cannot contain a newline, and stray runs of whitespace read badly
