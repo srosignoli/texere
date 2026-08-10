@@ -104,14 +104,20 @@
   }
 
   async function close(action) {
+    // flush() may already have persisted this session (StudySurface awaits it
+    // before switching documents, leaving this instance mounted and clickable
+    // meanwhile). Re-persisting would log the same reading time twice.
+    const alreadyPersisted = closed
     closed = true
     try {
-      // Persist reading progress on leave for panes that report it on demand
-      // (text/markdown). PDF/web push progress as the user navigates.
-      const pos = peekAt ? null : pane?.getProgress?.()
-      if (pos) await UpdateReadingProgress(reading.id, pos)
-      if (!peekAt) LogReadingSession(reading.id, Math.round((Date.now() - openedAt) / 1000)).catch(() => {})
-      await flushNotes()
+      if (!alreadyPersisted) {
+        // Persist reading progress on leave for panes that report it on demand
+        // (text/markdown). PDF/web push progress as the user navigates.
+        const pos = peekAt ? null : pane?.getProgress?.()
+        if (pos) await UpdateReadingProgress(reading.id, pos)
+        if (!peekAt) LogReadingSession(reading.id, Math.round((Date.now() - openedAt) / 1000)).catch(() => {})
+        await flushNotes()
+      }
       if (action !== 'done') await RescheduleReading(reading.id, action || 'continue')
     } catch (e) { /* best-effort on close */ }
     activeReading.set(null)

@@ -130,6 +130,11 @@ func (a *App) PromoteExtract(id, kind string) error {
 	if _, err := learning.Sync(a.learnStore, []string{e.FilePath}, a.registry); err != nil {
 		return err
 	}
+	// Promotion does not go through rescheduleExtract, so it needs its own log
+	// line — without it the statistics would show every dismissal and no
+	// promotions, which is precisely backwards.
+	// Best-effort: a statistics gap must never fail the user's action.
+	_ = a.learnStore.LogActivity("process", id, "promote", 0, time.Now())
 	if a.ctx != nil {
 		runtime.EventsEmit(a.ctx, "file:ids-injected", map[string]string{"path": e.FilePath})
 	}
