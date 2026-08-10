@@ -147,5 +147,13 @@ func (a *App) rescheduleExtract(id, action string) error {
 	if err != nil || !ok {
 		return fmt.Errorf("rescheduleExtract: %q not found", id)
 	}
-	return a.learnStore.ApplyExtractSchedule(id, learning.ScheduleExtract(e, action, time.Now()))
+	if err := a.learnStore.ApplyExtractSchedule(id, learning.ScheduleExtract(e, action, time.Now())); err != nil {
+		return err
+	}
+	// Logged here rather than in the store: ApplyExtractSchedule only sees the
+	// resulting row, and `active=0` cannot tell "promoted to a card" from
+	// "dismissed". The action string is the only place that distinction exists.
+	// Best-effort — a statistics gap must never fail the user's action.
+	_ = a.learnStore.LogActivity("process", id, action, 0, time.Now())
+	return nil
 }

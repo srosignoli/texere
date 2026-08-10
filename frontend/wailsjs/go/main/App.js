@@ -214,6 +214,10 @@ export function ListSkills() {
   return window['go']['main']['App']['ListSkills']();
 }
 
+export function LogReadingSession(arg1, arg2) {
+  return window['go']['main']['App']['LogReadingSession'](arg1, arg2);
+}
+
 export function NotebookMarks(arg1) {
   return window['go']['main']['App']['NotebookMarks'](arg1);
 }
