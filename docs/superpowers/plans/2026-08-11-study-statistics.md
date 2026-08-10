@@ -12,7 +12,7 @@
 
 - **The activity log records only what is unrecoverable** — `read` sessions and `process` outcomes. Cards created is already `items.created_at` and extracts created is already `extracts.created_at`; logging those would create a second, disagreeing source of truth.
 - **A peek logs nothing.** `ReadingView`'s `peekAt` guard applies to the reading-session write exactly as it does to the three progress-persist paths. Without it, glancing at an extract from the sidebar counts as time spent reading.
-- **`process` detail values are the scheduler's own strings** — `later`, `dismiss`, `promote` — so the log cannot drift from `ScheduleExtract`'s vocabulary.
+- **`process` detail values are the scheduler's own strings** — `later`, `dismiss`, `promote` — so the log cannot drift from `ScheduleExtract`'s vocabulary. **Two write-points are required:** `rescheduleExtract` covers `later` and `dismiss`, while `PromoteExtract` (`study_methods.go:92`) is a wholly separate path that never calls `ApplyExtractSchedule`. Logging only the first leaves the pipeline panel showing every dismissal and no promotions.
 - **No charting library.** Inline SVG only. The arithmetic lives in `frontend/src/lib/stats-format.js`, not in the component.
 - **Every panel survives an empty collection.** No `NaN`, no divide-by-zero, no panic. A metric with no data reports the sentinel `-1`, and the UI renders "Not enough data yet" — never `0%`.
 - **Day boundaries are local, computed in Go**, never `at/86400` in SQL. A UTC day boundary puts an evening review on the wrong day and silently breaks streaks for anyone west of Greenwich.

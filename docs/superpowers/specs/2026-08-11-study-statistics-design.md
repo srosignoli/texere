@@ -37,9 +37,13 @@ Surveyed before designing:
   (`extracts.go:66`) flips `active` without recording when.
 - **`reading_elements`** holds `last_read`, a single overwritten timestamp.
   There is **no reading history of any kind**.
-- **`rescheduleExtract` (`study_methods.go:141`)** is the single funnel for all
-  three processing actions (`later`, `dismiss`, `promote`), so one write-point
-  covers every outcome.
+- **Processing needs TWO write-points, not one.** `rescheduleExtract`
+  (`study_methods.go:142`) handles `later` and `dismiss`, but `PromoteExtract`
+  (`study_methods.go:92`) is a separate path that seeds a card and re-syncs the
+  file without ever calling `ApplyExtractSchedule`. `ScheduleExtract`'s doc
+  comment listing `promote` among its actions is misleading: nothing routes a
+  promotion through it. Missing that second write-point would leave the pipeline
+  panel showing every dismissal and no promotions — precisely backwards.
 - **`StudyCounts` (`queue.go:12`)** already returns the read/process/recall
   backlog and is reused rather than reimplemented.
 - **`StudySurface.svelte`** renders its tabs from a literal list of
