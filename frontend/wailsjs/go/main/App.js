@@ -22,6 +22,10 @@ export function CreateExtract(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['CreateExtract'](arg1, arg2, arg3, arg4);
 }
 
+export function CreateLLMSource(arg1, arg2) {
+  return window['go']['main']['App']['CreateLLMSource'](arg1, arg2);
+}
+
 export function CreateNewFile(arg1) {
   return window['go']['main']['App']['CreateNewFile'](arg1);
 }

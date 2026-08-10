@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"texere/internal/content"
 	"texere/internal/learning"
@@ -352,5 +353,98 @@ func TestCreateExtractWhileReadingAdvancesProgress(t *testing.T) {
 	}
 	if got.Position != "char=7200" {
 		t.Fatalf("position = %q, want char=7200 — a normal extract still advances progress", got.Position)
+	}
+}
+
+func TestCreateLLMSourceRegistersAModelGeneratedReading(t *testing.T) {
+	dir := t.TempDir()
+	st, err := learning.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { st.Close() })
+	a := &App{collectionDir: dir, learnStore: st,
+		registry: &content.SSTRegistry{Arrows: map[string]content.ArrowDef{}}}
+
+	md := "# Spaced repetition\n\n## How does SM-2 work?\n\nIt multiplies by an ease factor.\n"
+	v, err := a.CreateLLMSource("Spaced repetition", md)
+	if err != nil {
+		t.Fatalf("CreateLLMSource: %v", err)
+	}
+	// "llm", not "text": the sidebar has to be able to say this was written by a
+	// model. ReadingView routes anything that is not pdf/web to the text pane,
+	// so this costs no pane work.
+	if v.Medium != "llm" {
+		t.Errorf("medium = %q, want \"llm\"", v.Medium)
+	}
+	if v.Title != "Spaced repetition" {
+		t.Errorf("title = %q", v.Title)
+	}
+	if !strings.HasSuffix(v.RefPath, ".md") {
+		t.Errorf("refPath = %q, want a .md source", v.RefPath)
+	}
+
+	body, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(v.RefPath)))
+	if err != nil {
+		t.Fatalf("source file not written: %v", err)
+	}
+	if string(body) != md {
+		t.Errorf("source contents differ from what was passed in")
+	}
+	if _, err := os.Stat(v.NotesPath); err != nil {
+		t.Errorf("notes file not scaffolded: %v", err)
+	}
+
+	got, ok, err := st.GetReading(v.ID)
+	if err != nil || !ok {
+		t.Fatalf("reading not registered: %v ok=%v", err, ok)
+	}
+	// A .md projection is the raw file, so this must match exactly — a wrong
+	// ProjLen makes every % in the sidebar wrong for this document.
+	if got.ProjLen != utf8.RuneCountInString(md) {
+		t.Errorf("projLen = %d, want %d", got.ProjLen, utf8.RuneCountInString(md))
+	}
+}
+
+func TestCreateLLMSourceSuffixesACollidingTitle(t *testing.T) {
+	dir := t.TempDir()
+	st, _ := learning.Open(dir)
+	t.Cleanup(func() { st.Close() })
+	a := &App{collectionDir: dir, learnStore: st,
+		registry: &content.SSTRegistry{Arrows: map[string]content.ArrowDef{}}}
+
+	first, err := a.CreateLLMSource("Same title", "# a\n\ntext\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := a.CreateLLMSource("Same title", "# b\n\nother text\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.RefPath == second.RefPath {
+		t.Fatalf("both saved to %q — the second overwrote the first", first.RefPath)
+	}
+	if first.NotesPath == second.NotesPath {
+		t.Fatalf("both scaffolded %q", first.NotesPath)
+	}
+}
+
+func TestCreateLLMSourceRefusesEmptyInput(t *testing.T) {
+	dir := t.TempDir()
+	st, _ := learning.Open(dir)
+	t.Cleanup(func() { st.Close() })
+	a := &App{collectionDir: dir, learnStore: st,
+		registry: &content.SSTRegistry{Arrows: map[string]content.ArrowDef{}}}
+
+	if _, err := a.CreateLLMSource("   ", "# a\n\ntext\n"); err == nil {
+		t.Error("an empty title must be refused")
+	}
+	if _, err := a.CreateLLMSource("A title", "   \n"); err == nil {
+		t.Error("an empty body must be refused")
+	}
+	// A refusal must not leave a half-made source behind.
+	entries, _ := os.ReadDir(filepath.Join(dir, "sources"))
+	if len(entries) != 0 {
+		t.Errorf("refused calls left %d file(s) in sources/", len(entries))
 	}
 }

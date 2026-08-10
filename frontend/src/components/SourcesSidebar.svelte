@@ -4,7 +4,7 @@
   // does not mean closing what you are in.
   import { onMount, createEventDispatcher } from 'svelte'
   import {
-    ImportTextSource, ImportPdfSource, ImportWebSource, GetReadingList, GetReadingExtracts,
+    ImportTextSource, ImportPdfSource, ImportWebSource, GetReadingList, GetReadingExtracts, GetLLMConfig,
   } from '../../wailsjs/go/main/App'
   import { filterSources } from '../lib/sources-filter.js'
 
@@ -16,6 +16,10 @@
   let expanded = {}     // reading id -> manually opened
   let collapsed = false
   let error = ''
+  let hasLLM = false
+
+  // Shown only while a chat is parked in Study mode, so it can be reopened.
+  export let chatLive = false
 
   $: rows = filterSources(items, extractsByReading, query)
 
@@ -24,6 +28,9 @@
     try {
       items = (await GetReadingList()) ?? []
       extractsByReading = (await GetReadingExtracts()) ?? {}
+      // Rendered only when a profile exists: a user who has never configured a
+      // provider should not see a control they cannot use (as AskBox does).
+      try { hasLLM = ((await GetLLMConfig())?.profiles ?? []).length > 0 } catch { hasLLM = false }
     } catch (e) {
       error = String(e?.message ?? e)
     }
@@ -80,6 +87,9 @@
       <button class="sb-btn" on:click={importText} title="Import a text or markdown file">+ Text</button>
       <button class="sb-btn" on:click={importPdf} title="Import a PDF">+ PDF</button>
       <button class="sb-btn" on:click={importWeb} title="Import a web article">+ Web</button>
+      {#if hasLLM}
+        <button class="sb-btn" on:click={() => dispatch('newChat')} title="Ask a model and save the answers as a document">+ LLM</button>
+      {/if}
       <button class="sb-toggle" on:click={() => (collapsed = true)} title="Hide sources">‹</button>
     </div>
 
@@ -93,6 +103,9 @@
         {query ? 'Nothing matches.' : 'No sources yet. Import a .txt, .md, or .html file to start reading.'}
       </div>
     {:else}
+      {#if chatLive}
+        <button class="sb-chatrow" on:click={() => dispatch('openChat')}>✦ Chat in progress</button>
+      {/if}
       <ul class="sb-list">
         {#each rows as row (row.reading.id)}
           {@const open = expanded[row.reading.id] ?? row.autoExpand}
@@ -111,6 +124,7 @@
               <span class="sb-pct">{row.reading.percent}%</span>
               {#if row.reading.done}<span class="sb-tag done">done</span>
               {:else if dueNow(row.reading)}<span class="sb-tag due">due</span>{/if}
+              {#if row.reading.medium === 'llm'}<span class="sb-tag llm">llm</span>{/if}
             </div>
 
             {#if open}
@@ -154,6 +168,9 @@
   .sb-empty { color: #8aa; padding: 14px 10px; font-size: 13px; }
   .sb-list { list-style: none; margin: 0; padding: 0; overflow: auto; flex: 1; min-height: 0; }
   .sb-doc { border-bottom: 1px solid #1d2a3a; }
+  .sb-chatrow { display: block; width: 100%; text-align: left; background: #16243a;
+    border: none; border-bottom: 1px solid #2a3a4a; color: #7dd3fc; font-size: 12px;
+    padding: 6px 10px; cursor: pointer; }
   .sb-docrow { display: flex; align-items: center; gap: 6px; padding: 6px 10px; }
   .sb-tri { background: none; border: none; color: #8899aa; cursor: pointer; font-size: 11px; padding: 0 2px; }
   .sb-name { flex: 1; min-width: 0; background: none; border: none; color: #cdd6e0; font-size: 13px;
@@ -163,6 +180,7 @@
   .sb-tag { font-size: 10px; border-radius: 3px; padding: 1px 5px; }
   .sb-tag.due { background: #4a3a1a; color: #e0b000; }
   .sb-tag.done { background: #1a3a2a; color: #7ecfa0; }
+  .sb-tag.llm { background: #2c2340; color: #b9a3e3; }
   .sb-extracts { list-style: none; margin: 0 0 4px; padding: 0 0 0 22px; }
   .sb-extract { background: none; border: none; color: #9fb3c8; font-size: 12px; text-align: left;
     cursor: pointer; padding: 3px 8px 3px 0; display: flex; align-items: center; gap: 6px; width: 100%; }
