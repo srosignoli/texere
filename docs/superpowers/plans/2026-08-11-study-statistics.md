@@ -1317,10 +1317,10 @@ Append to `internal/learning/stats.go`:
 // week containing now. Read from items.created_at rather than the activity log
 // so creation has exactly one source of truth.
 func (s *Store) CardsPerWeek(weeks int, now time.Time) ([]int, error) {
-	out := make([]int, weeks)
 	if weeks <= 0 {
-		return out, nil
+		return []int{}, nil // guard before make: a negative length panics
 	}
+	out := make([]int, weeks)
 	start := midnight(now).AddDate(0, 0, -7*(weeks-1))
 	rows, err := s.db.Query(`SELECT created_at FROM items WHERE created_at >= ?`, start.Unix())
 	if err != nil {

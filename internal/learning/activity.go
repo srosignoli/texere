@@ -41,10 +41,10 @@ func (s *Store) ActivitySince() (time.Time, bool, error) {
 // dividing a unix timestamp by 604800 buckets by UTC and drops an evening
 // session into the wrong week for anyone west of Greenwich.
 func (s *Store) ActivityWeeks(kind string, weeks int, now time.Time) ([]int, error) {
-	out := make([]int, weeks)
 	if weeks <= 0 {
-		return out, nil
+		return []int{}, nil // guard before make: a negative length panics
 	}
+	out := make([]int, weeks)
 	// Start of the bucket window: midnight local, (weeks-1) weeks back.
 	start := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).
 		AddDate(0, 0, -7*(weeks-1))
