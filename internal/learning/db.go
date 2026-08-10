@@ -13,7 +13,7 @@ type Store struct {
 	db *sql.DB
 }
 
-const schemaVersion = 5
+const schemaVersion = 6
 
 // Open opens (creating if needed) <collectionDir>/learning.db and migrates it
 // to the current schema version.
@@ -76,6 +76,10 @@ func (s *Store) migrate() error {
 		case 4:
 			if _, err := s.db.Exec(ddlV5); err != nil {
 				return fmt.Errorf("learning: apply v5: %w", err)
+			}
+		case 5:
+			if _, err := s.db.Exec(ddlV6); err != nil {
+				return fmt.Errorf("learning: apply v6: %w", err)
 			}
 		}
 		v++
@@ -178,4 +182,16 @@ CREATE TABLE IF NOT EXISTS notebook_links (
   PRIMARY KEY (file_path, chapter, node_text, notebook_id)
 );
 CREATE INDEX IF NOT EXISTS idx_nblinks_file ON notebook_links(file_path);
+`
+
+const ddlV6 = `
+CREATE TABLE IF NOT EXISTS activity_log (
+  id     INTEGER PRIMARY KEY AUTOINCREMENT,
+  kind   TEXT NOT NULL,
+  ref_id TEXT NOT NULL DEFAULT '',
+  at     INTEGER NOT NULL,
+  detail TEXT NOT NULL DEFAULT '',
+  amount INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_activity_at ON activity_log(at);
 `
