@@ -70,10 +70,8 @@ func CollectionServer(dirFn func() string) http.Handler {
 			http.NotFound(w, r)
 			return
 		}
-		// filepath.Join cleans "..", so the result may sit outside root; the
-		// prefix check below is what actually enforces containment.
-		full := filepath.Join(root, filepath.FromSlash(strings.TrimPrefix(r.URL.Path, prefix)))
-		if full != root && !strings.HasPrefix(full, root+string(filepath.Separator)) {
+		full, ok := resolveUnder(root, strings.TrimPrefix(r.URL.Path, prefix))
+		if !ok {
 			http.NotFound(w, r)
 			return
 		}
@@ -82,4 +80,21 @@ func CollectionServer(dirFn func() string) http.Handler {
 		}
 		http.ServeFile(w, r, full)
 	})
+}
+
+// resolveUnder joins rel onto root and reports whether the result stayed inside
+// root. filepath.Join cleans "..", so the join alone proves nothing — the
+// prefix check is what enforces containment.
+//
+// Split out of the handler so it can be tested at all. http.ServeFile
+// independently rejects any request whose URL path contains a ".." element
+// (net/http/fs.go:815), so no request reaching CollectionServer can exercise
+// this: it is defence in depth for a caller whose path did not come from a URL,
+// and a handler-level test of it would pass with the check deleted.
+func resolveUnder(root, rel string) (string, bool) {
+	full := filepath.Join(root, filepath.FromSlash(rel))
+	if full != root && !strings.HasPrefix(full, root+string(filepath.Separator)) {
+		return "", false
+	}
+	return full, true
 }

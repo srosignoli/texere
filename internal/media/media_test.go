@@ -212,3 +212,26 @@ func TestCollectionServerWithNoCollectionOpen(t *testing.T) {
 		t.Errorf("code=%d, want 404", rr.Code)
 	}
 }
+
+// Containment is tested here rather than through CollectionServer because
+// http.ServeFile rejects a ".." URL element before the handler's check is ever
+// consulted — a handler-level test passes with the check deleted.
+func TestResolveUnderBlocksEscapesAndAllowsNesting(t *testing.T) {
+	root := filepath.Join(string(filepath.Separator), "collections", "mine")
+
+	for _, rel := range []string{"../escaped.png", "media/../../escaped.png", "../../etc/passwd"} {
+		if got, ok := resolveUnder(root, rel); ok {
+			t.Errorf("%q resolved to %q and was allowed — it escapes the root", rel, got)
+		}
+	}
+	for _, rel := range []string{"media/a.png", "assets/b.png", "deep/nest/c.png"} {
+		if _, ok := resolveUnder(root, rel); !ok {
+			t.Errorf("%q was rejected — it is inside the root", rel)
+		}
+	}
+	// ".." as a substring of a name is not a traversal. A check on the raw
+	// string rather than the resolved path would reject this.
+	if _, ok := resolveUnder(root, "a..b/c.png"); !ok {
+		t.Error(`"a..b/c.png" was rejected — ".." inside a filename is not a traversal`)
+	}
+}

@@ -232,7 +232,7 @@ Expected: PASS (3 tests), and the whole suite still green.
 
 - [ ] **Step 6: Negative controls (report both)**
 
-1. Delete the containment check — the `if full != root && !strings.HasPrefix(...)` block. `TestCollectionServerBlocksEscapes` must FAIL naming a served escape path. Restore.
+1. Delete the containment check inside `resolveUnder`. `TestResolveUnderBlocksEscapesAndAllowsNesting` must FAIL naming a resolved escape. (Do **not** try this through `CollectionServer`: `http.ServeFile` independently rejects any request whose URL path contains a `..` element — `net/http/fs.go:815` — so every escape fixture trips the stdlib guard first and the handler-level test stays green with the check deleted. That is why containment lives in a separate function.) Restore.
 2. Change `filepath.FromSlash(strings.TrimPrefix(r.URL.Path, prefix))` to `path.Base(r.URL.Path)`, i.e. copy `FileServer`'s flattening. `TestCollectionServerServesNestedPaths` must FAIL on `deep/nest/c.png`. Restore.
 
 - [ ] **Step 7: Commit**
