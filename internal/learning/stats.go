@@ -134,3 +134,150 @@ func streaks(days []DayCount) (current, longest int) {
 func midnight(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
 }
+
+const forecastDays = 14
+const leechLapses = 5
+
+type WorkloadStats struct {
+	Burden       float64     `json:"burden"`
+	DailyMinutes float64     `json:"dailyMinutes"`
+	Forecast     []int       `json:"forecast"`
+	Backlog      StudyStats3 `json:"backlog"`
+	Leeches      int         `json:"leeches"`
+	Difficulty   [5]int      `json:"difficulty"`
+	Memorized    int         `json:"memorized"`
+}
+
+type PipelineStats struct {
+	Sources        int `json:"sources"`
+	SourcesDone    int `json:"sourcesDone"`
+	Extracts       int `json:"extracts"`
+	ExtractsOpen   int `json:"extractsOpen"`
+	Cards          int `json:"cards"`
+	OldestOpenDays int `json:"oldestOpenDays"`
+	ExtractsMade30 int `json:"extractsMade30"`
+	CardsMade30    int `json:"cardsMade30"`
+}
+
+// WorkloadStatsFor answers "what is coming, and can I sustain it?".
+//
+// Burden is SuperMemo's sum of interval reciprocals: an item on a 100-day
+// interval costs 1/100 of a review per day, so the sum estimates reviews per
+// day across the collection. avgLatencyMs comes from QualityStats — the caller
+// passes it rather than this method re-querying review_logs.
+func (s *Store) WorkloadStatsFor(now time.Time, avgLatencyMs int) (WorkloadStats, error) {
+	var out WorkloadStats
+	out.Burden = -1
+	out.DailyMinutes = -1
+	out.Forecast = make([]int, forecastDays)
+
+	start := midnight(now)
+	rows, err := s.db.Query(
+		`SELECT due, last_review, lapses, difficulty, reps FROM items WHERE active=1`)
+	if err != nil {
+		return out, err
+	}
+	defer rows.Close()
+	burden := 0.0
+	scheduled := 0
+	for rows.Next() {
+		var due, lastReview sql.NullInt64
+		var lapses, reps int
+		var difficulty sql.NullFloat64
+		if err := rows.Scan(&due, &lastReview, &lapses, &difficulty, &reps); err != nil {
+			return out, err
+		}
+		if reps > 0 {
+			out.Memorized++
+		}
+		if lapses >= leechLapses {
+			out.Leeches++
+		}
+		if difficulty.Valid {
+			b := int((difficulty.Float64 - 1) / 2) // 1-10 -> five buckets of two
+			if b < 0 {
+				b = 0
+			}
+			if b > 4 {
+				b = 4
+			}
+			out.Difficulty[b]++
+		}
+		// An item never reviewed has no interval; counting it would invent a
+		// review the scheduler has not planned.
+		if due.Valid && lastReview.Valid {
+			days := float64(due.Int64-lastReview.Int64) / 86400
+			if days < 1 {
+				days = 1
+			}
+			burden += 1 / days
+			scheduled++
+		}
+		if due.Valid {
+			idx := int(time.Unix(due.Int64, 0).Sub(start).Hours() / 24)
+			if idx < 0 {
+				idx = 0 // overdue items are due today
+			}
+			if idx < forecastDays {
+				out.Forecast[idx]++
+			}
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return out, err
+	}
+	if scheduled > 0 {
+		out.Burden = burden
+		if avgLatencyMs > 0 {
+			out.DailyMinutes = burden * float64(avgLatencyMs) / 1000 / 60
+		}
+	}
+	if out.Backlog, err = s.StudyCounts(now); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// PipelineStatsFor answers "is material flowing, or piling up?".
+func (s *Store) PipelineStatsFor(now time.Time) (PipelineStats, error) {
+	var out PipelineStats
+	out.OldestOpenDays = -1
+	since := midnight(now).AddDate(0, 0, -(statsWindowDays - 1)).Unix()
+
+	q := func(sql string, args []interface{}, dst *int) error {
+		return s.db.QueryRow(sql, args...).Scan(dst)
+	}
+	if err := q(`SELECT COUNT(*) FROM reading_elements`, nil, &out.Sources); err != nil {
+		return out, err
+	}
+	if err := q(`SELECT COUNT(*) FROM reading_elements WHERE done=1`, nil, &out.SourcesDone); err != nil {
+		return out, err
+	}
+	if err := q(`SELECT COUNT(*) FROM extracts`, nil, &out.Extracts); err != nil {
+		return out, err
+	}
+	if err := q(`SELECT COUNT(*) FROM extracts WHERE active=1`, nil, &out.ExtractsOpen); err != nil {
+		return out, err
+	}
+	if err := q(`SELECT COUNT(*) FROM items WHERE active=1`, nil, &out.Cards); err != nil {
+		return out, err
+	}
+	if err := q(`SELECT COUNT(*) FROM extracts WHERE created_at >= ?`,
+		[]interface{}{since}, &out.ExtractsMade30); err != nil {
+		return out, err
+	}
+	if err := q(`SELECT COUNT(*) FROM items WHERE created_at >= ?`,
+		[]interface{}{since}, &out.CardsMade30); err != nil {
+		return out, err
+	}
+
+	var oldest sql.NullInt64
+	if err := s.db.QueryRow(
+		`SELECT MIN(created_at) FROM extracts WHERE active=1`).Scan(&oldest); err != nil {
+		return out, err
+	}
+	if oldest.Valid {
+		out.OldestOpenDays = int(now.Sub(time.Unix(oldest.Int64, 0)).Hours() / 24)
+	}
+	return out, nil
+}

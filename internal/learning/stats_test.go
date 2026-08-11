@@ -199,3 +199,147 @@ func TestQualityStatsWindowBoundaryIsExactlyThirtyDays(t *testing.T) {
 		t.Errorf("reviews = %d, want 1 — day -29 is inside the window and day -31 is outside", got.Reviews30)
 	}
 }
+
+func seedItem(t *testing.T, s *Store, id string, due, lastReview *time.Time, lapses int, difficulty float64, createdAt time.Time) {
+	t.Helper()
+	var d, lr interface{}
+	if due != nil {
+		d = due.Unix()
+	}
+	if lastReview != nil {
+		lr = lastReview.Unix()
+	}
+	if _, err := s.db.Exec(
+		`INSERT INTO items (id, node_id, file_path, card_type, front, back, active,
+		 stability, difficulty, due, last_review, reps, lapses, state, created_at)
+		 VALUES (?,?,?,?,?,?,1,1.0,?,?,?,1,?,2,?)`,
+		id, id, "/c/n.n4l", "basic", "f", "b", difficulty, d, lr, lapses, createdAt.Unix()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestBurdenIsTheSumOfIntervalReciprocals(t *testing.T) {
+	st, _ := Open(t.TempDir())
+	now := time.Date(2026, 8, 11, 12, 0, 0, 0, time.Local)
+	lr := now.AddDate(0, 0, -2)
+	due2 := now.AddDate(0, 0, 0) // interval 2 days -> 0.5
+	lr2 := now.AddDate(0, 0, -10)
+	due10 := now.AddDate(0, 0, 0) // interval 10 days -> 0.1
+	seedItem(t, st, "a", &due2, &lr, 0, 5, now)
+	seedItem(t, st, "b", &due10, &lr2, 0, 5, now)
+
+	got, err := st.WorkloadStatsFor(now, 10000) // 10s per review
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Burden < 0.59 || got.Burden > 0.61 {
+		t.Errorf("burden = %v, want ~0.6 (1/2 + 1/10)", got.Burden)
+	}
+	// 0.6 reviews/day * 10s = 6s = 0.1 min
+	if got.DailyMinutes < 0.09 || got.DailyMinutes > 0.11 {
+		t.Errorf("daily minutes = %v, want ~0.1", got.DailyMinutes)
+	}
+}
+
+// A never-reviewed item has no interval. Counting it as 1 day would invent a
+// daily review that nothing has scheduled.
+func TestBurdenExcludesNeverReviewedItems(t *testing.T) {
+	st, _ := Open(t.TempDir())
+	now := time.Date(2026, 8, 11, 12, 0, 0, 0, time.Local)
+	due := now
+	seedItem(t, st, "new", &due, nil, 0, 5, now)
+
+	got, _ := st.WorkloadStatsFor(now, 10000)
+	if got.Burden != -1 {
+		t.Errorf("burden = %v, want -1 — a collection with nothing scheduled has no burden", got.Burden)
+	}
+	if got.DailyMinutes != -1 {
+		t.Errorf("daily minutes = %v, want -1", got.DailyMinutes)
+	}
+}
+
+func TestForecastBucketsByDayFromToday(t *testing.T) {
+	st, _ := Open(t.TempDir())
+	now := time.Date(2026, 8, 11, 12, 0, 0, 0, time.Local)
+	lr := now.AddDate(0, 0, -1)
+	today := now
+	inThree := now.AddDate(0, 0, 3)
+	seedItem(t, st, "a", &today, &lr, 0, 5, now)
+	seedItem(t, st, "b", &inThree, &lr, 0, 5, now)
+	seedItem(t, st, "c", &inThree, &lr, 0, 5, now)
+
+	got, _ := st.WorkloadStatsFor(now, 1000)
+	if len(got.Forecast) != 14 {
+		t.Fatalf("forecast has %d days, want 14", len(got.Forecast))
+	}
+	if got.Forecast[0] != 1 {
+		t.Errorf("today = %d, want 1", got.Forecast[0])
+	}
+	if got.Forecast[3] != 2 {
+		t.Errorf("+3 days = %d, want 2", got.Forecast[3])
+	}
+	if got.Forecast[1] != 0 {
+		t.Errorf("+1 day = %d, want 0", got.Forecast[1])
+	}
+}
+
+func TestLeechesAndDifficultyBuckets(t *testing.T) {
+	st, _ := Open(t.TempDir())
+	now := time.Date(2026, 8, 11, 12, 0, 0, 0, time.Local)
+	lr := now.AddDate(0, 0, -1)
+	due := now
+	seedItem(t, st, "easy", &due, &lr, 0, 1.5, now)  // bucket 0 (1-3)
+	seedItem(t, st, "mid", &due, &lr, 2, 5.0, now)   // bucket 2 (5-7)
+	seedItem(t, st, "leech", &due, &lr, 7, 9.5, now) // bucket 4 (9-10)
+
+	got, _ := st.WorkloadStatsFor(now, 1000)
+	if got.Leeches != 1 {
+		t.Errorf("leeches = %d, want 1 (lapses >= 5)", got.Leeches)
+	}
+	if got.Difficulty[0] != 1 || got.Difficulty[2] != 1 || got.Difficulty[4] != 1 {
+		t.Errorf("difficulty buckets = %v, want one item in buckets 0, 2 and 4", got.Difficulty)
+	}
+}
+
+func TestPipelineCountsAndOldestOpenExtract(t *testing.T) {
+	st, _ := Open(t.TempDir())
+	now := time.Date(2026, 8, 11, 12, 0, 0, 0, time.Local)
+	lr := now.AddDate(0, 0, -1)
+	due := now
+	seedItem(t, st, "card", &due, &lr, 0, 5, now)
+
+	if err := st.UpsertReading(ReadingElement{
+		ID: "r1", RefPath: "s/a.txt", NotesPath: "n/a.n4l", Title: "a", IntervalDays: 1,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	// An extract opened 10 days ago and still unprocessed.
+	if _, err := st.db.Exec(
+		`INSERT INTO extracts (id, file_path, text, from_anchor, due, deferral_count, active, created_at)
+		 VALUES ('e1','/c/n.n4l','x','',?,0,1,?)`,
+		now.Unix(), now.AddDate(0, 0, -10).Unix()); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := st.PipelineStatsFor(now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Sources != 1 || got.Extracts != 1 || got.ExtractsOpen != 1 || got.Cards != 1 {
+		t.Errorf("funnel = %+v, want 1 of each", got)
+	}
+	if got.OldestOpenDays != 10 {
+		t.Errorf("oldest open = %d days, want 10", got.OldestOpenDays)
+	}
+}
+
+func TestPipelineOldestOpenIsMinusOneWhenNothingIsOpen(t *testing.T) {
+	st, _ := Open(t.TempDir())
+	got, err := st.PipelineStatsFor(time.Now())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.OldestOpenDays != -1 {
+		t.Errorf("oldest open = %d, want -1 — an empty queue is not a zero-day-old queue", got.OldestOpenDays)
+	}
+}
