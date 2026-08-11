@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mediaKind, mediaMime, findMedia } from './n4l-media.js'
+import { mediaKind, srcFor, findMedia } from './n4l-media.js'
 
 test('mediaKind recognises every supported extension', () => {
   for (const p of ['a.png', 'a.jpg', 'a.jpeg', 'a.gif', 'a.webp', 'a.svg', 'a.bmp']) {
@@ -34,17 +34,6 @@ test('mediaKind looks at the extension, not the whole path', () => {
   // The discriminating case: only the LAST dot's suffix is the extension.
   // Reading from the first dot gives 'txt.png' here and misses a real image.
   assert.equal(mediaKind('archive.txt.png'), 'image')
-})
-
-test('mediaMime maps each kind to a playable type', () => {
-  assert.equal(mediaMime('a.png'), 'image/png')
-  assert.equal(mediaMime('a.jpg'), 'image/jpeg')
-  assert.equal(mediaMime('a.jpeg'), 'image/jpeg')
-  assert.equal(mediaMime('a.svg'), 'image/svg+xml')
-  assert.equal(mediaMime('a.mp4'), 'video/mp4')
-  assert.equal(mediaMime('a.mp3'), 'audio/mpeg')
-  assert.equal(mediaMime('a.m4a'), 'audio/mp4')
-  assert.equal(mediaMime('a.txt'), '')
 })
 
 test('findMedia returns a quoted media path with its offsets', () => {
@@ -88,4 +77,35 @@ test('findMedia survives an unterminated quote', () => {
 
 test('findMedia handles an empty line', () => {
   assert.deepEqual(findMedia(''), [])
+})
+
+test('srcFor passes a remote URL through untouched', () => {
+  assert.equal(srcFor('https://example.com/a.png'), 'https://example.com/a.png')
+  assert.equal(srcFor('http://example.com/a.png'), 'http://example.com/a.png')
+})
+
+test('srcFor recognises a remote URL whatever its case', () => {
+  assert.equal(srcFor('HTTPS://Example.com/A.png'), 'HTTPS://Example.com/A.png')
+})
+
+test('srcFor routes a local path through the collection server', () => {
+  assert.equal(srcFor('media/a.png'), '/collection/media/a.png')
+  assert.equal(srcFor('deep/nest/c.png'), '/collection/deep/nest/c.png')
+})
+
+// Encoding is per SEGMENT: whole-string encoding would escape the slashes and
+// the server would never find the file.
+test('srcFor keeps path separators while encoding the segments', () => {
+  assert.equal(srcFor('my folder/a b.png'), '/collection/my%20folder/a%20b.png')
+})
+
+// A '#' or '?' inside a filename would otherwise start a fragment or query and
+// silently truncate the request.
+test('srcFor encodes characters that would truncate the URL', () => {
+  assert.equal(srcFor('notes/a#1.png'), '/collection/notes/a%231.png')
+  assert.equal(srcFor('notes/a?b.png'), '/collection/notes/a%3Fb.png')
+})
+
+test('srcFor handles an empty path without throwing', () => {
+  assert.equal(srcFor(''), '/collection/')
 })

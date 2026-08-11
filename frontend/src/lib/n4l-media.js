@@ -8,13 +8,6 @@
 // Dependency-free so it runs under `node --test`: this repo has no CodeMirror
 // or Svelte component harness, so logic left inside the plugin has no tests.
 
-const MIME = {
-  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif',
-  webp: 'image/webp', svg: 'image/svg+xml', bmp: 'image/bmp',
-  mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime', m4v: 'video/x-m4v',
-  mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg', m4a: 'audio/mp4', flac: 'audio/flac',
-}
-
 const KIND = {
   image: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'],
   video: ['mp4', 'webm', 'mov', 'm4v'],
@@ -29,14 +22,6 @@ export function mediaKind(path) {
     if (KIND[kind].includes(ext)) return kind
   }
   return null
-}
-
-/**
- * The Blob's MIME type. A <video> handed a blob with no type will not play, so
- * this is load-bearing rather than cosmetic. '' for anything unrecognised.
- */
-export function mediaMime(path) {
-  return MIME[extensionOf(path)] ?? ''
 }
 
 /**
@@ -55,6 +40,23 @@ export function findMedia(lineText) {
     out.push({ path: m[1], kind, from: m.index + 1, to: m.index + 1 + m[1].length })
   }
   return out
+}
+
+/**
+ * The `src` for a referenced asset.
+ *
+ * A remote URL is used as-is. Everything else is served by the Go asset server
+ * from the collection directory — which is why nothing here decodes bytes any
+ * more: http.ServeFile gives native range requests, so a video seeks with no
+ * work at all, and the browser does the caching.
+ */
+export function srcFor(path) {
+  const s = String(path ?? '')
+  if (/^https?:\/\//i.test(s)) return s
+  // Per segment, not whole-string: encoding the slashes too would mean the
+  // server never finds the file, while leaving a '#' or '?' raw would truncate
+  // the request at a fragment or query that is really part of the filename.
+  return '/collection/' + s.split('/').map(encodeURIComponent).join('/')
 }
 
 // The final dot's suffix, lowercased. A name with no dot, or a trailing dot,
