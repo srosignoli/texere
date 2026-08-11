@@ -249,6 +249,15 @@ func (a *App) mediaDir() string {
 	return filepath.Join(a.collectionDir, "media")
 }
 
+// collectionRoot is the collection directory, or "" when none is open. Read
+// under dirMu because the HTTP asset handler calls it from its own goroutine,
+// exactly as mediaDir does.
+func (a *App) collectionRoot() string {
+	a.dirMu.RLock()
+	defer a.dirMu.RUnlock()
+	return a.collectionDir
+}
+
 // ImportImage opens the OS file dialog, copies the chosen image into the
 // collection's media/ directory, and returns {asset, mime}. Returns (nil, nil)
 // when the user cancels, and an error when no collection is open or the file is

@@ -1,10 +1,9 @@
 <script>
-  import { workbenchStore } from '../stores/workbench.js'
+  import InlineMedia from './InlineMedia.svelte'
+  import { mediaKind } from '../lib/n4l-media.js'
 
   export let node
   export let arrowDefs = []
-
-  $: collectionDir = $workbenchStore.collectionDir ?? ''
 
   // Map ArrowDef.Code → LongName for display
   $: arrowDefMap = arrowDefs.reduce((m, d) => { m[d.Code] = d.LongName; return m }, {})
@@ -12,30 +11,20 @@
   // ALL CAPS reminder: text is all uppercase + length ≥ 3
   $: isReminder = /^[A-Z][A-Z0-9 _,;:.!?'"()[\]-]{2,}$/.test((node.Text ?? '').trim())
 
-  const IMAGE_EXT = /\.(png|jpe?g|gif|webp|svg)$/i
-  const AUDIO_EXT = /\.(mp3|wav|ogg)$/i
-
+  // Media referenced inside the node's own text, as opposed to as an arrow
+  // target. mediaKind decides, so this view and the notes editor agree on the
+  // extensions — the old local regexes knew nothing about video.
   function mediaTokens(text) {
-    return (text ?? '').split(/\s+/).filter(t => IMAGE_EXT.test(t) || AUDIO_EXT.test(t))
-  }
-
-  function resolveMedia(token) {
-    if (/^https?:\/\//.test(token)) return token
-    return collectionDir ? `${collectionDir}/${token}` : token
+    return (text ?? '').split(/\s+/).filter((t) => mediaKind(t))
   }
 </script>
 
 <div class="node-card" class:reminder={isReminder} class:sequence-node={node.IsSequence}>
   <p class="node-text">{node.Text}</p>
 
-  <!-- Inline media -->
+  <!-- Media named in the node's own text -->
   {#each mediaTokens(node.Text) as token}
-    {#if IMAGE_EXT.test(token)}
-      <img class="inline-media" src={resolveMedia(token)} alt={token} loading="lazy" />
-    {:else if AUDIO_EXT.test(token)}
-      <!-- svelte-ignore a11y-media-has-caption -->
-      <audio class="inline-audio" controls src={resolveMedia(token)} />
-    {/if}
+    <InlineMedia path={token} />
   {/each}
 
   <!-- Arrow properties -->
@@ -44,7 +33,7 @@
       {#each node.Arrows ?? [] as arrow}
         <div class="arrow-entry">
           <dt class="arrow-dt">{arrowDefMap[arrow.Code] ?? arrow.Code}</dt>
-          <dd class="arrow-dd">{arrow.Target}</dd>
+          <dd class="arrow-dd">{arrow.Target}<InlineMedia path={arrow.Target} /></dd>
         </div>
       {/each}
       {#each node.Dittos ?? [] as ditto}
@@ -56,7 +45,7 @@
         {#each ditto.Arrows ?? [] as arrow}
           <div class="arrow-entry ditto">
             <dt class="arrow-dt">{arrowDefMap[arrow.Code] ?? arrow.Code}</dt>
-            <dd class="arrow-dd">{arrow.Target}</dd>
+            <dd class="arrow-dd">{arrow.Target}<InlineMedia path={arrow.Target} /></dd>
           </div>
         {/each}
       {/each}
@@ -93,19 +82,6 @@
   .node-card.reminder .node-text {
     color: #92400e;
     font-weight: 600;
-  }
-
-  .inline-media {
-    display: block;
-    max-width: 100%;
-    border-radius: 4px;
-    margin: 6px 0;
-  }
-
-  .inline-audio {
-    display: block;
-    width: 100%;
-    margin: 6px 0;
   }
 
   .arrow-list {

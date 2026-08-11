@@ -135,3 +135,128 @@ func TestSaveAudioRejectsUnknownMime(t *testing.T) {
 		t.Fatal("expected rejection for audio/weird")
 	}
 }
+
+func TestCollectionServerServesNestedPaths(t *testing.T) {
+	dir := t.TempDir()
+	// Both folders matter: conflating "media/" with some blessed assets folder
+	// is the bug that prompted this route.
+	for _, rel := range []string{"media/a.png", "assets/b.png", "deep/nest/c.png"} {
+		if err := os.MkdirAll(filepath.Join(dir, filepath.Dir(rel)), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, rel), pngBytes, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	h := CollectionServer(func() string { return dir })
+
+	for _, rel := range []string{"media/a.png", "assets/b.png", "deep/nest/c.png"} {
+		rr := httptest.NewRecorder()
+		h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/collection/"+rel, nil))
+		if rr.Code != http.StatusOK {
+			t.Errorf("%s: code=%d, want 200", rel, rr.Code)
+		}
+		if rr.Body.Len() != len(pngBytes) {
+			t.Errorf("%s: body=%d bytes, want %d", rel, rr.Body.Len(), len(pngBytes))
+		}
+		if ct := rr.Header().Get("Content-Type"); ct != "image/png" {
+			t.Errorf("%s: Content-Type=%q, want image/png — a webview needs a usable type", rel, ct)
+		}
+	}
+}
+
+// This tightens behaviour deliberately: GetSourceBytes cleans ".." and reads
+// outside the collection. This route must not.
+func TestCollectionServerBlocksEscapes(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "media"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "media", "in.png"), pngBytes, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// A real file one level ABOVE the collection: the thing an escape would reach.
+	outside := filepath.Join(filepath.Dir(dir), "escaped-"+filepath.Base(dir)+".png")
+	if err := os.WriteFile(outside, pngBytes, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Remove(outside) })
+
+	h := CollectionServer(func() string { return dir })
+	for _, p := range []string{
+		"/collection/../" + filepath.Base(outside),
+		"/collection/media/../../" + filepath.Base(outside),
+		"/collection/..%2f" + filepath.Base(outside),
+		"/other/media/in.png",
+	} {
+		rr := httptest.NewRecorder()
+		h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, p, nil))
+		if rr.Code == http.StatusOK {
+			t.Errorf("path %q was served (code %d) — it escapes the collection", p, rr.Code)
+		}
+	}
+	// The control: the same handler DOES serve something legitimate, so a
+	// blanket 404 cannot be mistaken for containment working.
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/collection/media/in.png", nil))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("in-collection file not served (code %d) — the fixture proves nothing", rr.Code)
+	}
+}
+
+func TestCollectionServerWithNoCollectionOpen(t *testing.T) {
+	h := CollectionServer(func() string { return "" })
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/collection/media/a.png", nil))
+	if rr.Code != http.StatusNotFound {
+		t.Errorf("code=%d, want 404", rr.Code)
+	}
+}
+
+// Containment is tested here rather than through CollectionServer because
+// http.ServeFile rejects a ".." URL element before the handler's check is ever
+// consulted — a handler-level test passes with the check deleted.
+func TestResolveUnderBlocksEscapesAndAllowsNesting(t *testing.T) {
+	root := filepath.Join(string(filepath.Separator), "collections", "mine")
+
+	for _, rel := range []string{"../escaped.png", "media/../../escaped.png", "../../etc/passwd"} {
+		if got, ok := resolveUnder(root, rel); ok {
+			t.Errorf("%q resolved to %q and was allowed — it escapes the root", rel, got)
+		}
+	}
+	for _, rel := range []string{"media/a.png", "assets/b.png", "deep/nest/c.png"} {
+		if _, ok := resolveUnder(root, rel); !ok {
+			t.Errorf("%q was rejected — it is inside the root", rel)
+		}
+	}
+	// ".." as a substring of a name is not a traversal. A check on the raw
+	// string rather than the resolved path would reject this.
+	if _, ok := resolveUnder(root, "a..b/c.png"); !ok {
+		t.Error(`"a..b/c.png" was rejected — ".." inside a filename is not a traversal`)
+	}
+}
+
+// /media/ only ever holds imported audio, so it labels .mp4 and .webm audio/*.
+// /collection/ serves whatever a note references, and both are VIDEO there — an
+// audio Content-Type on a <video> body is wrong on every file of that kind.
+func TestCollectionServerTypesVideoAsVideo(t *testing.T) {
+	dir := t.TempDir()
+	for _, name := range []string{"clip.mp4", "clip.webm", "voice.mp3", "voice.wav"} {
+		if err := os.WriteFile(filepath.Join(dir, name), pngBytes, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	h := CollectionServer(func() string { return dir })
+	for name, want := range map[string]string{
+		"clip.mp4":  "video/mp4",
+		"clip.webm": "video/webm",
+		"voice.mp3": "audio/mpeg",
+		"voice.wav": "audio/wav",
+	} {
+		rr := httptest.NewRecorder()
+		h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/collection/"+name, nil))
+		if got := rr.Header().Get("Content-Type"); got != want {
+			t.Errorf("%s: Content-Type=%q, want %q", name, got, want)
+		}
+	}
+}
