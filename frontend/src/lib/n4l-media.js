@@ -1,12 +1,13 @@
-// Finding media assets referenced from an N4L line.
+// Deciding whether a referenced path is media, and what URL to fetch it from.
 //
-// Detection is by the target's file EXTENSION, never by the arrow's name.
-// Arrow names are free text the author writes, so matching them means
-// "has an image" works while "illustrated by", "screenshot" or a typo silently
-// does not. The extension is a property of the thing being pointed at.
+// Detection is by the path's file EXTENSION, never by the arrow's name. Arrow
+// names are free text the author writes, so matching them would mean
+// "has an image" works while "illustrated by", "pic" or a typo silently does
+// not. The extension is a property of the thing being pointed at.
 //
-// Dependency-free so it runs under `node --test`: this repo has no CodeMirror
-// or Svelte component harness, so logic left inside the plugin has no tests.
+// Dependency-free so it runs under `node --test`: this repo has no Svelte
+// component harness, so logic left inside a component has no tests. The Read
+// tab's InlineMedia is deliberately thin glue over these two functions.
 
 const KIND = {
   image: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'],
@@ -22,44 +23,6 @@ export function mediaKind(path) {
     if (KIND[kind].includes(ext)) return kind
   }
   return null
-}
-
-/**
- * Every media target on one N4L line.
- *
- * Anchored on the ARROW, not on quotes. An N4L line is `subject (code) target`,
- * and a target only needs quoting when it contains spaces — in a real
- * collection roughly 140 of 5,450 targets are quoted. Scanning for quoted spans
- * therefore matched the rare form and missed the common one, including every
- * ditto line, where a leading `"` means "same subject as above" rather than
- * opening a quote.
- *
- * The arrow marks WHERE a target is; it never decides whether one counts. That
- * is still the extension's job.
- *
- * @returns {{path: string, kind: string}[]}
- */
-export function findMedia(lineText) {
-  const line = String(lineText ?? '')
-  const out = []
-  // Each (code), and the text up to the next one, which is that arrow's target.
-  const re = /\(([^()\n]*)\)/g
-  let m
-  while ((m = re.exec(line)) !== null) {
-    const rest = line.slice(re.lastIndex)
-    const next = rest.indexOf('(')
-    const target = trimQuotes(next < 0 ? rest : rest.slice(0, next))
-    const kind = mediaKind(target)
-    if (kind) out.push({ path: target, kind })
-  }
-  return out
-}
-
-// Surrounding quotes are stripped independently rather than as a pair, so a
-// target left half-quoted by a typo still resolves instead of carrying a stray
-// quote into the URL.
-function trimQuotes(s) {
-  return s.trim().replace(/^"+/, '').replace(/"+$/, '').trim()
 }
 
 /**

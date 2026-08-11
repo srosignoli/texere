@@ -3,7 +3,6 @@
   import { EditorView } from '@codemirror/view'
   import { EditorState } from '@codemirror/state'
   import { n4lBaseExtensions, pushRecentArrow } from '../lib/n4l-editor.js'
-  import { n4lMedia } from '../lib/n4l-media-view.js'
   import { workbenchStore } from '../stores/workbench.js'
   import { CreateExtract, RescheduleReading, GetFileContent, SaveFile, GetRecentArrows, UpdateRecentArrows, UpdateReadingProgress, LogReadingSession } from '../../wailsjs/go/main/App'
   import { activeReading } from '../stores/reading.js'
@@ -148,7 +147,6 @@
           getArrowDefs: () => arrowDefsRef,
           getRecent: () => recentCodesRef,
           onArrowSelected: handleArrowSelected,
-          extra: [n4lMedia()],
         }),
       }),
     })
