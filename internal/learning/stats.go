@@ -283,3 +283,30 @@ func (s *Store) PipelineStatsFor(now time.Time) (PipelineStats, error) {
 	}
 	return out, nil
 }
+
+// CardsPerWeek buckets item creation, oldest first, the last entry being the
+// week containing now. Read from items.created_at rather than the activity log
+// so creation has exactly one source of truth.
+func (s *Store) CardsPerWeek(weeks int, now time.Time) ([]int, error) {
+	if weeks <= 0 {
+		return []int{}, nil // guard before make: a negative length panics
+	}
+	out := make([]int, weeks)
+	start := midnight(now).AddDate(0, 0, -7*(weeks-1))
+	rows, err := s.db.Query(`SELECT created_at FROM items WHERE created_at >= ?`, start.Unix())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var at int64
+		if err := rows.Scan(&at); err != nil {
+			return nil, err
+		}
+		idx := int(time.Unix(at, 0).Sub(start).Hours() / (24 * 7))
+		if idx >= 0 && idx < weeks {
+			out[idx]++
+		}
+	}
+	return out, rows.Err()
+}

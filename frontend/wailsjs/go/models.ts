@@ -601,6 +601,100 @@ export namespace learning {
 	        this.nodeId = source["nodeId"];
 	    }
 	}
+	export class DayCount {
+	    day: string;
+	    count: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new DayCount(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.day = source["day"];
+	        this.count = source["count"];
+	    }
+	}
+	export class HabitStats {
+	    reviewsPerDay: DayCount[];
+	    currentStreak: number;
+	    longestStreak: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new HabitStats(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.reviewsPerDay = this.convertValues(source["reviewsPerDay"], DayCount);
+	        this.currentStreak = source["currentStreak"];
+	        this.longestStreak = source["longestStreak"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class PipelineStats {
+	    sources: number;
+	    sourcesDone: number;
+	    extracts: number;
+	    extractsOpen: number;
+	    cards: number;
+	    oldestOpenDays: number;
+	    extractsMade30: number;
+	    cardsMade30: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new PipelineStats(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.sources = source["sources"];
+	        this.sourcesDone = source["sourcesDone"];
+	        this.extracts = source["extracts"];
+	        this.extractsOpen = source["extractsOpen"];
+	        this.cards = source["cards"];
+	        this.oldestOpenDays = source["oldestOpenDays"];
+	        this.extractsMade30 = source["extractsMade30"];
+	        this.cardsMade30 = source["cardsMade30"];
+	    }
+	}
+	export class QualityStats {
+	    reviews30: number;
+	    forgettingIndex: number;
+	    retention: number;
+	    gradeMix: number[];
+	    avgLatencyMs: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new QualityStats(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.reviews30 = source["reviews30"];
+	        this.forgettingIndex = source["forgettingIndex"];
+	        this.retention = source["retention"];
+	        this.gradeMix = source["gradeMix"];
+	        this.avgLatencyMs = source["avgLatencyMs"];
+	    }
+	}
 	export class Stats {
 	    due: number;
 	    new: number;
@@ -654,6 +748,48 @@ export namespace learning {
 	        this.extractsAdded = source["extractsAdded"];
 	        this.extractsRetired = source["extractsRetired"];
 	    }
+	}
+	export class WorkloadStats {
+	    burden: number;
+	    dailyMinutes: number;
+	    forecast: number[];
+	    backlog: StudyStats3;
+	    leeches: number;
+	    difficulty: number[];
+	    memorized: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new WorkloadStats(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.burden = source["burden"];
+	        this.dailyMinutes = source["dailyMinutes"];
+	        this.forecast = source["forecast"];
+	        this.backlog = this.convertValues(source["backlog"], StudyStats3);
+	        this.leeches = source["leeches"];
+	        this.difficulty = source["difficulty"];
+	        this.memorized = source["memorized"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 
 }
@@ -1122,6 +1258,50 @@ export namespace main {
 	        this.profileId = source["profileId"];
 	        this.system = source["system"];
 	        this.messages = this.convertValues(source["messages"], llm.Message);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class StatsView {
+	    quality: learning.QualityStats;
+	    workload: learning.WorkloadStats;
+	    habit: learning.HabitStats;
+	    pipeline: learning.PipelineStats;
+	    cardsPerWeek: number[];
+	    readMinsWeek: number[];
+	    procPerWeek: number[];
+	    loggingSince: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new StatsView(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.quality = this.convertValues(source["quality"], learning.QualityStats);
+	        this.workload = this.convertValues(source["workload"], learning.WorkloadStats);
+	        this.habit = this.convertValues(source["habit"], learning.HabitStats);
+	        this.pipeline = this.convertValues(source["pipeline"], learning.PipelineStats);
+	        this.cardsPerWeek = source["cardsPerWeek"];
+	        this.readMinsWeek = source["readMinsWeek"];
+	        this.procPerWeek = source["procPerWeek"];
+	        this.loggingSince = source["loggingSince"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

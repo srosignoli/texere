@@ -112,3 +112,53 @@ func TestPromoteExtractLogsItsAction(t *testing.T) {
 		t.Errorf("processed count = %d, want 1 — promotion must be logged", got[0])
 	}
 }
+
+func TestGetStatisticsAssemblesEveryPanel(t *testing.T) {
+	dir := t.TempDir()
+	st, err := learning.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { st.Close() })
+	a := &App{collectionDir: dir, learnStore: st}
+
+	got, err := a.GetStatistics()
+	if err != nil {
+		t.Fatalf("GetStatistics on an empty collection must not error: %v", err)
+	}
+	// The whole point: a fresh collection reports "no data", not perfection.
+	if got.Quality.ForgettingIndex != -1 {
+		t.Errorf("fi = %v, want -1", got.Quality.ForgettingIndex)
+	}
+	if got.Workload.Burden != -1 {
+		t.Errorf("burden = %v, want -1", got.Workload.Burden)
+	}
+	if got.Pipeline.OldestOpenDays != -1 {
+		t.Errorf("oldest open = %d, want -1", got.Pipeline.OldestOpenDays)
+	}
+	if got.LoggingSince != 0 {
+		t.Errorf("loggingSince = %d, want 0 for a never-written log", got.LoggingSince)
+	}
+	// Dense series must be present and correctly sized even with no data, or
+	// the charts index past the end of an array.
+	if len(got.Habit.ReviewsPerDay) != 84 {
+		t.Errorf("reviewsPerDay = %d entries, want 84", len(got.Habit.ReviewsPerDay))
+	}
+	if len(got.Workload.Forecast) != 14 {
+		t.Errorf("forecast = %d entries, want 14", len(got.Workload.Forecast))
+	}
+	for name, series := range map[string][]int{
+		"cardsPerWeek": got.CardsPerWeek, "readMinsWeek": got.ReadMinsWeek, "procPerWeek": got.ProcPerWeek,
+	} {
+		if len(series) != 12 {
+			t.Errorf("%s = %d entries, want 12", name, len(series))
+		}
+	}
+}
+
+func TestGetStatisticsWithoutACollection(t *testing.T) {
+	a := &App{}
+	if _, err := a.GetStatistics(); err == nil {
+		t.Error("want an error when no collection is open")
+	}
+}

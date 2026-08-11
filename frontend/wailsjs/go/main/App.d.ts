@@ -81,6 +81,8 @@ export function GetSourceProjection(arg1:string):Promise<string>;
 
 export function GetStartupError():Promise<string>;
 
+export function GetStatistics():Promise<main.StatsView>;
+
 export function GetStudyCounts():Promise<learning.StudyStats3>;
 
 export function GetStudyStats():Promise<learning.Stats>;

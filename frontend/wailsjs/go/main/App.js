@@ -146,6 +146,10 @@ export function GetStartupError() {
   return window['go']['main']['App']['GetStartupError']();
 }
 
+export function GetStatistics() {
+  return window['go']['main']['App']['GetStatistics']();
+}
+
 export function GetStudyCounts() {
   return window['go']['main']['App']['GetStudyCounts']();
 }
