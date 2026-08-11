@@ -64,7 +64,7 @@
         {:else}
           <div class="sp-stat">
             <span class="sp-label">Forgetting index</span>
-            <span class="sp-value">Not enough data yet</span>
+            <span class="sp-value sp-nodata">Not enough data yet</span>
             <span class="sp-meaning">Share of reviews you failed. SuperMemo's healthy range is 7–13%.</span>
           </div>
         {/if}
@@ -77,7 +77,7 @@
         {:else}
           <div class="sp-stat">
             <span class="sp-label">Retention</span>
-            <span class="sp-value">Not enough data yet</span>
+            <span class="sp-value sp-nodata">Not enough data yet</span>
             <span class="sp-meaning">Share you recalled successfully — the other side of the forgetting index.</span>
           </div>
         {/if}
@@ -105,7 +105,7 @@
         {:else}
           <div class="sp-stat">
             <span class="sp-label">Burden</span>
-            <span class="sp-value">Not enough data yet</span>
+            <span class="sp-value sp-nodata">Not enough data yet</span>
             <span class="sp-meaning">Estimated steady-state load once every card settles into its interval.</span>
           </div>
         {/if}
@@ -118,7 +118,7 @@
         {:else}
           <div class="sp-stat">
             <span class="sp-label">Daily time</span>
-            <span class="sp-value">Not enough data yet</span>
+            <span class="sp-value sp-nodata">Not enough data yet</span>
             <span class="sp-meaning">Burden multiplied by your average time per review.</span>
           </div>
         {/if}
@@ -194,7 +194,7 @@
         {:else}
           <div class="sp-stat">
             <span class="sp-label">Oldest unprocessed extract</span>
-            <span class="sp-value">Not enough data yet</span>
+            <span class="sp-value sp-nodata">Not enough data yet</span>
             <span class="sp-meaning">How long the oldest untouched passage has waited.</span>
           </div>
         {/if}

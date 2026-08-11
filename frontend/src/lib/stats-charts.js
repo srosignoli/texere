@@ -56,7 +56,13 @@ function config(type, { labels, values, yLabel, unit, color = '#7ecfa0' }) {
         // No x title: the x labels are self-describing (dates, grade names),
         // and a title with no display and no text was dead config.
         x: {
-          ticks: { color: TICK, maxRotation: 0, autoSkip: true },
+          // Chart.js's autoSkip anchors at index 0 and steps forward, so at
+          // realistic card widths it drops the FINAL tick — the weekly charts
+          // labelled a week up to three buckets before their last bar, and the
+          // forecast stopped at +12d with a fourteenth bar drawn past it.
+          // Thinning from the end instead keeps the most recent bucket labelled,
+          // which is the one a reader looks at first.
+          ticks: { color: TICK, maxRotation: 0, autoSkip: false, callback: thinFromEnd },
           grid: { color: GRID },
         },
         y: {
@@ -68,4 +74,12 @@ function config(type, { labels, values, yLabel, unit, color = '#7ecfa0' }) {
       },
     },
   }
+}
+
+// Show roughly six labels, counting back from the last so it is always one of
+// them. `this` is the Chart.js scale, hence a function expression rather than
+// an arrow.
+function thinFromEnd(value, index, ticks) {
+  const step = Math.max(1, Math.ceil(ticks.length / 6))
+  return (ticks.length - 1 - index) % step === 0 ? this.getLabelForValue(value) : ''
 }

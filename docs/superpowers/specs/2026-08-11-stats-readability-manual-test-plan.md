@@ -133,7 +133,8 @@ Look at the x-axis under cards-per-week, and — if settled — reading-per-week
 and processed-per-week. Read the rightmost label on each.
 
 **Expect:** every label is an ISO date (`2026-07-28`), one week apart from
-its neighbour, and the **rightmost label on all three charts is today's
+its neighbour. Only about six of the twelve labels are drawn — they are thinned
+from the right to stay legible — and the **rightmost label on all three charts is today's
 date**. The weekly buckets are rolling 7-day windows ending at the moment you
 loaded Stats, not calendar (Mon–Sun) weeks — the last bucket's start is
 exactly `midnight(now)`, so "current week" on this panel always literally
@@ -152,8 +153,12 @@ sqlite3 <collectionDir>/learning.db \
 
 Look at the Workload card's forecast chart (14 bars).
 
-**Expect:** the x-axis labels read `today`, `+1d`, `+2d`, … `+13d` — not raw
-dates, not `Day 0`/`Day 1`. Hover the `today` bar for its exact count, then
+**Expect:** the x-axis labels use the `today` / `+1d` / `+2d` … `+13d` form —
+not raw dates, not `Day 0`/`Day 1`. Only about six of the fourteen are drawn:
+labels are thinned to stay legible in a narrow card, counting back from the end
+so **`+13d` is always shown**. Chart.js's own thinning anchors at the left and
+drops the last label, which is what this replaced — if the rightmost label is
+`+12d` while a fourteenth bar sits past it, that has regressed. Hover the `today` bar for its exact count, then
 switch to the Recall tab and read its due-count badge (or **[DB]** `SELECT
 COUNT(*) FROM items WHERE active=1 AND due <= strftime('%s','now');` — note
 this deliberately excludes never-reviewed items, which have no `due` at all

@@ -82,3 +82,32 @@ test('hover targets the whole column, not just the drawn mark', () => {
   assert.equal(i.intersect, false)
   assert.equal(i.mode, 'index')
 })
+
+// Chart.js's own autoSkip anchors at index 0, so at realistic card widths it
+// drops the LAST tick — the weekly charts labelled a bucket up to three weeks
+// before their final bar. The most recent bucket is the one a reader looks at
+// first, so labels are thinned from the end instead.
+const scale = { getLabelForValue: (v) => `L${v}` }
+
+test('the final x tick is always labelled', () => {
+  const cb = barConfig(base).options.scales.x.ticks.callback
+  for (const n of [4, 12, 14, 84]) {
+    const ticks = new Array(n)
+    assert.equal(cb.call(scale, 'last', n - 1, ticks), 'Llast', `${n} ticks`)
+  }
+})
+
+test('intermediate x ticks are thinned to about six labels', () => {
+  const cb = barConfig(base).options.scales.x.ticks.callback
+  const ticks = new Array(12)
+  const shown = []
+  for (let i = 0; i < 12; i++) if (cb.call(scale, i, i, ticks) !== '') shown.push(i)
+  assert.ok(shown.length <= 7, `showed ${shown.length} labels, want about six`)
+  assert.ok(shown.includes(11), 'the last index must be among them')
+})
+
+test('a short series labels every tick', () => {
+  const cb = barConfig(base).options.scales.x.ticks.callback
+  const ticks = new Array(4)
+  for (let i = 0; i < 4; i++) assert.notEqual(cb.call(scale, i, i, ticks), '', `index ${i}`)
+})
