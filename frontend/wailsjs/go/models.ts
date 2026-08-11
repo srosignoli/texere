@@ -749,6 +749,20 @@ export namespace learning {
 	        this.extractsRetired = source["extractsRetired"];
 	    }
 	}
+	export class WeekCount {
+	    weekStart: string;
+	    count: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new WeekCount(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.weekStart = source["weekStart"];
+	        this.count = source["count"];
+	    }
+	}
 	export class WorkloadStats {
 	    burden: number;
 	    dailyMinutes: number;
@@ -1283,9 +1297,9 @@ export namespace main {
 	    workload: learning.WorkloadStats;
 	    habit: learning.HabitStats;
 	    pipeline: learning.PipelineStats;
-	    cardsPerWeek: number[];
-	    readMinsWeek: number[];
-	    procPerWeek: number[];
+	    cardsPerWeek: learning.WeekCount[];
+	    readMinsWeek: learning.WeekCount[];
+	    procPerWeek: learning.WeekCount[];
 	    readSince: number;
 	    procSince: number;
 	
@@ -1299,9 +1313,9 @@ export namespace main {
 	        this.workload = this.convertValues(source["workload"], learning.WorkloadStats);
 	        this.habit = this.convertValues(source["habit"], learning.HabitStats);
 	        this.pipeline = this.convertValues(source["pipeline"], learning.PipelineStats);
-	        this.cardsPerWeek = source["cardsPerWeek"];
-	        this.readMinsWeek = source["readMinsWeek"];
-	        this.procPerWeek = source["procPerWeek"];
+	        this.cardsPerWeek = this.convertValues(source["cardsPerWeek"], learning.WeekCount);
+	        this.readMinsWeek = this.convertValues(source["readMinsWeek"], learning.WeekCount);
+	        this.procPerWeek = this.convertValues(source["procPerWeek"], learning.WeekCount);
 	        this.readSince = source["readSince"];
 	        this.procSince = source["procSince"];
 	    }

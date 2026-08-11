@@ -31,9 +31,9 @@ type StatsView struct {
 	Workload     learning.WorkloadStats `json:"workload"`
 	Habit        learning.HabitStats    `json:"habit"`
 	Pipeline     learning.PipelineStats `json:"pipeline"`
-	CardsPerWeek []int                  `json:"cardsPerWeek"`
-	ReadMinsWeek []int                  `json:"readMinsWeek"`
-	ProcPerWeek  []int                  `json:"procPerWeek"`
+	CardsPerWeek []learning.WeekCount   `json:"cardsPerWeek"`
+	ReadMinsWeek []learning.WeekCount   `json:"readMinsWeek"`
+	ProcPerWeek  []learning.WeekCount   `json:"procPerWeek"`
 	// Per-kind, not one shared flag: a single dismissed extract must not switch
 	// the reading chart out of its "still collecting" state and have it claim
 	// twelve weeks of zero reading. 0 means nothing of that kind is logged.

@@ -423,3 +423,33 @@ func TestForecastCountsNeverReviewedCardsAsDueToday(t *testing.T) {
 			got.Forecast[0], got.Backlog.Recall)
 	}
 }
+
+func TestCardsPerWeekLabelsEachBucket(t *testing.T) {
+	st, _ := Open(t.TempDir())
+	now := time.Date(2026, 8, 11, 12, 0, 0, 0, time.Local)
+	lr := now.AddDate(0, 0, -1)
+	due := now
+	seedItem(t, st, "recent", &due, &lr, 0, 5, now)
+	seedItem(t, st, "older", &due, &lr, 0, 5, now.AddDate(0, 0, -14))
+
+	got, err := st.CardsPerWeek(4, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 4 {
+		t.Fatalf("got %d weeks, want exactly 4", len(got))
+	}
+	if got[3].Count != 1 {
+		t.Errorf("this week = %d, want 1", got[3].Count)
+	}
+	if got[1].Count != 1 {
+		t.Errorf("two weeks ago = %d, want 1", got[1].Count)
+	}
+	if got[2].Count != 0 {
+		t.Errorf("last week = %d, want 0 — a quiet week is a zero, not a gap", got[2].Count)
+	}
+	wantLast := time.Date(2026, 8, 11, 0, 0, 0, 0, time.Local).Format("2006-01-02")
+	if got[3].WeekStart != wantLast {
+		t.Errorf("last bucket starts %q, want %q", got[3].WeekStart, wantLast)
+	}
+}

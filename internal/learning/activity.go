@@ -51,14 +51,17 @@ func (s *Store) ActivitySince(kind string) (time.Time, bool, error) {
 // Bucketed in Go rather than SQL because week boundaries have to be local:
 // dividing a unix timestamp by 604800 buckets by UTC and drops an evening
 // session into the wrong week for anyone west of Greenwich.
-func (s *Store) ActivityWeeks(kind string, weeks int, now time.Time) ([]int, error) {
+func (s *Store) ActivityWeeks(kind string, weeks int, now time.Time) ([]WeekCount, error) {
 	if weeks <= 0 {
-		return []int{}, nil // guard before make: a negative length panics
+		return []WeekCount{}, nil // guard before make: a negative length panics
 	}
-	out := make([]int, weeks)
+	out := make([]WeekCount, weeks)
 	// Start of the bucket window: midnight local, (weeks-1) weeks back.
 	start := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).
 		AddDate(0, 0, -7*(weeks-1))
+	for i := range out {
+		out[i].WeekStart = start.AddDate(0, 0, 7*i).Format("2006-01-02")
+	}
 
 	rows, err := s.db.Query(
 		`SELECT at, amount FROM activity_log WHERE kind=? AND at >= ?`, kind, start.Unix())
@@ -77,14 +80,14 @@ func (s *Store) ActivityWeeks(kind string, weeks int, now time.Time) ([]int, err
 			continue
 		}
 		if kind == "read" {
-			out[idx] += amount
+			out[idx].Count += amount
 		} else {
-			out[idx]++
+			out[idx].Count++
 		}
 	}
 	if kind == "read" {
 		for i := range out {
-			out[i] /= 60 // seconds -> whole minutes
+			out[i].Count /= 60 // seconds -> whole minutes
 		}
 	}
 	return out, rows.Err()

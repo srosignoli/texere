@@ -12,6 +12,14 @@ type DayCount struct {
 	Count int    `json:"count"`
 }
 
+// WeekCount is one bucket of a weekly series. WeekStart labels it with the local
+// date of the bucket's first day, so a chart axis and the bucket it describes
+// come from the same arithmetic and cannot drift apart.
+type WeekCount struct {
+	WeekStart string `json:"weekStart"`
+	Count     int    `json:"count"`
+}
+
 // QualityStats answers "is the learning working?".
 //
 // ForgettingIndex and Retention use -1 as a "no data" sentinel. Zero would be
@@ -293,12 +301,15 @@ func (s *Store) PipelineStatsFor(now time.Time) (PipelineStats, error) {
 // CardsPerWeek buckets item creation, oldest first, the last entry being the
 // week containing now. Read from items.created_at rather than the activity log
 // so creation has exactly one source of truth.
-func (s *Store) CardsPerWeek(weeks int, now time.Time) ([]int, error) {
+func (s *Store) CardsPerWeek(weeks int, now time.Time) ([]WeekCount, error) {
 	if weeks <= 0 {
-		return []int{}, nil // guard before make: a negative length panics
+		return []WeekCount{}, nil // guard before make: a negative length panics
 	}
-	out := make([]int, weeks)
+	out := make([]WeekCount, weeks)
 	start := midnight(now).AddDate(0, 0, -7*(weeks-1))
+	for i := range out {
+		out[i].WeekStart = start.AddDate(0, 0, 7*i).Format("2006-01-02")
+	}
 	rows, err := s.db.Query(`SELECT created_at FROM items WHERE created_at >= ?`, start.Unix())
 	if err != nil {
 		return nil, err
@@ -311,7 +322,7 @@ func (s *Store) CardsPerWeek(weeks int, now time.Time) ([]int, error) {
 		}
 		idx := int(time.Unix(at, 0).Sub(start).Hours() / (24 * 7))
 		if idx >= 0 && idx < weeks {
-			out[idx]++
+			out[idx].Count++
 		}
 	}
 	return out, rows.Err()

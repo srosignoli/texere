@@ -26,8 +26,8 @@ func TestLogReadingSessionRecordsMinutes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got[0] != 10 {
-		t.Errorf("logged %d minutes, want 10", got[0])
+	if got[0].Count != 10 {
+		t.Errorf("logged %d minutes, want 10", got[0].Count)
 	}
 }
 
@@ -68,8 +68,8 @@ func TestRescheduleExtractLogsItsAction(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got[0] != 1 {
-		t.Errorf("processed count = %d, want 1 — processing must be logged", got[0])
+	if got[0].Count != 1 {
+		t.Errorf("processed count = %d, want 1 — processing must be logged", got[0].Count)
 	}
 }
 
@@ -108,8 +108,8 @@ func TestPromoteExtractLogsItsAction(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got[0] != 1 {
-		t.Errorf("processed count = %d, want 1 — promotion must be logged", got[0])
+	if got[0].Count != 1 {
+		t.Errorf("processed count = %d, want 1 — promotion must be logged", got[0].Count)
 	}
 }
 
@@ -147,7 +147,7 @@ func TestGetStatisticsAssemblesEveryPanel(t *testing.T) {
 	if len(got.Workload.Forecast) != 14 {
 		t.Errorf("forecast = %d entries, want 14", len(got.Workload.Forecast))
 	}
-	for name, series := range map[string][]int{
+	for name, series := range map[string][]learning.WeekCount{
 		"cardsPerWeek": got.CardsPerWeek, "readMinsWeek": got.ReadMinsWeek, "procPerWeek": got.ProcPerWeek,
 	} {
 		if len(series) != 12 {
