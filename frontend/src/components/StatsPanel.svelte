@@ -9,8 +9,10 @@
   let s = null
   let error = ''
 
+  // No refresh() export: switching focus destroys and recreates this component,
+  // so onMount re-runs and the numbers are fresh on every return to the tab.
+  // An exported refresh nobody calls is just a claim that something reloads.
   onMount(load)
-  export function refresh() { return load() }
 
   async function load() {
     error = ''
@@ -89,7 +91,7 @@
       <section class="sp-card">
         <h3>Habit</h3>
         <svg width="260" height="40" viewBox="0 0 260 40" class="sp-chart">
-          <path d={sparkPath(s.habit.reviewsPerDay.map((d) => d.count), 260, 40)}
+          <path d={sparkPath((s.habit.reviewsPerDay ?? []).map((d) => d?.count ?? 0), 260, 40)}
                 fill="none" stroke="#7ecfa0" stroke-width="1.5" />
         </svg>
         <p class="sp-sub">Current streak: {s.habit.currentStreak} · Longest streak: {s.habit.longestStreak}</p>
@@ -128,7 +130,7 @@
             {/each}
           </svg>
         {:else}
-          <p class="sp-sub sp-nodata">Collecting reading time since today</p>
+          <p class="sp-sub sp-nodata">Collecting processing history since today</p>
         {/if}
       </section>
     </div>
