@@ -1,7 +1,13 @@
 # Notes media over HTTP: any local path, and the web
 
 **Date:** 2026-08-11
-**Status:** Proposed — awaiting approval
+**Status:** SUPERSEDED by `2026-08-11-read-tab-media-design.md`
+
+> This describes a CodeMirror implementation that was built and then deleted.
+> Media renders in the **Read tab**, through `NodeCard`, not by decorating an
+> editor. Kept for the design history — four real CodeMirror defects are
+> recorded here and the reasoning is still instructive — but it does **not**
+> describe the shipped system.
 **Feature area:** Study mode → Read focus → the notes editor
 
 ## Summary

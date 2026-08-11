@@ -2,6 +2,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **SUPERSEDED.** This plan built a CodeMirror implementation that was later
+> deleted: media renders in the **Read tab** through `NodeCard`, not by
+> decorating an editor. `n4l-media-view.js` and `findMedia` no longer exist.
+> Accurate as a record of what was executed; see
+> `docs/superpowers/specs/2026-08-11-read-tab-media-design.md` for the shipped
+> system.
+
 **Goal:** In the reading notes pane, a quoted target naming an image, video or audio file renders as the media itself, below the line that references it.
 
 **Architecture:** A dependency-free module detects media paths in a line. A CodeMirror `ViewPlugin` turns each match into a block widget that loads the file through the existing `GetSourceBytes` binding and shows it. The plugin reaches the notes editor through `n4lBaseExtensions`'s existing `extra` hook, which scopes it to that one editor without changing shared code.

@@ -2,6 +2,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **SUPERSEDED.** This plan built a CodeMirror implementation that was later
+> deleted: media renders in the **Read tab** through `NodeCard`, not by
+> decorating an editor. `n4l-media-view.js` and `findMedia` no longer exist.
+> Accurate as a record of what was executed; see
+> `docs/superpowers/specs/2026-08-11-read-tab-media-design.md` for the shipped
+> system.
+
 **Goal:** Serve every asset referenced from a note as an ordinary `src` — a `http(s)://` URL directly, any other path over a new `/collection/` route — replacing the base64 binding, the blob cache and the object URLs.
 
 **Architecture:** A new `CollectionServer` handler serves collection-relative paths with a containment check, composed with the existing `/media/` handler behind a `http.ServeMux`. One pure JS function decides a `src`. The media widget becomes synchronous.
