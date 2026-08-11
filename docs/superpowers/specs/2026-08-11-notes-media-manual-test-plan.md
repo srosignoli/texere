@@ -30,11 +30,19 @@ file now shows the asset itself, not just its name.
 
 ## Things that are deliberate — do not report them as bugs
 
-- **Only files under the collection directory render.** A path to a file
-  outside it, or a `http(s)://` URL, is out of scope — it is not media as far
-  as this feature is concerned, and nothing loads for it (it is also not a
-  quoted-media match, since detection only looks at the extension of a quoted
-  string).
+- **A `http(s)://` URL shows a "media not found" chip rather than loading.**
+  Detection looks only at the extension, so `"https://example.com/y.png"` *is*
+  matched; the loader then resolves it under the collection directory, finds
+  nothing, and says so. Remote media is out of scope — the chip is the honest
+  outcome, not a bug.
+- **A relative path escaping the collection *does* load.** `"../../photo.png"`
+  resolves outside the collection directory and renders. This app reads files
+  the user already owns, and the binding has always behaved this way for
+  reading sources; it is recorded here because the path now comes from note
+  text rather than app-managed metadata.
+- **Quoted prose that happens to end in a filename gets a chip.** `"see the
+  diagram in overview.png"` is detected as an image, fails to load, and shows
+  `media not found`. A consequence of extension-only detection.
 - **PDFs are deliberately not treated as media.** `"refs/paper.pdf"` renders
   as plain text with no widget, on purpose — PDFs have a source pane of their
   own elsewhere in the app.
