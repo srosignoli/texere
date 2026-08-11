@@ -43,5 +43,8 @@ test('fiBand classifies against the 7-13% target', () => {
   assert.equal(fiBand(7), 'ok')
   assert.equal(fiBand(10), 'ok')
   assert.equal(fiBand(13), 'ok')
+  // 14 is the first value outside the band. Without it, moving the boundary to
+  // >14 leaves both 13 and 20 on the side they were already on.
+  assert.equal(fiBand(14), 'high')
   assert.equal(fiBand(20), 'high')
 })
