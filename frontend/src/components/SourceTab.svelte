@@ -9,6 +9,7 @@
   import { get } from 'svelte/store'
   import { workbenchStore, filteredNodes } from '../stores/workbench.js'
   import { n4lBaseExtensions, pushRecentArrow, notebookDotsGutter, applyDots } from '../lib/n4l-editor.js'
+  import { n4lMedia } from '../lib/n4l-media-view.js'
   import { SaveFile, GetFileContent, GetRecentArrows, UpdateRecentArrows, NotebookMarks, FileNodeSpans, PeekNotebook } from '../../wailsjs/go/main/App'
   import { EventsOn } from '../../wailsjs/runtime/runtime'
   import { nodeIdAtLine } from '../lib/node-span.js'
@@ -385,6 +386,7 @@
         ...searchKeymap,
       ],
       extra: [
+        n4lMedia(),
         notebookDotsGutter(onDotClick),
         search({ top: false }),
         EditorView.updateListener.of((update) => {
