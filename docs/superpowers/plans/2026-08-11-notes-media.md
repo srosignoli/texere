@@ -97,6 +97,9 @@ test('mediaKind looks at the extension, not the whole path', () => {
   assert.equal(mediaKind('notes-about-png.txt'), null)
   assert.equal(mediaKind('mp4-encoding-guide.md'), null)
   assert.equal(mediaKind('assets/my.png.backup'), null)
+  // The discriminating case: only the LAST dot's suffix is the extension.
+  // Reading from the first dot gives 'txt.png' here and misses a real image.
+  assert.equal(mediaKind('archive.txt.png'), 'image')
 })
 
 test('mediaMime maps each kind to a playable type', () => {
@@ -146,7 +149,7 @@ test('findMedia ignores an unquoted path', () => {
 // line or hanging.
 test('findMedia survives an unterminated quote', () => {
   assert.deepEqual(findMedia('x (has an image) "assets/sunset.jpg'), [])
-  assert.deepEqual(findMedia('" (a) "b.png"'), [{ path: 'b.png', kind: 'image', from: 8, to: 13 }])
+  assert.deepEqual(findMedia('"" (a) "b.png"'), [{ path: 'b.png', kind: 'image', from: 8, to: 13 }])
 })
 
 test('findMedia handles an empty line', () => {
@@ -241,7 +244,7 @@ Expected: all PASS.
 - [ ] **Step 5: Negative controls (report all three)**
 
 1. In `extensionOf`, use `indexOf('.')` instead of `lastIndexOf('.')`. The "extension, not the whole path" test must FAIL on `assets/my.png.backup`. Restore.
-2. In `findMedia`, change the pattern to `/"(.*?)"/g`. The unterminated-quote test must FAIL. Restore.
+2. In `findMedia`, make the closing quote optional — `/"([^"\n]*)"?/g`. The unterminated-quote test must FAIL. (Do **not** use `/"(.*?)"/g`: `.` excludes newlines and the lazy quantifier stops at the first quote, so on single-line input it behaves identically to `[^"\n]*` and sabotages nothing.) Restore.
 3. In `findMedia`, drop the `+ 1` from both offsets. The offset test must FAIL, showing the slice including a quote. Restore.
 
 - [ ] **Step 6: Commit**

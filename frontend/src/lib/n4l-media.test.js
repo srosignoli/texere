@@ -31,6 +31,9 @@ test('mediaKind looks at the extension, not the whole path', () => {
   assert.equal(mediaKind('notes-about-png.txt'), null)
   assert.equal(mediaKind('mp4-encoding-guide.md'), null)
   assert.equal(mediaKind('assets/my.png.backup'), null)
+  // The discriminating case: only the LAST dot's suffix is the extension.
+  // Reading from the first dot gives 'txt.png' here and misses a real image.
+  assert.equal(mediaKind('archive.txt.png'), 'image')
 })
 
 test('mediaMime maps each kind to a playable type', () => {
