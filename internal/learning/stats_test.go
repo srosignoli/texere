@@ -145,3 +145,57 @@ func TestStreaksOnAnEmptyList(t *testing.T) {
 		t.Errorf("got %d/%d, want 0/0", cur, longest)
 	}
 }
+
+// A review logged without a latency is still a review, but it is not evidence
+// about how long reviews take. Counting it as zero would drag the mean down and
+// understate the daily-minutes estimate that multiplies by it.
+func TestAvgLatencyIgnoresReviewsWithNoRecordedTime(t *testing.T) {
+	st, _ := Open(t.TempDir())
+	now := time.Date(2026, 8, 11, 12, 0, 0, 0, time.Local)
+	seedReview(t, st, now, GradeGood, 2000)
+	seedReview(t, st, now, GradeGood, 4000)
+	// One row with a NULL elapsed_ms, as an older log or a caller that omitted it.
+	if _, err := st.db.Exec(
+		`INSERT INTO review_logs (item_id, reviewed_at, grade, elapsed_ms, old_state, new_stability, card_type)
+		 VALUES ('i1', ?, 3, NULL, 0, 1.0, 'basic')`, now.Unix()); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := st.QualityStatsFor(now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Reviews30 != 3 {
+		t.Fatalf("reviews = %d, want 3 — an untimed review is still a review", got.Reviews30)
+	}
+	if got.AvgLatencyMs != 3000 {
+		t.Errorf("avg latency = %d, want 3000 — the untimed row must not be in the divisor", got.AvgLatencyMs)
+	}
+}
+
+// The mean is integer division. A fixture that divides evenly cannot tell
+// truncation from rounding, so this one deliberately does not.
+func TestAvgLatencyTruncatesRatherThanRounds(t *testing.T) {
+	st, _ := Open(t.TempDir())
+	now := time.Date(2026, 8, 11, 12, 0, 0, 0, time.Local)
+	seedReview(t, st, now, GradeGood, 1000)
+	seedReview(t, st, now, GradeGood, 1000)
+	seedReview(t, st, now, GradeGood, 1001) // 3001/3 = 1000.33
+	got, _ := st.QualityStatsFor(now)
+	if got.AvgLatencyMs != 1000 {
+		t.Errorf("avg latency = %d, want 1000 (truncated, not rounded)", got.AvgLatencyMs)
+	}
+}
+
+// The window is the last 30 days INCLUSIVE of today, so the oldest included
+// review is 29 days back. An off-by-one here silently shrinks the window.
+func TestQualityStatsWindowBoundaryIsExactlyThirtyDays(t *testing.T) {
+	st, _ := Open(t.TempDir())
+	now := time.Date(2026, 8, 11, 12, 0, 0, 0, time.Local)
+	seedReview(t, st, now.AddDate(0, 0, -29), GradeGood, 1000) // in
+	seedReview(t, st, now.AddDate(0, 0, -31), GradeGood, 1000) // out
+	got, _ := st.QualityStatsFor(now)
+	if got.Reviews30 != 1 {
+		t.Errorf("reviews = %d, want 1 — day -29 is inside the window and day -31 is outside", got.Reviews30)
+	}
+}

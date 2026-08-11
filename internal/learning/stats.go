@@ -46,7 +46,7 @@ func (s *Store) QualityStatsFor(now time.Time) (QualityStats, error) {
 		return out, err
 	}
 	defer rows.Close()
-	totalMs := 0
+	totalMs, timed := 0, 0
 	for rows.Next() {
 		var grade int
 		var elapsed sql.NullInt64
@@ -57,7 +57,13 @@ func (s *Store) QualityStatsFor(now time.Time) (QualityStats, error) {
 			out.GradeMix[grade-1]++
 		}
 		out.Reviews30++
-		totalMs += int(elapsed.Int64)
+		// A review whose latency was never recorded is counted as a review but
+		// not as a timed one. Folding it in as zero would drag the mean toward
+		// nothing and understate the workload estimate that divides by it.
+		if elapsed.Valid {
+			totalMs += int(elapsed.Int64)
+			timed++
+		}
 	}
 	if err := rows.Err(); err != nil {
 		return out, err
@@ -67,7 +73,9 @@ func (s *Store) QualityStatsFor(now time.Time) (QualityStats, error) {
 	}
 	out.ForgettingIndex = float64(out.GradeMix[0]) / float64(out.Reviews30) * 100
 	out.Retention = 100 - out.ForgettingIndex
-	out.AvgLatencyMs = totalMs / out.Reviews30
+	if timed > 0 {
+		out.AvgLatencyMs = totalMs / timed
+	}
 	return out, nil
 }
 
