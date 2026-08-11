@@ -213,7 +213,13 @@ func (s *Store) WorkloadStatsFor(now time.Time, avgLatencyMs int) (WorkloadStats
 			burden += 1 / days
 			scheduled++
 		}
-		if due.Valid {
+		// A never-reviewed card has a NULL due and is available NOW — StudyCounts
+		// (queue.go), DueQueue and CountStats.New all treat it that way. Dropping
+		// it here printed fourteen empty bars beside a non-zero Recall backlog,
+		// answering "nothing is coming" when a hundred new cards were waiting.
+		if !due.Valid {
+			out.Forecast[0]++
+		} else {
 			idx := int(time.Unix(due.Int64, 0).Sub(start).Hours() / 24)
 			if idx < 0 {
 				idx = 0 // overdue items are due today

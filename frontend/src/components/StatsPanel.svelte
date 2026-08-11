@@ -22,6 +22,11 @@
   // -1 is the "never measured" sentinel from the Go side. It must never be
   // rendered: 0% would read as a flawless collection nobody has studied.
   const has = (v) => typeof v === 'number' && v >= 0
+  // A chart over a log that started an hour ago would draw twelve weeks of
+  // zeros and read as "you did nothing", when the truth is "we only just began
+  // recording". Below two days it says so, and names the day it started.
+  const settled = (unix) => unix > 0 && Date.now() / 1000 - unix >= 2 * 86400
+  const sinceDate = (unix) => new Date(unix * 1000).toLocaleDateString()
   const pct = (v) => `${Math.round(v)}%`
 
   const gradeLabels = ['Again', 'Hard', 'Good', 'Easy']
@@ -101,14 +106,16 @@
             <rect x={i * 10 + 1} y={40 - h} width="7" height={h} fill="#7dd3fc" />
           {/each}
         </svg>
-        {#if s.loggingSince}
+        {#if settled(s.readSince)}
           <svg width="120" height="40" viewBox="0 0 120 40" class="sp-chart">
             {#each barHeights(s.readMinsWeek, 40) as h, i}
               <rect x={i * 10 + 1} y={40 - h} width="7" height={h} fill="#7ecfa0" />
             {/each}
           </svg>
         {:else}
-          <p class="sp-sub sp-nodata">Collecting reading time since today</p>
+          <p class="sp-sub sp-nodata">
+            {s.readSince ? `Collecting reading time since ${sinceDate(s.readSince)}` : 'Collecting reading time since today'}
+          </p>
         {/if}
       </section>
 
@@ -123,14 +130,16 @@
           <p class="sp-sub sp-nodata">Oldest open extract: Not enough data yet</p>
         {/if}
         <p class="sp-sub">Last 30 days: {s.pipeline.extractsMade30} extracts, {s.pipeline.cardsMade30} cards</p>
-        {#if s.loggingSince}
+        {#if settled(s.procSince)}
           <svg width="120" height="40" viewBox="0 0 120 40" class="sp-chart">
             {#each barHeights(s.procPerWeek, 40) as h, i}
               <rect x={i * 10 + 1} y={40 - h} width="7" height={h} fill="#7dd3fc" />
             {/each}
           </svg>
         {:else}
-          <p class="sp-sub sp-nodata">Collecting processing history since today</p>
+          <p class="sp-sub sp-nodata">
+            {s.procSince ? `Collecting processing history since ${sinceDate(s.procSince)}` : 'Collecting processing history since today'}
+          </p>
         {/if}
       </section>
     </div>

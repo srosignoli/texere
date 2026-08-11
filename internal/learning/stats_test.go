@@ -398,3 +398,28 @@ func TestLeechThresholdIsInclusive(t *testing.T) {
 		t.Errorf("leeches = %d, want 1 — five lapses qualifies, four does not", got.Leeches)
 	}
 }
+
+// A card that has never been reviewed has a NULL due and is available now.
+// Every other queue in the app counts it; the forecast used to drop it, so a
+// collection of fresh cards showed an empty forecast beside a full backlog.
+func TestForecastCountsNeverReviewedCardsAsDueToday(t *testing.T) {
+	st, _ := Open(t.TempDir())
+	now := time.Date(2026, 8, 11, 12, 0, 0, 0, time.Local)
+	seedItem(t, st, "brand-new", nil, nil, 0, 5, now)
+
+	got, err := st.WorkloadStatsFor(now, 1000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Forecast[0] != 1 {
+		t.Errorf("forecast[0] = %d, want 1 — a new card is due now", got.Forecast[0])
+	}
+	if got.Backlog.Recall != 1 {
+		t.Fatalf("backlog.recall = %d, want 1 — fixture is wrong", got.Backlog.Recall)
+	}
+	// The defect was the disagreement, so assert they agree.
+	if got.Forecast[0] != got.Backlog.Recall {
+		t.Errorf("forecast[0]=%d but backlog.recall=%d — the panel would print an empty forecast beside a non-zero backlog",
+			got.Forecast[0], got.Backlog.Recall)
+	}
+}

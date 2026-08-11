@@ -14,7 +14,7 @@ func TestLogActivityRoundTrips(t *testing.T) {
 	if err := st.LogActivity("process", "e1", "promote", 0, now); err != nil {
 		t.Fatalf("LogActivity: %v", err)
 	}
-	got, ok, err := st.ActivitySince()
+	got, ok, err := st.ActivitySince("")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -28,7 +28,7 @@ func TestLogActivityRoundTrips(t *testing.T) {
 
 func TestActivitySinceOnAnEmptyLog(t *testing.T) {
 	st, _ := Open(t.TempDir())
-	_, ok, err := st.ActivitySince()
+	_, ok, err := st.ActivitySince("")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

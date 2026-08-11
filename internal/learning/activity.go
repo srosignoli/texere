@@ -18,13 +18,24 @@ func (s *Store) LogActivity(kind, refID, detail string, amount int, at time.Time
 	return err
 }
 
-// ActivitySince returns the timestamp of the earliest logged event.
+// ActivitySince returns the timestamp of the earliest logged event of one kind,
+// or of any kind when kind is "".
 //
-// ok=false means the log is empty. The caller needs that distinct from a zero
-// time, which a UI would happily render as 1970.
-func (s *Store) ActivitySince() (time.Time, bool, error) {
+// Per-kind on purpose. A single collection-wide flag let one dismissed extract
+// switch the READING chart out of its "still collecting" state, so a log one
+// second old would assert twelve weeks of zero reading.
+//
+// ok=false means nothing of that kind is logged. The caller needs that distinct
+// from a zero time, which a UI would happily render as 1970.
+func (s *Store) ActivitySince(kind string) (time.Time, bool, error) {
 	var at sql.NullInt64
-	if err := s.db.QueryRow(`SELECT MIN(at) FROM activity_log`).Scan(&at); err != nil {
+	var err error
+	if kind == "" {
+		err = s.db.QueryRow(`SELECT MIN(at) FROM activity_log`).Scan(&at)
+	} else {
+		err = s.db.QueryRow(`SELECT MIN(at) FROM activity_log WHERE kind=?`, kind).Scan(&at)
+	}
+	if err != nil {
 		return time.Time{}, false, err
 	}
 	if !at.Valid {

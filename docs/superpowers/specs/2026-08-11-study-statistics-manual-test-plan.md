@@ -173,6 +173,11 @@ Look at the Workload card's forecast chart (14 daily bars) and separately
 switch to the Recall tab to read its due-count badge (or **[DB]** count
 directly). Return to Stats.
 
+Make sure some of your cards are **new** — created but never graded. Those have
+no due date at all, and every other queue in the app treats them as available
+now; an earlier build dropped them from the forecast, so a collection of fresh
+cards drew fourteen empty bars beside a full Recall backlog.
+
 **Expect:** the forecast's first bar (today) is proportional to the same
 count of active items due today shown on the Recall badge / counted in the
 sidebar's `read`/`process`/`recall` counts. Grade or reschedule a card so
@@ -263,29 +268,38 @@ sidebar. Process one extract, leave Stats, come back.
 **Expect:** the open count drops by exactly one and the total stays the
 same (processing changes `active`, not row existence).
 
-## 11. Log-backed charts show "collecting since …" until they have data
+## 11. Log-backed charts wait until they have real history
 
-On a collection where `activity_log` is still empty (or freshly emptied —
-use a fresh collection if you don't want to touch existing data), open
-Stats.
+The reading-time and processed-per-week charts are the only two backed by the
+new `activity_log`. Each waits **two days** before drawing anything, and each
+tracks its own kind independently.
 
-**Expect:** the Habit card's reading-time chart and the Pipeline card's
-processed-per-week chart both show **"Collecting reading time since
-today"** / **"Collecting processing history since today"** instead of a
-chart. Log one `read` session (case 8) or one `process` action (case 9),
-then leave Stats and return.
+On a collection where `activity_log` is still empty, open Stats.
 
-**Expect:** the corresponding message is replaced by its bar chart, with
-one bar reflecting the new activity. The other chart (whichever kind you
-did *not* just log) still shows its own "collecting" message if it still
-has zero rows of that kind. This is a per-`loggingSince` toggle, not
-per-chart — both charts key off the same overall `loggingSince` value from
-`ActivitySince()`, which is the earliest of *either* kind — so once **any**
-activity has been logged, both charts switch out of "collecting" mode even
-if one of them still has no data of its own kind yet. If you see one chart
-render as empty axes (not a "collecting" message) while its own kind
-genuinely has zero rows, note that — it means `loggingSince` came from the
-other kind's activity, which is expected, not a bug.
+**Expect:** the Habit card's reading-time chart shows **"Collecting reading time
+since today"** and the Pipeline card's processed-per-week chart shows
+**"Collecting processing history since today"** — captions, not empty charts.
+
+Now process one extract (case 9), leave Stats and return.
+
+**Expect:** the reading-time chart is **still** showing its collecting caption.
+Processing an extract says nothing about reading, and the two must not share a
+flag. An earlier build did share one, so a single dismissal made the reading
+chart assert twelve weeks of zero reading from a log seconds old — if you see
+that, it has regressed.
+
+**Expect:** the processing chart also still shows a caption, because its log is
+less than two days old — but the caption now names the day it started rather
+than saying "today". **[DB]**
+```
+sqlite3 <collectionDir>/learning.db \
+  "SELECT kind, MIN(at), datetime(MIN(at),'unixepoch','localtime') FROM activity_log GROUP BY kind;"
+```
+The date in the caption must match the row for that kind.
+
+A chart only becomes a chart once its own kind has at least two days of history.
+That is deliberate: twelve bars over a log an hour old read as "you did nothing"
+rather than "we only just started recording".
 
 ## 12. Leaving Stats and returning reloads the numbers
 

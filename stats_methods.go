@@ -34,7 +34,11 @@ type StatsView struct {
 	CardsPerWeek []int                  `json:"cardsPerWeek"`
 	ReadMinsWeek []int                  `json:"readMinsWeek"`
 	ProcPerWeek  []int                  `json:"procPerWeek"`
-	LoggingSince int64                  `json:"loggingSince"`
+	// Per-kind, not one shared flag: a single dismissed extract must not switch
+	// the reading chart out of its "still collecting" state and have it claim
+	// twelve weeks of zero reading. 0 means nothing of that kind is logged.
+	ReadSince int64 `json:"readSince"`
+	ProcSince int64 `json:"procSince"`
 }
 
 func (a *App) GetStatistics() (*StatsView, error) {
@@ -68,10 +72,15 @@ func (a *App) GetStatistics() (*StatsView, error) {
 	if v.ProcPerWeek, err = a.learnStore.ActivityWeeks("process", statsWeeks, now); err != nil {
 		return nil, err
 	}
-	if since, ok, err := a.learnStore.ActivitySince(); err != nil {
+	if since, ok, err := a.learnStore.ActivitySince("read"); err != nil {
 		return nil, err
 	} else if ok {
-		v.LoggingSince = since.Unix()
+		v.ReadSince = since.Unix()
+	}
+	if since, ok, err := a.learnStore.ActivitySince("process"); err != nil {
+		return nil, err
+	} else if ok {
+		v.ProcSince = since.Unix()
 	}
 	return &v, nil
 }

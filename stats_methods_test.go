@@ -42,7 +42,7 @@ func TestLogReadingSessionIgnoresEmptySessions(t *testing.T) {
 	if err := a.LogReadingSession("r1", 0); err != nil {
 		t.Fatalf("a zero session must be ignored, not an error: %v", err)
 	}
-	if _, ok, _ := st.ActivitySince(); ok {
+	if _, ok, _ := st.ActivitySince(""); ok {
 		t.Error("a zero-second session was written to the log")
 	}
 }
@@ -136,8 +136,8 @@ func TestGetStatisticsAssemblesEveryPanel(t *testing.T) {
 	if got.Pipeline.OldestOpenDays != -1 {
 		t.Errorf("oldest open = %d, want -1", got.Pipeline.OldestOpenDays)
 	}
-	if got.LoggingSince != 0 {
-		t.Errorf("loggingSince = %d, want 0 for a never-written log", got.LoggingSince)
+	if got.ReadSince != 0 || got.ProcSince != 0 {
+		t.Errorf("readSince=%d procSince=%d, want 0 for a never-written log", got.ReadSince, got.ProcSince)
 	}
 	// Dense series must be present and correctly sized even with no data, or
 	// the charts index past the end of an array.
@@ -160,5 +160,79 @@ func TestGetStatisticsWithoutACollection(t *testing.T) {
 	a := &App{}
 	if _, err := a.GetStatistics(); err == nil {
 		t.Error("want an error when no collection is open")
+	}
+}
+
+// One shared flag let a single dismissed extract switch the READING chart out
+// of its "still collecting" state, so a log one second old would assert twelve
+// weeks of zero reading. The two kinds must age independently.
+func TestGetStatisticsTracksEachActivityKindSeparately(t *testing.T) {
+	dir := t.TempDir()
+	st, err := learning.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { st.Close() })
+	a := &App{collectionDir: dir, learnStore: st}
+
+	if err := st.LogActivity("process", "e1", "dismiss", 0, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	got, err := a.GetStatistics()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ProcSince == 0 {
+		t.Error("procSince = 0 after logging a process event")
+	}
+	if got.ReadSince != 0 {
+		t.Errorf("readSince = %d, want 0 — processing an extract says nothing about reading", got.ReadSince)
+	}
+}
+
+// The latency hand-off from QualityStatsFor into WorkloadStatsFor: every other
+// fixture here is an empty collection where burden is already -1, so nothing
+// distinguishes passing the real average from passing zero. This one mints a
+// real graded card so both numbers exist and the product must be non-zero.
+func TestGetStatisticsPassesRealLatencyIntoWorkload(t *testing.T) {
+	dir := t.TempDir()
+	os.MkdirAll(filepath.Join(dir, "reading"), 0o755)
+	notes := filepath.Join(dir, "reading", "cards.n4l")
+	if err := os.WriteFile(notes, []byte("- cards\n\n# @card\nSystem 1 is fast >> yes\n\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	st, err := learning.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { st.Close() })
+	a := &App{collectionDir: dir, learnStore: st,
+		registry: &content.SSTRegistry{Arrows: map[string]content.ArrowDef{}}}
+
+	if _, err := learning.Sync(st, []string{notes}, a.registry); err != nil {
+		t.Fatal(err)
+	}
+	q, err := a.GetDueQueue(10)
+	if err != nil || len(q) == 0 {
+		t.Fatalf("setup: no gradeable card (err=%v, n=%d)", err, len(q))
+	}
+	if _, err := a.GradeItem(q[0].ID, 3, 5000); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := a.GetStatistics()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Quality.AvgLatencyMs != 5000 {
+		t.Fatalf("avgLatencyMs = %d, want 5000 — fixture is wrong", got.Quality.AvgLatencyMs)
+	}
+	if got.Workload.Burden <= 0 {
+		t.Fatalf("burden = %v, want > 0 — fixture is wrong", got.Workload.Burden)
+	}
+	// Passing 0 instead of the measured average leaves this at the -1 sentinel.
+	if got.Workload.DailyMinutes <= 0 {
+		t.Errorf("dailyMinutes = %v, want > 0 — the measured latency never reached WorkloadStatsFor",
+			got.Workload.DailyMinutes)
 	}
 }

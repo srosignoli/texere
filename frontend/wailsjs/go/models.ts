@@ -1286,7 +1286,8 @@ export namespace main {
 	    cardsPerWeek: number[];
 	    readMinsWeek: number[];
 	    procPerWeek: number[];
-	    loggingSince: number;
+	    readSince: number;
+	    procSince: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new StatsView(source);
@@ -1301,7 +1302,8 @@ export namespace main {
 	        this.cardsPerWeek = source["cardsPerWeek"];
 	        this.readMinsWeek = source["readMinsWeek"];
 	        this.procPerWeek = source["procPerWeek"];
-	        this.loggingSince = source["loggingSince"];
+	        this.readSince = source["readSince"];
+	        this.procSince = source["procSince"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
