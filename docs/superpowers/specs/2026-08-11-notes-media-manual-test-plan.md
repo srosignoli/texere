@@ -30,21 +30,19 @@ file now shows the asset itself, not just its name.
 
 ## Things that are deliberate — do not report them as bugs
 
-- **A `http(s)://` URL shows a "media not found" chip rather than loading.**
-  Detection looks only at the extension, so `"https://example.com/y.png"` *is*
-  matched; the loader then resolves it under the collection directory, finds
-  nothing, and says so. Remote media is out of scope — the chip is the honest
-  outcome, not a bug.
-- **A relative path escaping the collection *does* load.** `"../../photo.png"`
-  resolves outside the collection directory and renders. This app reads files
-  the user already owns, and the binding has always behaved this way for
-  reading sources; it is recorded here because the path now comes from note
-  text rather than app-managed metadata.
-- **A path is re-read each time you open the document.** The cache lives as
-  long as one notes editor, so a file you create *after* seeing its
-  `media not found` chip appears once you leave the reading and come back — no
-  restart needed. Replacing a file's contents while the same reading stays open
-  still shows the old bytes.
+- **A remote asset makes a request to its host when the note opens.** A
+  `http(s)://` URL now renders, which means opening a note fetches from that
+  host. That is the intended behaviour, not a leak.
+- **Remote media cannot work offline; local media can.** With no network a
+  remote image shows the `media not found` chip while a local one beside it
+  still renders. That difference is the clearest sign the two routes are
+  genuinely different.
+- **There is no folder rule.** Any path under the collection works — `media/`,
+  `assets/`, anything nested. Earlier drafts of this document used `assets/` in
+  every example, which made it look like a rule. It never was.
+- **Caching is the browser's, not ours.** Nothing is held in JS. A file created
+  after you saw its chip appears on the next render; a file whose contents you
+  replace may serve from the HTTP cache until reload.
 - **Quoted prose that happens to end in a filename gets a chip.** `"see the
   diagram in overview.png"` is detected as an image, fails to load, and shows
   `media not found`. A consequence of extension-only detection.
@@ -122,6 +120,10 @@ Nothing about the presence of the image below changes how the line above it
 edits.
 
 ## 3. Video renders, plays, and **seeks** — no automated substitute
+
+Seeking now comes from `http.ServeFile`'s range support rather than a blob URL,
+so this is a regression check on the whole loading mechanism, not just on video.
+
 
 Look at the `... (has a video) "assets/clip.mp4"` line. Play the video, then
 **drag the scrubber** to a point partway through — not just click play/pause.
@@ -246,21 +248,68 @@ anywhere in the note, not just on the video's own line. If the video jumps
 back to the start when you type elsewhere, that protection has regressed and
 it is a priority finding.
 
+## 13. An asset the notebook wrote under `media/` renders
+
+The case that prompted this change. Use the notebook to import an image, or
+find an existing file under `<collectionDir>/media/`, and reference it from a
+reading's notes file:
+
+```
+diagram (has an image) "media/<the-file-name>"
+```
+
+**Expect:** it renders, exactly like one under `assets/`. There is no blessed
+folder.
+
+## 14. A remote image renders
+
+```
+plot (has an image) "https://upload.wikimedia.org/wikipedia/commons/1/17/Gaussian_distribution.png"
+```
+
+**Expect:** the image renders. It is fetched from that host when the note opens.
+
+## 15. Offline, remote fails while local still works
+
+Put a local image and the remote one from case 14 in the same note. Disconnect
+the network and reopen the reading.
+
+**Expect:** the local image still renders; the remote one shows
+`media not found: https://…`. If the local one *also* fails, the local route has
+regressed — they are served by completely different mechanisms.
+
+## 16. A path escaping the collection now shows the chip
+
+```
+outside (has an image) "../../photo.png"
+```
+
+**Expect:** `media not found: ../../photo.png`. **This is a deliberate change**
+— it used to load, because the old loader cleaned `..` and read the file. The
+`/collection/` route refuses to leave the collection directory.
+
+## 17. A filename with a space renders
+
+Copy an image to `<collectionDir>/my folder/a b.png` and reference it:
+
+```
+spaced (has an image) "my folder/a b.png"
+```
+
+**Expect:** it renders. Each path segment is URL-encoded, which is what makes a
+space — or a `#` or `?` in a filename — survive the trip to the server.
+
 ## What I most want to hear about
 
-- **Whether media actually shows where the paths used to be.** That is the
-  entire reason this feature exists — the user's own words were that notes
-  "currently show the link to the assets on the disk but it will be better
-  to show them." Cases 1–5 and 9 are the direct check: does an image, a
-  video, or an audio control now appear, in place of nothing but a quoted
-  path, without the path itself disappearing?
-- **Case 3, video seeking.** Object URLs over base64 data URLs exist
-  specifically so the scrubber works. If dragging it does nothing, or snaps
-  back, that is the single most important finding in this plan.
-- **Case 12, a video surviving unrelated typing.** The failure mode is
-  subtle and easy to miss if you only test "does it play" and never type
-  anywhere else while it's running — please actually try typing elsewhere
-  mid-playback rather than assuming it's fine.
-- **Case 11, scoping.** Whether the main editor or the notebook overlay ever
-  shows a widget would mean the feature leaked out of the one pane it was
-  built for.
+- **Case 13 first.** An asset the notebook wrote under `media/` rendering in a
+  reading note is the thing that prompted this change, and the thing I got
+  wrong by documenting only `assets/` examples.
+- **Cases 14 and 15 together.** Remote media working, and failing *differently*
+  from local media when offline, is what proves the two routes are separate
+  rather than one path that happens to work.
+- **Case 3's seeking.** It now depends on `http.ServeFile`'s range support. If a
+  video will not scrub, the whole loading mechanism has regressed, not just
+  video.
+- **Case 16.** It used to load and now does not. If you were relying on
+  referencing files outside the collection, say so — that is a decision worth
+  revisiting rather than a bug.
