@@ -62,7 +62,7 @@ func TestMigrate_V5_NotebookTables(t *testing.T) {
 	if err := s.db.QueryRow(`SELECT version FROM schema_meta`).Scan(&v); err != nil {
 		t.Fatalf("read version: %v", err)
 	}
-	if v != 5 {
-		t.Fatalf("schema version = %d, want 5", v)
+	if v != schemaVersion {
+		t.Fatalf("schema version = %d, want %d", v, schemaVersion)
 	}
 }

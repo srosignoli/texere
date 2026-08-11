@@ -4,7 +4,7 @@
   import { EditorState } from '@codemirror/state'
   import { n4lBaseExtensions, pushRecentArrow } from '../lib/n4l-editor.js'
   import { workbenchStore } from '../stores/workbench.js'
-  import { CreateExtract, RescheduleReading, GetFileContent, SaveFile, GetRecentArrows, UpdateRecentArrows, UpdateReadingProgress } from '../../wailsjs/go/main/App'
+  import { CreateExtract, RescheduleReading, GetFileContent, SaveFile, GetRecentArrows, UpdateRecentArrows, UpdateReadingProgress, LogReadingSession } from '../../wailsjs/go/main/App'
   import { activeReading } from '../stores/reading.js'
   import TextSourcePane from './TextSourcePane.svelte'
   import PdfSourcePane from './PdfSourcePane.svelte'
@@ -33,6 +33,10 @@
   let savedNotes = ''
   let error = ''
   let closed = false   // set once close()/onDestroy has persisted, to avoid double-saving
+
+  // Session start, for the activity log. Wall-clock rather than a timer: the
+  // number only needs to be right to the second.
+  const openedAt = Date.now()
 
   async function onPaneExtract(e) {
     const { text, position } = e.detail
@@ -93,19 +97,27 @@
     try {
       const pos = peekAt ? null : pane?.getProgress?.()
       if (pos) await UpdateReadingProgress(reading.id, pos)
+      if (!peekAt) LogReadingSession(reading.id, Math.round((Date.now() - openedAt) / 1000)).catch(() => {})
       await flushNotes()
       await RescheduleReading(reading.id, 'continue')
     } catch (e) { /* best-effort */ }
   }
 
   async function close(action) {
+    // flush() may already have persisted this session (StudySurface awaits it
+    // before switching documents, leaving this instance mounted and clickable
+    // meanwhile). Re-persisting would log the same reading time twice.
+    const alreadyPersisted = closed
     closed = true
     try {
-      // Persist reading progress on leave for panes that report it on demand
-      // (text/markdown). PDF/web push progress as the user navigates.
-      const pos = peekAt ? null : pane?.getProgress?.()
-      if (pos) await UpdateReadingProgress(reading.id, pos)
-      await flushNotes()
+      if (!alreadyPersisted) {
+        // Persist reading progress on leave for panes that report it on demand
+        // (text/markdown). PDF/web push progress as the user navigates.
+        const pos = peekAt ? null : pane?.getProgress?.()
+        if (pos) await UpdateReadingProgress(reading.id, pos)
+        if (!peekAt) LogReadingSession(reading.id, Math.round((Date.now() - openedAt) / 1000)).catch(() => {})
+        await flushNotes()
+      }
       if (action !== 'done') await RescheduleReading(reading.id, action || 'continue')
     } catch (e) { /* best-effort on close */ }
     activeReading.set(null)
@@ -151,6 +163,7 @@
       if (cur != null && cur !== savedNotes) SaveFile(reading.notesPath, cur).catch(() => {})
       const pos = peekAt ? null : pane?.getProgress?.()
       if (pos) UpdateReadingProgress(reading.id, pos).catch(() => {})
+      if (!peekAt) LogReadingSession(reading.id, Math.round((Date.now() - openedAt) / 1000)).catch(() => {})
       RescheduleReading(reading.id, 'continue').catch(() => {})
     }
     notesView?.destroy()

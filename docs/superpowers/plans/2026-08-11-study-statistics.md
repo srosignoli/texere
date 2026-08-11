@@ -12,7 +12,7 @@
 
 - **The activity log records only what is unrecoverable** — `read` sessions and `process` outcomes. Cards created is already `items.created_at` and extracts created is already `extracts.created_at`; logging those would create a second, disagreeing source of truth.
 - **A peek logs nothing.** `ReadingView`'s `peekAt` guard applies to the reading-session write exactly as it does to the three progress-persist paths. Without it, glancing at an extract from the sidebar counts as time spent reading.
-- **`process` detail values are the scheduler's own strings** — `later`, `dismiss`, `promote` — so the log cannot drift from `ScheduleExtract`'s vocabulary.
+- **`process` detail values are the scheduler's own strings** — `later`, `dismiss`, `promote` — so the log cannot drift from `ScheduleExtract`'s vocabulary. **Two write-points are required:** `rescheduleExtract` covers `later` and `dismiss`, while `PromoteExtract` (`study_methods.go:92`) is a wholly separate path that never calls `ApplyExtractSchedule`. Logging only the first leaves the pipeline panel showing every dismissal and no promotions.
 - **No charting library.** Inline SVG only. The arithmetic lives in `frontend/src/lib/stats-format.js`, not in the component.
 - **Every panel survives an empty collection.** No `NaN`, no divide-by-zero, no panic. A metric with no data reports the sentinel `-1`, and the UI renders "Not enough data yet" — never `0%`.
 - **Day boundaries are local, computed in Go**, never `at/86400` in SQL. A UTC day boundary puts an evening review on the wrong day and silently breaks streaks for anyone west of Greenwich.
@@ -1317,10 +1317,10 @@ Append to `internal/learning/stats.go`:
 // week containing now. Read from items.created_at rather than the activity log
 // so creation has exactly one source of truth.
 func (s *Store) CardsPerWeek(weeks int, now time.Time) ([]int, error) {
-	out := make([]int, weeks)
 	if weeks <= 0 {
-		return out, nil
+		return []int{}, nil // guard before make: a negative length panics
 	}
+	out := make([]int, weeks)
 	start := midnight(now).AddDate(0, 0, -7*(weeks-1))
 	rows, err := s.db.Query(`SELECT created_at FROM items WHERE created_at >= ?`, start.Unix())
 	if err != nil {
@@ -1498,6 +1498,9 @@ test('fiBand classifies against the 7-13% target', () => {
   assert.equal(fiBand(7), 'ok')
   assert.equal(fiBand(10), 'ok')
   assert.equal(fiBand(13), 'ok')
+  // 14 is the first value outside the band. Without it, moving the boundary to
+  // >14 leaves both 13 and 20 on the side they were already on.
+  assert.equal(fiBand(14), 'high')
   assert.equal(fiBand(20), 'high')
 })
 ```

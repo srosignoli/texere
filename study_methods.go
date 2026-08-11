@@ -130,6 +130,11 @@ func (a *App) PromoteExtract(id, kind string) error {
 	if _, err := learning.Sync(a.learnStore, []string{e.FilePath}, a.registry); err != nil {
 		return err
 	}
+	// Promotion does not go through rescheduleExtract, so it needs its own log
+	// line — without it the statistics would show every dismissal and no
+	// promotions, which is precisely backwards.
+	// Best-effort: a statistics gap must never fail the user's action.
+	_ = a.learnStore.LogActivity("process", id, "promote", 0, time.Now())
 	if a.ctx != nil {
 		runtime.EventsEmit(a.ctx, "file:ids-injected", map[string]string{"path": e.FilePath})
 	}
@@ -147,5 +152,13 @@ func (a *App) rescheduleExtract(id, action string) error {
 	if err != nil || !ok {
 		return fmt.Errorf("rescheduleExtract: %q not found", id)
 	}
-	return a.learnStore.ApplyExtractSchedule(id, learning.ScheduleExtract(e, action, time.Now()))
+	if err := a.learnStore.ApplyExtractSchedule(id, learning.ScheduleExtract(e, action, time.Now())); err != nil {
+		return err
+	}
+	// Logged here rather than in the store: ApplyExtractSchedule only sees the
+	// resulting row, and `active=0` cannot tell "promoted to a card" from
+	// "dismissed". The action string is the only place that distinction exists.
+	// Best-effort — a statistics gap must never fail the user's action.
+	_ = a.learnStore.LogActivity("process", id, action, 0, time.Now())
+	return nil
 }

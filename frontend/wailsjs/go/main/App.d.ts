@@ -81,6 +81,8 @@ export function GetSourceProjection(arg1:string):Promise<string>;
 
 export function GetStartupError():Promise<string>;
 
+export function GetStatistics():Promise<main.StatsView>;
+
 export function GetStudyCounts():Promise<learning.StudyStats3>;
 
 export function GetStudyStats():Promise<learning.Stats>;
@@ -114,6 +116,8 @@ export function ListQueryExamples():Promise<Array<main.QueryExample>>;
 export function ListShells():Promise<Array<shell.Shell>>;
 
 export function ListSkills():Promise<Array<skills.Skill>>;
+
+export function LogReadingSession(arg1:string,arg2:number):Promise<void>;
 
 export function NotebookMarks(arg1:string):Promise<Array<main.NotebookMark>>;
 

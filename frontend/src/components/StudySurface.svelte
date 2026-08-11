@@ -8,6 +8,7 @@
   import LLMChatPane from './LLMChatPane.svelte'
   import ProcessView from './ProcessView.svelte'
   import RecallCard from './RecallCard.svelte'
+  import StatsPanel from './StatsPanel.svelte'
 
   export let onClose = null
 
@@ -162,7 +163,7 @@
 <div class="ss-root" role="dialog" aria-label="Study">
   <div class="ss-bar">
     <span class="ss-title">Study</span>
-    {#each [['next','Next'],['read','Read'],['process','Process'],['recall','Recall']] as [k, label]}
+    {#each [['next','Next'],['read','Read'],['process','Process'],['recall','Recall'],['stats','Stats']] as [k, label]}
       <button class="ss-tab" class:active={$studyFocus === k} on:click={() => enter(k)}>
         {label}{#if k === 'read' && counts.read}<sup>{counts.read}</sup>{:else if k === 'process' && counts.process}<sup>{counts.process}</sup>{:else if k === 'recall' && counts.recall}<sup>{counts.recall}</sup>{/if}
       </button>
@@ -203,6 +204,8 @@
       {/if}
     {:else if $studyFocus === 'recall' || ($studyFocus === 'next' && nextKind() === 'recall')}
       <RecallCard card={recallCard} onGrade={onRecallGrade} />
+    {:else if $studyFocus === 'stats'}
+      <StatsPanel />
     {:else}
       <div class="ss-empty">Nothing due. 🎉</div>
     {/if}
