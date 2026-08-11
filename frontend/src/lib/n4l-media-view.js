@@ -38,6 +38,7 @@ class MediaWidget extends WidgetType {
     this.path = path
     this.kind = kind
     this.url = null
+    this.destroyed = false
   }
 
   // Without this CodeMirror rebuilds the widget on every update, which would
@@ -48,6 +49,11 @@ class MediaWidget extends WidgetType {
     const box = document.createElement('div')
     box.className = 'n4l-media'
     loadBlob(this.path).then((blob) => {
+      // The load is an IPC round trip, and the widget can be destroyed while it
+      // is still in flight — scrolling past media that has not loaded yet does
+      // exactly that. Without this check the URL created below would be made
+      // after destroy() had already run, so nothing would ever revoke it.
+      if (this.destroyed) return
       if (!blob) {
         const miss = document.createElement('span')
         miss.className = 'n4l-media-missing'
@@ -65,6 +71,7 @@ class MediaWidget extends WidgetType {
   }
 
   destroy() {
+    this.destroyed = true
     if (this.url) URL.revokeObjectURL(this.url)
     this.url = null
   }
