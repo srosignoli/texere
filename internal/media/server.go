@@ -75,8 +75,8 @@ func CollectionServer(dirFn func() string) http.Handler {
 			http.NotFound(w, r)
 			return
 		}
-		if ct, ok := audioMimeByExt[strings.ToLower(filepath.Ext(full))]; ok {
-			w.Header().Set("Content-Type", ct) // Go calls .webm video/webm; be explicit for <audio>
+		if ct, ok := audioOnlyMimeByExt[strings.ToLower(filepath.Ext(full))]; ok {
+			w.Header().Set("Content-Type", ct)
 		}
 		http.ServeFile(w, r, full)
 	})
@@ -97,4 +97,17 @@ func resolveUnder(root, rel string) (string, bool) {
 		return "", false
 	}
 	return full, true
+}
+
+// audioOnlyMimeByExt is audioMimeByExt without .mp4 and .webm.
+//
+// /media/ holds only imported images and recorded audio, so labelling those two
+// containers audio there is correct. /collection/ serves whatever a note
+// references, and mediaKind classifies both as VIDEO — so the same override
+// would declare a <video>'s body to be audio. Go's own table already returns
+// video/mp4 and video/webm, so they simply fall through.
+var audioOnlyMimeByExt = map[string]string{
+	".ogg": "audio/ogg", ".oga": "audio/ogg", ".wav": "audio/wav",
+	".mp3": "audio/mpeg", ".m4a": "audio/mp4", ".aac": "audio/aac",
+	".flac": "audio/flac", ".opus": "audio/ogg",
 }

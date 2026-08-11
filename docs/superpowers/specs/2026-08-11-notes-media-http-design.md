@@ -32,9 +32,11 @@ Fixing the second exposed that the loading mechanism itself was the wrong one.
   Wails at `main.go:24` via `assetserver.Options.Handler`. The notebook's
   `ImageCell.svelte:22` uses it directly: ``src = `/media/${cell.asset}` ``. No
   base64, no bindings.
-- **A 404 from that handler falls through to the embedded frontend assets.**
-  `FileServer` already 404s every path outside `/media/`, and the app still
-  loads — so composing handlers behind a `http.ServeMux` is safe.
+- **Wails tries the embedded frontend assets first and calls the configured
+  `Handler` only when they do not contain the path**
+  (`pkg/assetserver/assethandler.go`). So the handler never sees a request for a
+  real frontend asset, and composing handlers behind a `http.ServeMux` cannot
+  swallow the app's own UI.
 - **`FileServer` is deliberately flat.** It serves `path.Base(r.URL.Path)` only,
   collapsing any directory component, which is why it cannot serve
   `assets/photo.png`.

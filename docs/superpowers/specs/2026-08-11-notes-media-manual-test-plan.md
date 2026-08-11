@@ -5,14 +5,15 @@
 
 **This document is the verification gate for the interactive parts.** This
 repository has **no CodeMirror plugin / Svelte component test harness**, so
-`n4l-media-view.js` — the `ViewPlugin`, the `MediaWidget`, and the blob cache —
-has never been watched running in a real webview. Treat any failure below as a
+`n4l-media-view.js` — the `StateField`, the `MediaWidget` and its two listeners
+— has never been watched running in a real webview. Treat any failure below as a
 new finding.
 
 What *is* automated: `n4l-media.test.js` covers `mediaKind` (every supported
 extension, case-insensitive, an unknown extension, no extension, extension vs.
-full filename), `mediaMime` (kind → MIME type, feeding the `Blob` a real
-content type so `<video>`/`<audio>` will actually play it), and `findMedia`
+full filename), `srcFor` (a remote URL passed through whatever its case, a local
+path routed through `/collection/`, and per-segment encoding so a space, `#` or
+`?` in a filename survives), and `findMedia`
 (one match, several matches in order, a quoted non-media string ignored, an
 unquoted path ignored, an unterminated quote surviving without hanging). None
 of that reaches the DOM: whether an `<img>`/`<video>`/`<audio>` actually
@@ -52,22 +53,24 @@ file now shows the asset itself, not just its name.
 - **There is no way to add, remove or replace an asset from this pane.** It
   renders whatever the note text already references. Adding media means
   typing (or pasting) a path to a file that is already on disk.
-- **A file replaced on disk at the same path may keep showing the old
-  bytes for the life of the window.** Loads are cached per path and the cache
-  is never evicted, so if you swap the file under an already-rendered path
-  without restarting the app, the widget can keep showing what it first
-  loaded. This is a known, deferred limitation, not something to file fresh —
-  though if you hit it, it is worth a one-line note in your report just to
-  confirm it's the same shape.
+- **A file replaced on disk at the same path may keep showing the old bytes.**
+  Nothing is cached in the app any more, but the webview's own HTTP cache may
+  serve the previous response until reload. A known limitation, not a fresh
+  finding.
+- **Once a path has shown the `media not found` chip, creating the file does
+  not bring it back on the next keystroke.** The widget is reused while the path
+  is unchanged, so the chip persists until the widget is genuinely rebuilt —
+  scroll it out of view and back, or edit the path itself.
 
 ## Before you start
 
 You need a collection open, a reading in it (any medium — text, PDF or web;
 the notes pane exists regardless), and **real image, video and audio files
 copied under the collection directory**. Paths written in a notes line are
-resolved by `GetSourceBytes` **relative to the collection directory itself**
-— not relative to the notes file, and not restricted to `sources/`. Put them
-somewhere unambiguous, e.g. a new `assets/` folder at the collection root:
+served by the `/collection/` route **relative to the collection directory
+itself** — not relative to the notes file, and not restricted to any folder.
+`media/`, `assets/` or anything nested all work; the examples below use
+`assets/` only for concreteness:
 
 ```bash
 mkdir -p <collectionDir>/assets
@@ -184,10 +187,12 @@ image) "assets/d` slowly, one keystroke at a time, then keep going to finish
 
 **Expect:** no flicker, no visible stall or lag as each character lands, and
 no widget appears (correctly — there's no closing quote and no valid
-extension yet) until the path is complete and the quote is closed. Failures
-along the way (an incomplete or wrong path) are cached, so a half-typed path
-is attempted once rather than fetched again on every keystroke — you should
-not see repeated network/IPC-style hitching as you type.
+extension yet) until the path is complete and the quote is closed.
+
+Once the quote closes on a syntactically complete path, each further keystroke
+that changes it does issue a fresh request to the local asset server. That is
+cheap — a same-process HTTP call, no IPC, no base64 — but if you see visible
+hitching while typing inside a completed quoted path, say so.
 
 ## 9. Several media referenced from one line each render
 

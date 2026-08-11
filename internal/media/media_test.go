@@ -235,3 +235,28 @@ func TestResolveUnderBlocksEscapesAndAllowsNesting(t *testing.T) {
 		t.Error(`"a..b/c.png" was rejected — ".." inside a filename is not a traversal`)
 	}
 }
+
+// /media/ only ever holds imported audio, so it labels .mp4 and .webm audio/*.
+// /collection/ serves whatever a note references, and both are VIDEO there — an
+// audio Content-Type on a <video> body is wrong on every file of that kind.
+func TestCollectionServerTypesVideoAsVideo(t *testing.T) {
+	dir := t.TempDir()
+	for _, name := range []string{"clip.mp4", "clip.webm", "voice.mp3", "voice.wav"} {
+		if err := os.WriteFile(filepath.Join(dir, name), pngBytes, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	h := CollectionServer(func() string { return dir })
+	for name, want := range map[string]string{
+		"clip.mp4":  "video/mp4",
+		"clip.webm": "video/webm",
+		"voice.mp3": "audio/mpeg",
+		"voice.wav": "audio/wav",
+	} {
+		rr := httptest.NewRecorder()
+		h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/collection/"+name, nil))
+		if got := rr.Header().Get("Content-Type"); got != want {
+			t.Errorf("%s: Content-Type=%q, want %q", name, got, want)
+		}
+	}
+}
