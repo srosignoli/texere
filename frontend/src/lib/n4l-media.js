@@ -25,21 +25,41 @@ export function mediaKind(path) {
 }
 
 /**
- * Every double-quoted media path on one line, with offsets relative to it.
- * @returns {{path: string, kind: string, from: number, to: number}[]}
+ * Every media target on one N4L line.
+ *
+ * Anchored on the ARROW, not on quotes. An N4L line is `subject (code) target`,
+ * and a target only needs quoting when it contains spaces — in a real
+ * collection roughly 140 of 5,450 targets are quoted. Scanning for quoted spans
+ * therefore matched the rare form and missed the common one, including every
+ * ditto line, where a leading `"` means "same subject as above" rather than
+ * opening a quote.
+ *
+ * The arrow marks WHERE a target is; it never decides whether one counts. That
+ * is still the extension's job.
+ *
+ * @returns {{path: string, kind: string}[]}
  */
 export function findMedia(lineText) {
+  const line = String(lineText ?? '')
   const out = []
-  // [^"\n]* rather than .*? so an unterminated quote simply fails to match
-  // instead of swallowing the rest of the line.
-  const re = /"([^"\n]*)"/g
+  // Each (code), and the text up to the next one, which is that arrow's target.
+  const re = /\(([^()\n]*)\)/g
   let m
-  while ((m = re.exec(String(lineText ?? ''))) !== null) {
-    const kind = mediaKind(m[1])
-    if (!kind) continue
-    out.push({ path: m[1], kind, from: m.index + 1, to: m.index + 1 + m[1].length })
+  while ((m = re.exec(line)) !== null) {
+    const rest = line.slice(re.lastIndex)
+    const next = rest.indexOf('(')
+    const target = trimQuotes(next < 0 ? rest : rest.slice(0, next))
+    const kind = mediaKind(target)
+    if (kind) out.push({ path: target, kind })
   }
   return out
+}
+
+// Surrounding quotes are stripped independently rather than as a pair, so a
+// target left half-quoted by a typo still resolves instead of carrying a stray
+// quote into the URL.
+function trimQuotes(s) {
+  return s.trim().replace(/^"+/, '').replace(/"+$/, '').trim()
 }
 
 /**

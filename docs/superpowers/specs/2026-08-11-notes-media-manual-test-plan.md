@@ -14,7 +14,9 @@ extension, case-insensitive, an unknown extension, no extension, extension vs.
 full filename), `srcFor` (a remote URL passed through whatever its case, a local
 path routed through `/collection/`, and per-segment encoding so a space, `#` or
 `?` in a filename survives), and `findMedia`
-(one match, several matches in order, a quoted non-media string ignored, an
+(an unquoted target on a ditto line, a quoted target, a remote target, several
+on one line in order, a non-media target ignored, a filename in the subject
+ignored, an
 unquoted path ignored, an unterminated quote surviving without hanging). None
 of that reaches the DOM: whether an `<img>`/`<video>`/`<audio>` actually
 appears below a line, whether a video actually seeks, whether a chip actually
@@ -148,7 +150,22 @@ Look at the `... (has an audio) "assets/clip.mp3"` line. Press play.
 **Expect:** an audio control spanning most of the notes pane's width (not a
 tiny default-sized widget), and sound actually plays.
 
-## 5. The arrow name is irrelevant — only the extension matters
+## 5. The arrow name is irrelevant, and the target needs no quotes
+
+Both of these must render, and neither cares what the arrow is called:
+
+```
+apple image
+"  (pic) media/<some-image>.jpg
+
+sunset (illustrated by) "assets/sunset.jpg"
+```
+
+The first is the shape most N4L is actually written in — a ditto line whose
+leading `"` means "same subject as above", with an unquoted target. An earlier
+build matched only quoted targets and so rendered nothing for it.
+
+## 5b. The arrow name is irrelevant — only the extension matters
 
 Compare the first two lines of the block: `(illustrated by) "assets/diagram.png"`
 and `(has an image) "assets/diagram.png"`.

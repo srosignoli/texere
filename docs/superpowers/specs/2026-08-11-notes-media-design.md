@@ -70,12 +70,19 @@ would be untested.
 
 ```
 mediaKind(path) -> 'image' | 'video' | 'audio' | null
-mediaMime(path) -> string          // '' when the extension is unknown
-findMedia(lineText) -> [{ path, kind, from, to }]
+findMedia(lineText) -> [{ path, kind }]
 ```
 
-`findMedia` scans a single line for double-quoted spans and returns those whose
-contents have a media extension, with offsets relative to the line. Extensions:
+`findMedia` is anchored on the **arrow**, not on quotes. An N4L line is
+`subject (code) target`, and a target only needs quoting when it contains
+spaces — in a real collection roughly 140 of 5,450 targets are quoted. Scanning
+for quoted spans matched the rare form and missed the common one, including
+every ditto line, where a leading `"` means "same subject as above" rather than
+opening a quote.
+
+For each `(code)` it takes the text up to the next `(` or end of line, strips
+surrounding quotes, and returns it when the extension is media. The arrow marks
+*where* a target is; the extension still decides whether it counts. Extensions:
 
 | kind | extensions |
 |---|---|
@@ -83,8 +90,11 @@ contents have a media extension, with offsets relative to the line. Extensions:
 | video | `.mp4` `.webm` `.mov` `.m4v` |
 | audio | `.mp3` `.wav` `.ogg` `.m4a` `.flac` |
 
-Matching is case-insensitive. A quoted string with no media extension, and any
-unquoted text, are ignored.
+Matching is case-insensitive. A target with no media extension is ignored, as is
+any text before the first arrow — that is the subject, never a target. So a page
+URL like `(vid) https://archive.org/details/SVS-3387?start=16`, an extract
+anchor like `(from) "sources/x.html char=13643"`, and prose that happens to end
+in a filename all correctly render as plain text.
 
 ### `frontend/src/lib/n4l-media-view.js` (new)
 

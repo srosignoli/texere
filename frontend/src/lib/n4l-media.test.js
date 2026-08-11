@@ -36,47 +36,65 @@ test('mediaKind looks at the extension, not the whole path', () => {
   assert.equal(mediaKind('archive.txt.png'), 'image')
 })
 
-test('findMedia returns a quoted media path with its offsets', () => {
-  const line = 'sunset (has an image) "assets/sunset.jpg"'
-  const got = findMedia(line)
-  assert.equal(got.length, 1)
-  assert.equal(got[0].path, 'assets/sunset.jpg')
-  assert.equal(got[0].kind, 'image')
-  // Offsets must span the path itself, not the surrounding quotes.
-  assert.equal(line.slice(got[0].from, got[0].to), 'assets/sunset.jpg')
+// The line that exposed the bug, verbatim from a real collection. The leading
+// quote is an N4L DITTO marker meaning "same subject as above", not an opening
+// quote, and the target is unquoted — which is how ~97% of targets in that
+// collection are written.
+test('findMedia matches an unquoted target on a ditto line', () => {
+  const line = '"  (pic) media/bfbaf6828607d9b94fb54056877497ac32926aa75c09de4abd61bc05ba24e2a7.jpg'
+  assert.deepEqual(findMedia(line), [{
+    path: 'media/bfbaf6828607d9b94fb54056877497ac32926aa75c09de4abd61bc05ba24e2a7.jpg',
+    kind: 'image',
+  }])
 })
 
-test('findMedia ignores a quoted string that is not media', () => {
-  assert.deepEqual(findMedia('note (means) "a bright thing"'), [])
-  assert.deepEqual(findMedia('paper (source) "refs/paper.pdf"'), [])
+test('findMedia matches a quoted target too', () => {
+  assert.deepEqual(findMedia('sunset (has an image) "assets/sunset.jpg"'),
+    [{ path: 'assets/sunset.jpg', kind: 'image' }])
 })
 
-// The arrow name is deliberately irrelevant — that is the whole detection rule.
+test('findMedia matches a remote target', () => {
+  assert.deepEqual(findMedia('plot (pic) https://example.com/a.png'),
+    [{ path: 'https://example.com/a.png', kind: 'image' }])
+})
+
+// Detection stays arrow-agnostic: the arrow marks WHERE a target is, never
+// whether it counts.
 test('findMedia does not care what the arrow is called', () => {
-  assert.equal(findMedia('x (illustrated by) "a/b.png"').length, 1)
-  assert.equal(findMedia('x (banana) "a/b.png"').length, 1)
+  assert.equal(findMedia('x (illustrated by) a/b.png').length, 1)
+  assert.equal(findMedia('x (banana) a/b.png').length, 1)
 })
 
-test('findMedia finds several matches on one line, in order', () => {
-  const got = findMedia('x (a) "one.png" (b) "two.mp3"')
-  assert.deepEqual(got.map((m) => m.path), ['one.png', 'two.mp3'])
-  assert.deepEqual(got.map((m) => m.kind), ['image', 'audio'])
+test('findMedia ignores a target with no media extension', () => {
+  assert.deepEqual(findMedia('note (means) a bright thing'), [])
+  assert.deepEqual(findMedia('paper (source) refs/paper.pdf'), [])
+  // A page URL is not a media file.
+  assert.deepEqual(findMedia('clip (vid) https://archive.org/details/SVS-3387?start=16'), [])
 })
 
-test('findMedia ignores an unquoted path', () => {
-  assert.deepEqual(findMedia('x (has an image) assets/sunset.jpg'), [])
+// An extract anchor is a quoted target, but "html char=13643" is no extension.
+test('findMedia ignores an extract anchor', () => {
+  assert.deepEqual(findMedia('Some passage. (from) "sources/spaced-repetition.html char=13643"'), [])
 })
 
-// N4L files in this collection have been broken by stray quotes before. An
-// unterminated quote must yield nothing rather than swallowing the rest of the
-// line or hanging.
-test('findMedia survives an unterminated quote', () => {
-  assert.deepEqual(findMedia('x (has an image) "assets/sunset.jpg'), [])
-  assert.deepEqual(findMedia('"" (a) "b.png"'), [{ path: 'b.png', kind: 'image', from: 8, to: 13 }])
+test('findMedia finds several targets on one line, in order', () => {
+  assert.deepEqual(findMedia('x (a) one.png (b) two.mp3'),
+    [{ path: 'one.png', kind: 'image' }, { path: 'two.mp3', kind: 'audio' }])
 })
 
-test('findMedia handles an empty line', () => {
+// Text before the first arrow is the subject, never a target.
+test('findMedia ignores a filename in the subject', () => {
+  assert.deepEqual(findMedia('see the diagram in overview.png'), [])
+})
+
+test('findMedia recovers a path from a half-quoted target', () => {
+  assert.deepEqual(findMedia('x (has an image) "assets/sunset.jpg'),
+    [{ path: 'assets/sunset.jpg', kind: 'image' }])
+})
+
+test('findMedia handles an empty line and a line with no arrow', () => {
   assert.deepEqual(findMedia(''), [])
+  assert.deepEqual(findMedia('just a subject line'), [])
 })
 
 test('srcFor passes a remote URL through untouched', () => {
