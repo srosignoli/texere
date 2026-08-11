@@ -244,8 +244,10 @@ func (s *Store) PipelineStatsFor(now time.Time) (PipelineStats, error) {
 	out.OldestOpenDays = -1
 	since := midnight(now).AddDate(0, 0, -(statsWindowDays - 1)).Unix()
 
-	q := func(sql string, args []interface{}, dst *int) error {
-		return s.db.QueryRow(sql, args...).Scan(dst)
+	// Named `query`, not `sql`: shadowing the imported package name inside this
+	// function would hide database/sql from anything added below it later.
+	q := func(query string, args []interface{}, dst *int) error {
+		return s.db.QueryRow(query, args...).Scan(dst)
 	}
 	if err := q(`SELECT COUNT(*) FROM reading_elements`, nil, &out.Sources); err != nil {
 		return out, err

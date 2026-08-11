@@ -321,12 +321,27 @@ func TestPipelineCountsAndOldestOpenExtract(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// A second, already-processed extract. Without it, Extracts and ExtractsOpen
+	// are both 1 and adding `WHERE active=1` to the Extracts query would pass.
+	if _, err := st.db.Exec(
+		`INSERT INTO extracts (id, file_path, text, from_anchor, due, deferral_count, active, created_at)
+		 VALUES ('e2','/c/n.n4l','done','',?,0,0,?)`,
+		now.Unix(), now.AddDate(0, 0, -3).Unix()); err != nil {
+		t.Fatal(err)
+	}
+
 	got, err := st.PipelineStatsFor(now)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Sources != 1 || got.Extracts != 1 || got.ExtractsOpen != 1 || got.Cards != 1 {
-		t.Errorf("funnel = %+v, want 1 of each", got)
+	if got.Sources != 1 || got.Cards != 1 {
+		t.Errorf("funnel = %+v, want 1 source and 1 card", got)
+	}
+	if got.Extracts != 2 {
+		t.Errorf("extracts = %d, want 2 — this counts every extract, processed or not", got.Extracts)
+	}
+	if got.ExtractsOpen != 1 {
+		t.Errorf("extractsOpen = %d, want 1 — only the unprocessed one", got.ExtractsOpen)
 	}
 	if got.OldestOpenDays != 10 {
 		t.Errorf("oldest open = %d days, want 10", got.OldestOpenDays)
@@ -341,5 +356,45 @@ func TestPipelineOldestOpenIsMinusOneWhenNothingIsOpen(t *testing.T) {
 	}
 	if got.OldestOpenDays != -1 {
 		t.Errorf("oldest open = %d, want -1 — an empty queue is not a zero-day-old queue", got.OldestOpenDays)
+	}
+}
+
+// Intervals are rarely whole days. Truncating to integer days before the
+// reciprocal would overstate burden for every sub-daily interval and understate
+// it for fractional ones — and a fixture built from exact multiples of a day
+// cannot tell the two implementations apart.
+func TestBurdenUsesFractionalDaysAndClampsShortIntervals(t *testing.T) {
+	st, _ := Open(t.TempDir())
+	now := time.Date(2026, 8, 11, 12, 0, 0, 0, time.Local)
+	due := now
+
+	lr36h := now.Add(-36 * time.Hour) // 1.5 days -> 1/1.5 = 0.6667
+	seedItem(t, st, "frac", &due, &lr36h, 0, 5, now)
+	lr12h := now.Add(-12 * time.Hour) // 0.5 days -> clamped to 1 -> 1.0
+	seedItem(t, st, "short", &due, &lr12h, 0, 5, now)
+
+	got, err := st.WorkloadStatsFor(now, 10000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Integer day-division would give 1.0 + 1.0 = 2.0; dropping the clamp would
+	// give 0.6667 + 2.0 = 2.6667. Only the correct implementation lands here.
+	if got.Burden < 1.66 || got.Burden > 1.67 {
+		t.Errorf("burden = %v, want ~1.667 (1/1.5 + 1/1)", got.Burden)
+	}
+}
+
+// Five lapses is a leech. `> 5` would quietly raise the bar to six.
+func TestLeechThresholdIsInclusive(t *testing.T) {
+	st, _ := Open(t.TempDir())
+	now := time.Date(2026, 8, 11, 12, 0, 0, 0, time.Local)
+	lr := now.AddDate(0, 0, -1)
+	due := now
+	seedItem(t, st, "exactly-five", &due, &lr, 5, 5, now)
+	seedItem(t, st, "four", &due, &lr, 4, 5, now)
+
+	got, _ := st.WorkloadStatsFor(now, 1000)
+	if got.Leeches != 1 {
+		t.Errorf("leeches = %d, want 1 — five lapses qualifies, four does not", got.Leeches)
 	}
 }
