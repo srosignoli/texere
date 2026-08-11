@@ -40,6 +40,11 @@ file now shows the asset itself, not just its name.
   the user already owns, and the binding has always behaved this way for
   reading sources; it is recorded here because the path now comes from note
   text rather than app-managed metadata.
+- **A path is re-read each time you open the document.** The cache lives as
+  long as one notes editor, so a file you create *after* seeing its
+  `media not found` chip appears once you leave the reading and come back — no
+  restart needed. Replacing a file's contents while the same reading stays open
+  still shows the old bytes.
 - **Quoted prose that happens to end in a filename gets a chip.** `"see the
   diagram in overview.png"` is detected as an image, fails to load, and shows
   `media not found`. A consequence of extension-only detection.

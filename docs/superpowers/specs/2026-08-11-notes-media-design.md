@@ -110,6 +110,18 @@ path, made once and never revoked, or null for a file that could not be read.
 Cached failures matter as much as successes: a half-typed path must not be
 retried on every keystroke.
 
+The cache is built per `n4lMedia()` call, so it lives as long as one editor
+rather than the window. Module-level it would be keyed on the relative path
+alone while `GetSourceBytes` resolves against the *live* collection directory —
+so a second collection with the same relative path would show the first
+collection's file — and a cached failure would outlive its own fix.
+
+The widget declares an `estimatedHeight` and calls `view.requestMeasure()` once
+the media fires `load`/`loadedmetadata`. Appending the element schedules a
+measure, but at that moment it has no intrinsic size; decoding is what grows it,
+and decoding mutates no DOM, so without this the height map under-reports every
+media block and the line numbers beside it drift.
+
 One URL per path rather than one per widget: CodeMirror reuses a widget's DOM
 when `eq()` matches but installs the *new* instance and drops the old one
 without calling `destroy()`, so a per-widget URL is orphaned whenever the end of

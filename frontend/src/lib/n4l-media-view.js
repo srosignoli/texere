@@ -22,30 +22,6 @@ import { RangeSetBuilder, StateField } from '@codemirror/state'
 import { GetSourceBytes } from '../../wailsjs/go/main/App'
 import { findMedia, mediaMime } from './n4l-media.js'
 
-// path -> Promise<string|null>, the object URL, or null for a file that could
-// not be read. Failures are cached too: without that, typing a path fires a
-// fresh load on every keystroke.
-//
-// One URL per path, made once and never revoked. Per-widget URLs were the
-// obvious design and were wrong: CodeMirror reuses a widget's DOM when eq()
-// matches but installs the NEW instance, dropping the old one without calling
-// destroy() (index.js:2536-2549, 3446-3453). The instance holding the URL was
-// therefore discarded silently, and the one eventually destroyed had none —
-// so editing at the end of a media line, which is the ordinary case since the
-// path is usually last, leaked a URL every time. This cache already pins the
-// decoded bytes for the life of the window; holding one URL beside them costs
-// nothing more and removes the whole class of lifecycle bug.
-const media = new Map()
-
-function loadMedia(path) {
-  if (media.has(path)) return media.get(path)
-  const p = GetSourceBytes(path)
-    .then((b64) => URL.createObjectURL(new Blob([bytesFrom(b64)], { type: mediaMime(path) })))
-    .catch(() => null)
-  media.set(path, p)
-  return p
-}
-
 function bytesFrom(b64) {
   const bin = atob(b64)
   const out = new Uint8Array(bin.length)
@@ -54,10 +30,11 @@ function bytesFrom(b64) {
 }
 
 class MediaWidget extends WidgetType {
-  constructor(path, kind) {
+  constructor(path, kind, load) {
     super()
     this.path = path
     this.kind = kind
+    this.load = load
   }
 
   // Without this CodeMirror rebuilds the widget on every update, which would
@@ -71,7 +48,7 @@ class MediaWidget extends WidgetType {
   toDOM(view) {
     const box = document.createElement('div')
     box.className = 'n4l-media'
-    loadMedia(this.path).then((url) => {
+    this.load(this.path).then((url) => {
       if (!url) {
         const miss = document.createElement('span')
         miss.className = 'n4l-media-missing'
@@ -99,13 +76,13 @@ class MediaWidget extends WidgetType {
   ignoreEvent() { return true }
 }
 
-function mediaDecorations(state) {
+function mediaDecorations(state, load) {
   const b = new RangeSetBuilder()
   for (let i = 1; i <= state.doc.lines; i++) {
     const line = state.doc.line(i)
     for (const m of findMedia(line.text)) {
       b.add(line.to, line.to, Decoration.widget({
-        widget: new MediaWidget(m.path, m.kind), side: 1, block: true,
+        widget: new MediaWidget(m.path, m.kind, load), side: 1, block: true,
       }))
     }
   }
@@ -122,12 +99,39 @@ const theme = EditorView.theme({
   '.n4l-media-missing': { color: '#8899aa', fontStyle: 'italic', fontSize: '11px' },
 })
 
-const mediaField = StateField.define({
-  create: (state) => mediaDecorations(state),
-  update: (deco, tr) => (tr.docChanged ? mediaDecorations(tr.state) : deco),
-  provide: (f) => EditorView.decorations.from(f),
-})
-
 export function n4lMedia() {
-  return [mediaField, theme]
+  // path -> Promise<string|null>: the object URL, or null for a file that could
+  // not be read. Failures are cached too — without that, typing a path fires a
+  // fresh load on every keystroke.
+  //
+  // Per n4lMedia() call, so its lifetime is one editor rather than the window.
+  // Module-level it would be keyed on the relative path alone while
+  // GetSourceBytes resolves against the LIVE collection directory, so opening a
+  // second collection with the same relative path would show the first
+  // collection's file — and a cached failure would outlive the fix, so typing a
+  // path before saving the screenshot would leave the chip until restart.
+  //
+  // One URL per path, made once and never revoked. Per-widget URLs were the
+  // obvious design and were wrong: CodeMirror reuses a widget's DOM when eq()
+  // matches but installs the NEW instance, dropping the old one WITHOUT calling
+  // destroy() (view index.js:2536-2549, 3446-3453). The instance holding the URL
+  // was discarded silently and the one eventually destroyed had none, so editing
+  // at the end of a media line — the ordinary case, since the path is usually
+  // last — leaked a URL every time. This map already pins the decoded bytes for
+  // the session; one URL beside them costs nothing and removes the whole class.
+  const media = new Map()
+  const load = (path) => {
+    if (media.has(path)) return media.get(path)
+    const p = GetSourceBytes(path)
+      .then((b64) => URL.createObjectURL(new Blob([bytesFrom(b64)], { type: mediaMime(path) })))
+      .catch(() => null)
+    media.set(path, p)
+    return p
+  }
+  const field = StateField.define({
+    create: (state) => mediaDecorations(state, load),
+    update: (deco, tr) => (tr.docChanged ? mediaDecorations(tr.state, load) : deco),
+    provide: (f) => EditorView.decorations.from(f),
+  })
+  return [field, theme]
 }
