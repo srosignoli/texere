@@ -135,3 +135,80 @@ func TestSaveAudioRejectsUnknownMime(t *testing.T) {
 		t.Fatal("expected rejection for audio/weird")
 	}
 }
+
+func TestCollectionServerServesNestedPaths(t *testing.T) {
+	dir := t.TempDir()
+	// Both folders matter: conflating "media/" with some blessed assets folder
+	// is the bug that prompted this route.
+	for _, rel := range []string{"media/a.png", "assets/b.png", "deep/nest/c.png"} {
+		if err := os.MkdirAll(filepath.Join(dir, filepath.Dir(rel)), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, rel), pngBytes, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	h := CollectionServer(func() string { return dir })
+
+	for _, rel := range []string{"media/a.png", "assets/b.png", "deep/nest/c.png"} {
+		rr := httptest.NewRecorder()
+		h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/collection/"+rel, nil))
+		if rr.Code != http.StatusOK {
+			t.Errorf("%s: code=%d, want 200", rel, rr.Code)
+		}
+		if rr.Body.Len() != len(pngBytes) {
+			t.Errorf("%s: body=%d bytes, want %d", rel, rr.Body.Len(), len(pngBytes))
+		}
+		if ct := rr.Header().Get("Content-Type"); ct != "image/png" {
+			t.Errorf("%s: Content-Type=%q, want image/png — a webview needs a usable type", rel, ct)
+		}
+	}
+}
+
+// This tightens behaviour deliberately: GetSourceBytes cleans ".." and reads
+// outside the collection. This route must not.
+func TestCollectionServerBlocksEscapes(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "media"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "media", "in.png"), pngBytes, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// A real file one level ABOVE the collection: the thing an escape would reach.
+	outside := filepath.Join(filepath.Dir(dir), "escaped-"+filepath.Base(dir)+".png")
+	if err := os.WriteFile(outside, pngBytes, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Remove(outside) })
+
+	h := CollectionServer(func() string { return dir })
+	for _, p := range []string{
+		"/collection/../" + filepath.Base(outside),
+		"/collection/media/../../" + filepath.Base(outside),
+		"/collection/..%2f" + filepath.Base(outside),
+		"/other/media/in.png",
+	} {
+		rr := httptest.NewRecorder()
+		h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, p, nil))
+		if rr.Code == http.StatusOK {
+			t.Errorf("path %q was served (code %d) — it escapes the collection", p, rr.Code)
+		}
+	}
+	// The control: the same handler DOES serve something legitimate, so a
+	// blanket 404 cannot be mistaken for containment working.
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/collection/media/in.png", nil))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("in-collection file not served (code %d) — the fixture proves nothing", rr.Code)
+	}
+}
+
+func TestCollectionServerWithNoCollectionOpen(t *testing.T) {
+	h := CollectionServer(func() string { return "" })
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/collection/media/a.png", nil))
+	if rr.Code != http.StatusNotFound {
+		t.Errorf("code=%d, want 404", rr.Code)
+	}
+}
