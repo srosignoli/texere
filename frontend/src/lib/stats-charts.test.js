@@ -56,8 +56,8 @@ test('the dark palette reaches ticks, grid and axis titles', () => {
   for (const axis of ['x', 'y']) {
     assert.equal(c.options.scales[axis].ticks.color, '#8899aa', `${axis} ticks`)
     assert.equal(c.options.scales[axis].grid.color, '#2a3a4a', `${axis} grid`)
-    assert.equal(c.options.scales[axis].title.color, '#8899aa', `${axis} title`)
   }
+  assert.equal(c.options.scales.y.title.color, '#8899aa', 'y title')
 })
 
 test('the y axis starts at zero so bar heights stay comparable', () => {
@@ -66,4 +66,19 @@ test('the y axis starts at zero so bar heights stay comparable', () => {
 
 test('the legend is off — one dataset needs no key', () => {
   assert.equal(barConfig(base).options.plugins.legend.display, false)
+})
+
+// A line's only visible mark is its stroke — pointRadius is 0 and fill is off.
+// Without a border width it renders as a blank box, which is exactly the
+// "I can't tell what this shows" failure this change exists to fix.
+test('a line is drawn with a visible stroke and a bar is not', () => {
+  assert.ok(lineConfig(base).data.datasets[0].borderWidth > 0, 'a line needs a stroke')
+  assert.equal(barConfig(base).data.datasets[0].borderWidth, 0, 'a bar is filled, not stroked')
+})
+
+// Hovering must land without pixel-hunting along the stroke.
+test('hover targets the whole column, not just the drawn mark', () => {
+  const i = lineConfig(base).options.interaction
+  assert.equal(i.intersect, false)
+  assert.equal(i.mode, 'index')
 })

@@ -38,6 +38,10 @@ function config(type, { labels, values, yLabel, unit, color = '#7ecfa0' }) {
       responsive: true,
       maintainAspectRatio: false,
       animation: false,
+      // Without this a line chart is almost unhoverable: pointRadius is 0 and
+      // Chart.js defaults to intersect:true, so the hit target collapses onto
+      // the stroke itself. Showing the value on hover is the whole point.
+      interaction: { mode: 'index', intersect: false },
       plugins: {
         // One dataset per chart, so a legend would only repeat the card's title.
         legend: { display: false },
@@ -49,10 +53,11 @@ function config(type, { labels, values, yLabel, unit, color = '#7ecfa0' }) {
         },
       },
       scales: {
+        // No x title: the x labels are self-describing (dates, grade names),
+        // and a title with no display and no text was dead config.
         x: {
           ticks: { color: TICK, maxRotation: 0, autoSkip: true },
           grid: { color: GRID },
-          title: { color: TICK },
         },
         y: {
           beginAtZero: true,
