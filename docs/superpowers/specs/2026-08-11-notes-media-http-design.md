@@ -87,9 +87,14 @@ func CollectionServer(dirFn func() string) http.Handler
 
 Serving `/collection/<relative-path>` from `dirFn()`. It rejects a request when
 no collection is open, and resolves the path with `filepath.Join` (which cleans
-`..`) then requires the result to remain under the root — otherwise 404. Audio
-content types get the same explicit override `FileServer` applies, because Go's
-mime table labels `.webm` as video.
+`..`) then requires the result to remain under the root — otherwise 404.
+
+Content types get a *narrower* override than `FileServer`'s. `/media/` holds
+only imported audio, so labelling `.mp4` and `.webm` as audio there is right;
+this route serves whatever a note references, and `mediaKind` treats both as
+**video**, so the same override would declare a `<video>`'s body to be audio.
+Those two fall through to Go's table, which already returns `video/mp4` and
+`video/webm`.
 
 ### `app.go` and `main.go`
 
