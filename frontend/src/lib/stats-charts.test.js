@@ -1,0 +1,69 @@
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { barConfig, lineConfig } from './stats-charts.js'
+
+const base = { labels: ['Mon', 'Tue'], values: [3, 7], yLabel: 'reviews', unit: 'reviews', color: '#7ecfa0' }
+
+test('barConfig carries the data and the axis title', () => {
+  const c = barConfig(base)
+  assert.equal(c.type, 'bar')
+  assert.deepEqual(c.data.labels, ['Mon', 'Tue'])
+  assert.deepEqual(c.data.datasets[0].data, [3, 7])
+  assert.equal(c.options.scales.y.title.text, 'reviews')
+  assert.equal(c.options.scales.y.title.display, true)
+})
+
+test('lineConfig differs from barConfig only in type', () => {
+  const b = barConfig(base)
+  const l = lineConfig(base)
+  assert.equal(l.type, 'line')
+  assert.equal(b.type, 'bar')
+  assert.deepEqual(l.data.labels, b.data.labels)
+  assert.equal(l.options.scales.y.title.text, b.options.scales.y.title.text)
+})
+
+// The whole point of the change: hovering a bar must say what it is.
+test('the tooltip renders the value with its unit', () => {
+  const c = barConfig({ ...base, unit: 'reviews' })
+  const label = c.options.plugins.tooltip.callbacks.label
+  assert.equal(label({ parsed: { y: 12 } }), '12 reviews')
+})
+
+test('a singular value still reads correctly', () => {
+  const c = barConfig({ ...base, unit: 'minutes' })
+  assert.equal(c.options.plugins.tooltip.callbacks.label({ parsed: { y: 1 } }), '1 minutes')
+})
+
+// An empty collection must still produce axes, or the reader sees a blank box
+// with no clue what it would have shown.
+test('an empty series still produces a valid config with its axis title', () => {
+  const c = barConfig({ labels: [], values: [], yLabel: 'cards', unit: 'cards', color: '#7ecfa0' })
+  assert.deepEqual(c.data.labels, [])
+  assert.deepEqual(c.data.datasets[0].data, [])
+  assert.equal(c.options.scales.y.title.text, 'cards')
+})
+
+test('missing arrays degrade to empty rather than throwing', () => {
+  const c = barConfig({ yLabel: 'cards', unit: 'cards' })
+  assert.deepEqual(c.data.labels, [])
+  assert.deepEqual(c.data.datasets[0].data, [])
+})
+
+// Chart.js defaults to dark-on-light. Without this every label is invisible
+// against the panel, which reads as a missing axis rather than a styling bug.
+test('the dark palette reaches ticks, grid and axis titles', () => {
+  const c = barConfig(base)
+  for (const axis of ['x', 'y']) {
+    assert.equal(c.options.scales[axis].ticks.color, '#8899aa', `${axis} ticks`)
+    assert.equal(c.options.scales[axis].grid.color, '#2a3a4a', `${axis} grid`)
+    assert.equal(c.options.scales[axis].title.color, '#8899aa', `${axis} title`)
+  }
+})
+
+test('the y axis starts at zero so bar heights stay comparable', () => {
+  assert.equal(barConfig(base).options.scales.y.beginAtZero, true)
+})
+
+test('the legend is off — one dataset needs no key', () => {
+  assert.equal(barConfig(base).options.plugins.legend.display, false)
+})
