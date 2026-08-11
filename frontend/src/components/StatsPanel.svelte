@@ -4,7 +4,9 @@
   // about the moment they describe.
   import { onMount } from 'svelte'
   import { GetStatistics } from '../../wailsjs/go/main/App'
-  import { barHeights, sparkPath, humanDuration, fiBand } from '../lib/stats-format.js'
+  import { humanDuration, fiBand } from '../lib/stats-format.js'
+  import Chart from 'chart.js/auto'
+  import { barConfig, lineConfig } from '../lib/stats-charts.js'
 
   let s = null
   let error = ''
@@ -29,7 +31,17 @@
   const sinceDate = (unix) => new Date(unix * 1000).toLocaleDateString()
   const pct = (v) => `${Math.round(v)}%`
 
-  const gradeLabels = ['Again', 'Hard', 'Good', 'Easy']
+  // Same shape as ComputeCell's: create on mount, destroy on teardown. No
+  // update() needed — this panel renders its charts inside {#if s}, so the
+  // action runs once with final data, and leaving the tab destroys the whole
+  // component.
+  function chart(node, config) {
+    const c = new Chart(node, config)
+    return { destroy() { c.destroy() } }
+  }
+
+  const weekLabels = (series) => (series ?? []).map((w) => w.weekStart)
+  const weekValues = (series) => (series ?? []).map((w) => w.count)
 </script>
 
 <div class="sp-root">
@@ -42,76 +54,113 @@
       <section class="sp-card">
         <h3>Learning quality</h3>
         {#if has(s.quality.forgettingIndex)}
-          <p class="sp-metric" class:ok={fiBand(s.quality.forgettingIndex) === 'ok'}
-             class:low={fiBand(s.quality.forgettingIndex) === 'low'}
-             class:high={fiBand(s.quality.forgettingIndex) === 'high'}>
-            Forgetting index: {pct(s.quality.forgettingIndex)}
-          </p>
+          <div class="sp-stat">
+            <span class="sp-label">Forgetting index</span>
+            <span class="sp-value" class:ok={fiBand(s.quality.forgettingIndex) === 'ok'}
+                  class:low={fiBand(s.quality.forgettingIndex) === 'low'}
+                  class:high={fiBand(s.quality.forgettingIndex) === 'high'}>{pct(s.quality.forgettingIndex)}</span>
+            <span class="sp-meaning">Share of reviews you failed. SuperMemo's healthy range is 7–13%.</span>
+          </div>
         {:else}
-          <p class="sp-metric sp-nodata">Forgetting index: Not enough data yet</p>
+          <div class="sp-stat">
+            <span class="sp-label">Forgetting index</span>
+            <span class="sp-value">Not enough data yet</span>
+            <span class="sp-meaning">Share of reviews you failed. SuperMemo's healthy range is 7–13%.</span>
+          </div>
         {/if}
         {#if has(s.quality.retention)}
-          <p class="sp-sub">Retention: {pct(s.quality.retention)}</p>
-        {:else}
-          <p class="sp-sub sp-nodata">Retention: Not enough data yet</p>
-        {/if}
-        <div class="sp-chartrow">
-          <svg width="80" height="60" viewBox="0 0 80 60" class="sp-chart">
-            {#each barHeights(s.quality.gradeMix, 60) as h, i}
-              <rect x={i * 20 + 2} y={60 - h} width="14" height={h} fill="#7dd3fc" />
-            {/each}
-          </svg>
-          <div class="sp-chartlabels">
-            {#each gradeLabels as label}<span>{label}</span>{/each}
+          <div class="sp-stat">
+            <span class="sp-label">Retention</span>
+            <span class="sp-value">{pct(s.quality.retention)}</span>
+            <span class="sp-meaning">Share you recalled successfully — the other side of the forgetting index.</span>
           </div>
+        {:else}
+          <div class="sp-stat">
+            <span class="sp-label">Retention</span>
+            <span class="sp-value">Not enough data yet</span>
+            <span class="sp-meaning">Share you recalled successfully — the other side of the forgetting index.</span>
+          </div>
+        {/if}
+        <div class="sp-chartbox"><canvas use:chart={barConfig({
+          labels: ['Again', 'Hard', 'Good', 'Easy'], values: s.quality.gradeMix,
+          yLabel: 'reviews', unit: 'reviews', color: '#7dd3fc' })}></canvas></div>
+        <div class="sp-stat">
+          <span class="sp-label">Leeches</span>
+          <span class="sp-value">{s.workload.leeches} cards</span>
+          <span class="sp-meaning">Cards you have failed five times or more.</span>
         </div>
-        <p class="sp-sub">Leeches: {s.workload.leeches}</p>
-        <svg width="100" height="40" viewBox="0 0 100 40" class="sp-chart">
-          {#each barHeights(s.workload.difficulty, 40) as h, i}
-            <rect x={i * 20 + 2} y={40 - h} width="14" height={h} fill="#e0b000" />
-          {/each}
-        </svg>
+        <div class="sp-chartbox"><canvas use:chart={barConfig({
+          labels: ['1–3', '3–5', '5–7', '7–9', '9–10'], values: s.workload.difficulty,
+          yLabel: 'cards', unit: 'cards', color: '#b9a3e3' })}></canvas></div>
       </section>
 
       <section class="sp-card">
         <h3>Workload</h3>
         {#if has(s.workload.burden)}
-          <p class="sp-metric">Burden: {s.workload.burden.toFixed(1)}</p>
+          <div class="sp-stat">
+            <span class="sp-label">Burden</span>
+            <span class="sp-value">{s.workload.burden.toFixed(1)} reviews/day</span>
+            <span class="sp-meaning">Estimated steady-state load once every card settles into its interval.</span>
+          </div>
         {:else}
-          <p class="sp-metric sp-nodata">Burden: Not enough data yet</p>
+          <div class="sp-stat">
+            <span class="sp-label">Burden</span>
+            <span class="sp-value">Not enough data yet</span>
+            <span class="sp-meaning">Estimated steady-state load once every card settles into its interval.</span>
+          </div>
         {/if}
         {#if has(s.workload.dailyMinutes)}
-          <p class="sp-sub">Daily time: {humanDuration(s.workload.dailyMinutes)}</p>
+          <div class="sp-stat">
+            <span class="sp-label">Daily time</span>
+            <span class="sp-value">{humanDuration(s.workload.dailyMinutes)}</span>
+            <span class="sp-meaning">Burden multiplied by your average time per review.</span>
+          </div>
         {:else}
-          <p class="sp-sub sp-nodata">Daily time: Not enough data yet</p>
+          <div class="sp-stat">
+            <span class="sp-label">Daily time</span>
+            <span class="sp-value">Not enough data yet</span>
+            <span class="sp-meaning">Burden multiplied by your average time per review.</span>
+          </div>
         {/if}
-        <svg width="120" height="60" viewBox="0 0 120 60" class="sp-chart">
-          {#each barHeights(s.workload.forecast, 60) as h, i}
-            <rect x={i * 8 + 1} y={60 - h} width="6" height={h} fill="#7dd3fc" />
-          {/each}
-        </svg>
-        <p class="sp-sub">Backlog — Read: {s.workload.backlog.read}, Process: {s.workload.backlog.process}, Recall: {s.workload.backlog.recall}</p>
+        <div class="sp-chartbox"><canvas use:chart={barConfig({
+          labels: s.workload.forecast.map((_, i) => (i === 0 ? 'today' : `+${i}d`)),
+          values: s.workload.forecast,
+          yLabel: 'cards due', unit: 'cards', color: '#e0b000' })}></canvas></div>
+        <div class="sp-stat">
+          <span class="sp-label">Backlog</span>
+          <span class="sp-value">{s.workload.backlog.read} read · {s.workload.backlog.process} process · {s.workload.backlog.recall} recall</span>
+          <span class="sp-meaning">Waiting for you right now.</span>
+        </div>
       </section>
 
       <section class="sp-card">
         <h3>Habit</h3>
-        <svg width="260" height="40" viewBox="0 0 260 40" class="sp-chart">
-          <path d={sparkPath((s.habit.reviewsPerDay ?? []).map((d) => d?.count ?? 0), 260, 40)}
-                fill="none" stroke="#7ecfa0" stroke-width="1.5" />
-        </svg>
-        <p class="sp-sub">Current streak: {s.habit.currentStreak} · Longest streak: {s.habit.longestStreak}</p>
-        <p class="sp-sub">Memorized: {s.workload.memorized}</p>
-        <svg width="120" height="40" viewBox="0 0 120 40" class="sp-chart">
-          {#each barHeights(s.cardsPerWeek, 40) as h, i}
-            <rect x={i * 10 + 1} y={40 - h} width="7" height={h} fill="#7dd3fc" />
-          {/each}
-        </svg>
+        <div class="sp-chartbox"><canvas use:chart={lineConfig({
+          labels: (s.habit.reviewsPerDay ?? []).map((d) => d.day),
+          values: (s.habit.reviewsPerDay ?? []).map((d) => d.count),
+          yLabel: 'reviews', unit: 'reviews', color: '#7ecfa0' })}></canvas></div>
+        <div class="sp-stat">
+          <span class="sp-label">Current streak</span>
+          <span class="sp-value">{s.habit.currentStreak} days</span>
+          <span class="sp-meaning">Consecutive days with at least one review.</span>
+        </div>
+        <div class="sp-stat">
+          <span class="sp-label">Longest streak</span>
+          <span class="sp-value">{s.habit.longestStreak} days</span>
+          <span class="sp-meaning">Your best run so far.</span>
+        </div>
+        <div class="sp-stat">
+          <span class="sp-label">Memorized</span>
+          <span class="sp-value">{s.workload.memorized} cards</span>
+          <span class="sp-meaning">Cards that have been reviewed at least once.</span>
+        </div>
+        <div class="sp-chartbox"><canvas use:chart={barConfig({
+          labels: weekLabels(s.cardsPerWeek), values: weekValues(s.cardsPerWeek),
+          yLabel: 'cards', unit: 'cards', color: '#7ecfa0' })}></canvas></div>
         {#if settled(s.readSince)}
-          <svg width="120" height="40" viewBox="0 0 120 40" class="sp-chart">
-            {#each barHeights(s.readMinsWeek, 40) as h, i}
-              <rect x={i * 10 + 1} y={40 - h} width="7" height={h} fill="#7ecfa0" />
-            {/each}
-          </svg>
+          <div class="sp-chartbox"><canvas use:chart={barConfig({
+            labels: weekLabels(s.readMinsWeek), values: weekValues(s.readMinsWeek),
+            yLabel: 'minutes', unit: 'minutes', color: '#7dd3fc' })}></canvas></div>
         {:else}
           <p class="sp-sub sp-nodata">
             {s.readSince ? `Collecting reading time since ${sinceDate(s.readSince)}` : 'Collecting reading time since today'}
@@ -121,21 +170,43 @@
 
       <section class="sp-card">
         <h3>Pipeline health</h3>
-        <p class="sp-sub">Sources: {s.pipeline.sourcesDone} / {s.pipeline.sources}</p>
-        <p class="sp-sub">Extracts: {s.pipeline.extractsOpen} open / {s.pipeline.extracts} total</p>
-        <p class="sp-sub">Cards: {s.pipeline.cards}</p>
+        <div class="sp-stat">
+          <span class="sp-label">Sources finished</span>
+          <span class="sp-value">{s.pipeline.sourcesDone} of {s.pipeline.sources}</span>
+          <span class="sp-meaning">Documents you have marked done.</span>
+        </div>
+        <div class="sp-stat">
+          <span class="sp-label">Extracts</span>
+          <span class="sp-value">{s.pipeline.extractsOpen} open of {s.pipeline.extracts}</span>
+          <span class="sp-meaning">Passages taken from your reading, and how many still await processing.</span>
+        </div>
+        <div class="sp-stat">
+          <span class="sp-label">Cards</span>
+          <span class="sp-value">{s.pipeline.cards}</span>
+          <span class="sp-meaning">Active cards in the collection.</span>
+        </div>
         {#if has(s.pipeline.oldestOpenDays)}
-          <p class="sp-sub">Oldest open extract: {s.pipeline.oldestOpenDays}d</p>
+          <div class="sp-stat">
+            <span class="sp-label">Oldest unprocessed extract</span>
+            <span class="sp-value">{s.pipeline.oldestOpenDays} days</span>
+            <span class="sp-meaning">How long the oldest untouched passage has waited.</span>
+          </div>
         {:else}
-          <p class="sp-sub sp-nodata">Oldest open extract: Not enough data yet</p>
+          <div class="sp-stat">
+            <span class="sp-label">Oldest unprocessed extract</span>
+            <span class="sp-value">Not enough data yet</span>
+            <span class="sp-meaning">How long the oldest untouched passage has waited.</span>
+          </div>
         {/if}
-        <p class="sp-sub">Last 30 days: {s.pipeline.extractsMade30} extracts, {s.pipeline.cardsMade30} cards</p>
+        <div class="sp-stat">
+          <span class="sp-label">Last 30 days</span>
+          <span class="sp-value">{s.pipeline.extractsMade30} extracts · {s.pipeline.cardsMade30} cards</span>
+          <span class="sp-meaning">What you have created this month.</span>
+        </div>
         {#if settled(s.procSince)}
-          <svg width="120" height="40" viewBox="0 0 120 40" class="sp-chart">
-            {#each barHeights(s.procPerWeek, 40) as h, i}
-              <rect x={i * 10 + 1} y={40 - h} width="7" height={h} fill="#7dd3fc" />
-            {/each}
-          </svg>
+          <div class="sp-chartbox"><canvas use:chart={barConfig({
+            labels: weekLabels(s.procPerWeek), values: weekValues(s.procPerWeek),
+            yLabel: 'extracts', unit: 'extracts', color: '#b9a3e3' })}></canvas></div>
         {:else}
           <p class="sp-sub sp-nodata">
             {s.procSince ? `Collecting processing history since ${sinceDate(s.procSince)}` : 'Collecting processing history since today'}
@@ -151,16 +222,16 @@
   .sp-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
   .sp-card { background: #131c29; border: 1px solid #2a3a4a; border-radius: 8px; padding: 12px; }
   .sp-card h3 { margin: 0 0 8px; color: #7dd3fc; font-size: 13px; }
-  .sp-metric { color: #e8eaf0; font-size: 14px; margin: 4px 0; font-weight: 600; }
   .sp-sub { color: #e8eaf0; font-size: 12px; margin: 4px 0; }
   .sp-nodata { color: #8899aa; font-weight: normal; font-style: italic; }
-  .sp-metric.ok { color: #7ecfa0; }
-  .sp-metric.low { color: #7dd3fc; }
-  .sp-metric.high { color: #e0b000; }
-  .sp-chartrow { display: flex; flex-direction: column; gap: 2px; }
-  .sp-chart { display: block; margin: 6px 0; }
-  .sp-chartlabels { display: flex; gap: 6px; font-size: 9px; color: #8899aa; }
-  .sp-chartlabels span { width: 14px; text-align: center; }
+  .sp-stat { margin: 8px 0; }
+  .sp-label { display: block; color: #8899aa; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .sp-value { display: block; color: #e8eaf0; font-size: 15px; font-weight: 600; }
+  .sp-value.ok { color: #7ecfa0; }
+  .sp-value.low { color: #7dd3fc; }
+  .sp-value.high { color: #e0b000; }
+  .sp-meaning { display: block; color: #5d7186; font-size: 11px; line-height: 1.4; }
+  .sp-chartbox { position: relative; height: 140px; margin: 8px 0; }
   .sp-loading, .sp-error { color: #8aa; padding: 20px; }
   .sp-error { color: #ff8080; }
 </style>
