@@ -16,25 +16,20 @@
 // A StateField has no viewport, so this scans the whole document rather than
 // the visible ranges. Reading notes files are small, and correctness here is
 // not optional.
+//
+// Nothing here loads bytes: every asset is an ordinary src the webview fetches,
+// so http.ServeFile's range support makes a video seek for free and the browser
+// does the caching.
 
 import { Decoration, EditorView, WidgetType } from '@codemirror/view'
 import { RangeSetBuilder, StateField } from '@codemirror/state'
-import { GetSourceBytes } from '../../wailsjs/go/main/App'
-import { findMedia, mediaMime } from './n4l-media.js'
-
-function bytesFrom(b64) {
-  const bin = atob(b64)
-  const out = new Uint8Array(bin.length)
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i)
-  return out
-}
+import { findMedia, srcFor } from './n4l-media.js'
 
 class MediaWidget extends WidgetType {
-  constructor(path, kind, load) {
+  constructor(path, kind) {
     super()
     this.path = path
     this.kind = kind
-    this.load = load
   }
 
   // Without this CodeMirror rebuilds the widget on every update, which would
@@ -42,32 +37,34 @@ class MediaWidget extends WidgetType {
   eq(other) { return other.path === this.path && other.kind === this.kind }
 
   // Reserves roughly the final height so the height map is not wildly wrong
-  // between mount and decode; requestMeasure below corrects it exactly.
+  // before the media loads; requestMeasure below corrects it exactly.
   get estimatedHeight() { return this.kind === 'audio' ? 54 : 240 }
 
   toDOM(view) {
     const box = document.createElement('div')
     box.className = 'n4l-media'
-    this.load(this.path).then((url) => {
-      if (!url) {
-        const miss = document.createElement('span')
-        miss.className = 'n4l-media-missing'
-        miss.textContent = `media not found: ${this.path}`
-        box.appendChild(miss)
-        view.requestMeasure()
-        return
-      }
-      const el = document.createElement(this.kind === 'image' ? 'img' : this.kind)
-      if (this.kind !== 'image') el.controls = true
-      // Appending schedules a measure, but at that instant the element has no
-      // intrinsic size. Decoding is what grows it to its cap, and decoding
-      // mutates no DOM, so nothing would re-measure: the height map would
-      // under-report every media block and drift the line numbers beside it.
-      el.addEventListener(this.kind === 'image' ? 'load' : 'loadedmetadata',
-        () => view.requestMeasure(), { once: true })
-      el.src = url
-      box.appendChild(el)
-    })
+    const el = document.createElement(this.kind === 'image' ? 'img' : this.kind)
+    if (this.kind !== 'image') el.controls = true
+
+    // Loading grows the element to its cap and mutates no DOM, so nothing else
+    // would re-measure: the height map would under-report every media block and
+    // drift the line numbers beside it.
+    el.addEventListener(this.kind === 'image' ? 'load' : 'loadedmetadata',
+      () => view.requestMeasure(), { once: true })
+
+    // Without this a failed load shows the browser's broken-image icon. The
+    // chip names the path instead, so a typo is diagnosable in place.
+    el.addEventListener('error', () => {
+      el.remove()
+      const miss = document.createElement('span')
+      miss.className = 'n4l-media-missing'
+      miss.textContent = `media not found: ${this.path}`
+      box.appendChild(miss)
+      view.requestMeasure()
+    }, { once: true })
+
+    el.src = srcFor(this.path)
+    box.appendChild(el)
     return box
   }
 
@@ -76,13 +73,13 @@ class MediaWidget extends WidgetType {
   ignoreEvent() { return true }
 }
 
-function mediaDecorations(state, load) {
+function mediaDecorations(state) {
   const b = new RangeSetBuilder()
   for (let i = 1; i <= state.doc.lines; i++) {
     const line = state.doc.line(i)
     for (const m of findMedia(line.text)) {
       b.add(line.to, line.to, Decoration.widget({
-        widget: new MediaWidget(m.path, m.kind, load), side: 1, block: true,
+        widget: new MediaWidget(m.path, m.kind), side: 1, block: true,
       }))
     }
   }
@@ -100,37 +97,9 @@ const theme = EditorView.theme({
 })
 
 export function n4lMedia() {
-  // path -> Promise<string|null>: the object URL, or null for a file that could
-  // not be read. Failures are cached too — without that, typing a path fires a
-  // fresh load on every keystroke.
-  //
-  // Per n4lMedia() call, so its lifetime is one editor rather than the window.
-  // Module-level it would be keyed on the relative path alone while
-  // GetSourceBytes resolves against the LIVE collection directory, so opening a
-  // second collection with the same relative path would show the first
-  // collection's file — and a cached failure would outlive the fix, so typing a
-  // path before saving the screenshot would leave the chip until restart.
-  //
-  // One URL per path, made once and never revoked. Per-widget URLs were the
-  // obvious design and were wrong: CodeMirror reuses a widget's DOM when eq()
-  // matches but installs the NEW instance, dropping the old one WITHOUT calling
-  // destroy() (view index.js:2536-2549, 3446-3453). The instance holding the URL
-  // was discarded silently and the one eventually destroyed had none, so editing
-  // at the end of a media line — the ordinary case, since the path is usually
-  // last — leaked a URL every time. This map already pins the decoded bytes for
-  // the session; one URL beside them costs nothing and removes the whole class.
-  const media = new Map()
-  const load = (path) => {
-    if (media.has(path)) return media.get(path)
-    const p = GetSourceBytes(path)
-      .then((b64) => URL.createObjectURL(new Blob([bytesFrom(b64)], { type: mediaMime(path) })))
-      .catch(() => null)
-    media.set(path, p)
-    return p
-  }
   const field = StateField.define({
-    create: (state) => mediaDecorations(state, load),
-    update: (deco, tr) => (tr.docChanged ? mediaDecorations(tr.state, load) : deco),
+    create: (state) => mediaDecorations(state),
+    update: (deco, tr) => (tr.docChanged ? mediaDecorations(tr.state) : deco),
     provide: (f) => EditorView.decorations.from(f),
   })
   return [field, theme]
