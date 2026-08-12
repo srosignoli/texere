@@ -102,6 +102,11 @@ same two components.
 | Media file missing | The element's own error state, as in the Read tab |
 | Malformed LaTeX | Rendered in red showing its source |
 | No media and no math | Identical to today's output |
+| A media path has trailing punctuation, e.g. `see media/apple.jpg.` or `(media/apple.jpg)` | Not detected: the `.` or `)` is part of the token, so `mediaKind` returns null and the path renders as literal text. Pre-existing, shared with the Read tab — but more confusing on a card, where the design says the path should be noise. |
+
+Authors writing a formula that *is* the card's answer should prefer display
+math `\[ … \]` over inline `\( … \)`: inline typesets a `\frac` at text-style
+size, which reads small on a card.
 
 ## Testing
 

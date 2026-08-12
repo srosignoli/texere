@@ -16,7 +16,7 @@
 - **No new dependencies.** `katex` and `n4l-media.js` are already in the tree.
 - **`NodeCard`'s rendered output must not change.** It imports the shared helper instead of defining its own; the Read tab keeps showing a media path *beside* its media.
 - **Media detection is by file extension only** — `mediaKind` decides, never an arrow name, never a directory name. Media may live anywhere the collection can reach, not only `media/`.
-- **`{@html}` stays confined to `MathText`.** No task may introduce another one. Card text is author input and must reach the DOM through ordinary Svelte interpolation or through KaTeX's own output.
+- **No task in this feature introduces a new `{@html}`.** Card text is author input and must reach the DOM through ordinary Svelte interpolation or through KaTeX's own output inside `MathText` — the only `{@html}` this feature touches. (`WebSourcePane.svelte` has its own, pre-existing and out of scope here.)
 - **The card back stays inside `{#if revealed}`**, so an answer's image is not fetched, and cannot flash on screen, before the card is turned.
 - **Pure logic goes in `frontend/src/lib/`, not in a component.** This repo has no Svelte component harness — `make test-js` runs `node --test frontend/src/lib/*.test.js`. A module that imports a `.svelte` file, `katex`, or `wailsjs` cannot load there.
 - **Every test must be proven able to fail.** Each test step below names the production change that breaks it; make that change, watch the test fail for that reason, then revert it. A test that passes against a gutted implementation is worse than no test.
