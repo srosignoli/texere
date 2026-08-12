@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mediaKind, srcFor } from './n4l-media.js'
+import { mediaKind, srcFor, mediaTokens, stripMediaTokens } from './n4l-media.js'
 
 test('mediaKind recognises every supported extension', () => {
   for (const p of ['a.png', 'a.jpg', 'a.jpeg', 'a.gif', 'a.webp', 'a.svg', 'a.bmp']) {
@@ -75,4 +75,62 @@ test('srcFor encodes characters that would truncate the URL', () => {
 
 test('srcFor handles an empty path without throwing', () => {
   assert.equal(srcFor(''), '/collection/')
+})
+
+test('mediaTokens finds a path that is the whole string', () => {
+  assert.deepEqual(mediaTokens('media/apple.jpg'), ['media/apple.jpg'])
+})
+
+test('mediaTokens finds a path surrounded by prose', () => {
+  assert.deepEqual(mediaTokens('the fruit media/apple.jpg in profile'), ['media/apple.jpg'])
+})
+
+test('mediaTokens finds every path in the string, in order', () => {
+  assert.deepEqual(
+    mediaTokens('media/a.png then clips/b.mp4 then sound/c.mp3'),
+    ['media/a.png', 'clips/b.mp4', 'sound/c.mp3'],
+  )
+})
+
+test('mediaTokens ignores tokens that are not media', () => {
+  assert.deepEqual(mediaTokens('see notes.txt and archive.zip'), [])
+})
+
+test('mediaTokens returns empty for prose, empty and nullish input', () => {
+  assert.deepEqual(mediaTokens('just some prose'), [])
+  assert.deepEqual(mediaTokens(''), [])
+  assert.deepEqual(mediaTokens(null), [])
+  assert.deepEqual(mediaTokens(undefined), [])
+})
+
+test('stripMediaTokens removes a path from the middle without doubling the space', () => {
+  assert.equal(stripMediaTokens('the fruit media/apple.jpg in profile'), 'the fruit in profile')
+})
+
+test('stripMediaTokens leaves no leading or trailing space', () => {
+  assert.equal(stripMediaTokens('media/apple.jpg is a fruit'), 'is a fruit')
+  assert.equal(stripMediaTokens('a fruit media/apple.jpg'), 'a fruit')
+})
+
+test('stripMediaTokens empties a string that is only a path', () => {
+  assert.equal(stripMediaTokens('media/apple.jpg'), '')
+  assert.equal(stripMediaTokens('  clips/b.mp4  '), '')
+})
+
+test('stripMediaTokens removes every path', () => {
+  assert.equal(stripMediaTokens('x media/a.png y clips/b.mp4 z'), 'x y z')
+})
+
+// The common card has no media at all. Reformatting its whitespace — collapsing
+// the spacing inside a formula, say — would be a visible change to text this
+// function has no business touching.
+test('stripMediaTokens returns text with no media byte-for-byte unchanged', () => {
+  assert.equal(stripMediaTokens('a  double  spaced  line '), 'a  double  spaced  line ')
+  assert.equal(stripMediaTokens('\\( E = mc^2 \\)'), '\\( E = mc^2 \\)')
+})
+
+test('stripMediaTokens handles empty and nullish input', () => {
+  assert.equal(stripMediaTokens(''), '')
+  assert.equal(stripMediaTokens(null), '')
+  assert.equal(stripMediaTokens(undefined), '')
 })

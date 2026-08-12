@@ -50,3 +50,28 @@ function extensionOf(path) {
   if (dot < 0 || dot === s.length - 1) return ''
   return s.slice(dot + 1).toLowerCase()
 }
+
+/**
+ * The whitespace-delimited tokens of `text` that are media paths.
+ *
+ * Lived in NodeCard until the Recall panel needed it too. In a component it had
+ * no tests at all — this repo runs `node --test` over this directory only.
+ */
+export function mediaTokens(text) {
+  return String(text ?? '').split(/\s+/).filter((t) => mediaKind(t))
+}
+
+/**
+ * `text` with its media paths removed, for surfaces that show the media in the
+ * path's place rather than beside it.
+ *
+ * Text containing no media is returned untouched rather than re-joined: almost
+ * every card is that case, and silently normalising its whitespace would edit
+ * strings this function was not asked to change.
+ */
+export function stripMediaTokens(text) {
+  const s = String(text ?? '')
+  const parts = s.split(/\s+/)
+  if (!parts.some((t) => mediaKind(t))) return s
+  return parts.filter((t) => t && !mediaKind(t)).join(' ')
+}
