@@ -30,18 +30,30 @@ appearance changed.
 - The scratch notes file is `node-filter-check.n4l` **in that copy only**. Per
   the controller's instruction it was never created in the user's real
   collection, so there is nothing there to have cleaned up — confirmed by `ls`:
-  the real collection has no such file and no file in it was modified today.
+  the real collection has no such file and no `.n4l` file in it was written
+  today. (`learning.db`, `sst_data/*` and `bleve/*` do carry today's mtimes,
+  from unrelated activity — this run wrote nothing into the real collection,
+  but the collection directory as a whole was not untouched today.)
 - Its chapter/marker shape was copied from the collection's own `test3.n4l`
   (`- <chapter>`, then `# @id <shortid>` / `# @card` lines above the node) and,
   for the sequence block, from `Mary.n4l`
   (`+:: _sequence_ , … ::` … `-:: _sequence_ ::`).
 - **Recall (Ctrl+Shift+R), Study and Build Graph (Ctrl+G) were deliberately
   never opened.** All three call `learning.Sync`, which runs
-  `InjectMissingIDs`/`InjectMissingExtractIDs` and would have written an
-  `# @id` onto the deliberately id-less card (F5) and onto every prose node,
-  destroying the very distinctions under test. The scratch file was checked on
-  disk after the run and is byte-identical to what was written: F5 still has no
-  `# @id`.
+  `InjectMissingIDs`/`InjectMissingExtractIDs`. `InjectMissingIDs` skips any
+  node with `StudyMeta == nil` (`internal/content/writeback.go:176-178`), so it
+  would have written an `# @id` onto the deliberately id-less card (F5) only.
+  `InjectMissingExtractIDs` skips anything study-marked, anything that already
+  has an ID, and anything without a `(from)` arrow
+  (`internal/content/promote.go:113-120`), so it targets only an id-less node
+  carrying a `(from)` arrow — none of which exists in this scratch file (F7 is
+  the only `(from)`-carrying node, and it already has `# @id filt0004`), so it
+  would have written nothing here. Neither function touches ordinary prose —
+  running either would not have destroyed the distinctions under test for the
+  plain-prose nodes, but `InjectMissingIDs` would still have collapsed F5's
+  "id-less card" state, which is why they stayed unopened. The scratch file was
+  checked on disk after the run and is byte-identical to what was written: F5
+  still has no `# @id`.
 - The app was driven with synthetic X11 input (XTEST) on `DISPLAY=:0` and each
   state was captured by grabbing the app window with `XGetImage`. Root-window
   capture on this WSLg display returns black, so every screenshot is a grab of
