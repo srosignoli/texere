@@ -116,3 +116,17 @@ test('each filter entry applies its own predicate', () => {
   assert.equal(match('cards')(card), true)
   assert.equal(match('cards')(extract), false)
 })
+
+// NODE_FILTERS is frozen (array and each entry) so the one-table-drives-both
+// invariant is enforced, not just intended. This file is loaded as an ES
+// module (package.json "type": "module"), which is always strict mode, so
+// both a push and a field reassignment throw TypeError rather than silently
+// no-oping.
+test('NODE_FILTERS is frozen: push and entry mutation both throw and leave it unchanged', () => {
+  const before = NODE_FILTERS.map((f) => ({ id: f.id, label: f.label }))
+
+  assert.throws(() => NODE_FILTERS.push({ id: 'bogus', label: 'Bogus', match: () => true }), TypeError)
+  assert.throws(() => { NODE_FILTERS[0].label = 'Mutated' }, TypeError)
+
+  assert.deepEqual(NODE_FILTERS.map((f) => ({ id: f.id, label: f.label })), before)
+})

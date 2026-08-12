@@ -129,7 +129,7 @@
   <!-- Quick filter bar -->
   <div class="quick-filter-bar">
     {#each NODE_FILTERS as f (f.id)}
-      <button class="qf-btn" class:active={quickFilter === f.id} on:click={() => (quickFilter = f.id)}>{f.label}</button>
+      <button class="qf-btn" class:active={quickFilter === f.id} aria-pressed={quickFilter === f.id} on:click={() => (quickFilter = f.id)}>{f.label}</button>
     {/each}
   </div>
 

@@ -52,11 +52,17 @@ export function hasDetail(node) {
   return hasArrows(node) || !!node?.StudyMeta
 }
 
-/** The filter bar, in display order. One table drives both buttons and filtering. */
-export const NODE_FILTERS = [
-  { id: 'all',      label: 'All',      match: () => true },
-  { id: 'text',     label: 'Text',     match: isText },
-  { id: 'linked',   label: 'Linked',   match: isLinked },
-  { id: 'extracts', label: 'Extracts', match: isExtract },
-  { id: 'cards',    label: 'Cards',    match: isCard },
-]
+/**
+ * The filter bar, in display order. One table drives both buttons and
+ * filtering — frozen (array and each entry) so that invariant is enforced,
+ * not just intended: a consumer that tries to push, reorder, or reassign a
+ * field silently no-ops (or throws under strict-mode ESM) instead of the bar
+ * quietly drifting from the filtering logic.
+ */
+export const NODE_FILTERS = Object.freeze([
+  Object.freeze({ id: 'all',      label: 'All',      match: () => true }),
+  Object.freeze({ id: 'text',     label: 'Text',     match: isText }),
+  Object.freeze({ id: 'linked',   label: 'Linked',   match: isLinked }),
+  Object.freeze({ id: 'extracts', label: 'Extracts', match: isExtract }),
+  Object.freeze({ id: 'cards',    label: 'Cards',    match: isCard }),
+])
