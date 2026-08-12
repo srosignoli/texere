@@ -73,5 +73,9 @@ export function stripMediaTokens(text) {
   const s = String(text ?? '')
   const parts = s.split(/\s+/)
   if (!parts.some((t) => mediaKind(t))) return s
+  // `t &&` drops the '' that split(/\s+/) produces from leading/trailing
+  // whitespace, so a stray '' doesn't survive the join as a phantom space.
+  // mediaTokens needs no such guard: mediaKind('') is already null, so the
+  // mediaKind(t) half of this filter excludes '' on its own there.
   return parts.filter((t) => t && !mediaKind(t)).join(' ')
 }

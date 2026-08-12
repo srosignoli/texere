@@ -134,3 +134,35 @@ test('stripMediaTokens handles empty and nullish input', () => {
   assert.equal(stripMediaTokens(null), '')
   assert.equal(stripMediaTokens(undefined), '')
 })
+
+// stripMediaTokens removes EVERY occurrence of a repeated path. If mediaTokens
+// were ever deduped (e.g. with a Set), a card naming the same image twice would
+// still have both occurrences stripped from the text but only one <InlineMedia>
+// rendered — the second occurrence would just vanish instead of showing a
+// picture. This pins the duplicate-keeping contract mediaTokens promises.
+test('mediaTokens keeps duplicate occurrences of the same path', () => {
+  assert.deepEqual(mediaTokens('a/x.png and a/x.png'), ['a/x.png', 'a/x.png'])
+})
+
+// The feature's real invariant: whatever mediaTokens reports as media is
+// exactly what stripMediaTokens has already removed from its output. If the
+// two ever drifted — say stripMediaTokens stopped after the first match while
+// mediaTokens kept finding the rest — a leftover path would sit in the
+// "stripped" text right next to the InlineMedia already rendered for it,
+// showing the path twice over (once as text, once as a picture).
+test('stripMediaTokens leaves nothing that mediaTokens still reports as media', () => {
+  const samples = [
+    'the fruit media/apple.jpg in profile',
+    'media/a.png then clips/b.mp4 then sound/c.mp3',
+    'a/x.png and a/x.png',
+    'just some prose',
+    'media/apple.jpg',
+  ]
+  for (const s of samples) {
+    const tokens = new Set(mediaTokens(s))
+    const remaining = stripMediaTokens(s).split(/\s+/)
+    for (const word of remaining) {
+      assert.ok(!tokens.has(word), `${JSON.stringify(word)} left in stripMediaTokens(${JSON.stringify(s)}) but mediaTokens still reports it`)
+    }
+  }
+})
