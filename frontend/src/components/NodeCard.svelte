@@ -1,7 +1,7 @@
 <script>
   import InlineMedia from './InlineMedia.svelte'
   import MathText from './MathText.svelte'
-  import { mediaKind } from '../lib/n4l-media.js'
+  import { mediaTokens } from '../lib/n4l-media.js'
 
   export let node
   export let arrowDefs = []
@@ -11,13 +11,6 @@
 
   // ALL CAPS reminder: text is all uppercase + length ≥ 3
   $: isReminder = /^[A-Z][A-Z0-9 _,;:.!?'"()[\]-]{2,}$/.test((node.Text ?? '').trim())
-
-  // Media referenced inside the node's own text, as opposed to as an arrow
-  // target. mediaKind decides, so this view and the notes editor agree on the
-  // extensions — the old local regexes knew nothing about video.
-  function mediaTokens(text) {
-    return (text ?? '').split(/\s+/).filter((t) => mediaKind(t))
-  }
 </script>
 
 <div class="node-card" class:reminder={isReminder} class:sequence-node={node.IsSequence}>
