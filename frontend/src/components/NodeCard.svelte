@@ -1,5 +1,6 @@
 <script>
   import InlineMedia from './InlineMedia.svelte'
+  import MathText from './MathText.svelte'
   import { mediaKind } from '../lib/n4l-media.js'
 
   export let node
@@ -20,7 +21,7 @@
 </script>
 
 <div class="node-card" class:reminder={isReminder} class:sequence-node={node.IsSequence}>
-  <p class="node-text">{node.Text}</p>
+  <p class="node-text"><MathText text={node.Text} /></p>
 
   <!-- Media named in the node's own text -->
   {#each mediaTokens(node.Text) as token}
@@ -33,19 +34,19 @@
       {#each node.Arrows ?? [] as arrow}
         <div class="arrow-entry">
           <dt class="arrow-dt">{arrowDefMap[arrow.Code] ?? arrow.Code}</dt>
-          <dd class="arrow-dd">{arrow.Target}<InlineMedia path={arrow.Target} /></dd>
+          <dd class="arrow-dd"><MathText text={arrow.Target} /><InlineMedia path={arrow.Target} /></dd>
         </div>
       {/each}
       {#each node.Dittos ?? [] as ditto}
         {#if ditto.Text}
           <div class="arrow-entry ditto">
-            <dd class="arrow-dd ditto-text">{ditto.Text}</dd>
+            <dd class="arrow-dd ditto-text"><MathText text={ditto.Text} /></dd>
           </div>
         {/if}
         {#each ditto.Arrows ?? [] as arrow}
           <div class="arrow-entry ditto">
             <dt class="arrow-dt">{arrowDefMap[arrow.Code] ?? arrow.Code}</dt>
-            <dd class="arrow-dd">{arrow.Target}<InlineMedia path={arrow.Target} /></dd>
+            <dd class="arrow-dd"><MathText text={arrow.Target} /><InlineMedia path={arrow.Target} /></dd>
           </div>
         {/each}
       {/each}
