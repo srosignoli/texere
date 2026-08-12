@@ -2,9 +2,9 @@
 
 **Design:** `2026-08-12-recall-media-math-design.md`
 **Build:** `make build && ./build/bin/texere` (built at commit `5436949`)
-**Run date:** 2026-08-12 — all eight cases below were **executed**, not just
+**Run date:** 2026-08-12 — every case below was **executed**, not just
 described. Each carries the result actually observed and the screenshot it was
-read from.
+read from, and TC-9 states exactly how much of the second surface was covered.
 
 **This document is the verification gate for everything visual in this
 feature.** This repository has **no Svelte component test harness**, so
@@ -33,7 +33,7 @@ screen, and whether the answer stays hidden until it is asked for.
   card-bearing line).
 - The two media paths are real files in the collection's `media/` directory
   (`adbe92ae…f4b.jpg`, a photo; `18f0a984…527.png`, a line drawing), plus one
-  deliberately absent path for case 8.
+  deliberately absent path for TC-8.
 - Cards were materialised by the app itself: opening **Recall** (Ctrl+Shift+R)
   runs `SyncStudyItems`, which discovered all eight items. To make the eight
   appear in a known order ahead of the collection's twelve pre-existing items,
@@ -44,7 +44,9 @@ screen, and whether the answer stays hidden until it is asked for.
   as an image. Root-window capture on this WSLg display returns black, so every
   screenshot is a grab of the window itself.
 
-The scratch file's card-bearing lines:
+The scratch file's card-bearing lines, verbatim as written and as they appear
+in the screenshots — note that the brief's en dash in "mass–energy" was typed
+as an ASCII hyphen, so that is what the card shows:
 
 ```
 \( E = mc^2 \) >> mass-energy equivalence
@@ -59,26 +61,33 @@ a picture that is not there >> media/definitely-missing-file.png
 
 ## Result summary
 
-**8 of 8 cases pass**, on **both** surfaces that host `RecallCard`: the
-full-screen Recall overlay (`StudyMode.svelte`, Ctrl+Shift+R) and the Study
-surface's **Recall** tab (`StudySurface.svelte`, Ctrl+Shift+S). No failures, no
-bugs found. Screenshot paths below are relative to
-`~/.claude/jobs/ad91db08/tmp/`.
+**8 of 8 cases pass on the full-screen Recall overlay** (`StudyMode.svelte`,
+Ctrl+Shift+R), which is where TC-1 to TC-8 below were run. No failures, no bugs
+found. Screenshot paths below are relative to `~/.claude/jobs/ad91db08/tmp/`.
 
-| # | Case | Result |
-|---|---|---|
-| 1 | `E = mc^2` front typeset | **PASS** |
-| 2 | Bohr radius back typeset, hidden until reveal | **PASS** |
-| 3 | fruit/picture → image, no path text | **PASS** |
-| 4 | formula → image, back is the image alone | **PASS** |
-| 5 | cloze containing a formula | **PASS** |
-| 6 | unclosed `\(` renders as prose | **PASS** |
-| 7 | ordinary text-only card unchanged | **PASS** |
-| 8 | missing media file | **PASS** |
-| — | answer media not fetched before reveal | **PASS** (see below) |
-| — | keyboard path (Space, `1`–`4`, reveal reset) | **PASS** |
+**Second surface: spot-checked, 2 of 8.** The Study surface's **Recall** tab
+(`StudySurface.svelte`, Ctrl+Shift+S → Recall) was checked on two cases only —
+the image card (TC-3) and the math card (TC-1) — plus the pre-reveal fetch
+property. See TC-9. That the other six behave identically there is an
+**inference**, not an observation: both surfaces mount the same
+`RecallCard.svelte` with the same `card` shape, so nothing case-specific
+differs between them. Reasonable, but not verified.
 
-## 1. `E = mc^2` on the front — typeset, not source
+| # | Case | Result | Surface |
+|---|---|---|---|
+| TC-1 | `E = mc^2` front typeset | **PASS** | overlay + Recall tab |
+| TC-2 | Bohr radius back typeset, hidden until reveal | **PASS** | overlay only |
+| TC-3 | picture answer → image, no path text | **PASS** | overlay + Recall tab |
+| TC-4 | formula → image, back is the image alone | **PASS** | overlay only |
+| TC-5 | cloze containing a formula | **PASS** | overlay only |
+| TC-6 | unclosed `\(` renders as prose | **PASS** | overlay only |
+| TC-7 | ordinary text-only card unchanged | **PASS** | overlay only |
+| TC-8 | missing media file | **PASS** | overlay only |
+| TC-9 | second surface spot check | **PASS** (2 of 8 cases) | Recall tab |
+| — | answer media not fetched before reveal | **PASS** (see below) | both |
+| — | keyboard path (Space, `1`–`4`, reveal reset) | **PASS** | overlay |
+
+## TC-1 `E = mc^2` on the front — typeset, not source
 
 Front: `\( E = mc^2 \)`.
 
@@ -87,7 +96,7 @@ superscript; no `\(`, `\)` or backslash anywhere on the card.
 `shot-03-card1-front.png`. Revealing shows the plain-text back
 "mass-energy equivalence" below the rule (`shot-04-card1-back.png`).
 
-## 2. Bohr radius — the formula is on the back, and only after Show answer
+## TC-2 Bohr radius — the formula is on the back, and only after Show answer
 
 Back: `\( a_0 = \frac{4\pi\varepsilon_0\hbar^2}{m_e e^2} \)`.
 
@@ -97,7 +106,7 @@ formula, no source, nothing below the rule, and no rule at all
 fraction: `4πε₀ℏ²` over `m_e e²` with the bar between them
 (`shot-06-card2-back.png`).
 
-## 3. Picture answer — the image, and no path text
+## TC-3 Picture answer — the image, and no path text
 
 `what does this picture show >> media/adbe92ae…f4b.jpg`.
 
@@ -107,7 +116,7 @@ reveal the photo renders beneath the rule at its natural aspect ratio, and the
 (`shot-08-card3-back.png`) — `stripMediaTokens` removed the token and the media
 took its place, rather than being appended beside it.
 
-## 4. Formula front, image answer — the back is the image alone
+## TC-4 Formula front, image answer — the back is the image alone
 
 `\( \nabla \cdot \mathbf{B} = 0 \) >> media/18f0a984…527.png`.
 
@@ -117,7 +126,7 @@ and no path (`shot-10-card4-back.png`). This card also arrived **unrevealed**
 immediately after grading a card whose media had just been shown — the reveal
 state resets per card.
 
-## 5. Cloze containing a formula
+## TC-5 Cloze containing a formula
 
 `the Gauss law for magnetism is {{ \( \nabla \cdot \mathbf{B} = 0 \) }}`.
 
@@ -126,7 +135,7 @@ gone and the blanked span is the `[…]` marker (`shot-11-card5-front.png`).
 Back: "the Gauss law for magnetism is ∇ · **B** = 0", the formula typeset
 inline in the middle of the sentence, no `{{`/`}}` (`shot-12-card5-back.png`).
 
-## 6. Unclosed `\(` — literal prose, not a broken card
+## TC-6 Unclosed `\(` — literal prose, not a broken card
 
 `an unclosed formula \( x + 1 >> renders as prose`.
 
@@ -135,7 +144,7 @@ backslash and paren included, in the ordinary card font. The card is not blank,
 the rule and Show answer button are in place, and the back reveals normally as
 "renders as prose" (`shot-13-card6-front.png`, `shot-14-card6-back.png`).
 
-## 7. Ordinary text-only card — unchanged
+## TC-7 Ordinary text-only card — unchanged
 
 `what is the capital of Italy >> Rome`.
 
@@ -145,7 +154,7 @@ button row as every other card in this run (`shot-15-card7-front.png`,
 `shot-16-card7-back.png`). Text with neither math nor media is passed through
 untouched.
 
-## 8. Missing media file
+## TC-8 Missing media file
 
 `a picture that is not there >> media/definitely-missing-file.png`.
 
@@ -161,7 +170,28 @@ Worth knowing, not a bug: the `<img>` keeps the path in its `alt` attribute, so
 a very wide window may render the alt text inside the placeholder box. At the
 tested size the box shows only the broken-image glyph.
 
-## The answer's media is not fetched before the card is revealed
+## TC-9 The second surface — spot check only
+
+`RecallCard.svelte` is mounted by two parents: the full-screen overlay
+(`StudyMode.svelte`) where TC-1 to TC-8 were run, and the Study surface's
+**Recall** tab (`StudySurface.svelte`). An earlier feature in this project
+shipped into the wrong one of a pair like this, so the second surface was
+opened and driven rather than assumed — but only on **two** of the eight cases.
+
+Checked there: the image card (TC-3) — front prose, back the photo with no path
+text (`shot-21-surface-recall-front.png`, `shot-22-surface-recall-back.png`) —
+and the math card (TC-1) — front typeset *E = mc²*, back plain text
+(`shot-23-surface-math.png`). Both identical to the overlay, including the
+reveal-on-Space behaviour and the grade button row. The tab's own badge count
+decremented correctly after each grade (`shot-20-studysurface.png`).
+
+**Not checked there:** TC-2, TC-4, TC-5, TC-6, TC-7, TC-8. Both parents pass the
+same `card` object into the same component and neither wraps or overrides its
+markup, so those six are expected to render identically — an inference from the
+code, not something this run observed. If you want full dual-surface coverage,
+re-run TC-2 and TC-4 to TC-8 from the Recall tab.
+
+## TC-10 The answer's media is not fetched before the card is revealed
 
 The property a screenshot cannot show. This build has **no webview inspector**
 — right-clicking inside the webview produces no context menu
@@ -186,15 +216,15 @@ the bytes:
    fresh 2020 atime: unchanged while the front showed, updated at reveal
    (`11:43:04`).
 
-Two different files, three separate reveals, on both surfaces — each read
-happened at the reveal and never before it. Confidence: high for "the bytes
+Two different files, three separate reveals — two on the overlay, the third on
+the Recall tab — each read happening at the reveal and never before it. Confidence: high for "the bytes
 were not read before reveal", which is what matters. It is indirect evidence
 about the DOM: it proves no fetch, and a fetch is the only thing an `<img>`
 inside `{#if revealed}` could do that would leak the answer. A hypothetical
 element carrying the answer *without* fetching would not be caught by this
 method; nothing in the markup can produce one.
 
-## Keyboard path
+## TC-11 Keyboard path
 
 **Result: PASS.** Space reveals; `1`–`4` grade and advance (`3` and `4` both
 exercised, plus a mouse click on `Good (3)`); every card that followed a grade
