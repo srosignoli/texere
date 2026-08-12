@@ -120,7 +120,12 @@
 
     <div class="separator" />
 
+    <button class="btn" on:click={handleSave} title="Save (Ctrl+S)">💾</button>
+    <button class="btn" on:click={handleUndo} title="Undo">↩</button>
     <button class="btn" on:click={handleSearch} title="Search (Ctrl+K / Cmd+K)">🔍</button>
+
+    <div class="separator" />
+
     <button
       class="btn"
       on:click={handleOpenExplorer}
@@ -132,11 +137,6 @@
 
     <button class="btn" on:click={handleOpenRead} title="Read & import sources — + Text / PDF / Web (Ctrl+Shift+E)">📖 Read</button>
     <button class="btn" on:click={handleOpenStudy} title="Study — Read · Process · Recall queue (Ctrl+Shift+S)">📚 Study</button>
-
-    <div class="separator" />
-
-    <button class="btn" on:click={handleUndo} title="Undo">↩</button>
-    <button class="btn" on:click={handleSave} title="Save (Ctrl+S)">💾</button>
   {/if}
 
   <div class="spacer" />
