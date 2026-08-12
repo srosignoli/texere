@@ -1,4 +1,8 @@
 <script>
+  import InlineMedia from './InlineMedia.svelte'
+  import MathText from './MathText.svelte'
+  import { mediaTokens, stripMediaTokens } from '../lib/n4l-media.js'
+
   export let card = null      // CardView | null
   export let onGrade = null   // (n:1..4) => void
 
@@ -26,8 +30,17 @@
 {:else}
   <div class="rc-center">
     <div class="rc-card">
-      <div class="rc-front">{card.front}</div>
-      {#if revealed}<hr /><div class="rc-back">{card.back}</div>{/if}
+      <div class="rc-front">
+        <MathText text={stripMediaTokens(card.front)} />
+        {#each mediaTokens(card.front) as token}<InlineMedia path={token} />{/each}
+      </div>
+      {#if revealed}
+        <hr />
+        <div class="rc-back">
+          <MathText text={stripMediaTokens(card.back)} />
+          {#each mediaTokens(card.back) as token}<InlineMedia path={token} />{/each}
+        </div>
+      {/if}
     </div>
     {#if !revealed}
       <button class="rc-btn" on:click={() => (revealed = true)}>Show answer (Space)</button>
@@ -47,6 +60,8 @@
   .rc-front { color: #e8eaf0; font-size: 16px; }
   .rc-back { color: #7ecfa0; font-size: 15px; }
   .rc-card hr { border: none; border-top: 1px solid #2a3a4a; margin: 16px 0; }
+  .rc-card :global(.inline-media),
+  .rc-card :global(.inline-audio) { margin: 6px auto; }
   .rc-btn { background: #1e3a5a; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px; padding: 8px 14px; cursor: pointer; font-size: 13px; }
   .rc-btn:hover { background: #244a72; }
   .rc-grades { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
