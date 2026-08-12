@@ -1,23 +1,17 @@
 <script>
   import { createEventDispatcher } from 'svelte'
   import { workbenchStore, filteredNodes } from '../stores/workbench.js'
+  import { hasDetail, NODE_FILTERS } from '../lib/node-filters.js'
 
   const dispatch = createEventDispatcher()
 
   // ── Local state ──────────────────────────────────────────────────────────────
   let sortAlpha = false
-  let quickFilter = 'all'           // 'all' | 'extracts' | 'structured'
+  let quickFilter = 'all'           // one of NODE_FILTERS[].id
   let expanded = new Set()          // Set<number> of expanded node.Line values
   let nodeListEl = null             // bind:this on the scroll container
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
-
-  function hasArrows(node) {
-    return (node.Arrows?.length > 0) ||
-           (node.Dittos?.some((d) => d.Arrows?.length > 0))
-  }
-  function isExtract(node)    { return !hasArrows(node) && !node.StudyMeta }
-  function isStructured(node) { return hasArrows(node) || !!node.StudyMeta }
 
   // Flatten all displayable ditto rows: each ditto contributes text (if any) + arrow (if any).
   // Rows from the root node's own Arrows are included first (no text, arrow only).
@@ -59,11 +53,10 @@
 
   $: selectedLine = $workbenchStore.selectedNodeLine
 
-  // Quick filter stacks on top of the context-filtered derived store
-  $: quickFiltered =
-      quickFilter === 'extracts'   ? $filteredNodes.filter(isExtract)
-    : quickFilter === 'structured' ? $filteredNodes.filter(isStructured)
-    :                                $filteredNodes
+  // Quick filter stacks on top of the context-filtered derived store. The
+  // table's 'all' entry matches everything, so there is no special case here.
+  $: activeFilter = NODE_FILTERS.find((f) => f.id === quickFilter) ?? NODE_FILTERS[0]
+  $: quickFiltered = $filteredNodes.filter(activeFilter.match)
 
   // A–Z sort
   $: displayNodes = sortAlpha
@@ -135,9 +128,9 @@
 
   <!-- Quick filter bar -->
   <div class="quick-filter-bar">
-    <button class="qf-btn" class:active={quickFilter === 'all'}        on:click={() => (quickFilter = 'all')}>All</button>
-    <button class="qf-btn" class:active={quickFilter === 'extracts'}   on:click={() => (quickFilter = 'extracts')}>Extracts</button>
-    <button class="qf-btn" class:active={quickFilter === 'structured'} on:click={() => (quickFilter = 'structured')}>Structured</button>
+    {#each NODE_FILTERS as f (f.id)}
+      <button class="qf-btn" class:active={quickFilter === f.id} on:click={() => (quickFilter = f.id)}>{f.label}</button>
+    {/each}
   </div>
 
   <!-- Node list -->
@@ -158,7 +151,7 @@
               <div class="timeline-stem" />
             </div>
             <div class="timeline-content">
-              {#if isStructured(node)}
+              {#if hasDetail(node)}
                 <div class="node-row">
                   <button class="chevron-btn"
                           on:click={() => toggleExpand(node.Line)}
@@ -206,7 +199,7 @@
             </div>
           </div>
 
-        {:else if isStructured(node)}
+        {:else if hasDetail(node)}
           <!-- ── B: Structured / collapsible ───────────────────────────────── -->
           <div class="node-row-wrap"
                data-line={node.Line}
@@ -334,6 +327,7 @@
   /* ── Quick filter bar ────────────────────────────────────────────────────── */
   .quick-filter-bar {
     display: flex;
+    flex-wrap: wrap;
     gap: 3px;
     padding: 3px 8px;
     border-bottom: 1px solid #2a3a4a;
