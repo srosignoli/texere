@@ -305,6 +305,34 @@ func (a *App) UpdateRecentArrows(codes []string) error {
 	return saveConfig(cfg)
 }
 
+// validThemes is the closed set SetTheme accepts. The value reaches the DOM as
+// a data-theme attribute, so an arbitrary string must never be storable.
+var validThemes = map[string]bool{"blue": true, "dark": true, "light": true}
+
+// GetTheme returns the persisted theme, defaulting to "blue" for a config that
+// has none — first run, or an upgrade from before this field existed.
+func (a *App) GetTheme() string {
+	cfg, err := loadConfig()
+	if err != nil || cfg.Theme == "" || !validThemes[cfg.Theme] {
+		return "blue"
+	}
+	return cfg.Theme
+}
+
+// SetTheme persists the theme. An unrecognised value is rejected and the stored
+// theme is left untouched.
+func (a *App) SetTheme(theme string) error {
+	if !validThemes[theme] {
+		return fmt.Errorf("unknown theme %q", theme)
+	}
+	cfg, err := loadConfig()
+	if err != nil {
+		cfg = &AppConfig{}
+	}
+	cfg.Theme = theme
+	return saveConfig(cfg)
+}
+
 // ---------------------------------------------------------------------------
 // GetInitialSummaries — returns summaries auto-loaded at startup
 // ---------------------------------------------------------------------------

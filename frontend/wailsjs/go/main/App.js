@@ -158,6 +158,10 @@ export function GetStudyStats() {
   return window['go']['main']['App']['GetStudyStats']();
 }
 
+export function GetTheme() {
+  return window['go']['main']['App']['GetTheme']();
+}
+
 export function GradeItem(arg1, arg2, arg3) {
   return window['go']['main']['App']['GradeItem'](arg1, arg2, arg3);
 }
@@ -316,6 +320,10 @@ export function SetQueryLLMProfile(arg1) {
 
 export function SetReadingProjLen(arg1, arg2) {
   return window['go']['main']['App']['SetReadingProjLen'](arg1, arg2);
+}
+
+export function SetTheme(arg1) {
+  return window['go']['main']['App']['SetTheme'](arg1);
 }
 
 export function SkillsDir() {

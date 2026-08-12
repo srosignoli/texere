@@ -29,6 +29,10 @@ type AppConfig struct {
 	// AppConfig rather than LLMConfig because LLMConfig is reused verbatim for
 	// STT, where this would be meaningless.
 	QueryLLMProfileID string `json:"queryLlmProfileId"`
+	// Theme is the selected appearance: "blue", "dark" or "light". Empty means
+	// blue — that is the first-run and the upgraded-config path, and the
+	// frontend's normalizeTheme resolves it the same way.
+	Theme string `json:"theme"`
 }
 
 // SaveFileResult is returned by the SaveFile Wails-bound method.
