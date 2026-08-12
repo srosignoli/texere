@@ -28,7 +28,7 @@ bench:
 	scripts/check-bench.sh bench.txt
 
 ## ci: run tests and benchmarks (used in CI pipelines)
-ci: test bench
+ci: test test-js bench
 
 ## lint: run golangci-lint over all Go source files
 lint:
