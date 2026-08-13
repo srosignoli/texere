@@ -132,6 +132,22 @@ html {
     --text-doc-dim: #9fb3c8;          /* secondary reading-content text, a step dimmer than --text-doc:
                                           extract preview text, chat assistant message */
 
+    /* Roles minted fixing Task 4's review — literals that were wrongly left
+       "thematic-deferred" for being single-use. The method has no such branch:
+       a thematic colour with no byte-identical role means the layer is
+       missing a role, not licence to defer. */
+    --surface-modal: #0e1622;         /* background of a floating modal/dialog (LLMSettings) */
+    --text-modal: #cdd6e2;            /* body text on a modal surface */
+    --text-tab-muted: #6b7a8a;        /* header/tab-bar button rest-state text inside a modal */
+    --border-row: #1b2735;            /* hairline divider between rows inside a modal list */
+    --text-notice: #b58a3a;           /* a muted brown-gold "no content"/notice marker, distinct from --warn */
+    --surface-chat: #0f1724;          /* root background of an embedded chat pane (LLMChatPane) */
+    --surface-pane: #1b2230;          /* root background of an embedded content pane (PdfSourcePane) */
+    --surface-highlight: #16243a;     /* fill of a highlighted/live action row (e.g. "chat in progress") */
+    --text-article: #d6dde6;          /* rendered-article body text (WebSourcePane) */
+    --border-faint: #1d2a3a;          /* a hairline divider fainter than --border-subtle */
+    --text-badge: #8aa7c0;            /* label text on a small status badge/marker chip */
+
     /* --- Explorer, themeable half (see the shared block below) ---------- */
     --explorer-label: #e8eaf0;
     --explorer-label-halo: #0e0f12;
@@ -246,6 +262,18 @@ html {
     --text-doc: #c5d0db;
     --text-doc-dim: #98adc4;
 
+    --surface-modal: #0d0e0e;
+    --text-modal: #c5d0de;
+    --text-tab-muted: #677685;
+    --border-row: #161819;
+    --text-notice: #af8538;
+    --surface-chat: #0e0f10;
+    --surface-pane: #1c1920;
+    --surface-highlight: #202124;
+    --text-article: #ced6e1;
+    --border-faint: #242529;
+    --text-badge: #7a9bb7;
+
     --explorer-label: #e8e8ea;
     --explorer-label-halo: #0a0a0c;
     --explorer-ground: #16171a;
@@ -352,6 +380,18 @@ html {
     --text-quiet: #3c5454;
     --text-doc: #232e39;
     --text-doc-dim: #35485c;
+
+    --surface-modal: #e8ebee;
+    --text-modal: #1f2835;
+    --text-tab-muted: #647281;
+    --border-row: #f6f8f8;
+    --text-notice: #715624;
+    --surface-chat: #e9ecf0;
+    --surface-pane: #d9dae4;
+    --surface-highlight: #eaeef5;
+    --text-article: #1f2834;
+    --border-faint: #d4d8e0;
+    --text-badge: #273949;
 
     --explorer-label: #14181f;
     --explorer-label-halo: #ffffff;
