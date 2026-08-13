@@ -152,37 +152,51 @@
 
 <style>
   .sb-root { width: 300px; flex: 0 0 auto; display: flex; flex-direction: column;
-    background: #131c29; border-right: 1px solid #2a3a4a; min-height: 0; }
+    background: var(--surface-study); border-right: 1px solid var(--border); min-height: 0; }
   .sb-rail { width: 22px; flex: 0 0 auto; display: flex; justify-content: center; padding-top: 8px;
-    background: #131c29; border-right: 1px solid #2a3a4a; }
+    background: var(--surface-study); border-right: 1px solid var(--border); }
   .sb-bar { display: flex; align-items: center; gap: 6px; padding: 8px 10px;
-    border-bottom: 1px solid #2a3a4a; background: #161f2e; }
-  .sb-title { color: #7dd3fc; font-weight: 600; flex: 1; font-size: 13px; }
-  .sb-btn { background: #1e3a5a; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px;
+    border-bottom: 1px solid var(--border); background: var(--surface-bar); }
+  .sb-title { color: var(--accent-text); font-weight: 600; flex: 1; font-size: 13px; }
+  .sb-btn { background: var(--accent); color: var(--text); border: 1px solid var(--border); border-radius: 6px;
     padding: 3px 7px; cursor: pointer; font-size: 11px; }
-  .sb-toggle { background: none; border: none; color: #8899aa; font-size: 15px; cursor: pointer; padding: 0 4px; }
-  .sb-search { margin: 8px 10px; background: #0b1220; border: 1px solid #2a3a4a; border-radius: 6px;
-    color: #e8eaf0; font-size: 12px; padding: 5px 8px; outline: none; }
-  .sb-search::placeholder { color: #5d7186; }
-  .sb-error { color: #ff8080; padding: 6px 10px; font-size: 12px; }
-  .sb-empty { color: #8aa; padding: 14px 10px; font-size: 13px; }
+  .sb-toggle { background: none; border: none; color: var(--text-muted); font-size: 15px; cursor: pointer; padding: 0 4px; }
+  .sb-search { margin: 8px 10px; background: var(--surface-sunken); border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text); font-size: 12px; padding: 5px 8px; outline: none; }
+  .sb-search::placeholder { color: var(--text-faint); }
+  .sb-error { color: var(--danger); padding: 6px 10px; font-size: 12px; }
+  .sb-empty { color: var(--text-quiet); padding: 14px 10px; font-size: 13px; }
   .sb-list { list-style: none; margin: 0; padding: 0; overflow: auto; flex: 1; min-height: 0; }
+  /* #1d2a3a: thematic, single-use — 1 unit off --border-subtle (#1c2a3a); a
+     genuinely distinct value under the no-tidying rule, not merged. */
   .sb-doc { border-bottom: 1px solid #1d2a3a; }
+  /* #16243a/#7dd3fc: coupled thematic pair, left literal as a unit. #7dd3fc
+     alone is byte-identical to --accent-text, but its background (#16243a) has
+     no matching token and is single-use with no reviewed Dark/Light pairing —
+     tokenizing the text alone while the background stays literal-forever would
+     risk exactly the light-on-light coupling bug this migration must avoid. */
   .sb-chatrow { display: block; width: 100%; text-align: left; background: #16243a;
-    border: none; border-bottom: 1px solid #2a3a4a; color: #7dd3fc; font-size: 12px;
+    border: none; border-bottom: 1px solid var(--border); color: #7dd3fc; font-size: 12px;
     padding: 6px 10px; cursor: pointer; }
   .sb-docrow { display: flex; align-items: center; gap: 6px; padding: 6px 10px; }
-  .sb-tri { background: none; border: none; color: #8899aa; cursor: pointer; font-size: 11px; padding: 0 2px; }
-  .sb-name { flex: 1; min-width: 0; background: none; border: none; color: #cdd6e0; font-size: 13px;
+  .sb-tri { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 11px; padding: 0 2px; }
+  .sb-name { flex: 1; min-width: 0; background: none; border: none; color: var(--text-doc); font-size: 13px;
     text-align: left; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .sb-name:hover { color: #7dd3fc; }
-  .sb-pct { color: #7ecfa0; font-size: 12px; }
+  .sb-name:hover { color: var(--accent-text); }
+  .sb-pct { color: var(--ok); font-size: 12px; }
   .sb-tag { font-size: 10px; border-radius: 3px; padding: 1px 5px; }
+  /* .sb-tag.due/.done/.llm: three semantic, coupled bg+fg status badges — due
+     (amber), done (green), llm (purple) — each kept as one literal unit even
+     where one half byte-matches a token (.done's #7ecfa0 == --ok), because
+     tokenizing only the text while the background stays a fixed literal would
+     break the pairing's contrast the moment a theme diverges from Blue. #e0b000
+     also drives StatsPanel's chart series and stat-value colour; #b9a3e3 the
+     same for its purple series — see StatsPanel for the semantic reasoning. */
   .sb-tag.due { background: #4a3a1a; color: #e0b000; }
   .sb-tag.done { background: #1a3a2a; color: #7ecfa0; }
   .sb-tag.llm { background: #2c2340; color: #b9a3e3; }
   .sb-extracts { list-style: none; margin: 0 0 4px; padding: 0 0 0 22px; }
-  .sb-extract { background: none; border: none; color: #9fb3c8; font-size: 12px; text-align: left;
+  .sb-extract { background: none; border: none; color: var(--text-doc-dim); font-size: 12px; text-align: left;
     cursor: pointer; padding: 3px 8px 3px 0; display: flex; align-items: center; gap: 6px; width: 100%; }
   /* min-width:0 is load-bearing: a flex item will not shrink below its content
      width without it, so the text would never ellipsise and would instead push
@@ -190,11 +204,15 @@
      missing when it was an inline span inside a truncating block. */
   .sb-extract-text { flex: 1 1 auto; min-width: 0;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .sb-extract:hover { color: #7dd3fc; }
+  .sb-extract:hover { color: var(--accent-text); }
   /* A promoted passage stays in the tree — it is still something you took from
      this document — but reads differently from one still awaiting processing.
-     flex:0 0 auto keeps it whole while the text beside it truncates. */
+     flex:0 0 auto keeps it whole while the text beside it truncates.
+     Coupled pair left literal: #8aa7c0 has no matching token and is single-use;
+     its background (#2a3a4a) byte-matches --border, but tokenizing only the
+     background while the paired text stays a fixed literal risks the same
+     coupling bug as .sb-chatrow above. */
   .sb-card { flex: 0 0 auto; font-size: 9px; border-radius: 3px; padding: 0 4px;
     background: #2a3a4a; color: #8aa7c0; }
-  .sb-noextracts { color: #5d7186; font-size: 11px; padding: 2px 0 4px; }
+  .sb-noextracts { color: var(--text-faint); font-size: 11px; padding: 2px 0 4px; }
 </style>
