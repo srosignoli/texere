@@ -119,6 +119,7 @@ html {
     --chapter-file-text: #7a9ab5;     /* ColumnChapters file-name label */
     --chapter-tree-line: #2e4a5a;     /* ColumnChapters monospace tree connector */
     --sequence-connector: #4b5563;    /* sequence-node connector line (ReadTab + NodeCard) */
+    --text-loc: #7da0c0;              /* monospace file-location text (LogPanel) */
 
     /* --- Explorer, themeable half (see the shared block below) ---------- */
     --explorer-label: #e8eaf0;
@@ -227,6 +228,7 @@ html {
     --chapter-file-text: #6a8dac;
     --chapter-tree-line: #27404d;
     --sequence-connector: #424a57;
+    --text-loc: #769bbc;
 
     --explorer-label: #e8e8ea;
     --explorer-label-halo: #0a0a0c;
@@ -328,6 +330,7 @@ html {
     --chapter-file-text: #4b6b87;
     --chapter-tree-line: #aec8d6;
     --sequence-connector: #a8b1bd;
+    --text-loc: #395975;
 
     --explorer-label: #14181f;
     --explorer-label-halo: #ffffff;

@@ -267,7 +267,7 @@
 
   .loc {
     flex-shrink: 0;
-    color: #7da0c0;
+    color: var(--text-loc);
     font-family: monospace;
     font-size: 0.74rem;
   }
