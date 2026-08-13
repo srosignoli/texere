@@ -167,16 +167,9 @@
   .sb-error { color: var(--danger); padding: 6px 10px; font-size: 12px; }
   .sb-empty { color: var(--text-quiet); padding: 14px 10px; font-size: 13px; }
   .sb-list { list-style: none; margin: 0; padding: 0; overflow: auto; flex: 1; min-height: 0; }
-  /* #1d2a3a: thematic, single-use — 1 unit off --border-subtle (#1c2a3a); a
-     genuinely distinct value under the no-tidying rule, not merged. */
-  .sb-doc { border-bottom: 1px solid #1d2a3a; }
-  /* #16243a/#7dd3fc: coupled thematic pair, left literal as a unit. #7dd3fc
-     alone is byte-identical to --accent-text, but its background (#16243a) has
-     no matching token and is single-use with no reviewed Dark/Light pairing —
-     tokenizing the text alone while the background stays literal-forever would
-     risk exactly the light-on-light coupling bug this migration must avoid. */
-  .sb-chatrow { display: block; width: 100%; text-align: left; background: #16243a;
-    border: none; border-bottom: 1px solid var(--border); color: #7dd3fc; font-size: 12px;
+  .sb-doc { border-bottom: 1px solid var(--border-faint); }
+  .sb-chatrow { display: block; width: 100%; text-align: left; background: var(--surface-highlight);
+    border: none; border-bottom: 1px solid var(--border); color: var(--accent-text); font-size: 12px;
     padding: 6px 10px; cursor: pointer; }
   .sb-docrow { display: flex; align-items: center; gap: 6px; padding: 6px 10px; }
   .sb-tri { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 11px; padding: 0 2px; }
@@ -207,12 +200,8 @@
   .sb-extract:hover { color: var(--accent-text); }
   /* A promoted passage stays in the tree — it is still something you took from
      this document — but reads differently from one still awaiting processing.
-     flex:0 0 auto keeps it whole while the text beside it truncates.
-     Coupled pair left literal: #8aa7c0 has no matching token and is single-use;
-     its background (#2a3a4a) byte-matches --border, but tokenizing only the
-     background while the paired text stays a fixed literal risks the same
-     coupling bug as .sb-chatrow above. */
+     flex:0 0 auto keeps it whole while the text beside it truncates. */
   .sb-card { flex: 0 0 auto; font-size: 9px; border-radius: 3px; padding: 0 4px;
-    background: #2a3a4a; color: #8aa7c0; }
+    background: var(--border); color: var(--text-badge); }
   .sb-noextracts { color: var(--text-faint); font-size: 11px; padding: 2px 0 4px; }
 </style>

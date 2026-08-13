@@ -96,9 +96,7 @@
 </div>
 
 <style>
-  /* #1b2230: thematic, single-use — close to but not byte-identical to
-     --surface (#1b2636); kept distinct under the no-tidying rule. */
-  .pdf-root { flex: 1; display: flex; flex-direction: column; min-width: 0; background: #1b2230; }
+  .pdf-root { flex: 1; display: flex; flex-direction: column; min-width: 0; background: var(--surface-pane); }
   .pdf-bar { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; justify-content: center; padding: 6px; border-bottom: 1px solid var(--border); }
   .pdf-nav { background: var(--accent); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 2px 10px; cursor: pointer; }
   .pdf-nav:disabled { opacity: .4; cursor: default; }

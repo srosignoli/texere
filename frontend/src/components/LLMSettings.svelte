@@ -170,24 +170,15 @@
 
 <style>
   .ov-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 40; }
-  /* #0e1622/#cdd6e2: coupled thematic pair, left literal — no matching
-     tokens, single-use, no reviewed Dark/Light pairing. The border alone
-     (byte-identical to --border) migrates independently: it's a hairline,
-     not a filled area sharing a legibility risk with the text. */
-  .ov-modal { position: fixed; top: 8%; left: 50%; transform: translateX(-50%); width: 560px; max-width: 92vw; max-height: 80vh; overflow: auto; z-index: 41; background: #0e1622; border: 1px solid var(--border); border-radius: 10px; color: #cdd6e2; }
+  .ov-modal { position: fixed; top: 8%; left: 50%; transform: translateX(-50%); width: 560px; max-width: 92vw; max-height: 80vh; overflow: auto; z-index: 41; background: var(--surface-modal); border: 1px solid var(--border); border-radius: 10px; color: var(--text-modal); }
   .ov-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--border-card); color: var(--accent-text); font-weight: 600; }
-  /* #6b7a8a: thematic, 2 uses (.ov-head button, .ov-tabs button rest-state)
-     but confined to this one file — below the cross-file recurrence bar the
-     rest of this pass used to justify minting a token. Left literal. */
-  .ov-head button { background: none; border: none; color: #6b7a8a; cursor: pointer; }
+  .ov-head button { background: none; border: none; color: var(--text-tab-muted); cursor: pointer; }
   .ov-tabs { display: flex; gap: 6px; padding: 8px 14px 0; }
-  .ov-tabs button { background: none; border: none; border-bottom: 2px solid transparent; color: #6b7a8a; cursor: pointer; padding: 4px 6px; font-size: 12px; }
+  .ov-tabs button { background: none; border: none; border-bottom: 2px solid transparent; color: var(--text-tab-muted); cursor: pointer; padding: 4px 6px; font-size: 12px; }
   .ov-tabs button.sel { color: var(--accent-text); border-bottom-color: var(--accent-text); }
   .ov-error { color: var(--danger); padding: 6px 14px; font-size: 12px; }
   .ov-list { list-style: none; margin: 0; padding: 8px 12px; }
-  /* #1b2735: thematic, single-use — close to but not byte-identical to
-     --surface (#1b2636); kept distinct under the no-tidying rule. */
-  .ov-list li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #1b2735; }
+  .ov-list li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border-row); }
   .ov-meta { display: flex; flex-direction: column; flex: 1; min-width: 0; }
   .ov-meta span { color: var(--accent-dim); font-size: 11px; }
   .ov-test { font-size: 11px; color: var(--accent-text-alt); }
@@ -217,9 +208,7 @@
   .skill-main { flex: 1; min-width: 0; }
   .skill-name { color: var(--text); font-size: 13px; }
   .skill-origin { color: var(--text-faint); font-size: 11px; margin-left: 6px; }
-  /* #b58a3a: thematic, single-use "(no content)" marker — a distinct muted
-     brown-gold, not byte-identical to --warn; kept literal. */
-  .skill-empty { color: #b58a3a; font-size: 11px; margin-left: 6px; }
+  .skill-empty { color: var(--text-notice); font-size: 11px; margin-left: 6px; }
   .skill-desc { color: var(--text-faint); font-size: 11px; margin-top: 2px; }
   .skills-path { display: flex; align-items: baseline; gap: 8px; margin-top: 2px; }
   .skills-path-label { color: var(--text-faint); font-size: 11px; }

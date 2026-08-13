@@ -173,11 +173,7 @@
 </div>
 
 <style>
-  /* #0f1724: thematic, single-use — distinct from --surface-study (#131c29,
-     the sibling root background shared by the other Study/Source full-panel
-     surfaces); not byte-identical, so kept its own value under the no-tidying
-     rule rather than folded in. */
-  .lc-root { position: absolute; inset: 0; display: flex; flex-direction: column; background: #0f1724; }
+  .lc-root { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--surface-chat); }
   .lc-bar { display: flex; align-items: center; gap: 8px; padding: 8px 10px;
     border-bottom: 1px solid var(--border); background: var(--surface-bar); }
   .lc-title { color: var(--accent-text); font-weight: 600; flex: 1; font-size: 13px; }

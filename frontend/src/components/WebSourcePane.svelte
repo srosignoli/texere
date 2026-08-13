@@ -126,10 +126,7 @@
   .web-bar { flex: 0 0 auto; padding: 6px 12px; border-bottom: 1px solid var(--border); }
   .web-open { background: var(--accent); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 3px 10px; cursor: pointer; font-size: 12px; }
   .web-err { color: var(--danger); padding: 6px 12px; font-size: 12px; }
-  /* #d6dde6: thematic, single-use rendered-article body text — close to but
-     not byte-identical to --text-doc (#cdd6e0); kept distinct under the
-     no-tidying rule. */
-  .web-article { flex: 1; overflow: auto; padding: 20px 28px; color: #d6dde6; line-height: 1.7; user-select: text; }
+  .web-article { flex: 1; overflow: auto; padding: 20px 28px; color: var(--text-article); line-height: 1.7; user-select: text; }
   .web-article :global(img) { max-width: 100%; height: auto; }
   .web-article :global(h1), .web-article :global(h2), .web-article :global(h3) { color: var(--text); }
   .web-article :global(a) { color: var(--accent-text); }
