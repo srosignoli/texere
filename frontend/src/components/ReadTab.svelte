@@ -95,7 +95,7 @@
     top: 0;
     bottom: 0;
     width: 2px;
-    background: #4b5563;
+    background: var(--sequence-connector);
     border-radius: 1px;
   }
 
@@ -110,7 +110,7 @@
     content: '';
     display: block;
     height: 8px;
-    border-left: 2px solid #4b5563;
+    border-left: 2px solid var(--sequence-connector);
     margin-left: -14px;
     margin-bottom: -8px;
   }

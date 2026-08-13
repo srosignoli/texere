@@ -63,7 +63,7 @@
   }
 
   .node-card.sequence-node {
-    border-left: 2px solid #4b5563;
+    border-left: 2px solid var(--sequence-connector);
   }
 
   .node-text {

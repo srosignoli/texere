@@ -160,7 +160,7 @@
   .file-name {
     font-size: 0.78rem;
     font-weight: 600;
-    color: #7a9ab5;
+    color: var(--chapter-file-text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -193,7 +193,7 @@
 
   .tree-line {
     font-size: 0.7rem;
-    color: #2e4a5a;
+    color: var(--chapter-tree-line);
     flex-shrink: 0;
     font-family: monospace;
     width: 12px;
