@@ -104,7 +104,7 @@
 <div class="tsp" bind:this={srcEl}>{#if error}<span class="tsp-err">{error}</span>{:else}{projection}{/if}</div>
 
 <style>
-  .tsp { flex: 1; overflow: auto; padding: 16px 20px; white-space: pre-wrap; color: #cdd6e0;
+  .tsp { flex: 1; overflow: auto; padding: 16px 20px; white-space: pre-wrap; color: var(--text-doc);
     font-size: 14px; line-height: 1.6; user-select: text; }
-  .tsp-err { color: #ff8080; }
+  .tsp-err { color: var(--danger); }
 </style>
