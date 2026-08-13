@@ -170,44 +170,59 @@
 
 <style>
   .ov-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 40; }
-  .ov-modal { position: fixed; top: 8%; left: 50%; transform: translateX(-50%); width: 560px; max-width: 92vw; max-height: 80vh; overflow: auto; z-index: 41; background: #0e1622; border: 1px solid #2a3a4a; border-radius: 10px; color: #cdd6e2; }
-  .ov-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid #26374a; color: #7dd3fc; font-weight: 600; }
+  /* #0e1622/#cdd6e2: coupled thematic pair, left literal — no matching
+     tokens, single-use, no reviewed Dark/Light pairing. The border alone
+     (byte-identical to --border) migrates independently: it's a hairline,
+     not a filled area sharing a legibility risk with the text. */
+  .ov-modal { position: fixed; top: 8%; left: 50%; transform: translateX(-50%); width: 560px; max-width: 92vw; max-height: 80vh; overflow: auto; z-index: 41; background: #0e1622; border: 1px solid var(--border); border-radius: 10px; color: #cdd6e2; }
+  .ov-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--border-card); color: var(--accent-text); font-weight: 600; }
+  /* #6b7a8a: thematic, 2 uses (.ov-head button, .ov-tabs button rest-state)
+     but confined to this one file — below the cross-file recurrence bar the
+     rest of this pass used to justify minting a token. Left literal. */
   .ov-head button { background: none; border: none; color: #6b7a8a; cursor: pointer; }
   .ov-tabs { display: flex; gap: 6px; padding: 8px 14px 0; }
   .ov-tabs button { background: none; border: none; border-bottom: 2px solid transparent; color: #6b7a8a; cursor: pointer; padding: 4px 6px; font-size: 12px; }
-  .ov-tabs button.sel { color: #7dd3fc; border-bottom-color: #7dd3fc; }
-  .ov-error { color: #ff8080; padding: 6px 14px; font-size: 12px; }
+  .ov-tabs button.sel { color: var(--accent-text); border-bottom-color: var(--accent-text); }
+  .ov-error { color: var(--danger); padding: 6px 14px; font-size: 12px; }
   .ov-list { list-style: none; margin: 0; padding: 8px 12px; }
+  /* #1b2735: thematic, single-use — close to but not byte-identical to
+     --surface (#1b2636); kept distinct under the no-tidying rule. */
   .ov-list li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #1b2735; }
   .ov-meta { display: flex; flex-direction: column; flex: 1; min-width: 0; }
-  .ov-meta span { color: #5a7a9a; font-size: 11px; }
-  .ov-test { font-size: 11px; color: #93c5fd; }
-  .ov-list button, .ov-presets button, .ov-actions button { background: #1e3a5a; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px; padding: 3px 9px; cursor: pointer; font-size: 12px; }
-  .ov-actions button.primary, .primary { background: #244a72; }
-  .ov-presets { display: flex; gap: 6px; align-items: center; padding: 10px 14px; border-top: 1px solid #26374a; flex-wrap: wrap; }
+  .ov-meta span { color: var(--accent-dim); font-size: 11px; }
+  .ov-test { font-size: 11px; color: var(--accent-text-alt); }
+  .ov-list button, .ov-presets button, .ov-actions button { background: var(--accent); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 3px 9px; cursor: pointer; font-size: 12px; }
+  .ov-actions button.primary, .primary { background: var(--accent-hover); }
+  .ov-presets { display: flex; gap: 6px; align-items: center; padding: 10px 14px; border-top: 1px solid var(--border-card); flex-wrap: wrap; }
   .ov-form { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; }
-  .ov-form label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: #93c5fd; }
-  .ov-form input, .ov-form select { background: #0b1220; border: 1px solid #2a3a4a; border-radius: 6px; color: #e8eaf0; padding: 5px 8px; font-size: 13px; }
-  /* appearance:none makes WebKitGTK render the select (and its popup) as a
-     CSS-styled control so the app's dark-blue background applies instead of the
-     UA grey; a data-URI chevron replaces the removed native arrow. */
+  .ov-form label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--accent-text-alt); }
+  .ov-form input, .ov-form select { background: var(--surface-sunken); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 5px 8px; font-size: 13px; }
+  /* Native <select> popup/chevron styling — left untouched per the task
+     brief: themed by color-scheme, not by this migration; the picker task
+     handles it. appearance:none makes WebKitGTK render the select (and its
+     popup) as a CSS-styled control so the app's dark-blue background applies
+     instead of the UA grey; a data-URI chevron (#cdd6e2, out of scope)
+     replaces the removed native arrow. */
   .ov-form select {
     -webkit-appearance: none; appearance: none; padding-right: 26px;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath fill='%23cdd6e2' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
     background-repeat: no-repeat; background-position: right 9px center;
   }
+  /* Native select popup option list — out of scope, see above. */
   .ov-form select option { background: #0b1220; color: #e8eaf0; }
   .ov-actions { flex-direction: row; display: flex; gap: 8px; }
   .skills { display: flex; flex-direction: column; gap: 8px; }
-  .hint { color: #5d7186; font-size: 12px; margin: 0 0 4px; }
-  .skill-row { display: flex; align-items: flex-start; gap: 8px; padding: 6px 8px; border: 1px solid #2a3a4a; border-radius: 6px; }
+  .hint { color: var(--text-faint); font-size: 12px; margin: 0 0 4px; }
+  .skill-row { display: flex; align-items: flex-start; gap: 8px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; }
   .skill-main { flex: 1; min-width: 0; }
-  .skill-name { color: #e8eaf0; font-size: 13px; }
-  .skill-origin { color: #5d7186; font-size: 11px; margin-left: 6px; }
+  .skill-name { color: var(--text); font-size: 13px; }
+  .skill-origin { color: var(--text-faint); font-size: 11px; margin-left: 6px; }
+  /* #b58a3a: thematic, single-use "(no content)" marker — a distinct muted
+     brown-gold, not byte-identical to --warn; kept literal. */
   .skill-empty { color: #b58a3a; font-size: 11px; margin-left: 6px; }
-  .skill-desc { color: #5d7186; font-size: 11px; margin-top: 2px; }
+  .skill-desc { color: var(--text-faint); font-size: 11px; margin-top: 2px; }
   .skills-path { display: flex; align-items: baseline; gap: 8px; margin-top: 2px; }
-  .skills-path-label { color: #5d7186; font-size: 11px; }
-  .skills-path-value { color: #93c5fd; font-size: 11px; font-family: ui-monospace, monospace; word-break: break-all; user-select: text; }
-  .reveal { align-self: flex-start; background: #14233a; color: #93c5fd; border: 1px solid #2a4a6a; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 12px; }
+  .skills-path-label { color: var(--text-faint); font-size: 11px; }
+  .skills-path-value { color: var(--accent-text-alt); font-size: 11px; font-family: ui-monospace, monospace; word-break: break-all; user-select: text; }
+  .reveal { align-self: flex-start; background: var(--control); color: var(--accent-text-alt); border: 1px solid var(--control-border); border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 12px; }
 </style>
