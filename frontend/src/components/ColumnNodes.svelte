@@ -345,8 +345,8 @@
     cursor: pointer;
     transition: color 0.1s, border-color 0.1s;
   }
-  .qf-btn:hover   { color: var(--accent-text-alt); border-color: #3b5a7a; }
-  .qf-btn.active  { border-color: var(--accent-primary); color: var(--accent-text-alt); background: #1a2d45; }
+  .qf-btn:hover   { color: var(--accent-text-alt); border-color: var(--control-border-hover); }
+  .qf-btn.active  { border-color: var(--accent-primary); color: var(--accent-text-alt); background: var(--control-active); }
 
   /* ── Node list scroll container ──────────────────────────────────────────── */
   .node-list {
@@ -366,7 +366,7 @@
     position: relative;
   }
   .node-row-wrap.active   { background: var(--accent); }
-  .node-row-wrap.cursor-at:not(.active) { background: #1e3550; }
+  .node-row-wrap.cursor-at:not(.active) { background: var(--row-cursor-bg); }
 
   /* ── Node row (chevron + label + hover actions) ───────────────────────────── */
   .node-row {
@@ -383,7 +383,7 @@
     padding: 0;
     background: none;
     border: none;
-    color: #4a6a8a;
+    color: var(--chevron-muted);
     font-size: 0.65rem;
     cursor: pointer;
     line-height: 1;
@@ -480,7 +480,7 @@
   .arrow-child.unregistered .arrow-code { color: var(--warn); }
 
   .arrow-sep {
-    color: #3a5a6a;
+    color: var(--arrow-sep);
     flex-shrink: 0;
   }
 
@@ -501,7 +501,7 @@
     position: relative;
   }
   .timeline-item.active   { background: var(--accent); }
-  .timeline-item.cursor-at:not(.active) { background: #1e3550; }
+  .timeline-item.cursor-at:not(.active) { background: var(--row-cursor-bg); }
 
   .timeline-left {
     display: flex;
@@ -514,7 +514,7 @@
 
   .seq-num {
     font-size: 0.65rem;
-    color: #3b82f6;
+    color: var(--seq-num);
     font-weight: 700;
     line-height: 1;
     white-space: nowrap;
@@ -523,7 +523,7 @@
   .timeline-stem {
     width: 2px;
     flex: 1;
-    background: #1e40af;
+    background: var(--seq-stem);
     margin-top: 2px;
     min-height: 8px;
   }

@@ -89,6 +89,37 @@ html {
     --surface-block: #14202c;         /* an example/callout block inside a help pane */
     --text-block: #c4d0dc;            /* body text inside that block */
 
+    /* Roles minted finishing the workbench-shell migration (Task 3, third
+       pass): the remaining thematic literals the earlier passes catalogued
+       but deferred. Each value is derived mechanically — hue/saturation of
+       the Blue literal held constant, Dark solved to the same contrast
+       ratio Blue has against its paired background/text, Light solved to
+       the same ratio against Light's (inverted-lightness) counterpart. */
+    --seq-num: #3b82f6;               /* sequence step-number text (OmniBar + ColumnNodes) */
+    --seq-stem: #1e40af;              /* sequence connector-stem fill, pairs with --seq-num */
+    --row-cursor-bg: #1e3550;         /* cursor-position row highlight, dimmer than --accent */
+    --control-active: #1a2d45;        /* active-state fill of a small toolbar control */
+    --chevron-muted: #4a6a8a;         /* collapse/expand chevron glyph */
+    --control-border-hover: #3b5a7a;  /* hover border of a small toolbar control */
+    --arrow-sep: #3a5a6a;             /* punctuation between an arrow code and its target */
+    --icon-graph-muted: #4a7a6a;      /* graph-mode icon accent (OmniBar) */
+    --text-arrow-hint: #6a9aaa;       /* arrow glyph in orbit/note result rows (OmniBar) */
+    --text-note-marker: #8aa8c9;      /* \notes group marker label (OmniBar) */
+    --text-listing-muted: #8a9aaa;    /* \context listing empty-hint / node-row text (OmniBar) */
+    --text-idx-muted: #5a7a8a;        /* result-row index number (OmniBar) */
+    --text-orbit-neighbor: #c0ccd8;   /* orbit-neighbor node text (OmniBar) */
+    --text-orbit-context: #7a8a70;    /* orbit-entry context label (OmniBar) */
+    --text-arrow-context: #6a7a7a;    /* arrow-context italic text (OmniBar) */
+    --text-sequence-muted: #6a7a8a;   /* sequence-context-muted label (OmniBar) */
+    --text-path-arrow: #6a8a9a;       /* \from \to path-chain arrow glyph (OmniBar) */
+    --text-note-arrow-target: #b0bac5; /* \notes arrow-target text (OmniBar) */
+    --help-body-text: #d8e0ea;        /* QueryHelpPanel body copy */
+    --help-lead-text: #aab8c6;        /* QueryHelpPanel lead paragraph */
+    --help-divider: #22303f;          /* QueryHelpPanel table/list hairline */
+    --chapter-file-text: #7a9ab5;     /* ColumnChapters file-name label */
+    --chapter-tree-line: #2e4a5a;     /* ColumnChapters monospace tree connector */
+    --sequence-connector: #4b5563;    /* sequence-node connector line (ReadTab + NodeCard) */
+
     /* --- Explorer, themeable half (see the shared block below) ---------- */
     --explorer-label: #e8eaf0;
     --explorer-label-halo: #0e0f12;
@@ -172,6 +203,31 @@ html {
     --surface-block: #191a1e;
     --text-block: #d0d1d4;
 
+    --seq-num: #2f7bf5;
+    --seq-stem: #1c3ba3;
+    --row-cursor-bg: #203956;
+    --control-active: #1a2d45;
+    --chevron-muted: #435f7c;
+    --control-border-hover: #365270;
+    --arrow-sep: #33505e;
+    --icon-graph-muted: #467364;
+    --text-arrow-hint: #6094a5;
+    --text-note-marker: #80a1c5;
+    --text-listing-muted: #8294a5;
+    --text-idx-muted: #557483;
+    --text-orbit-neighbor: #b5c4d2;
+    --text-orbit-context: #74846b;
+    --text-arrow-context: #647373;
+    --text-sequence-muted: #657483;
+    --text-path-arrow: #648493;
+    --text-note-arrow-target: #a7b2bf;
+    --help-body-text: #cdd8e4;
+    --help-lead-text: #a1b1c0;
+    --help-divider: #1d2936;
+    --chapter-file-text: #6a8dac;
+    --chapter-tree-line: #27404d;
+    --sequence-connector: #424a57;
+
     --explorer-label: #e8e8ea;
     --explorer-label-halo: #0a0a0c;
     --explorer-ground: #16171a;
@@ -247,6 +303,31 @@ html {
     --input-bg: #e8edf5;
     --surface-block: #e6eaf0;
     --text-block: #2b3341;
+
+    --seq-num: #2976f5;
+    --seq-stem: #b3c1f2;
+    --row-cursor-bg: #bfd2e7;
+    --control-active: #ffffff;
+    --chevron-muted: #7d9bb9;
+    --control-border-hover: #83a3c3;
+    --arrow-sep: #92b3c3;
+    --icon-graph-muted: #5f9d88;
+    --text-arrow-hint: #4b7684;
+    --text-note-marker: #3f6389;
+    --text-listing-muted: #5b6c7e;
+    --text-idx-muted: #6f90a1;
+    --text-orbit-neighbor: #374858;
+    --text-orbit-context: #728068;
+    --text-arrow-context: #7c8d8d;
+    --text-sequence-muted: #7b8b9a;
+    --text-path-arrow: #61808f;
+    --text-note-arrow-target: #475361;
+    --help-body-text: #2a3a4e;
+    --help-lead-text: #455666;
+    --help-divider: #ebf0f4;
+    --chapter-file-text: #4b6b87;
+    --chapter-tree-line: #aec8d6;
+    --sequence-connector: #a8b1bd;
 
     --explorer-label: #14181f;
     --explorer-label-halo: #ffffff;
