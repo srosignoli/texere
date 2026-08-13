@@ -1563,7 +1563,7 @@
   }
 
   .graph-icon {
-    color: #4a7a6a;
+    color: var(--icon-graph-muted);
   }
 
   .arrow-meta {
@@ -1577,7 +1577,7 @@
 
   .arrow-context {
     font-size: 0.7rem;
-    color: #6a7a7a;
+    color: var(--text-arrow-context);
     font-style: italic;
     flex-shrink: 0;
   }
@@ -1604,7 +1604,7 @@
     flex-shrink: 0;
     width: 22px;
     text-align: right;
-    color: #5a7a8a;
+    color: var(--text-idx-muted);
     font-size: 0.78rem;
     margin-right: 4px;
   }
@@ -1626,22 +1626,22 @@
   }
 
   .orbit-dash {
-    color: #4a7a6a;
+    color: var(--icon-graph-muted);
     flex-shrink: 0;
   }
 
   .orbit-arrow {
-    color: #6a9aaa;
+    color: var(--text-arrow-hint);
     font-style: italic;
     flex-shrink: 0;
   }
 
   .orbit-neighbor {
-    color: #c0ccd8;
+    color: var(--text-orbit-neighbor);
   }
 
   .orbit-ctx {
-    color: #7a8a70;
+    color: var(--text-orbit-context);
     font-size: 0.72rem;
   }
 
@@ -1653,14 +1653,14 @@
     padding: 2px 0 6px 28px;
     font-size: 0.78rem;
     font-style: italic;
-    color: #8a9aaa;
+    color: var(--text-listing-muted);
   }
 
   .listing-node-row {
     display: flex;
     gap: 6px;
     font-size: 0.78rem;
-    color: #8a9aaa;
+    color: var(--text-listing-muted);
     padding: 1px 14px 1px 42px;
   }
 
@@ -1668,7 +1668,7 @@
     flex-shrink: 0;
     width: 20px;
     text-align: right;
-    color: #5a7a8a;
+    color: var(--text-idx-muted);
   }
 
   .listing-node-text {
@@ -1755,7 +1755,7 @@
     letter-spacing: 0.02em;
   }
   .sequence-context-muted {
-    color: #6a7a8a;
+    color: var(--text-sequence-muted);
     font-style: italic;
     font-weight: 500;
   }
@@ -1786,7 +1786,7 @@
   }
   .sequence-step .step-num {
     font-size: 0.65rem;
-    color: #3b82f6;
+    color: var(--seq-num);
     font-weight: 700;
     line-height: 1;
     white-space: nowrap;
@@ -1794,7 +1794,7 @@
   .sequence-step .step-stem {
     width: 2px;
     flex: 1;
-    background: #1e40af;
+    background: var(--seq-stem);
     margin-top: 2px;
     min-height: 8px;
   }
@@ -1825,7 +1825,7 @@
     white-space: nowrap;
   }
   .path-chain .path-arrow {
-    color: #6a8a9a;
+    color: var(--text-path-arrow);
     font-style: italic;
     font-size: 0.72rem;
     white-space: nowrap;
@@ -1848,7 +1848,7 @@
   .note-group-marker {
     font-size: 0.72rem;
     font-weight: 600;
-    color: #8aa8c9;
+    color: var(--text-note-marker);
     letter-spacing: 0.02em;
   }
   .note-group-chapter {
@@ -1885,12 +1885,12 @@
     padding: 1px 14px 1px 32px;
   }
   .note-arrow {
-    color: #6a9aaa;
+    color: var(--text-arrow-hint);
     font-style: italic;
     flex-shrink: 0;
   }
   .note-arrow-target {
-    color: #b0bac5;
+    color: var(--text-note-arrow-target);
   }
 
   .notes-end-of-page {
