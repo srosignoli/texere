@@ -128,7 +128,7 @@
     height: 100%;
     width: 100%;
     background: #131c2a;
-    color: #c8d0dc;
+    color: var(--text-secondary);
     overflow: hidden;
   }
 
@@ -137,8 +137,8 @@
     align-items: center;
     gap: 8px;
     padding: 4px 10px;
-    background: #1a2535;
-    border-bottom: 1px solid #2a3a4a;
+    background: var(--surface-overlay);
+    border-bottom: 1px solid var(--border);
     flex-shrink: 0;
     font-size: 0.78rem;
   }
@@ -163,7 +163,7 @@
   .count-err { color: #d96a6a; }
   .count-warn { color: #d9b06a; }
   .count-info { color: #6a9aaa; }
-  .count-empty { color: #4a6a7a; font-style: italic; }
+  .count-empty { color: var(--text-hint); font-style: italic; }
 
   .filter-chips {
     display: flex;
@@ -171,7 +171,7 @@
   }
   .filter {
     background: transparent;
-    border: 1px solid #2a3a4a;
+    border: 1px solid var(--border);
     border-radius: 10px;
     color: #8aa0b0;
     padding: 1px 8px;
@@ -181,8 +181,8 @@
     transition: background 0.08s, color 0.08s, border-color 0.08s;
   }
   .filter:hover {
-    color: #c8d0dc;
-    border-color: #3a5a7a;
+    color: var(--text-secondary);
+    border-color: var(--accent-faint);
   }
   .filter.active {
     background: #1e3242;
@@ -208,7 +208,7 @@
     padding: 2px 6px;
     font-family: inherit;
   }
-  .action:hover { color: #e8eaf0; }
+  .action:hover { color: var(--text); }
   .action.close { font-size: 0.85rem; }
 
   .log-body {
@@ -219,7 +219,7 @@
 
   .log-empty {
     padding: 12px 14px;
-    color: #4a6a7a;
+    color: var(--text-hint);
     font-style: italic;
     font-size: 0.78rem;
   }
@@ -249,7 +249,7 @@
     -webkit-user-select: text;
   }
   .log-row:hover {
-    background: #1a2535;
+    background: var(--surface-overlay);
   }
   .log-row.sev-error { border-left-color: #d96a6a; }
   .log-row.sev-warning { border-left-color: #d9b06a; }
@@ -273,14 +273,14 @@
   }
   .msg {
     flex: 1;
-    color: #c8d0dc;
+    color: var(--text-secondary);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
   .src {
     flex-shrink: 0;
-    color: #4a6a7a;
+    color: var(--text-hint);
     font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 0.04em;

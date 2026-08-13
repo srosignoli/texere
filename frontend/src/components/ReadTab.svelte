@@ -64,7 +64,7 @@
     height: 100%;
     overflow-y: auto;
     padding: 12px 16px;
-    background: #161f2e;
+    background: var(--surface-bar);
   }
 
   .empty-hint {
@@ -72,7 +72,7 @@
     align-items: center;
     justify-content: center;
     height: 100%;
-    color: #4a5a6a;
+    color: var(--text-dim);
     font-size: 0.85rem;
   }
 
@@ -102,7 +102,7 @@
   /* Amber reminder override — applied via NodeCard .reminder class */
   :global(.node-card.reminder) {
     background: #fef3c7;
-    border-left: 3px solid #f59e0b;
+    border-left: 3px solid var(--warn);
   }
 
   /* Sequence connector between adjacent sequence-node cards */

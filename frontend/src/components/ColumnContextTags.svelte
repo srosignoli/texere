@@ -109,14 +109,14 @@
     display: flex;
     align-items: center;
     padding: 4px 8px;
-    border-bottom: 1px solid #2a3a4a;
+    border-bottom: 1px solid var(--border);
     flex-shrink: 0;
   }
 
   .col-title {
     font-size: 0.7rem;
     font-weight: 600;
-    color: #5a7a9a;
+    color: var(--accent-dim);
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
@@ -129,7 +129,7 @@
 
   .empty-hint {
     padding: 12px 8px;
-    color: #4a5a6a;
+    color: var(--text-dim);
     font-size: 0.8rem;
   }
 
@@ -145,10 +145,10 @@
     align-items: center;
     gap: 4px;
     padding: 4px 8px;
-    background: #1e2f40;
-    border: 1px solid #2a3a4a;
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
     border-radius: 12px;
-    color: #8899aa;
+    color: var(--text-muted);
     font-size: 0.78rem;
     cursor: pointer;
     text-align: left;
@@ -160,13 +160,13 @@
 
   .chip:hover {
     background: #253545;
-    color: #c8d0dc;
+    color: var(--text-secondary);
   }
 
   .chip.active {
-    background: #1e3a5a;
-    border-color: #2563eb;
-    color: #93c5fd;
+    background: var(--accent);
+    border-color: var(--accent-primary);
+    color: var(--accent-text-alt);
   }
 
   .chip.sequence {
@@ -185,7 +185,7 @@
 
   .chip.cursor-at:not(.active) {
     background: #1e3550;
-    border-color: #3a5a7a;
+    border-color: var(--accent-faint);
     color: #b0c4d8;
   }
 </style>

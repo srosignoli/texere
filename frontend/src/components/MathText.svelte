@@ -46,5 +46,5 @@
 {/each}
 
 <style>
-  .math-error { color: #ff8080; font-family: monospace; font-size: 0.9em; }
+  .math-error { color: var(--danger); font-family: monospace; font-size: 0.9em; }
 </style>

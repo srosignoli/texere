@@ -169,8 +169,8 @@
     top: 264px; /* below band-top (220px) + band-middle (44px) */
     left: 8px;
     z-index: 300;
-    background: #1a2535;
-    border: 1px solid #2a3a4a;
+    background: var(--surface-overlay);
+    border: 1px solid var(--border);
     border-radius: 6px;
     width: 280px;
     max-height: 420px;
@@ -184,16 +184,16 @@
     align-items: center;
     gap: 6px;
     padding: 6px 8px;
-    border-bottom: 1px solid #2a3a4a;
+    border-bottom: 1px solid var(--border);
     flex-shrink: 0;
   }
 
   .palette-filter {
     flex: 1;
     background: #0f1a27;
-    border: 1px solid #2a3a4a;
+    border: 1px solid var(--border);
     border-radius: 4px;
-    color: #e8eaf0;
+    color: var(--text);
     font-size: 0.82rem;
     font-family: inherit;
     padding: 4px 8px;
@@ -201,13 +201,13 @@
   }
 
   .palette-filter::placeholder {
-    color: #3a5a7a;
+    color: var(--accent-faint);
   }
 
   .palette-close {
     background: none;
     border: none;
-    color: #5a7a9a;
+    color: var(--accent-dim);
     cursor: pointer;
     font-size: 0.9rem;
     padding: 2px 6px;
@@ -215,7 +215,7 @@
   }
 
   .palette-close:hover {
-    color: #e8eaf0;
+    color: var(--text);
   }
 
   .palette-results {
@@ -228,7 +228,7 @@
     padding: 4px 10px 2px;
     font-size: 0.68rem;
     font-weight: 600;
-    color: #5a7a9a;
+    color: var(--accent-dim);
     text-transform: uppercase;
     letter-spacing: 0.06em;
   }
@@ -249,8 +249,8 @@
 
   .palette-item:hover,
   .palette-item.highlighted {
-    background: #1e2f40;
-    color: #e8eaf0;
+    background: var(--surface-raised);
+    color: var(--text);
   }
 
   .arrow-code {
@@ -260,7 +260,7 @@
   }
 
   .arrow-name {
-    color: #8899aa;
+    color: var(--text-muted);
     font-size: 0.78rem;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -269,7 +269,7 @@
 
   .palette-empty {
     padding: 8px 10px;
-    color: #4a5a6a;
+    color: var(--text-dim);
     font-size: 0.8rem;
   }
 </style>

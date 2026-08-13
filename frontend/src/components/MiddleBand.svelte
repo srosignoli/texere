@@ -169,8 +169,8 @@
   .btn {
     padding: 4px 10px;
     background: #263547;
-    color: #c8d0dc;
-    border: 1px solid #334455;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-strong);
     border-radius: 4px;
     cursor: pointer;
     font-size: 0.8rem;
@@ -180,7 +180,7 @@
 
   .btn:hover:not(:disabled) {
     background: #2e4060;
-    color: #e8eaf0;
+    color: var(--text);
   }
 
   .btn:disabled {
@@ -191,7 +191,7 @@
   .separator {
     width: 1px;
     height: 20px;
-    background: #2a3a4a;
+    background: var(--border);
     margin: 0 4px;
     flex-shrink: 0;
   }
@@ -202,7 +202,7 @@
 
   .reminder-badge {
     background: #78350f;
-    border-color: #f59e0b;
+    border-color: var(--warn);
     color: #fde68a;
     font-weight: 600;
   }

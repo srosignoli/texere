@@ -47,8 +47,11 @@ html {
 
     /* --- Text ---------------------------------------------------------- */
     --text: #e8eaf0;             /* body text */
+    --text-secondary: #c8d0dc;   /* a step dimmer than --text: hover labels, toolbar-button text */
     --text-muted: #8899aa;       /* secondary text, labels, counts */
     --text-faint: #5d7186;       /* placeholders, disabled, line numbers */
+    --text-hint: #4a6a7a;        /* italic helper/hint text — dimmer than --text-faint */
+    --text-dim: #4a5a6a;         /* empty-state and very-dim placeholder text — dimmer still */
 
     /* --- Accents ------------------------------------------------------- */
     --accent: #1e3a5a;           /* selected row / active chip background */
@@ -56,6 +59,9 @@ html {
     --accent-text: #7dd3fc;      /* actionable text and active icons */
     --accent-text-alt: #93c5fd;  /* the second accent hue, on chips/controls */
     --accent-dim: #5a7a9a;       /* muted accent: inactive icons, rules */
+    --accent-faint: #3a5a7a;     /* a step dimmer than --accent-dim: placeholder text, hover borders on chips */
+    --accent-primary: #2563eb;      /* saturated CTA/active-indicator blue: selected-item rails, primary buttons */
+    --accent-primary-hover: #1d4ed8; /* the same, hovered/pressed */
 
     /* --- Status (semantic; the hue means the same in every theme, but the
            value is tuned per theme so it stays legible on that surface) --- */
@@ -80,6 +86,13 @@ html {
      * at, e.g., a stacked layout collapsed onto one Y). */
     --explorer-extended-plane-tint: #2c2a40;
     --explorer-extended-plane-grid: #7a78a5;
+
+    /* Secondary/count text in the Explorer family of panels (MiniMap,
+     * GraphExplorer, ExplorerStats, ExplorerSidebar). Coincides with
+     * --explorer-plane-grid's Blue value by chance only — that token is
+     * for 3D grid lines, this one is flat 2D panel text, and they must
+     * stay independently editable. */
+    --explorer-text-muted: #6b7c95;
 }
 
 /* --- Dark: neutral near-black. ---------------------------------------------
@@ -105,14 +118,20 @@ html {
     --control-border: #34373d;
 
     --text: #e8e8ea;
+    --text-secondary: #ceced0;
     --text-muted: #9a9ba1;
     --text-faint: #6e7076;
+    --text-hint: #65676d;
+    --text-dim: #5f6066;
 
     --accent: #2a2d33;
     --accent-hover: #383c44;
     --accent-text: #7dd3fc;
     --accent-text-alt: #93c5fd;
     --accent-dim: #7c7f87;
+    --accent-faint: #5d5f65;
+    --accent-primary: #2563eb;
+    --accent-primary-hover: #3b82f6;
 
     --ok: #7ecfa0;
     --warn: #f59e0b;
@@ -125,6 +144,7 @@ html {
     --explorer-plane-tint: #202226;
     --explorer-extended-plane-tint: #2a2733;
     --explorer-extended-plane-grid: #8a86a0;
+    --explorer-text-muted: #7d7e82;
 }
 
 /* --- Light: white-to-grey with dark text. ----------------------------------
@@ -159,14 +179,20 @@ html {
     --control-border: #a3b3c9;
 
     --text: #14181f;
+    --text-secondary: #262e3b;
     --text-muted: #566072;
     --text-faint: #77808f;
+    --text-hint: #818a9a;
+    --text-dim: #8892a3;
 
     --accent: #dbeafe;
     --accent-hover: #c3dafd;
     --accent-text: #0369a1;
     --accent-text-alt: #1d4ed8;
     --accent-dim: #55708c;
+    --accent-faint: #6f93b7;
+    --accent-primary: #1d4ed8;
+    --accent-primary-hover: #1e40af;
 
     --ok: #0f7a43;
     --warn: #b45309;
@@ -179,6 +205,7 @@ html {
     --explorer-plane-tint: #e9ecf1;
     --explorer-extended-plane-tint: #e6e3f2;
     --explorer-extended-plane-grid: #6f6d99;
+    --explorer-text-muted: #6d7a91;
 }
 
 /* 2.5D Isometric Graph Explorer (feature 006) — shared semantic palette.

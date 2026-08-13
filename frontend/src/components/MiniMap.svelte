@@ -234,7 +234,7 @@
     white-space: nowrap;
   }
   .hover-count {
-    color: #6b7c95;
+    color: var(--explorer-text-muted);
     font-variant-numeric: tabular-nums;
   }
   .hover-tags {
@@ -286,12 +286,12 @@
     white-space: nowrap;
   }
   .row-count {
-    color: #6b7c95;
+    color: var(--explorer-text-muted);
     font-variant-numeric: tabular-nums;
     font-size: 10px;
   }
   .row.more {
-    color: #6b7c95;
+    color: var(--explorer-text-muted);
     font-style: italic;
     cursor: default;
   }

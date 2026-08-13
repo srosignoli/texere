@@ -131,7 +131,7 @@
      while the visual stays a thin line. */
   .splitter > .line {
     position: absolute;
-    background: #2a3a4a;
+    background: var(--border);
     transition: background 0.12s ease;
     pointer-events: none;
   }

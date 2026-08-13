@@ -104,14 +104,14 @@
     display: flex;
     align-items: center;
     padding: 4px 8px;
-    border-bottom: 1px solid #2a3a4a;
+    border-bottom: 1px solid var(--border);
     flex-shrink: 0;
   }
 
   .col-title {
     font-size: 0.7rem;
     font-weight: 600;
-    color: #5a7a9a;
+    color: var(--accent-dim);
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
@@ -124,7 +124,7 @@
 
   .empty-hint {
     padding: 12px 8px;
-    color: #4a5a6a;
+    color: var(--text-dim);
     font-size: 0.8rem;
   }
 
@@ -146,12 +146,12 @@
   }
 
   .file-row:hover .file-name {
-    color: #c8d0dc;
+    color: var(--text-secondary);
   }
 
   .chevron {
     font-size: 0.55rem;
-    color: #4a6a7a;
+    color: var(--text-hint);
     flex-shrink: 0;
     width: 10px;
     text-align: center;
@@ -182,13 +182,13 @@
   }
 
   .chapter-item:hover {
-    background: #1e2f40;
-    color: #e8eaf0;
+    background: var(--surface-raised);
+    color: var(--text);
   }
 
   .chapter-item.active {
-    background: #1e3a5a;
-    color: #e8eaf0;
+    background: var(--accent);
+    color: var(--text);
   }
 
   .tree-line {
@@ -208,12 +208,12 @@
 
   .scan-error {
     padding: 2px 8px 2px 20px;
-    color: #f59e0b;
+    color: var(--warn);
     font-size: 0.75rem;
   }
 
   .dirty-dot {
-    color: #f59e0b;
+    color: var(--warn);
     font-size: 0.6rem;
     flex-shrink: 0;
   }

@@ -414,8 +414,8 @@
 <style>
   :global(body) {
     margin: 0;
-    background-color: #1b2636;
-    color: #e8eaf0;
+    background-color: var(--surface);
+    color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
                  'Noto Sans', 'Noto Sans CJK SC', 'Noto Sans CJK TC',
                  'Source Han Sans CN', 'Microsoft YaHei', 'SimHei',
@@ -435,7 +435,7 @@
        splitter below is what controls vertical space, not flex pressure. */
     flex: 0 0 auto;
     display: flex;
-    border-bottom: 1px solid #2a3a4a;
+    border-bottom: 1px solid var(--border);
     overflow: hidden;
   }
 
@@ -444,8 +444,8 @@
     display: flex;
     align-items: center;
     padding: 0 8px;
-    border-bottom: 1px solid #2a3a4a;
-    background: #1a2535;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-overlay);
   }
 
   .band-bottom {
@@ -467,7 +467,7 @@
     flex: 0 0 auto;
     min-height: 0;
     overflow: hidden;
-    border-top: 1px solid #2a3a4a;
+    border-top: 1px solid var(--border);
   }
 
   .graph-banner {
