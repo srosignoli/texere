@@ -1,25 +1,199 @@
 html {
-    background-color: rgba(27, 38, 54, 1);
+    background-color: var(--surface);
     text-align: center;
-    color: white;
+    color: var(--text);
 }
 
-/* 2.5D Isometric Graph Explorer (feature 006) — theme palette.
- * These CSS variables are the single source of truth for the explorer's
- * territory colors, edge colors, and label / ground / anchor colors.
- * Three.js reads them at scene-build time via Theme.js's resolve* helpers.
- * Override these in a theme switcher to retheme the explorer without
- * touching JS.
+/* ==========================================================================
+ * Theme layer.
  *
- * Hex strings only (#rrggbb) — Theme.js parses them into 24-bit ints.
- */
+ * Three themes: Blue (the default, and the palette every surface in the app
+ * was designed against), Dark (neutral near-black) and Light. Blue lives on
+ * `:root`; Dark and Light override it via a `data-theme` attribute set on
+ * <html> by the pre-paint bootstrap in index.html and by the theme store.
+ *
+ * Blue's values ARE the literals the components used before the migration, so
+ * switching a component from a literal to a token is a visual no-op. Never
+ * "tidy" a Blue value — it is load-bearing for the pixel-diff verification.
+ *
+ * Every token is written out in all three blocks. A theme that inherits half
+ * its tokens from Blue is a bug that only shows on the surfaces nobody opened.
+ * ========================================================================== */
+
 :root {
     /* Tell the webview this app is dark so WebKitGTK themes native form
        controls (the <select> box AND its popup menu) and scrollbars in dark
        mode. Without this, native selects render light-on-light and ignore
-       CSS/<option> styling of the native popup. */
+       CSS/<option> styling of the native popup. Light flips this below. */
     color-scheme: dark;
 
+    /* --- Surfaces, back to front ------------------------------------- */
+    --surface-sunken: #0b1220;   /* deepest wells: output panes, code blocks */
+    --surface-inset: #101826;    /* blocks and cards set into a panel */
+    --surface-bar: #161f2e;      /* toolbar / header strips inside a pane */
+    --surface-overlay: #1a2535;  /* popovers, menus, floating panels */
+    --surface: #1b2636;          /* the app background */
+    --surface-raised: #1e2f40;   /* chips and cards lifted off the surface */
+
+    /* --- Lines --------------------------------------------------------- */
+    --border-subtle: #1c2a3a;    /* hairline dividers inside a component */
+    --border-card: #26374a;      /* outline of a card / notebook cell */
+    --border: #2a3a4a;           /* the default panel and control edge */
+    --border-strong: #334455;    /* splitters and emphasised edges */
+
+    /* --- Small controls ------------------------------------------------ */
+    --control: #14233a;          /* background of a button / input / select */
+    --control-border: #2a4a6a;   /* border of those controls */
+
+    /* --- Text ---------------------------------------------------------- */
+    --text: #e8eaf0;             /* body text */
+    --text-muted: #8899aa;       /* secondary text, labels, counts */
+    --text-faint: #5d7186;       /* placeholders, disabled, line numbers */
+
+    /* --- Accents ------------------------------------------------------- */
+    --accent: #1e3a5a;           /* selected row / active chip background */
+    --accent-hover: #244a72;     /* the same, hovered or more prominent */
+    --accent-text: #7dd3fc;      /* actionable text and active icons */
+    --accent-text-alt: #93c5fd;  /* the second accent hue, on chips/controls */
+    --accent-dim: #5a7a9a;       /* muted accent: inactive icons, rules */
+
+    /* --- Status (semantic; the hue means the same in every theme, but the
+           value is tuned per theme so it stays legible on that surface) --- */
+    --ok: #7ecfa0;
+    --warn: #f59e0b;
+    --danger: #ff8080;
+
+    /* --- Explorer, themeable half (see the shared block below) ---------- */
+    --explorer-label: #e8eaf0;
+    --explorer-label-halo: #0e0f12;
+    --explorer-ground: #1b2636;
+
+    /* Layered grid-plane colors (post layered redesign). The grid
+     * lines stand out against the ground; the tint backs the grid
+     * so the plane reads as a distinct surface even at low opacity. */
+    --explorer-plane-grid: #6b7c95;
+    --explorer-plane-tint: #1f2a3a;
+
+    /* Extended-mode shared plane: a single floor under every cluster.
+     * Distinct hue from every per-context palette entry so the user can
+     * tell at a glance that they're in Extended mode (and not looking
+     * at, e.g., a stacked layout collapsed onto one Y). */
+    --explorer-extended-plane-tint: #2c2a40;
+    --explorer-extended-plane-grid: #7a78a5;
+}
+
+/* --- Dark: neutral near-black. ---------------------------------------------
+ * The surfaces carry no blue cast at all — a tinted "dark" is just Blue again.
+ * Colour is confined to the accents and the status hues, which is what makes
+ * the actionable parts of a neutral UI findable. */
+:root[data-theme="dark"] {
+    color-scheme: dark;
+
+    --surface-sunken: #0b0c0e;
+    --surface-inset: #0f1012;
+    --surface-bar: #121316;
+    --surface-overlay: #1c1d21;
+    --surface: #16171a;
+    --surface-raised: #202226;
+
+    --border-subtle: #232529;
+    --border-card: #2a2c31;
+    --border: #2c2e33;
+    --border-strong: #3c3f45;
+
+    --control: #1e2024;
+    --control-border: #34373d;
+
+    --text: #e8e8ea;
+    --text-muted: #9a9ba1;
+    --text-faint: #6e7076;
+
+    --accent: #2a2d33;
+    --accent-hover: #383c44;
+    --accent-text: #7dd3fc;
+    --accent-text-alt: #93c5fd;
+    --accent-dim: #7c7f87;
+
+    --ok: #7ecfa0;
+    --warn: #f59e0b;
+    --danger: #ff8080;
+
+    --explorer-label: #e8e8ea;
+    --explorer-label-halo: #0a0a0c;
+    --explorer-ground: #16171a;
+    --explorer-plane-grid: #7a7c82;
+    --explorer-plane-tint: #202226;
+    --explorer-extended-plane-tint: #2a2733;
+    --explorer-extended-plane-grid: #8a86a0;
+}
+
+/* --- Light: white-to-grey with dark text. ----------------------------------
+ * The app is dense with adjacent panels, splitters and list rows, so the
+ * border ramp is deliberately stronger than Blue's: --border reaches ~2.4:1
+ * against --surface and --border-strong ~3.5:1, where Blue's --border is only
+ * ~1.3:1. A light theme whose panel edges vanish is unusable even though every
+ * individual colour looks fine in isolation.
+ *
+ * Text contrast against --surface (#f6f7f9): --text 16.5:1, --text-muted
+ * 5.9:1, --text-faint 3.7:1, --accent-dim 4.9:1, --accent-text 5.5:1,
+ * --accent-text-alt 6.2:1. The three status hues are re-picked for a light
+ * ground — Blue's #f59e0b is 2.0:1 on white and would be unreadable. */
+:root[data-theme="light"] {
+    /* Native selects and scrollbars must follow the theme, or the popup
+       renders dark-on-light and ignores our styling. */
+    color-scheme: light;
+
+    --surface-sunken: #e4e7ec;
+    --surface-inset: #eaedf2;
+    --surface-bar: #eef0f4;
+    --surface-overlay: #ffffff;
+    --surface: #f6f7f9;
+    --surface-raised: #ffffff;
+
+    --border-subtle: #d3d8e0;
+    --border-card: #a8b0be;
+    --border: #9aa3b2;
+    --border-strong: #7c8698;
+
+    --control: #e8edf5;
+    --control-border: #a3b3c9;
+
+    --text: #14181f;
+    --text-muted: #566072;
+    --text-faint: #77808f;
+
+    --accent: #dbeafe;
+    --accent-hover: #c3dafd;
+    --accent-text: #0369a1;
+    --accent-text-alt: #1d4ed8;
+    --accent-dim: #55708c;
+
+    --ok: #0f7a43;
+    --warn: #b45309;
+    --danger: #b91c1c;
+
+    --explorer-label: #14181f;
+    --explorer-label-halo: #ffffff;
+    --explorer-ground: #f6f7f9;
+    --explorer-plane-grid: #8a93a3;
+    --explorer-plane-tint: #e9ecf1;
+    --explorer-extended-plane-tint: #e6e3f2;
+    --explorer-extended-plane-grid: #6f6d99;
+}
+
+/* 2.5D Isometric Graph Explorer (feature 006) — shared semantic palette.
+ * These CSS variables are the single source of truth for the explorer's
+ * territory colors, edge colors, and node colors.
+ * Three.js reads them at scene-build time via Theme.js's resolve* helpers.
+ *
+ * These do NOT vary by theme: edge colors encode arrow meta-types and
+ * territory colors encode context identity, so they must stay stable and
+ * legible whichever theme is active. Only the ground / label / plane
+ * variables above are themed.
+ *
+ * Hex strings only (#rrggbb) — Theme.js parses them into 24-bit ints.
+ */
+:root {
     /* Edge palette — meta-type → color (FR-011 / FR-012). */
     --explorer-edge-contains: #f59e0b;     /* amber, structural / pillar */
     --explorer-edge-leads-to: #06b6d4;     /* cyan, primary causal flow */
@@ -31,24 +205,6 @@ html {
     /* Node colors. */
     --explorer-node-default: #6cb4ee;
     --explorer-node-anchor: #ffffff;
-
-    /* Label + ground. */
-    --explorer-label: #e8eaf0;
-    --explorer-label-halo: #0e0f12;
-    --explorer-ground: #1b2636;
-
-    /* Layered grid-plane colors (post layered redesign). The grid
-     * lines stand out against the dark ground; the tint backs the grid
-     * so the plane reads as a distinct surface even at low opacity. */
-    --explorer-plane-grid: #6b7c95;
-    --explorer-plane-tint: #1f2a3a;
-
-    /* Extended-mode shared plane: a single floor under every cluster.
-     * Distinct hue from every per-context palette entry so the user can
-     * tell at a glance that they're in Extended mode (and not looking
-     * at, e.g., a stacked layout collapsed onto one Y). */
-    --explorer-extended-plane-tint: #2c2a40;
-    --explorer-extended-plane-grid: #7a78a5;
 
     /* Territory palette (FR-019). Each entry shifts ≥1 RGB channel by
      * ≥120 from the ground color so the 0.42 alpha blend is clearly
