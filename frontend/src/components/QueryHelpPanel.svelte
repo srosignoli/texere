@@ -125,7 +125,7 @@
     flex: 1;
     overflow-y: auto;
     padding: 12px 14px;
-    color: #d8e0ea;
+    color: var(--help-body-text);
     font-size: 0.85rem;
     line-height: 1.45;
   }
@@ -140,7 +140,7 @@
     color: var(--accent-dim);
   }
 
-  .lead { margin: 0 0 10px; color: #aab8c6; }
+  .lead { margin: 0 0 10px; color: var(--help-lead-text); }
 
   code {
     font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace);
@@ -151,7 +151,7 @@
   .dir-table td {
     vertical-align: top;
     padding: 7px 6px;
-    border-top: 1px solid #22303f;
+    border-top: 1px solid var(--help-divider);
   }
   .cell-token { width: 42%; }
   .cell-token code { white-space: nowrap; }
@@ -170,7 +170,7 @@
   .combine p { margin: 0; color: var(--text-block); }
 
   .match-list { list-style: none; margin: 0; padding: 0; }
-  .match-list li { padding: 6px 0; border-top: 1px solid #22303f; }
+  .match-list li { padding: 6px 0; border-top: 1px solid var(--help-divider); }
   .match-list li:first-child { border-top: 0; }
   .match-title {
     display: block;
