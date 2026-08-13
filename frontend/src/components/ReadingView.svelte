@@ -197,17 +197,17 @@
 </div>
 
 <style>
-  .reading-root { position: absolute; inset: 0; z-index: 58; background: #131c29; display: flex; flex-direction: column; }
+  .reading-root { position: absolute; inset: 0; z-index: 58; background: var(--surface-study); display: flex; flex-direction: column; }
   .reading-bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px;
-    border-bottom: 1px solid #2a3a4a; background: #161f2e; }
-  .reading-title { color: #7dd3fc; font-weight: 600; margin-right: 8px; }
-  .rb-btn { background: #1e3a5a; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px;
+    border-bottom: 1px solid var(--border); background: var(--surface-bar); }
+  .reading-title { color: var(--accent-text); font-weight: 600; margin-right: 8px; }
+  .rb-btn { background: var(--accent); color: var(--text); border: 1px solid var(--border); border-radius: 6px;
     padding: 4px 10px; cursor: pointer; font-size: 12px; }
-  .rb-btn:hover { background: #244a72; }
+  .rb-btn:hover { background: var(--accent-hover); }
   .rb-spacer { flex: 1; }
-  .rb-close { background: none; border: none; color: #8899aa; font-size: 18px; cursor: pointer; }
-  .reading-error { color: #ff8080; padding: 6px 12px; font-size: 12px; }
+  .rb-close { background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer; }
+  .reading-error { color: var(--danger); padding: 6px 12px; font-size: 12px; }
   .reading-body { flex: 1; min-height: 0; display: flex; }
-  .reading-source { flex: 1; min-width: 0; display: flex; border-right: 1px solid #2a3a4a; }
+  .reading-source { flex: 1; min-width: 0; display: flex; border-right: 1px solid var(--border); }
   .reading-notes { flex: 1; min-width: 0; overflow: hidden; }
 </style>

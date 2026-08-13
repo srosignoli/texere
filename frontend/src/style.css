@@ -121,6 +121,17 @@ html {
     --sequence-connector: #4b5563;    /* sequence-node connector line (ReadTab + NodeCard) */
     --text-loc: #7da0c0;              /* monospace file-location text (LogPanel) */
 
+    /* Roles minted migrating the study and source surfaces (Task 4). */
+    --surface-study: #131c29;         /* root/body of the Study & Sources full-panel surfaces; 1 unit
+                                          darker in the blue channel than --surface-panel — distinct on
+                                          purpose, not the same literal */
+    --text-quiet: #88aaaa;            /* secondary/muted text across Study & Sources: tab labels, counts,
+                                          empty/loading/error states */
+    --text-doc: #cdd6e0;              /* primary reading-content text: document name, chat user message,
+                                          plain-text source body */
+    --text-doc-dim: #9fb3c8;          /* secondary reading-content text, a step dimmer than --text-doc:
+                                          extract preview text, chat assistant message */
+
     /* --- Explorer, themeable half (see the shared block below) ---------- */
     --explorer-label: #e8eaf0;
     --explorer-label-halo: #0e0f12;
@@ -230,6 +241,11 @@ html {
     --sequence-connector: #424a57;
     --text-loc: #769bbc;
 
+    --surface-study: #141516;
+    --text-quiet: #81a5a5;
+    --text-doc: #c5d0db;
+    --text-doc-dim: #98adc4;
+
     --explorer-label: #e8e8ea;
     --explorer-label-halo: #0a0a0c;
     --explorer-ground: #16171a;
@@ -331,6 +347,11 @@ html {
     --chapter-tree-line: #aec8d6;
     --sequence-connector: #a8b1bd;
     --text-loc: #395975;
+
+    --surface-study: #e9ecf0;
+    --text-quiet: #3c5454;
+    --text-doc: #232e39;
+    --text-doc-dim: #35485c;
 
     --explorer-label: #14181f;
     --explorer-label-halo: #ffffff;
