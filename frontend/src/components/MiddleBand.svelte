@@ -168,7 +168,7 @@
 
   .btn {
     padding: 4px 10px;
-    background: #263547;
+    background: var(--control-raised);
     color: var(--text-secondary);
     border: 1px solid var(--border-strong);
     border-radius: 4px;
@@ -179,7 +179,7 @@
   }
 
   .btn:hover:not(:disabled) {
-    background: #2e4060;
+    background: var(--control-raised-hover);
     color: var(--text);
   }
 

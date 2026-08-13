@@ -159,7 +159,7 @@
     background: #161f2e; font-size: 12px;
   }
   .editcard-file { color: #7dd3fc; font-weight: 600; }
-  .editcard-node { color: #b0bec5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40%; }
+  .editcard-node { color: var(--text-row); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40%; }
   .editcard-ambiguous { color: #e0b000; font-size: 11px; }
   .editcard-spacer { flex: 1 1 auto; }
   .editcard-hint { color: #5a7a9a; font-size: 11px; }

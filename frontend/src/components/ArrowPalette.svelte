@@ -190,7 +190,7 @@
 
   .palette-filter {
     flex: 1;
-    background: #0f1a27;
+    background: var(--input-bg);
     border: 1px solid var(--border);
     border-radius: 4px;
     color: var(--text);
@@ -241,7 +241,7 @@
     padding: 5px 10px;
     background: none;
     border: none;
-    color: #b0bec5;
+    color: var(--text-row);
     font-size: 0.82rem;
     text-align: left;
     cursor: pointer;

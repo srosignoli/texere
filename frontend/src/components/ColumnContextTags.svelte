@@ -159,7 +159,7 @@
   }
 
   .chip:hover {
-    background: #253545;
+    background: var(--chip-hover);
     color: var(--text-secondary);
   }
 

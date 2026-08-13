@@ -174,7 +174,7 @@
     padding: 3px 6px 3px 8px;
     background: none;
     border: none;
-    color: #b0bec5;
+    color: var(--text-row);
     font-size: 0.8rem;
     text-align: left;
     cursor: pointer;

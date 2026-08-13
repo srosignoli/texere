@@ -398,7 +398,7 @@
     padding: 5px 4px 5px 0;
     background: none;
     border: none;
-    color: #b0bec5;
+    color: var(--text-row);
     font-size: 0.82rem;
     text-align: left;
     cursor: pointer;

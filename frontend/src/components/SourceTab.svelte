@@ -565,8 +565,10 @@
   }
 
   .banner-btn.dismiss {
+    /* Semantic unit with its banner: a neutral dark chip on the amber strip.
+       Both halves stay literal so the pair cannot drift apart per theme. */
     background: #44403c;
-    color: var(--text);
+    color: #e8eaf0;
   }
 
   .editor-container {

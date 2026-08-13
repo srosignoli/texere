@@ -156,18 +156,18 @@
   .cell-token { width: 42%; }
   .cell-token code { white-space: nowrap; }
   .aliases { margin-top: 3px; font-size: 0.72rem; color: var(--accent-dim); }
-  .cell-summary { color: #c4d0dc; }
+  .cell-summary { color: var(--text-block); }
   .example { margin-top: 4px; }
   .example code { color: #8fd9a8; font-size: 0.8rem; }
 
   .combine {
-    background: #14202c;
+    background: var(--surface-block);
     border: 1px solid var(--border);
     border-radius: 6px;
     padding: 10px 12px;
   }
   .combine-q { display: block; margin-bottom: 6px; color: #8fd9a8; }
-  .combine p { margin: 0; color: #c4d0dc; }
+  .combine p { margin: 0; color: var(--text-block); }
 
   .match-list { list-style: none; margin: 0; padding: 0; }
   .match-list li { padding: 6px 0; border-top: 1px solid #22303f; }
@@ -178,5 +178,5 @@
     color: #67e8f9;
     margin-bottom: 2px;
   }
-  .match-body { color: #c4d0dc; }
+  .match-body { color: var(--text-block); }
 </style>

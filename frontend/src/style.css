@@ -69,6 +69,26 @@ html {
     --warn: #f59e0b;
     --danger: #ff8080;
 
+    /* Roles minted while migrating the workbench shell. Each replaces a
+       literal that is thematic chrome — a panel body, a button fill, a chip
+       edge — but whose value matched no role above byte-for-byte. Using a
+       near-match would have changed how Blue renders, which the migration
+       may not do. */
+    --surface-panel: #131c2a;         /* body of a full-width utility panel (log) */
+    --control-raised: #263547;        /* fill of a toolbar button */
+    --control-raised-hover: #2e4060;  /* the same, hovered */
+    --chip-hover: #253545;            /* fill of a hovered chip */
+    --chip-border: #2a4258;           /* edge of a context chip, and its hover fill */
+    --divider: #1a2530;               /* an inline rule between rows inside a pane */
+    --text-inert: #6a8aa0;            /* non-actionable result rows, end-of-list hints */
+    --text-row: #b0bec5;              /* default text of a list row */
+    --chip-text: #a0b4c4;             /* label text on a context chip */
+    --chip-text-strong: #c8d2dc;      /* the same, hovered */
+    --chip-text-dim: #8aa0b0;         /* label text on a transparent filter chip */
+    --input-bg: #0f1a27;              /* fill of a text input sunk into a panel */
+    --surface-block: #14202c;         /* an example/callout block inside a help pane */
+    --text-block: #c4d0dc;            /* body text inside that block */
+
     /* --- Explorer, themeable half (see the shared block below) ---------- */
     --explorer-label: #e8eaf0;
     --explorer-label-halo: #0e0f12;
@@ -137,6 +157,21 @@ html {
     --warn: #f59e0b;
     --danger: #ff8080;
 
+    --surface-panel: #141517;
+    --control-raised: #26282d;
+    --control-raised-hover: #32353c;
+    --chip-hover: #25272c;
+    --chip-border: #31343a;
+    --divider: #1b1c20;
+    --text-inert: #75777e;
+    --text-row: #c0c1c5;
+    --chip-text: #a8a9ae;
+    --chip-text-strong: #d2d3d6;
+    --chip-text-dim: #8f9096;
+    --input-bg: #0d0e10;
+    --surface-block: #191a1e;
+    --text-block: #d0d1d4;
+
     --explorer-label: #e8e8ea;
     --explorer-label-halo: #0a0a0c;
     --explorer-ground: #16171a;
@@ -197,6 +232,21 @@ html {
     --ok: #0f7a43;
     --warn: #b45309;
     --danger: #b91c1c;
+
+    --surface-panel: #e9ecf1;
+    --control-raised: #dfe4ec;
+    --control-raised-hover: #ccd4e0;
+    --chip-hover: #dde3ec;
+    --chip-border: #a8b6cc;
+    --divider: #d8dde4;
+    --text-inert: #5f6a7c;
+    --text-row: #3a4250;
+    --chip-text: #4c5666;
+    --chip-text-strong: #1f2733;
+    --chip-text-dim: #5a6472;
+    --input-bg: #e8edf5;
+    --surface-block: #e6eaf0;
+    --text-block: #2b3341;
 
     --explorer-label: #14181f;
     --explorer-label-halo: #ffffff;

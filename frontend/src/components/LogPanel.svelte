@@ -127,7 +127,7 @@
     flex-direction: column;
     height: 100%;
     width: 100%;
-    background: #131c2a;
+    background: var(--surface-panel);
     color: var(--text-secondary);
     overflow: hidden;
   }
@@ -145,7 +145,7 @@
 
   .log-title {
     font-weight: 600;
-    color: #8aa0b0;
+    color: var(--chip-text-dim);
     text-transform: uppercase;
     letter-spacing: 0.06em;
     font-size: 0.7rem;
@@ -173,7 +173,7 @@
     background: transparent;
     border: 1px solid var(--border);
     border-radius: 10px;
-    color: #8aa0b0;
+    color: var(--chip-text-dim);
     padding: 1px 8px;
     font-size: 0.7rem;
     cursor: pointer;
@@ -202,7 +202,7 @@
   .action {
     background: transparent;
     border: none;
-    color: #6a8aa0;
+    color: var(--text-inert);
     font-size: 0.72rem;
     cursor: pointer;
     padding: 2px 6px;

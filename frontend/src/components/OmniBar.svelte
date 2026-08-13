@@ -1440,9 +1440,9 @@
     justify-content: space-between;
     gap: 12px;
     padding: 4px 14px 4px;
-    border-bottom: 1px solid #1a2530;
+    border-bottom: 1px solid var(--divider);
     font-size: 0.72rem;
-    color: #6a8aa0;
+    color: var(--text-inert);
   }
 
   .omnibar-summary-counts {
@@ -1530,11 +1530,11 @@
      gets no false expectation. */
   .result-item-inert {
     cursor: default;
-    color: #6a8aa0;
+    color: var(--text-inert);
   }
   .result-item-inert:hover {
     background: none;
-    color: #6a8aa0;
+    color: var(--text-inert);
   }
 
   .result-icon {
@@ -1672,7 +1672,7 @@
   }
 
   .listing-node-text {
-    color: #a0b4c4;
+    color: var(--chip-text);
   }
 
   /* \context listing row — tag button + inline chapter chips */
@@ -1692,10 +1692,10 @@
   .listing-context-chip,
   .listing-context-more {
     background: var(--surface-raised);
-    border: 1px solid #2a4258;
+    border: 1px solid var(--chip-border);
     border-radius: 10px;
     padding: 1px 8px;
-    color: #a0b4c4;
+    color: var(--chip-text);
     font-size: 0.72rem;
     font-family: inherit;
     cursor: pointer;
@@ -1703,16 +1703,16 @@
     transition: background 0.08s, color 0.08s, border-color 0.08s;
   }
   .listing-context-chip:hover {
-    background: #2a4258;
+    background: var(--chip-border);
     color: var(--text);
     border-color: var(--accent-faint);
   }
   .listing-context-more {
-    color: #6a8aa0;
+    color: var(--text-inert);
     font-style: italic;
   }
   .listing-context-more:hover {
-    color: #c8d2dc;
+    color: var(--chip-text-strong);
     border-color: var(--accent-faint);
   }
 
@@ -1733,7 +1733,7 @@
     font-weight: 500;
   }
   .listing-hint-detail {
-    color: #8aa0b0;
+    color: var(--chip-text-dim);
     font-style: italic;
   }
 
@@ -1743,7 +1743,7 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
-    border-top: 1px solid #1a2530;
+    border-top: 1px solid var(--divider);
   }
   .sequence-group-header:first-of-type {
     border-top: none;
@@ -1767,7 +1767,7 @@
   }
   .sequence-chain-sep {
     height: 1px;
-    background: #1a2530;
+    background: var(--divider);
     margin: 4px 14px;
   }
 
@@ -1801,7 +1801,7 @@
   .sequence-step .step-text {
     flex: 1;
     font-size: 0.82rem;
-    color: #c8d2dc;
+    color: var(--chip-text-strong);
     padding-top: 2px;
     padding-bottom: 2px;
     word-break: break-word;
@@ -1821,7 +1821,7 @@
   }
   .path-chain .path-node {
     font-weight: 500;
-    color: #c8d2dc;
+    color: var(--chip-text-strong);
     white-space: nowrap;
   }
   .path-chain .path-arrow {
@@ -1840,7 +1840,7 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
-    border-top: 1px solid #1a2530;
+    border-top: 1px solid var(--divider);
   }
   .note-group-header:first-of-type {
     border-top: none;
@@ -1866,7 +1866,7 @@
   }
   .note-block-header .note-node-text {
     font-weight: 500;
-    color: #c8d2dc;
+    color: var(--chip-text-strong);
     font-size: 0.86rem;
   }
   .note-block-header.selected .note-node-text {
@@ -1899,7 +1899,7 @@
     align-items: center;
     gap: 2px;
     padding: 10px 14px 14px;
-    color: #6a8aa0;
+    color: var(--text-inert);
     font-size: 0.72rem;
     text-align: center;
   }
@@ -1908,7 +1908,7 @@
     color: var(--text-hint);
   }
   .notes-end-hint {
-    color: #6a8aa0;
+    color: var(--text-inert);
     font-style: italic;
   }
   .notes-end-hint code {
