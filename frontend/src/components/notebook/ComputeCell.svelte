@@ -68,18 +68,18 @@
 </div>
 
 <style>
-  .cc-cell { background: #0e1622; border: 1px solid #26374a; border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
-  .cc-bar { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-bottom: 1px solid #1c2a3a; }
+  .cc-cell { background: var(--surface-modal); border: 1px solid var(--border-card); border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+  .cc-bar { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-bottom: 1px solid var(--border-subtle); }
   .cc-spacer { flex: 1; }
-  .cc-run { background: #1e3a5a; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px; padding: 3px 12px; cursor: pointer; font-size: 12px; }
-  .cc-stop { background: #5a1e1e; color: #ffd7d7; border: 1px solid #2a3a4a; border-radius: 6px; padding: 3px 12px; cursor: pointer; font-size: 12px; }
-  .cc-code { width: 100%; box-sizing: border-box; background: #0b1220; border: none; color: #e8eaf0; font-family: monospace; font-size: 13px; padding: 8px; resize: vertical; }
-  .cc-out { padding: 8px; border-top: 1px solid #1c2a3a; display: flex; flex-direction: column; gap: 4px; }
-  .cc-log { font-family: monospace; font-size: 12px; color: #b9c6d6; white-space: pre-wrap; }
-  .cc-log.warn { color: #e0b050; }
-  .cc-log.error { color: #ff8080; }
-  .cc-log.print { color: #7dd3fc; }
-  .cc-value { font-family: monospace; font-size: 13px; color: #7dd3fc; white-space: pre-wrap; }
-  .cc-error { color: #ff8080; font-size: 12px; white-space: pre-wrap; }
-  .cc-chart { background: #0b1220; border: 1px solid #1c2a3a; border-radius: 6px; padding: 6px; margin-top: 4px; }
+  .cc-run { background: var(--accent); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 3px 12px; cursor: pointer; font-size: 12px; }
+  .cc-stop { background: var(--danger-fill); color: var(--danger-fill-text); border: 1px solid var(--border); border-radius: 6px; padding: 3px 12px; cursor: pointer; font-size: 12px; }
+  .cc-code { width: 100%; box-sizing: border-box; background: var(--surface-sunken); border: none; color: var(--text); font-family: monospace; font-size: 13px; padding: 8px; resize: vertical; }
+  .cc-out { padding: 8px; border-top: 1px solid var(--border-subtle); display: flex; flex-direction: column; gap: 4px; }
+  .cc-log { font-family: monospace; font-size: 12px; color: var(--text-cell-muted); white-space: pre-wrap; }
+  .cc-log.warn { color: var(--warn-output); }
+  .cc-log.error { color: var(--danger); }
+  .cc-log.print { color: var(--accent-text); }
+  .cc-value { font-family: monospace; font-size: 13px; color: var(--accent-text); white-space: pre-wrap; }
+  .cc-error { color: var(--danger); font-size: 12px; white-space: pre-wrap; }
+  .cc-chart { background: var(--surface-sunken); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 6px; margin-top: 4px; }
 </style>

@@ -148,6 +148,38 @@ html {
     --border-faint: #1d2a3a;          /* a hairline divider fainter than --border-subtle */
     --text-badge: #8aa7c0;            /* label text on a small status badge/marker chip */
 
+    /* Roles minted migrating the notebook cells (Task 5a). Derivation: Dark
+       via nearest-Blue-neighbour RGB-delta transfer (mechanical, per Task 4's
+       method); Light values for every token paired with a background were
+       solved by holding the Blue literal's HSL hue/saturation constant and
+       binary-searching lightness until the WCAG contrast ratio against that
+       background's Light value matched (or exceeded) the same ratio Blue
+       itself has — so no pairing is less legible in Light than it already is
+       in Blue. */
+    --surface-shell: #0e1626;         /* ShellCell root background — distinct from --surface-modal
+                                          (#0e1622) by 4 in the blue channel; kept separate per no-tidying */
+    --text-shell-output: #c9d4e3;     /* ShellCell stdout line text */
+    --text-shell-err: #ffb4a0;        /* ShellCell stderr line text */
+    --text-shell-readonly: #93a3b8;   /* ShellCell read-only command text */
+    --danger-fill: #5a1e1e;           /* fill of a filled "stop/destructive" button (ComputeCell, LLMCell) */
+    --danger-fill-text: #ffd7d7;      /* text on that fill */
+    --text-cell-muted: #b9c6d6;       /* secondary/muted text inside a notebook cell: log
+                                          output, quoted passages, orbit/detail listings, assistant chat body */
+    --warn-output: #e0b050;           /* warning-level line in ComputeCell's run log */
+    --text-listing-dim: #8aa0b6;      /* muted node-listing text (GraphResults) */
+    --text-media: #ccddee;            /* text/icon colour on media-cell controls and inputs */
+    --surface-hover: #24334a;         /* hover fill of a plain --surface button (media cells) */
+    --surface-inset-hover: #24374d;   /* hover fill of a row on --surface-inset (GraphQueryCell suggestions) */
+    --control-hover: #1a2f4a;         /* hover fill of a plain --control button (NotebookPane add-cell) */
+    --text-license: #667788;          /* small media-license caption text (MediaCell) */
+    --link-text: #66aadd;             /* inline text-link colour (MediaCell "source" link) */
+    --select-toggle-bg: #2e6ca8;      /* fill of a selected kind/filter toggle (MediaSearchPanel) */
+    --select-toggle-border: #6aa6dd;  /* border of that toggle */
+    --select-toggle-text: #f2f8ff;    /* text of that toggle */
+    --media-hover-border: #4a7aa8;    /* hover border of a media search result tile/row */
+    --text-control-muted: #46586a;    /* rest-state text of a chrome-only icon control (NotebookPane reorder/delete) */
+    --text-media-error: #dd8888;      /* missing-asset/error text in a media view (audio/image/video) */
+
     /* --- Explorer, themeable half (see the shared block below) ---------- */
     --explorer-label: #e8eaf0;
     --explorer-label-halo: #0e0f12;
@@ -274,6 +306,28 @@ html {
     --border-faint: #242529;
     --text-badge: #7a9bb7;
 
+    --surface-shell: #0d0e12;
+    --text-shell-output: #c1cedf;
+    --text-shell-err: #ffb4a0;
+    --text-shell-readonly: #98939e;
+    --danger-fill: #5a1e1e;
+    --danger-fill-text: #ffd7d7;
+    --text-cell-muted: #aebed0;
+    --warn-output: #e0b050;
+    --text-listing-dim: #8f909c;
+    --text-media: #c4d6e9;
+    --surface-hover: #242630;
+    --surface-inset-hover: #242a33;
+    --control-hover: #1c3350;
+    --text-license: #617181;
+    --link-text: #5fa5d9;
+    --select-toggle-bg: #2e6ca8;
+    --select-toggle-border: #63a1d9;
+    --select-toggle-text: #f2f6f9;
+    --media-hover-border: #6c7f95;
+    --text-control-muted: #5b5e66;
+    --text-media-error: #dd8888;
+
     --explorer-label: #e8e8ea;
     --explorer-label-halo: #0a0a0c;
     --explorer-ground: #16171a;
@@ -392,6 +446,28 @@ html {
     --text-article: #1f2834;
     --border-faint: #d4d8e0;
     --text-badge: #273949;
+
+    --surface-shell: #e8ebf2;
+    --text-shell-output: #1f2b3b;
+    --text-shell-err: #651500;
+    --text-shell-readonly: #3c4a5b;
+    --danger-fill: #52090b;
+    --danger-fill-text: #f7c2c4;
+    --text-cell-muted: #283544;
+    --warn-output: #4f3a0e;
+    --text-listing-dim: #415468;
+    --text-media: #14283b;
+    --surface-hover: #dde2ef;
+    --surface-inset-hover: #dde6f2;
+    --control-hover: #bbcce1;
+    --text-license: #67788a;
+    --link-text: #1b517a;
+    --select-toggle-bg: #265795;
+    --select-toggle-border: #265f92;
+    --select-toggle-text: #eae3ec;
+    --media-hover-border: #45709a;
+    --text-control-muted: #9fb0c0;
+    --text-media-error: #952b2b;
 
     --explorer-label: #14181f;
     --explorer-label-halo: #ffffff;
