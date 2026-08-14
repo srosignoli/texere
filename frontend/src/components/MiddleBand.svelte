@@ -5,6 +5,7 @@
   import { explorerOpen, explorerQuery } from '../stores/explorer.js'
   import { studySurfaceOpen, studyFocus } from '../stores/study.js'
   import ReminderPanel from './ReminderPanel.svelte'
+  import SettingsMenu from './SettingsMenu.svelte'
 
   const dispatch = createEventDispatcher()
   let reminderPanelOpen = false
@@ -151,6 +152,10 @@
       ⚑ {$reminderCount}
     </button>
   {/if}
+
+  <!-- Outside the activeTab guard on purpose: settings are reachable from every
+       tab, not only the note. The planned ? help menu sits next to this. -->
+  <SettingsMenu />
 </div>
 
 <!-- Reminder panel overlay (T044) -->
