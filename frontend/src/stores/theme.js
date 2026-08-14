@@ -49,20 +49,40 @@ function activate(id) {
   return next
 }
 
-// Switch the theme: paint it, mirror it, and persist it.
-export function applyTheme(id) {
+// Switch the theme: paint it, mirror it, and persist it. Painting comes first
+// and unconditionally, so the theme still changes if the write to Go fails.
+//
+// Guarded the same way as the startup read below, and for the same reason: the
+// binding throws SYNCHRONOUSLY when window.go is missing, so a trailing .catch()
+// would never attach and the throw would escape this event handler to
+// window.onerror.
+export async function applyTheme(id) {
   const next = activate(id)
-  return SetTheme(next).catch((e) => {
+  try {
+    await SetTheme(next)
+  } catch (e) {
     console.error('theme: SetTheme failed — this choice will not survive a restart:', e)
-  })
+  }
 }
 
 // Reconcile from the authoritative copy on load. GetTheme never returns empty,
-// so a resolved value is always usable. If the binding fails we keep what the
-// bootstrap painted — but we say so, because a silent failure here looks
-// exactly like a theme that "sometimes forgets".
-GetTheme()
-  .then((stored) => activate(stored))
-  .catch((e) => {
-    console.error('theme: GetTheme failed; keeping the theme the pre-paint bootstrap applied:', e)
-  })
+// so a resolved value is always usable. If the binding is unavailable we keep
+// what the bootstrap painted — but we say so, because a silent failure here
+// looks exactly like a theme that "sometimes forgets".
+//
+// The CALL, not just the await, has to sit inside the guard. A wailsjs binding
+// compiles to window['go']['main']['App']['GetTheme'](), which throws
+// synchronously when window.go is absent — before any promise exists, so a
+// trailing .catch() would never attach. Opening the Vite dev server directly in
+// a browser is exactly that case, and there an unguarded call escapes to
+// index.html's window.onerror, which replaces #app with the JS-error screen:
+// the whole frontend down, over a theme. Every other store defers its bindings
+// into a function called after mount; this one runs at import, so it guards.
+async function reconcileFromGo() {
+  try {
+    activate(await GetTheme())
+  } catch (e) {
+    console.error('theme: GetTheme unavailable; keeping the theme the pre-paint bootstrap applied:', e)
+  }
+}
+reconcileFromGo()

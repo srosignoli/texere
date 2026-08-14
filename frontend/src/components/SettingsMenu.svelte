@@ -41,13 +41,18 @@
     bind:this={toggleEl}
     on:click={toggle}
     title="Settings"
-    aria-haspopup="dialog"
     aria-expanded={open}
+    aria-controls="sm-popover"
     aria-label="Settings"
   >⚙</button>
 
   {#if open}
-    <div class="sm-popover" role="dialog" aria-label="Settings">
+    <!-- A disclosure (button + aria-expanded + aria-controls), not a dialog:
+         role="dialog" announces as modal, and this popover is deliberately not
+         — no focus trap, and the click that dismisses it still reaches the app.
+         The fieldset's legend names the contents, so the wrapper needs no role
+         of its own. -->
+    <div class="sm-popover" id="sm-popover">
       <fieldset class="sm-section">
         <legend class="sm-legend">Appearance</legend>
         {#each THEMES as t (t.id)}
