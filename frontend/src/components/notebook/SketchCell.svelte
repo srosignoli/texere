@@ -203,17 +203,17 @@
 </div>
 
 <style>
-  .sk-cell { background: #0e1622; border: 1px solid #26374a; border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
-  .sk-bar { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-bottom: 1px solid #1c2a3a; flex-wrap: wrap; }
-  .sk-bar button { background: #14233a; color: #93c5fd; border: 1px solid #2a3a4a; border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
-  .sk-bar button.active { background: #244a72; color: #e8eaf0; }
+  .sk-cell { background: var(--surface-modal); border: 1px solid var(--border-card); border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+  .sk-bar { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-bottom: 1px solid var(--border-subtle); flex-wrap: wrap; }
+  .sk-bar button { background: var(--control); color: var(--accent-text-alt); border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
+  .sk-bar button.active { background: var(--accent-hover); color: var(--text); }
   .sk-bar button:disabled { opacity: 0.4; cursor: default; }
   .sk-colors { display: flex; gap: 3px; }
-  .sw { width: 16px; height: 16px; padding: 0 !important; border-radius: 50% !important; border: 1px solid #2a3a4a; cursor: pointer; }
-  .sw.sel { outline: 2px solid #7dd3fc; }
+  .sw { width: 16px; height: 16px; padding: 0 !important; border-radius: 50% !important; border: 1px solid var(--border); cursor: pointer; }
+  .sw.sel { outline: 2px solid var(--accent-text); }
   .sk-size { width: 80px; }
-  .sk-mouse { color: #93c5fd; font-size: 11px; display: flex; align-items: center; gap: 3px; }
-  .sk-wrap { position: relative; height: 240px; min-height: 80px; resize: vertical; overflow: hidden; background: #0b1220; }
+  .sk-mouse { color: var(--accent-text-alt); font-size: 11px; display: flex; align-items: center; gap: 3px; }
+  .sk-wrap { position: relative; height: 240px; min-height: 80px; resize: vertical; overflow: hidden; background: var(--surface-sunken); }
   .sk-wrap canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
   .sk-cell.expanded { position: fixed; inset: 0; z-index: 1000; margin: 0; border-radius: 0; display: flex; flex-direction: column; }
   .sk-cell.expanded .sk-wrap { flex: 1; height: auto !important; resize: none; }
