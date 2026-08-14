@@ -239,8 +239,8 @@
     left: 12px;
     width: 32px;
     height: 32px;
-    background: rgba(0, 0, 0, 0.55);
-    color: #e8eaf0;
+    background: var(--explorer-scrim);
+    color: var(--text);
     border: 1px solid #334455;
     border-radius: 16px;
     font-size: 14px;
@@ -251,7 +251,7 @@
   }
 
   .sidebar-toggle:hover {
-    background: rgba(0, 0, 0, 0.8);
+    background: var(--explorer-scrim-hover);
   }
 
   .sidebar {

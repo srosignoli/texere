@@ -1582,8 +1582,8 @@
     right: 12px;
     width: 32px;
     height: 32px;
-    background: rgba(0, 0, 0, 0.55);
-    color: #e8eaf0;
+    background: var(--explorer-scrim);
+    color: var(--text);
     border: 1px solid #334455;
     border-radius: 16px;
     font-size: 14px;
@@ -1593,7 +1593,7 @@
   }
 
   .explorer-close:hover {
-    background: rgba(0, 0, 0, 0.8);
+    background: var(--explorer-scrim-hover);
   }
 
   /* The query bar used to position itself as a floating overlay. It now sits
@@ -1655,8 +1655,8 @@
   .explorer-querybar button {
     flex: 0 0 auto;
     width: 34px;
-    background: rgba(0, 0, 0, 0.55);
-    color: #e8eaf0;
+    background: var(--explorer-scrim);
+    color: var(--text);
     border: 1px solid #334455;
     border-radius: 6px;
     font-size: 14px;
@@ -1664,13 +1664,13 @@
   }
 
   .explorer-querybar button:hover {
-    background: rgba(74, 123, 208, 0.35);
+    background: var(--explorer-scrim-hover-accent);
   }
 
   .overlay {
     position: absolute;
     pointer-events: none;
-    color: var(--fg-2, #d8d8d8);
+    color: var(--text-on-scrim);
     font-size: 13px;
   }
 
@@ -1678,7 +1678,7 @@
     inset: 0;
     display: grid;
     place-items: center;
-    background: rgba(0, 0, 0, 0.55);
+    background: var(--explorer-scrim);
     backdrop-filter: blur(2px);
   }
 
@@ -1834,7 +1834,7 @@
     top: 8px;
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.6);
+    background: var(--explorer-scrim-strong);
     padding: 6px 10px;
     border-radius: 6px;
     font-size: 12px;

@@ -188,11 +188,38 @@ html {
        MiniMap precedent (Task 3) leaves that whole family literal on
        purpose, and this pass follows it. Only these 3 roles were genuinely
        independent of that translucent chrome. */
+    /* Correction from Task 5b's review: "permanently-dark" above only holds
+       for the ≥0.85-alpha members of that family (--stats/--legend at 0.85,
+       --empty-card/tooltips/--freeze-pill at 0.92-0.94, --sidebar at 0.94 —
+       all composite to ≥10.5:1 with #e8eaf0 text over both a near-black and
+       a near-white backdrop, so those stay fixed and literal in every
+       theme). The LOWER-alpha members of the family (0.35-0.6) do not hold
+       up the same way — see the roles below this block. */
     --explorer-canvas-bg: #0e0f12;    /* GraphExplorer root background, behind the WebGL canvas (opaque,
                                           not part of the glass-HUD family) */
     --editor-active-line: #1d2e42;    /* CodeMirror active-line/active-line-gutter tint (EditCard) */
     --text-iso-message: #7a8ba0;      /* "No graph results" / error message text on IsoGraphView's
                                           --surface-sunken panel */
+
+    /* Roles minted fixing Task 5b's review — the LOWER-alpha members of the
+       same glass-HUD family (0.35-0.6) do NOT hold up over Light's
+       near-white backdrop; a fixed rgba(0,0,0,X) at that alpha composites to
+       a mid-grey regardless of theme, which fails AA against light text once
+       Light's canvas backdrop is actually near-white instead of near-black.
+       These scrims are themed instead: black-based (unchanged) in Blue and
+       Dark, since both themes' canvas backdrop stays near-black, and
+       white/light-based in Light, so the composite stays light there
+       regardless of theme. Composites computed against #f6f7f9
+       (--surface / --explorer-ground's Light value, the canvas's own
+       resting colour) as the representative backdrop. */
+    --explorer-scrim: rgba(0, 0, 0, 0.55);          /* rest-state fill: close button, query-bar buttons,
+                                                        sidebar toggle, .overlay.status */
+    --explorer-scrim-strong: rgba(0, 0, 0, 0.6);    /* .overlay.banner (truncated-results notice) */
+    --explorer-scrim-hover: rgba(0, 0, 0, 0.8);     /* hover fill of --explorer-scrim buttons */
+    --explorer-scrim-hover-accent: rgba(74, 123, 208, 0.35); /* query-bar run/help button hover (blue tint) */
+    --text-on-scrim: #d8d8d8;         /* .overlay text (Loading…/error/truncated banner) — was
+                                          var(--fg-2, #d8d8d8); --fg-2 is undefined anywhere in the
+                                          codebase, the same vestigial-stub pattern as --bg-1 */
 
     /* --- Explorer, themeable half (see the shared block below) ---------- */
     --explorer-label: #e8eaf0;
@@ -346,6 +373,14 @@ html {
     --editor-active-line: #1f3248;
     --text-iso-message: #8c8d8d;
 
+    /* Dark's own canvas backdrop (--explorer-ground: #16171a) is near-black
+       too, same as Blue's — the black-based scrims stay correct unchanged. */
+    --explorer-scrim: rgba(0, 0, 0, 0.55);
+    --explorer-scrim-strong: rgba(0, 0, 0, 0.6);
+    --explorer-scrim-hover: rgba(0, 0, 0, 0.8);
+    --explorer-scrim-hover-accent: rgba(74, 123, 208, 0.35);
+    --text-on-scrim: #d8d8d8;
+
     --explorer-label: #e8e8ea;
     --explorer-label-halo: #0a0a0c;
     --explorer-ground: #16171a;
@@ -490,6 +525,16 @@ html {
     --explorer-canvas-bg: #e5e8ec;
     --editor-active-line: #c2d2e4;
     --text-iso-message: #44505f;
+
+    /* White/light-based so the composite stays light over Light's own
+       near-white canvas backdrop (#f6f7f9) regardless of theme — see the
+       Blue block's comment for the composite-contrast numbers this was
+       solved against. */
+    --explorer-scrim: rgba(255, 255, 255, 0.65);
+    --explorer-scrim-strong: rgba(255, 255, 255, 0.7);
+    --explorer-scrim-hover: rgba(214, 220, 230, 0.85);
+    --explorer-scrim-hover-accent: rgba(74, 123, 208, 0.35);
+    --text-on-scrim: #1a2028;
 
     --explorer-label: #14181f;
     --explorer-label-halo: #ffffff;
