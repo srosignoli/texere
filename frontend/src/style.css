@@ -180,6 +180,20 @@ html {
     --text-control-muted: #46586a;    /* rest-state text of a chrome-only icon control (NotebookPane reorder/delete) */
     --text-media-error: #dd8888;      /* missing-asset/error text in a media view (audio/image/video) */
 
+    /* Roles minted migrating the explorer components (Task 5b). The floating
+       glass-HUD chrome of GraphExplorer/ExplorerSidebar/ExplorerStats/
+       ExplorerLegend (close button, query bar, sidebar, stats strip,
+       tooltips, legend) sits on permanently-dark rgba() backgrounds chosen
+       so the panel stays legible over arbitrary 3D scene content — the
+       MiniMap precedent (Task 3) leaves that whole family literal on
+       purpose, and this pass follows it. Only these 3 roles were genuinely
+       independent of that translucent chrome. */
+    --explorer-canvas-bg: #0e0f12;    /* GraphExplorer root background, behind the WebGL canvas (opaque,
+                                          not part of the glass-HUD family) */
+    --editor-active-line: #1d2e42;    /* CodeMirror active-line/active-line-gutter tint (EditCard) */
+    --text-iso-message: #7a8ba0;      /* "No graph results" / error message text on IsoGraphView's
+                                          --surface-sunken panel */
+
     /* --- Explorer, themeable half (see the shared block below) ---------- */
     --explorer-label: #e8eaf0;
     --explorer-label-halo: #0e0f12;
@@ -328,6 +342,10 @@ html {
     --text-control-muted: #5b5e66;
     --text-media-error: #dd8888;
 
+    --explorer-canvas-bg: #0b0c0f;
+    --editor-active-line: #1f3248;
+    --text-iso-message: #8c8d8d;
+
     --explorer-label: #e8e8ea;
     --explorer-label-halo: #0a0a0c;
     --explorer-ground: #16171a;
@@ -468,6 +486,10 @@ html {
     --media-hover-border: #45709a;
     --text-control-muted: #9fb0c0;
     --text-media-error: #952b2b;
+
+    --explorer-canvas-bg: #e5e8ec;
+    --editor-active-line: #c2d2e4;
+    --text-iso-message: #44505f;
 
     --explorer-label: #14181f;
     --explorer-label-halo: #ffffff;

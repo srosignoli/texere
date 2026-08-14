@@ -90,7 +90,7 @@
 </div>
 
 <style>
-  .iso-wrap { position: relative; width: 100%; background: #0b1220; border-radius: 6px; overflow: hidden; }
+  .iso-wrap { position: relative; width: 100%; background: var(--surface-sunken); border-radius: 6px; overflow: hidden; }
   .iso-wrap canvas { display: block; width: 100%; height: 100%; touch-action: none; }
-  .iso-msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #7a8ba0; font-size: 13px; padding: 12px; text-align: center; background: #0b1220; }
+  .iso-msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--text-iso-message); font-size: 13px; padding: 12px; text-align: center; background: var(--surface-sunken); }
 </style>

@@ -55,13 +55,13 @@
         ...historyKeymap,
       ]),
       EditorView.theme({
-        '&': { height: '100%', background: '#1b2636' },
-        '.cm-content': { fontFamily: 'monospace', fontSize: '0.88rem', color: '#e8eaf0', textAlign: 'left' },
-        '.cm-gutters': { background: '#161f2e', borderRight: '1px solid #2a3a4a', color: '#4a5a6a' },
-        '.cm-cursor': { borderLeftColor: '#7dd3fc' },
-        '.cm-activeLine': { background: '#1d2e42' },
-        '.cm-activeLineGutter': { background: '#1d2e42' },
-        '.cm-tooltip.cm-tooltip-autocomplete': { background: '#1a2535', border: '1px solid #2a3a4a', borderRadius: '6px', boxShadow: '0 6px 24px rgba(0,0,0,0.55)' },
+        '&': { height: '100%', background: 'var(--surface)' },
+        '.cm-content': { fontFamily: 'monospace', fontSize: '0.88rem', color: 'var(--text)', textAlign: 'left' },
+        '.cm-gutters': { background: 'var(--surface-bar)', borderRight: '1px solid var(--border)', color: 'var(--text-dim)' },
+        '.cm-cursor': { borderLeftColor: 'var(--accent-text)' },
+        '.cm-activeLine': { background: 'var(--editor-active-line)' },
+        '.cm-activeLineGutter': { background: 'var(--editor-active-line)' },
+        '.cm-tooltip.cm-tooltip-autocomplete': { background: 'var(--surface-overlay)', border: '1px solid var(--border)', borderRadius: '6px', boxShadow: '0 6px 24px rgba(0,0,0,0.55)' },
       }),
     ]
   }
@@ -149,24 +149,29 @@
     width: 70%; height: 70%;
     min-width: 360px; min-height: 240px;
     display: flex; flex-direction: column;
-    background: #1b2636; border: 1px solid #2a3a4a; border-radius: 8px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
     box-shadow: 0 18px 60px rgba(0, 0, 0, 0.6);
     overflow: hidden; resize: both;
   }
   .editcard-head {
     flex: 0 0 auto; display: flex; align-items: center; gap: 10px;
-    padding: 6px 10px; border-bottom: 1px solid #2a3a4a;
-    background: #161f2e; font-size: 12px;
+    padding: 6px 10px; border-bottom: 1px solid var(--border);
+    background: var(--surface-bar); font-size: 12px;
   }
-  .editcard-file { color: #7dd3fc; font-weight: 600; }
+  .editcard-file { color: var(--accent-text); font-weight: 600; }
   .editcard-node { color: var(--text-row); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40%; }
+  /* #e0b000 has no matching token and is deliberately left literal — it's the
+     same fixed "amber" hex StatsPanel/SourcesSidebar already keep literal
+     app-wide (see StatsPanel.svelte's .sp-value.high comment) so an
+     ambiguous-match notice reads with the same hue as every other amber
+     notice in the app; minting a separate token here would drift from it. */
   .editcard-ambiguous { color: #e0b000; font-size: 11px; }
   .editcard-spacer { flex: 1 1 auto; }
-  .editcard-hint { color: #5a7a9a; font-size: 11px; }
+  .editcard-hint { color: var(--accent-dim); font-size: 11px; }
   .editcard-close {
-    background: none; border: none; color: #8899aa; font-size: 18px;
+    background: none; border: none; color: var(--text-muted); font-size: 18px;
     line-height: 1; cursor: pointer; padding: 0 4px;
   }
-  .editcard-close:hover { color: #e8eaf0; }
+  .editcard-close:hover { color: var(--text); }
   .editcard-editor { flex: 1 1 0; min-height: 0; overflow: hidden; }
 </style>
