@@ -121,16 +121,20 @@
 </div>
 
 <style>
-  .im-cell { background: #0e1622; border: 1px solid #26374a; border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
-  .im-bar { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-bottom: 1px solid #1c2a3a; flex-wrap: wrap; }
-  .im-bar button { background: #14233a; color: #93c5fd; border: 1px solid #2a3a4a; border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
+  .im-cell { background: var(--surface-modal); border: 1px solid var(--border-card); border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+  .im-bar { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-bottom: 1px solid var(--border-subtle); flex-wrap: wrap; }
+  .im-bar button { background: var(--control); color: var(--accent-text-alt); border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
   /* Cap the viewport SIZE uniformly (preserve aspect) so tall images scale down
      instead of being clipped/squished. --ar (from image-view.js) is the crop-box
      aspect. Do NOT put max-width:100% on the <img>: the rotated (90/270) img is
      width:200%, which such a clamp would distort. */
   .im-view { max-height: 70vh; max-width: calc(70vh * var(--ar)); }
   .im-cropwrap { touch-action: none; cursor: crosshair; }
+  /* Translucent rgba() background paired with a literal border colour: left
+     alone deliberately (per the migration brief's MiniMap precedent). The
+     border happens to byte-match --accent-text, but tokenizing it while the
+     rgba() stays a fixed literal would decouple the two from each other. */
   .im-sel { position: absolute; border: 1.5px solid #7dd3fc; background: rgba(125, 211, 252, 0.15); pointer-events: none; }
-  .im-missing { padding: 20px; color: #ff8080; font-size: 13px; }
-  .im-hint { padding: 4px 8px 8px; color: #6b7a8a; font-size: 11px; }
+  .im-missing { padding: 20px; color: var(--danger); font-size: 13px; }
+  .im-hint { padding: 4px 8px 8px; color: var(--text-tab-muted); font-size: 11px; }
 </style>
