@@ -156,14 +156,14 @@
 {#if showSettings}<LLMSettings onClose={() => (showSettings = false)} />{/if}
 
 <style>
-  .nb-pane { position: absolute; inset: 0; display: flex; flex-direction: column; background: #0b1220; }
-  .nb-head { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid #2a3a4a; background: #101826; }
-  .nb-title { color: #7dd3fc; font-weight: 600; }
-  .nb-ro { color: #b58a3a; font-size: 11px; }
-  .nb-gear { background: #14233a; color: #93c5fd; border: 1px solid #2a4a6a; border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
-  .nb-foldall { background: none; color: #5d7186; border: 1px solid #2a3a4a; border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
-  .nb-foldall:hover { color: #7dd3fc; border-color: #2a4a6a; }
-  .nb-error { color: #ff8080; padding: 6px 12px; font-size: 12px; }
+  .nb-pane { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--surface-sunken); }
+  .nb-head { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--surface-inset); }
+  .nb-title { color: var(--accent-text); font-weight: 600; }
+  .nb-ro { color: var(--text-notice); font-size: 11px; }
+  .nb-gear { background: var(--control); color: var(--accent-text-alt); border: 1px solid var(--control-border); border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
+  .nb-foldall { background: none; color: var(--text-faint); border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
+  .nb-foldall:hover { color: var(--accent-text); border-color: var(--control-border); }
+  .nb-error { color: var(--danger); padding: 6px 12px; font-size: 12px; }
   .nb-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 12px; }
   /* Reads as chrome, not content: the same muted, letter-spaced treatment
      AudioCell already used for its own name, dimmed further. Deliberately has
@@ -171,7 +171,7 @@
      filled strip would have to match each one to avoid looking detached. The
      reorder and delete controls belong to this wrapper rather than to the cell,
      and sitting outside the cell's border is how that reads honestly. */
-  .nb-cellhead { display: flex; align-items: center; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: #5d7186; padding: 0 2px 3px; }
+  .nb-cellhead { display: flex; align-items: center; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-faint); padding: 0 2px 3px; }
   .nb-cellname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* A button inherits no typography, so every property .nb-cellhead sets has to
      be restored by hand or the name stops matching the strip it sits in.
@@ -182,27 +182,27 @@
      clicked control in this strip is as far as possible from ✕ — see the
      mis-click note on .nb-del below. */
   .nb-fold { display: flex; align-items: center; gap: 4px; min-width: 0; background: none; border: none; margin: 0; padding: 2px 4px 2px 0; cursor: pointer; font: inherit; color: inherit; letter-spacing: inherit; text-transform: inherit; }
-  .nb-fold:hover { color: #7dd3fc; }
+  .nb-fold:hover { color: var(--accent-text); }
   .nb-chev { flex: none; font-size: 8px; }
   /* Content, not chrome. The strip above is uppercase and letter-spaced because
      it names a type; this quotes what the user actually wrote, so it inherits
      none of that. It is 11px against the header's 10px and still reads as
      subordinate — lowercase x-height at 11px sits below cap height at 10px —
      while staying legible as prose. Indented to align under the name. */
-  .nb-preview { padding: 0 2px 4px 16px; font-size: 11px; color: #46586a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nb-preview { padding: 0 2px 4px 16px; font-size: 11px; color: var(--text-control-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .nb-folded { display: none; }
   .nb-headspacer { flex: 1; }
   .nb-reorder { display: flex; gap: 2px; }
-  .nb-reorder button { background: none; border: none; color: #46586a; cursor: pointer; font-size: 9px; padding: 2px 4px; }
-  .nb-reorder button:hover:not(:disabled) { color: #7dd3fc; }
+  .nb-reorder button { background: none; border: none; color: var(--text-control-muted); cursor: pointer; font-size: 9px; padding: 2px 4px; }
+  .nb-reorder button:hover:not(:disabled) { color: var(--accent-text); }
   .nb-reorder button:disabled { opacity: .35; cursor: default; }
   /* The gap before ✕ is the whole of the mis-click protection: ▲▼ and delete
      are neighbours for the first time here, and deleteCell has no undo. Keep it
      visible — do not collapse it into the .nb-reorder gap. Hit areas are sized
      via padding (not just the gap) for the same reason: pen input gets no
      hover preview of the delete title to catch an aim error before it lands. */
-  .nb-del { margin-left: 14px; background: none; border: none; color: #46586a; cursor: pointer; font-size: 11px; padding: 3px 6px; }
-  .nb-del:hover { color: #ff8080; }
-  .nb-add { background: #14233a; color: #93c5fd; border: 1px dashed #2a4a6a; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 12px; width: 100%; }
-  .nb-add:hover { background: #1a2f4a; }
+  .nb-del { margin-left: 14px; background: none; border: none; color: var(--text-control-muted); cursor: pointer; font-size: 11px; padding: 3px 6px; }
+  .nb-del:hover { color: var(--danger); }
+  .nb-add { background: var(--control); color: var(--accent-text-alt); border: 1px dashed var(--control-border); border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 12px; width: 100%; }
+  .nb-add:hover { background: var(--control-hover); }
 </style>
