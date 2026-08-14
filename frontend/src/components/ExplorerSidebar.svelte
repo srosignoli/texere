@@ -326,7 +326,7 @@
 
   .section-badge {
     font-size: 11px;
-    color: #6b7c95;
+    color: var(--explorer-text-muted);
   }
 
   .list {
@@ -356,7 +356,7 @@
 
   .check input[type='checkbox'] {
     margin: 0;
-    accent-color: #6cb4ee;
+    accent-color: var(--explorer-node-default);
   }
 
   .row-all {
@@ -380,7 +380,7 @@
   }
 
   .row-count {
-    color: #6b7c95;
+    color: var(--explorer-text-muted);
     font-variant-numeric: tabular-nums;
     font-size: 11px;
   }
@@ -394,7 +394,7 @@
 
   .solo-btn {
     background: transparent;
-    color: #6b7c95;
+    color: var(--explorer-text-muted);
     border: 1px solid transparent;
     font-size: 10px;
     cursor: pointer;
@@ -411,7 +411,7 @@
 
   .text-btn {
     background: transparent;
-    color: #6cb4ee;
+    color: var(--explorer-node-default);
     border: none;
     font-size: 11px;
     cursor: pointer;
@@ -451,7 +451,7 @@
     grid-column: 1 / span 2;
     grid-row: 2;
     width: 100%;
-    accent-color: #6cb4ee;
+    accent-color: var(--explorer-node-default);
   }
 
   .reset-btn {

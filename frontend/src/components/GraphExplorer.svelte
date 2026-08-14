@@ -1560,7 +1560,7 @@
     position: fixed;
     inset: 0;
     z-index: 70; /* above StudySurface (60) so Expand from a notebook graph cell overlays it */
-    background: var(--bg-1, #0e0f12);
+    background: var(--explorer-canvas-bg);
     overflow: hidden;
   }
 
@@ -1720,7 +1720,7 @@
   }
 
   .empty-label {
-    color: #6b7c95;
+    color: var(--explorer-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.04em;
     font-size: 10px;
@@ -1824,7 +1824,7 @@
   .layer-tooltip-meta {
     margin-top: 3px;
     font-size: 10px;
-    color: #6b7c95;
+    color: var(--explorer-text-muted);
     font-variant-numeric: tabular-nums;
     text-transform: lowercase;
     letter-spacing: 0.04em;
@@ -1854,7 +1854,7 @@
     padding: 6px 12px;
     background: rgba(20, 24, 32, 0.92);
     color: #e8eaf0;
-    border: 1px solid #6cb4ee;
+    border: 1px solid var(--explorer-node-default);
     border-radius: 14px;
     font-size: 12px;
     cursor: pointer;
@@ -1866,7 +1866,7 @@
     background: rgba(30, 36, 48, 0.95);
   }
   .freeze-icon {
-    color: #6cb4ee;
+    color: var(--explorer-node-default);
     flex: 0 0 12px;
   }
   .freeze-label {
@@ -1877,7 +1877,7 @@
     white-space: nowrap;
   }
   .freeze-hint {
-    color: #6b7c95;
+    color: var(--explorer-text-muted);
     font-size: 10px;
     text-transform: lowercase;
     letter-spacing: 0.04em;
