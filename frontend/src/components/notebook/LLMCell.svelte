@@ -219,34 +219,38 @@
 </div>
 
 <style>
-  .llm-cell { background: #0e1622; border: 1px solid #26374a; border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
-  .llm-bar { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-bottom: 1px solid #1c2a3a; }
-  .llm-warn { padding: 6px 8px; color: #b58a3a; font-size: 12px; border-bottom: 1px solid #2a3a4a; }
-  .skill { background: #14233a; color: #93c5fd; border: 1px solid #2a4a6a; border-radius: 6px; padding: 2px 6px; font-size: 12px; }
+  .llm-cell { background: var(--surface-modal); border: 1px solid var(--border-card); border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+  .llm-bar { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-bottom: 1px solid var(--border-subtle); }
+  .llm-warn { padding: 6px 8px; color: var(--text-notice); font-size: 12px; border-bottom: 1px solid var(--border); }
+  .skill { background: var(--control); color: var(--accent-text-alt); border: 1px solid var(--control-border); border-radius: 6px; padding: 2px 6px; font-size: 12px; }
   /* appearance:none lets WebKitGTK apply the app's dark-blue background to the
      select and its popup instead of the UA grey; data-URI chevron replaces the
-     removed native arrow. */
+     removed native arrow. The chevron's fill is baked into the data URI as a
+     literal (%23cdd6e2 = #cdd6e2) — CSS custom properties cannot be
+     interpolated into a url() string, so it cannot track var(--text-modal)
+     and stays Blue's exact shade in every theme. Pre-existing constraint, not
+     introduced by this migration. */
   .prof {
     -webkit-appearance: none; appearance: none;
-    background: #0b1220; border: 1px solid #2a3a4a; border-radius: 6px; color: #cdd6e2; font-size: 12px; padding: 2px 22px 2px 6px;
+    background: var(--surface-sunken); border: 1px solid var(--border); border-radius: 6px; color: var(--text-modal); font-size: 12px; padding: 2px 22px 2px 6px;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath fill='%23cdd6e2' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
     background-repeat: no-repeat; background-position: right 7px center;
   }
-  .prof option { background: #0b1220; color: #cdd6e2; }
-  .attach { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 6px 8px; border-bottom: 1px solid #1c2a3a; color: #5a7a9a; font-size: 11px; }
-  .attach label { color: #93c5fd; }
+  .prof option { background: var(--surface-sunken); color: var(--text-modal); }
+  .attach { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 6px 8px; border-bottom: 1px solid var(--border-subtle); color: var(--accent-dim); font-size: 11px; }
+  .attach label { color: var(--accent-text-alt); }
   .transcript { padding: 8px; display: flex; flex-direction: column; gap: 8px; max-height: 340px; overflow-y: auto; }
   .msg { display: flex; flex-direction: column; gap: 2px; }
-  .msg .who { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: #5a7a9a; }
+  .msg .who { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent-dim); }
   .msg .body { white-space: pre-wrap; font-size: 13px; }
-  .msg.user .body { color: #e8eaf0; }
-  .msg.assistant .body { color: #b9c6d6; }
-  .caret { color: #7dd3fc; }
-  .llm-error { color: #ff8080; font-size: 12px; }
-  .llm-hint { color: #b58a3a; font-size: 12px; padding: 8px; }
-  .composer { display: flex; gap: 6px; padding: 8px; border-top: 1px solid #1c2a3a; }
-  .composer textarea { flex: 1; background: #0b1220; border: 1px solid #2a3a4a; border-radius: 6px; color: #e8eaf0; font-size: 13px; padding: 6px 8px; resize: vertical; }
-  .send, .stop { align-self: flex-end; border: 1px solid #2a3a4a; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 12px; }
-  .send { background: #1e3a5a; color: #e8eaf0; }
-  .stop { background: #5a1e1e; color: #ffd7d7; }
+  .msg.user .body { color: var(--text); }
+  .msg.assistant .body { color: var(--text-cell-muted); }
+  .caret { color: var(--accent-text); }
+  .llm-error { color: var(--danger); font-size: 12px; }
+  .llm-hint { color: var(--text-notice); font-size: 12px; padding: 8px; }
+  .composer { display: flex; gap: 6px; padding: 8px; border-top: 1px solid var(--border-subtle); }
+  .composer textarea { flex: 1; background: var(--surface-sunken); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 13px; padding: 6px 8px; resize: vertical; }
+  .send, .stop { align-self: flex-end; border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 12px; }
+  .send { background: var(--accent); color: var(--text); }
+  .stop { background: var(--danger-fill); color: var(--danger-fill-text); }
 </style>
