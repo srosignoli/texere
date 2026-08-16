@@ -16,15 +16,16 @@
 //   - rescaleLabels()  - call when camera.zoom or canvas size changes
 //   - setOpacity(id, t) - linearly fade a node group; used by the
 //                          skeleton-first reveal in GraphExplorer.svelte
+//   - retheme()        - re-resolve every CSS-palette colour and redraw the
+//                          label textures in place (theme switch)
 //   - dispose()        - frees all GPU resources + removes from scene
 
 import * as THREE from 'three'
 import {
-  COLOR_NODE_DEFAULT,
-  COLOR_NODE_ANCHOR,
-  COLOR_LABEL,
-  COLOR_LABEL_HALO,
-  TERRITORY_PALETTE,
+  getNodeColor,
+  getLabelColor,
+  getLabelHaloColor,
+  getTerritoryPalette,
 } from './Theme.js'
 
 // Visible-radius scale factor applied to NodeView.size. NodeView.size
@@ -73,30 +74,37 @@ export function buildNodeMeshes(scene, layoutResult, camera, canvas, picker, opt
   const sphereGeo = new THREE.SphereGeometry(1, 16, 12)
   const mode = options.mode ?? 'stacked'
 
-  // contextId → palette color, derived once per build. Used only in
-  // extended mode where contexts have no per-floor differentiation
-  // and the sphere tint becomes the dominant context cue.
-  const colorByContext = new Map()
-  if (mode === 'extended') {
+  // contextId → palette color. Rebuilt by resolveContextColors() on every
+  // build and on every retheme, so the palette is never pinned to whichever
+  // theme happened to be active earlier. Used only in extended mode, where
+  // contexts have no per-floor differentiation and the sphere tint becomes
+  // the dominant context cue.
+  function resolveContextColors() {
+    const m = new Map()
+    if (mode !== 'extended') return m
+    const palette = getTerritoryPalette()
     for (const l of layoutResult.layers ?? []) {
       const slot = l.colorSlot
       if (slot === undefined || slot === null || slot < 0) continue
-      colorByContext.set(l.contextId, TERRITORY_PALETTE[slot % TERRITORY_PALETTE.length])
+      m.set(l.contextId, palette[slot % palette.length])
     }
+    return m
   }
 
+  // sphereColorFor resolves a node's sphere colour against the palette in
+  // `byContext`. Called at build time and again on retheme.
+  function sphereColorFor(n, byContext) {
+    if (n.id === layoutResult.anchorId) return getNodeColor(true)
+    if (mode === 'extended' && byContext.has(n.contextId)) return byContext.get(n.contextId)
+    return getNodeColor(false)
+  }
+
+  let colorByContext = resolveContextColors()
+
   for (const n of layoutResult.nodes) {
-    const isAnchor = n.id === layoutResult.anchorId
     const radius = Math.max(RADIUS_FLOOR, (n.size ?? 1) * RADIUS_SCALE)
 
-    let sphereColor
-    if (isAnchor) {
-      sphereColor = COLOR_NODE_ANCHOR
-    } else if (mode === 'extended' && colorByContext.has(n.contextId)) {
-      sphereColor = colorByContext.get(n.contextId)
-    } else {
-      sphereColor = COLOR_NODE_DEFAULT
-    }
+    const sphereColor = sphereColorFor(n, colorByContext)
     const sphereMat = new THREE.MeshBasicMaterial({
       color: sphereColor,
       transparent: true,
@@ -142,7 +150,7 @@ export function buildNodeMeshes(scene, layoutResult, camera, canvas, picker, opt
     const labelOffsetY = radius + LABEL_OFFSET
     const cycleOffsetY = radius + LABEL_OFFSET * 1.3
     const cycleOffsetX = radius * 0.85
-    records.set(n.id, { group, sphere, label, pickMesh, fullLabel, shortLabel, labelOffsetY, cycleGlyph, cycleOffsetY, cycleOffsetX })
+    records.set(n.id, { node: n, group, sphere, label, pickMesh, fullLabel, shortLabel, labelOffsetY, cycleGlyph, cycleOffsetY, cycleOffsetX })
   }
 
   // Initial sprite sizing for the current zoom.
@@ -154,6 +162,32 @@ export function buildNodeMeshes(scene, layoutResult, camera, canvas, picker, opt
     size: records.size,
 
     rescaleLabels: () => rescaleLabels(records, camera, canvas),
+
+    /**
+     * Re-resolve every colour this module reads from the CSS palette and
+     * repaint in place. Called when the user switches theme with the
+     * explorer already open.
+     *
+     * Label text lives in a canvas texture, so a material colour swap is not
+     * enough — the texture has to be redrawn with the new fill/halo. We swap
+     * `material.map` and dispose the old one rather than rebuilding the
+     * sprite, which keeps every sprite's position, scale, opacity (mid
+     * reveal-tween included) and visibility exactly as the user left it.
+     * Geometry and camera are never touched.
+     */
+    retheme() {
+      colorByContext = resolveContextColors()
+      for (const r of records.values()) {
+        r.sphere.material.color.setHex(sphereColorFor(r.node, colorByContext))
+        const old = r.label.material.map
+        r.label.material.map = makeLabelTexture(r.shortLabel)
+        r.label.material.needsUpdate = true
+        old?.dispose()
+      }
+      // Text and font are unchanged, so the canvas aspect is too — but
+      // rescale anyway so a retheme can never leave a stale sprite size.
+      rescaleLabels(records, camera, canvas)
+    },
 
     setOpacity(id, t) {
       const r = records.get(id)
@@ -292,12 +326,15 @@ function truncateLabel(text) {
 }
 
 /**
- * Build a billboarded label sprite from text. Uses a high-DPR canvas
- * texture so the label stays sharp at zoom-in.
+ * Draw a node label into a high-DPR canvas texture, resolving the label
+ * fill and halo from the CSS palette AT CALL TIME. Split out from
+ * createLabelSprite so retheme() can redraw the texture of an existing
+ * sprite without disturbing anything else about it.
+ *
  * @param {string} text
- * @returns {THREE.Sprite}
+ * @returns {THREE.CanvasTexture}
  */
-function createLabelSprite(text) {
+function makeLabelTexture(text) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2)
   const fontSize = 28 // canvas-space px
   const padding = 8
@@ -321,18 +358,27 @@ function createLabelSprite(text) {
   // Halo: stroke + fill so the label remains legible against any
   // territory color or when overlapping an edge.
   ctx.lineWidth = 4
-  ctx.strokeStyle = COLOR_LABEL_HALO
+  ctx.strokeStyle = getLabelHaloColor()
   ctx.strokeText(text, padding, fontSize / 2 + padding)
-  ctx.fillStyle = COLOR_LABEL
+  ctx.fillStyle = getLabelColor()
   ctx.fillText(text, padding, fontSize / 2 + padding)
 
   const tex = new THREE.CanvasTexture(canvas)
   tex.minFilter = THREE.LinearFilter
   tex.magFilter = THREE.LinearFilter
   tex.anisotropy = 4
+  return tex
+}
 
+/**
+ * Build a billboarded label sprite from text. Uses a high-DPR canvas
+ * texture so the label stays sharp at zoom-in.
+ * @param {string} text
+ * @returns {THREE.Sprite}
+ */
+function createLabelSprite(text) {
   const mat = new THREE.SpriteMaterial({
-    map: tex,
+    map: makeLabelTexture(text),
     transparent: true,
     depthWrite: false,
     depthTest: true,
@@ -399,6 +445,7 @@ function createCycleGlyphSprite() {
 }
 
 /** @typedef {{
+ *   node: any,
  *   group: THREE.Group,
  *   sphere: THREE.Mesh,
  *   label: THREE.Sprite,

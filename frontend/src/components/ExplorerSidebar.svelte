@@ -22,24 +22,18 @@
     hiddenMetas,
     layoutMode,
   } from '../stores/explorer.js'
-  import {
-    COLOR_CONTAINS,
-    COLOR_LEADS_TO,
-    COLOR_PROPERTIES,
-    COLOR_SIMILAR_TO,
-    COLOR_UNCLASSIFIED,
-  } from './explorer/Theme.js'
+  import { getEdgeColor } from './explorer/Theme.js'
 
   export let open = false
   const dispatch = createEventDispatcher()
 
   // Edge meta-types ordered to mirror the legend overlay.
   const META_TYPES = [
-    { id: 'contains', label: 'Contains', color: hex(COLOR_CONTAINS) },
-    { id: 'leadsto', label: 'Leads to', color: hex(COLOR_LEADS_TO) },
-    { id: 'properties', label: 'Properties', color: hex(COLOR_PROPERTIES) },
-    { id: 'similarto', label: 'Similar to', color: hex(COLOR_SIMILAR_TO) },
-    { id: 'unclassified', label: 'Unclassified', color: hex(COLOR_UNCLASSIFIED) },
+    { id: 'contains', label: 'Contains', color: hex('contains') },
+    { id: 'leadsto', label: 'Leads to', color: hex('leadsto') },
+    { id: 'properties', label: 'Properties', color: hex('properties') },
+    { id: 'similarto', label: 'Similar to', color: hex('similarto') },
+    { id: 'unclassified', label: 'Unclassified', color: hex('unclassified') },
   ]
 
   $: layers = $currentLayout?.layers ?? []
@@ -54,8 +48,11 @@
   let allCheckbox
   $: if (allCheckbox) allCheckbox.indeterminate = somePartial
 
-  function hex(rgb) {
-    return '#' + rgb.toString(16).padStart(6, '0')
+  // The edge palette is theme-INVARIANT (a shared :root block with no
+  // per-theme override), so resolving once at module scope is correct — the
+  // swatches cannot drift from what Three.js draws on a theme switch.
+  function hex(meta) {
+    return '#' + getEdgeColor(meta).toString(16).padStart(6, '0')
   }
 
   function toggleAllLayers() {

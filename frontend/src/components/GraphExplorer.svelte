@@ -68,6 +68,7 @@
   import EditCard from './explorer/EditCard.svelte'
   import { resolveNodeSource } from '../lib/node-source.js'
   import { workbenchStore } from '../stores/workbench.js'
+  import { theme } from '../stores/theme.js'
   import { ParseFileForUI, BuildGraph } from '../../wailsjs/go/main/App'
 
   /** Fired by parent when the user requests close (Esc / button). */
@@ -852,6 +853,35 @@
       layerPlanes.setOpacity($planeOpacity)
       sceneCtx.render()
     }
+  }
+
+  // Theme switch with the explorer already open: repaint the live scene
+  // rather than rebuilding it.
+  //
+  // Only the label and neutral-plane colours are themed — the edge, node and
+  // territory hues are deliberately theme-invariant — so a rebuild would be
+  // pure cost: it would refit the camera, drop the pinned highlight, and
+  // replay the whole reveal animation over a palette change. retheme()
+  // re-resolves every CSS variable and redraws the label textures in place,
+  // touching nothing else, so camera position/zoom, the freeze pin, layer
+  // visibility, spacing and plane opacity all survive untouched.
+  //
+  // A Svelte store fires on subscribe with the value already in it, so the
+  // first emission is skipped: at that point the scene has either not been
+  // built yet, or was just built against exactly this theme. The store is
+  // only set AFTER <html data-theme> is updated (see stores/theme.js), so
+  // getComputedStyle here already reads the new palette.
+  let lastThemeApplied = get(theme)
+  $: if ($theme !== lastThemeApplied) {
+    lastThemeApplied = $theme
+    rethemeScene()
+  }
+
+  function rethemeScene() {
+    if (!sceneCtx) return
+    nodeMeshes?.retheme()
+    layerPlanes?.retheme()
+    sceneCtx.render()
   }
 
   // =============================================================================

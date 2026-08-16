@@ -6,6 +6,8 @@
   // controller. Multiple instances may be mounted simultaneously, so
   // every three.js resource created here must be disposed on destroy.
   import { onMount, onDestroy } from 'svelte'
+  import { get } from 'svelte/store'
+  import { theme } from '../stores/theme.js'
   import { createScene } from './explorer/Scene.js'
   import { createPicker } from './explorer/Picking.js'
   import { buildNodeMeshes } from './explorer/NodeMeshes.js'
@@ -60,6 +62,20 @@
 
   // Re-render whenever the layout changes (and once sceneCtx exists after mount).
   $: if (sceneCtx) renderLayout(layout)
+
+  // Theme switch: repaint the live scene in place (labels are canvas
+  // textures, so they are redrawn, not just recoloured). Cheaper and less
+  // disruptive than renderLayout(), which refits the camera. Skips the
+  // store's initial emission — see the longer note in GraphExplorer.svelte.
+  let lastThemeApplied = get(theme)
+  $: if ($theme !== lastThemeApplied) {
+    lastThemeApplied = $theme
+    if (sceneCtx) {
+      nodeMeshes?.retheme()
+      layerPlanes?.retheme()
+      sceneCtx.render()
+    }
+  }
 
   onMount(() => {
     sceneCtx = createScene(canvas, {

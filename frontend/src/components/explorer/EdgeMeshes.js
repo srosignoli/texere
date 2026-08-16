@@ -22,7 +22,7 @@
 // than competing with nodes for attention.
 
 import * as THREE from 'three'
-import { colorForMeta } from './Theme.js'
+import { getEdgeColor } from './Theme.js'
 import { applyBridges } from './EdgeBridges.js'
 
 // Per-meta marker dimensions. Sizes are tuned so markers stay legible
@@ -61,7 +61,7 @@ export function buildEdgeMeshes(scene, layoutResult, nodeMeshes, picker) {
 
     const start = src.sphere.position
     const end = dst.sphere.position
-    const color = colorForMeta(e.meta)
+    const color = getEdgeColor(e.meta)
     const path = buildOrthogonalPath(start, end)
 
     // Unknown-arrow edges (code not declared in any SSTconfig) render dashed

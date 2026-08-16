@@ -1,14 +1,23 @@
 // Color theme for the 2.5D Isometric Graph Explorer (feature 006).
 //
 // Single source of truth: CSS variables declared in `frontend/src/style.css`
-// (`:root { --explorer-* }`). This module reads them lazily so Three.js
-// materials can be rebuilt against a fresh palette if a theme switcher
-// is added later. Each lookup falls back to a hardcoded default so the
-// explorer renders correctly even if a variable is missing (e.g. during
-// SSR / test environments without a real document).
+// (`:root { --explorer-* }`, plus the per-theme `[data-theme=...]` blocks).
 //
-// Three.js consumes 24-bit hex integers, not CSS strings, so every
-// resolver parses "#rrggbb" / "#rgb" into a number.
+// EVERY resolver in this module reads the document at CALL time. There are
+// deliberately no eagerly-evaluated `COLOR_*` constants: this module used to
+// export both, and the frozen constants were what the scene actually
+// imported, so the palette was pinned to whichever theme happened to be
+// active when the module was first imported — a theme switch (or even
+// reopening the explorer afterwards) could not change it. One path only.
+//
+// Each lookup falls back to a hardcoded default so the explorer renders
+// correctly even if a variable is missing (e.g. a test environment with no
+// real document).
+//
+// Three.js consumes 24-bit hex integers, not CSS strings, so every colour
+// resolver parses "#rrggbb" / "#rgb" into a number. The two label resolvers
+// are the exception: they feed canvas2d fillStyle/strokeStyle and so return
+// CSS strings (which may carry alpha).
 
 const DEFAULTS = {
   edgeContains: 0xf59e0b,
@@ -22,11 +31,9 @@ const DEFAULTS = {
   nodeAnchor: 0xffffff,
   label: '#e8eaf0',
   labelHalo: '#0e0f12',
-  groundPlane: 0x1b2636,
+  labelSub: 'rgba(200, 214, 230, 0.7)',
   planeGrid: 0x6b7c95,
   planeTint: 0x1f2a3a,
-  extendedPlaneGrid: 0x7a78a5,
-  extendedPlaneTint: 0x2c2a40,
 
   territory: [
     0xe07a3a,
@@ -80,9 +87,17 @@ function cssStringFromVar(name, fallback) {
   return readVar(name) || fallback
 }
 
-// Lazy resolvers — call at scene-build time. Callers that want the
-// value-at-import-time can also use the eagerly-evaluated exports
-// below, which mirror the legacy module surface.
+// =============================================================================
+// Semantic hues — deliberately theme-INVARIANT.
+//
+// The edge colours encode arrow meta-types and the node / territory colours
+// encode node and context identity. They are declared once in a shared
+// :root block with no per-theme override, and ExplorerLegend renders swatches
+// that must keep matching what Three.js draws. They are still resolved at
+// call time (one path for everything), they simply return the same value in
+// every theme.
+// =============================================================================
+
 export function getEdgeColor(meta) {
   switch (meta) {
     case 'contains':
@@ -106,34 +121,6 @@ export function getNodeColor(isAnchor) {
     : colorFromVar('--explorer-node-default', DEFAULTS.nodeDefault)
 }
 
-export function getGroundPlaneColor() {
-  return colorFromVar('--explorer-ground', DEFAULTS.groundPlane)
-}
-
-export function getPlaneGridColor() {
-  return colorFromVar('--explorer-plane-grid', DEFAULTS.planeGrid)
-}
-
-export function getPlaneTintColor() {
-  return colorFromVar('--explorer-plane-tint', DEFAULTS.planeTint)
-}
-
-export function getExtendedPlaneTintColor() {
-  return colorFromVar('--explorer-extended-plane-tint', DEFAULTS.extendedPlaneTint)
-}
-
-export function getExtendedPlaneGridColor() {
-  return colorFromVar('--explorer-extended-plane-grid', DEFAULTS.extendedPlaneGrid)
-}
-
-export function getLabelColor() {
-  return cssStringFromVar('--explorer-label', DEFAULTS.label)
-}
-
-export function getLabelHaloColor() {
-  return cssStringFromVar('--explorer-label-halo', DEFAULTS.labelHalo)
-}
-
 export function getTerritoryPalette() {
   const out = new Array(DEFAULTS.territory.length)
   for (let i = 0; i < out.length; i++) {
@@ -143,30 +130,30 @@ export function getTerritoryPalette() {
 }
 
 // =============================================================================
-// Legacy eager exports — kept so existing imports continue to work. New
-// code should prefer the get*() resolvers above so it picks up theme
-// changes if the document's :root variables are mutated at runtime.
+// Themed values — these DO change per theme, and every caller must therefore
+// resolve them at the moment it paints (scene build, or a retheme pass).
 // =============================================================================
 
-export const COLOR_CONTAINS = colorFromVar('--explorer-edge-contains', DEFAULTS.edgeContains)
-export const COLOR_LEADS_TO = colorFromVar('--explorer-edge-leads-to', DEFAULTS.edgeLeadsTo)
-export const COLOR_PROPERTIES = colorFromVar('--explorer-edge-properties', DEFAULTS.edgeProperties)
-export const COLOR_SIMILAR_TO = colorFromVar('--explorer-edge-similar-to', DEFAULTS.edgeSimilarTo)
-export const COLOR_UNCLASSIFIED = colorFromVar('--explorer-edge-unclassified', DEFAULTS.edgeUnclassified)
-export const COLOR_UNKNOWN = colorFromVar('--explorer-edge-unknown', DEFAULTS.edgeUnknown)
+// Grid lines and fill of the neutral floor (the synthetic "Untagged" layer,
+// which has no palette colour of its own).
+export function getPlaneGridColor() {
+  return colorFromVar('--explorer-plane-grid', DEFAULTS.planeGrid)
+}
 
-export const COLOR_NODE_DEFAULT = colorFromVar('--explorer-node-default', DEFAULTS.nodeDefault)
-export const COLOR_NODE_ANCHOR = colorFromVar('--explorer-node-anchor', DEFAULTS.nodeAnchor)
-export const COLOR_LABEL = cssStringFromVar('--explorer-label', DEFAULTS.label)
-export const COLOR_LABEL_HALO = cssStringFromVar('--explorer-label-halo', DEFAULTS.labelHalo)
-export const COLOR_GROUND_PLANE = colorFromVar('--explorer-ground', DEFAULTS.groundPlane)
-export const COLOR_PLANE_GRID = colorFromVar('--explorer-plane-grid', DEFAULTS.planeGrid)
-export const COLOR_PLANE_TINT = colorFromVar('--explorer-plane-tint', DEFAULTS.planeTint)
-export const COLOR_EXTENDED_PLANE_GRID = colorFromVar('--explorer-extended-plane-grid', DEFAULTS.extendedPlaneGrid)
-export const COLOR_EXTENDED_PLANE_TINT = colorFromVar('--explorer-extended-plane-tint', DEFAULTS.extendedPlaneTint)
+export function getPlaneTintColor() {
+  return colorFromVar('--explorer-plane-tint', DEFAULTS.planeTint)
+}
 
-export const TERRITORY_PALETTE = getTerritoryPalette()
+// Label fill / halo / secondary fill. CSS strings — they are handed to
+// canvas2d, and the sub colour intentionally carries alpha.
+export function getLabelColor() {
+  return cssStringFromVar('--explorer-label', DEFAULTS.label)
+}
 
-export function colorForMeta(meta) {
-  return getEdgeColor(meta)
+export function getLabelHaloColor() {
+  return cssStringFromVar('--explorer-label-halo', DEFAULTS.labelHalo)
+}
+
+export function getLabelSubColor() {
+  return cssStringFromVar('--explorer-label-sub', DEFAULTS.labelSub)
 }

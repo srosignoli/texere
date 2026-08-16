@@ -210,8 +210,8 @@ html {
        Dark, since both themes' canvas backdrop stays near-black, and
        white/light-based in Light, so the composite stays light there
        regardless of theme. Composites computed against #f6f7f9
-       (--surface / --explorer-ground's Light value, the canvas's own
-       resting colour) as the representative backdrop. */
+       (--surface's Light value, the canvas's own resting colour) as the
+       representative backdrop. */
     --explorer-scrim: rgba(0, 0, 0, 0.55);          /* rest-state fill: close button, query-bar buttons,
                                                         sidebar toggle, .overlay.status */
     --explorer-scrim-strong: rgba(0, 0, 0, 0.6);    /* .overlay.banner (truncated-results notice) */
@@ -224,20 +224,18 @@ html {
     /* --- Explorer, themeable half (see the shared block below) ---------- */
     --explorer-label: #e8eaf0;
     --explorer-label-halo: #0e0f12;
-    --explorer-ground: #1b2636;
+    /* Secondary line on a plane label (the chapter list under the context
+     * name). Carries alpha on purpose so it reads as subordinate to
+     * --explorer-label on the same texture. */
+    --explorer-label-sub: rgba(200, 214, 230, 0.7);
 
-    /* Layered grid-plane colors (post layered redesign). The grid
-     * lines stand out against the ground; the tint backs the grid
-     * so the plane reads as a distinct surface even at low opacity. */
+    /* Neutral grid-plane colors — the synthetic "Untagged" floor, the one
+     * layer with no palette colour of its own. The grid lines stand out
+     * against the canvas backdrop; the tint backs the grid so the plane
+     * reads as a distinct surface even at low opacity. Every OTHER floor
+     * takes its colour from --explorer-territory-N, which is invariant. */
     --explorer-plane-grid: #6b7c95;
     --explorer-plane-tint: #1f2a3a;
-
-    /* Extended-mode shared plane: a single floor under every cluster.
-     * Distinct hue from every per-context palette entry so the user can
-     * tell at a glance that they're in Extended mode (and not looking
-     * at, e.g., a stacked layout collapsed onto one Y). */
-    --explorer-extended-plane-tint: #2c2a40;
-    --explorer-extended-plane-grid: #7a78a5;
 
     /* Secondary/count text in the Explorer family of panels (MiniMap,
      * GraphExplorer, ExplorerStats, ExplorerSidebar). Coincides with
@@ -373,7 +371,7 @@ html {
     --editor-active-line: #1f3248;
     --text-iso-message: #8c8d8d;
 
-    /* Dark's own canvas backdrop (--explorer-ground: #16171a) is near-black
+    /* Dark's own canvas backdrop (--explorer-canvas-bg: #0b0c0f) is near-black
        too, same as Blue's — the black-based scrims stay correct unchanged. */
     --explorer-scrim: rgba(0, 0, 0, 0.55);
     --explorer-scrim-strong: rgba(0, 0, 0, 0.6);
@@ -383,11 +381,9 @@ html {
 
     --explorer-label: #e8e8ea;
     --explorer-label-halo: #0a0a0c;
-    --explorer-ground: #16171a;
+    --explorer-label-sub: rgba(204, 204, 210, 0.7);
     --explorer-plane-grid: #7a7c82;
     --explorer-plane-tint: #202226;
-    --explorer-extended-plane-tint: #2a2733;
-    --explorer-extended-plane-grid: #8a86a0;
     --explorer-text-muted: #7d7e82;
 }
 
@@ -538,23 +534,23 @@ html {
 
     --explorer-label: #14181f;
     --explorer-label-halo: #ffffff;
-    --explorer-ground: #f6f7f9;
+    --explorer-label-sub: rgba(38, 46, 58, 0.75);
     --explorer-plane-grid: #8a93a3;
     --explorer-plane-tint: #e9ecf1;
-    --explorer-extended-plane-tint: #e6e3f2;
-    --explorer-extended-plane-grid: #6f6d99;
     --explorer-text-muted: #6d7a91;
 }
 
 /* 2.5D Isometric Graph Explorer (feature 006) — shared semantic palette.
  * These CSS variables are the single source of truth for the explorer's
  * territory colors, edge colors, and node colors.
- * Three.js reads them at scene-build time via Theme.js's resolve* helpers.
+ * Three.js reads them through Theme.js's get* helpers, which resolve at the
+ * moment the scene paints (build or retheme) — never at module-import time.
  *
  * These do NOT vary by theme: edge colors encode arrow meta-types and
  * territory colors encode context identity, so they must stay stable and
- * legible whichever theme is active. Only the ground / label / plane
- * variables above are themed.
+ * legible whichever theme is active, and ExplorerLegend's swatches have to
+ * keep matching what the scene draws. Only the label / plane variables above
+ * are themed.
  *
  * Hex strings only (#rrggbb) — Theme.js parses them into 24-bit ints.
  */

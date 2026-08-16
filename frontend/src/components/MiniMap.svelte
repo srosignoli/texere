@@ -16,7 +16,7 @@
 
   import { createEventDispatcher } from 'svelte'
   import { currentLayout, cameraFrame } from '../stores/explorer.js'
-  import { TERRITORY_PALETTE } from './explorer/Theme.js'
+  import { getTerritoryPalette } from './explorer/Theme.js'
 
   const dispatch = createEventDispatcher()
 
@@ -110,7 +110,8 @@
 
   function colorFor(slot) {
     if (slot === undefined || slot === null || slot < 0) return '#3a4555'
-    const c = TERRITORY_PALETTE[slot % TERRITORY_PALETTE.length]
+    const palette = getTerritoryPalette()
+    const c = palette[slot % palette.length]
     return '#' + c.toString(16).padStart(6, '0')
   }
 </script>
