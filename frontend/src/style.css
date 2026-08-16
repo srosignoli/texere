@@ -568,7 +568,7 @@ html {
     --explorer-node-anchor: #ffffff;
 
     /* Territory palette (FR-019). Each entry shifts ≥1 RGB channel by
-     * ≥120 from the ground color so the 0.42 alpha blend is clearly
+     * ≥120 from the canvas backdrop so the 0.42 alpha blend is clearly
      * visible. The palette wraps for results with more contexts. */
     --explorer-territory-0: #e07a3a; /* amber-orange */
     --explorer-territory-1: #3aa8e0; /* sky blue */
