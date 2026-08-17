@@ -69,8 +69,17 @@
   }
 
   async function reloadNotes() {
-    const text = (await GetFileContent(reading.notesPath)) ?? ''
-    setNotes(text)
+    // Failing here must not discard what's in the buffer: only touch
+    // savedNotes/notesView (via setNotes) once the fetch has actually
+    // succeeded, and surface the failure instead of throwing so a caller
+    // that isn't itself wrapped in try/catch can't turn this into an
+    // unhandled rejection.
+    try {
+      const text = (await GetFileContent(reading.notesPath)) ?? ''
+      setNotes(text)
+    } catch (err) {
+      error = String(err?.message ?? err)
+    }
   }
 
   function setNotes(text) {
@@ -137,19 +146,30 @@
     } catch (e) {
       console.warn('GetRecentArrows failed:', e)
     }
-    const text = (await GetFileContent(reading.notesPath)) ?? ''
-    savedNotes = text
-    notesView = new EditorView({
-      parent: notesContainer,
-      state: EditorState.create({
-        doc: text,
-        extensions: n4lBaseExtensions({
-          getArrowDefs: () => arrowDefsRef,
-          getRecent: () => recentCodesRef,
-          onArrowSelected: handleArrowSelected,
+    // On failure (e.g. the stored notesPath no longer resolves inside the
+    // collection), skip building the editor entirely rather than opening one
+    // on empty content — an empty buffer would be one accidental Ctrl+S away
+    // from overwriting real notes at whatever path the backend does resolve
+    // next. notesView stays undefined; every other use of it in this
+    // component already guards with `if (!notesView) return` or `?.`, so a
+    // half-initialised state doesn't leak into flushNotes/setNotes/onDestroy.
+    try {
+      const text = (await GetFileContent(reading.notesPath)) ?? ''
+      savedNotes = text
+      notesView = new EditorView({
+        parent: notesContainer,
+        state: EditorState.create({
+          doc: text,
+          extensions: n4lBaseExtensions({
+            getArrowDefs: () => arrowDefsRef,
+            getRecent: () => recentCodesRef,
+            onArrowSelected: handleArrowSelected,
+          }),
         }),
-      }),
-    })
+      })
+    } catch (err) {
+      error = String(err?.message ?? err)
+    }
   })
 
   // If the component is torn down without close() running — e.g. the Study
