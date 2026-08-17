@@ -247,6 +247,24 @@ html {
      * for 3D grid lines, this one is flat 2D panel text, and they must
      * stay independently editable. */
     --explorer-text-muted: #6b7c95;
+
+    /* --- Editor syntax highlighting (CodeMirror N4L grammar) ------------
+     * Blue's ten values are the literals n4l-highlight.js used before this
+     * migration, byte-for-byte — never "tidy" them, they are the pixel-diff
+     * baseline. Dark and Light below are Solarized-derived rather than
+     * Solarized: Solarized's own published accents measure 2.48:1 to 4.30:1
+     * against its base3 background, so the hues were kept and the lightness
+     * moved until every role cleared AA against Texere's own surfaces. */
+    --n4l-syntax-heading: #7dd3fc;
+    --n4l-syntax-keyword: #c084fc;
+    --n4l-syntax-arrow-code: #67e8f9;
+    --n4l-syntax-arrow-target: #86efac;
+    --n4l-syntax-ditto: #94a3b8;
+    --n4l-syntax-marker: #fde68a;
+    --n4l-syntax-provenance: #6b7280;
+    --n4l-syntax-label: #a78bfa;
+    --n4l-syntax-comment: #4b5563;
+    --n4l-syntax-invalid: #f59e0b;
 }
 
 /* --- Dark: neutral near-black. ---------------------------------------------
@@ -389,6 +407,19 @@ html {
     --explorer-plane-grid: #7a7c82;
     --explorer-plane-tint: #202226;
     --explorer-text-muted: #7d7e82;
+
+    /* Editor syntax highlighting — see the Blue block above for the
+     * Solarized-derived rationale. */
+    --n4l-syntax-heading: #268bd2;
+    --n4l-syntax-keyword: #767bc8;
+    --n4l-syntax-arrow-code: #2aa198;
+    --n4l-syntax-arrow-target: #859900;
+    --n4l-syntax-ditto: #6b868e;
+    --n4l-syntax-marker: #b58900;
+    --n4l-syntax-provenance: #738d95;
+    --n4l-syntax-label: #d84e91;
+    --n4l-syntax-comment: #758686;
+    --n4l-syntax-invalid: #e05318;
 }
 
 /* --- Light: white-to-grey with dark text. ----------------------------------
@@ -542,6 +573,19 @@ html {
     --explorer-plane-grid: #8a93a3;
     --explorer-plane-tint: #e9ecf1;
     --explorer-text-muted: #6d7a91;
+
+    /* Editor syntax highlighting — see the Blue block above for the
+     * Solarized-derived rationale. */
+    --n4l-syntax-heading: #2075b1;
+    --n4l-syntax-keyword: #6267c0;
+    --n4l-syntax-arrow-code: #207c75;
+    --n4l-syntax-arrow-target: #687700;
+    --n4l-syntax-ditto: #586e75;
+    --n4l-syntax-marker: #8e6b00;
+    --n4l-syntax-provenance: #576d74;
+    --n4l-syntax-label: #cd2d7b;
+    --n4l-syntax-comment: #637272;
+    --n4l-syntax-invalid: #c34815;
 }
 
 /* 2.5D Isometric Graph Explorer (feature 006) — shared semantic palette.

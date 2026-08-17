@@ -3,31 +3,38 @@ import { tags } from '@lezer/highlight'
 
 /**
  * N4L highlight style — maps StreamLanguage token names (via @lezer/highlight tags)
- * to CSS colour values.
+ * to CSS custom properties (`--n4l-syntax-*`, defined per-theme in style.css).
  *
- * Colour palette (dark background #1b2636):
- *   heading          #7dd3fc  — light blue
- *   keyword          #c084fc  — purple (context operator ::)
- *   operatorKeyword  #67e8f9  — cyan  (arrow code)
- *   string           #86efac  — green (arrow target)
- *   meta             #94a3b8  — slate (ditto =)
- *   annotation       #fde68a  — pale amber (study markers)
- *   comment          #6b7280  — muted grey (provenance)
- *   labelName        #a78bfa  — violet (@label)
- *   lineComment      #4b5563  — dark grey (#comment)
- *   invalid          #f59e0b  — amber (ALL CAPS reminders)
+ * The editor is themed through the CSS cascade, not JS: HighlightStyle.define
+ * emits CSS text and passes var(...) straight through, so switching
+ * `data-theme` on <html> retones every rule below with no rebuild here.
+ *
+ * Tag → role mapping (note the trap: CodeMirror's `comment` tag is N4L's
+ * *provenance*, and `lineComment` is N4L's `# comment` — swap them and two
+ * greys trade places with nothing looking obviously broken):
+ *   heading          → --n4l-syntax-heading       (section heading)
+ *   keyword          → --n4l-syntax-keyword       (context operator ::)
+ *   operatorKeyword  → --n4l-syntax-arrow-code    (arrow code)
+ *   string           → --n4l-syntax-arrow-target  (arrow target)
+ *   meta             → --n4l-syntax-ditto         (ditto =)
+ *   annotation       → --n4l-syntax-marker        (study markers)
+ *   comment          → --n4l-syntax-provenance    (provenance)
+ *   labelName        → --n4l-syntax-label         (@label)
+ *   lineComment      → --n4l-syntax-comment       (# comment)
+ *   invalid          → --n4l-syntax-invalid       (ALL CAPS reminders)
  */
 const n4lHighlightStyle = HighlightStyle.define([
-  { tag: tags.heading,         color: '#7dd3fc', fontWeight: 'bold' },
-  { tag: tags.keyword,         color: '#c084fc' },
-  { tag: tags.operatorKeyword, color: '#67e8f9' },
-  { tag: tags.string,          color: '#86efac' },
-  { tag: tags.meta,            color: '#94a3b8' },
-  { tag: tags.annotation,      color: '#fde68a' },
-  { tag: tags.comment,         color: '#6b7280', fontStyle: 'italic' },
-  { tag: tags.labelName,       color: '#a78bfa' },
-  { tag: tags.lineComment,     color: '#4b5563', fontStyle: 'italic' },
-  { tag: tags.invalid,         color: '#f59e0b', fontWeight: '600' },
+  { tag: tags.heading,         color: 'var(--n4l-syntax-heading)', fontWeight: 'bold' },
+  { tag: tags.keyword,         color: 'var(--n4l-syntax-keyword)' },
+  { tag: tags.operatorKeyword, color: 'var(--n4l-syntax-arrow-code)' },
+  { tag: tags.string,          color: 'var(--n4l-syntax-arrow-target)' },
+  { tag: tags.meta,            color: 'var(--n4l-syntax-ditto)' },
+  { tag: tags.annotation,      color: 'var(--n4l-syntax-marker)' },
+  { tag: tags.comment,         color: 'var(--n4l-syntax-provenance)', fontStyle: 'italic' },
+  { tag: tags.labelName,       color: 'var(--n4l-syntax-label)' },
+  { tag: tags.lineComment,     color: 'var(--n4l-syntax-comment)', fontStyle: 'italic' },
+  { tag: tags.invalid,         color: 'var(--n4l-syntax-invalid)', fontWeight: '600' },
 ])
 
+export { n4lHighlightStyle }
 export const n4lHighlighting = syntaxHighlighting(n4lHighlightStyle)
