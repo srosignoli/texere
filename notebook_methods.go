@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -220,10 +221,15 @@ func (a *App) assembleContext(nodeID string) ContextPayload {
 	}
 
 	// Source passage: find the reading element whose notes file is this file.
+	// tgt.FilePath is already absolute (GetExtractTarget resolves it); e.NotesPath
+	// is still the stored, collection-relative value, so it must be resolved
+	// before comparing — otherwise a relative value can never equal an absolute
+	// one and this lookup silently stops matching anything.
 	if tgt.FromAnchor != "" {
 		if elems, err := a.learnStore.ListReading(); err == nil {
 			for _, e := range elems {
-				if e.NotesPath != tgt.FilePath {
+				notesPath, rerr := a.learnStore.Resolve(e.NotesPath)
+				if rerr != nil || notesPath != tgt.FilePath {
 					continue
 				}
 				out.Source.RefPath = e.RefPath
@@ -314,11 +320,17 @@ func (a *App) RecordPush(notebookID, filePath, insertedText string) ([]string, e
 	}
 	pf, _ := content.ParseFile(filePath, a.registry)
 	keys := pushedNodeKeys(pf, insertedText)
+	// filePath is absolute (content-layer, as passed in by the frontend); the
+	// notebook_links.file_path column stores the collection-relative form.
+	relPath, err := a.learnStore.Rel(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("RecordPush: %w", err)
+	}
 	links := make([]learning.NotebookLink, 0, len(keys))
 	texts := make([]string, 0, len(keys))
 	for _, k := range keys {
 		links = append(links, learning.NotebookLink{
-			FilePath: filePath, Chapter: k[0], NodeText: k[1], NotebookID: notebookID})
+			FilePath: relPath, Chapter: k[0], NodeText: k[1], NotebookID: notebookID})
 		texts = append(texts, k[1])
 	}
 	if err := a.learnStore.AddNotebookLinks(links, time.Now()); err != nil {
@@ -396,7 +408,14 @@ func (a *App) GetNotebookLinks(filePath string) ([]NotebookLinkMark, error) {
 	if a.learnStore == nil {
 		return nil, errors.New("no collection open")
 	}
-	links, err := a.learnStore.LinksForFile(filePath)
+	// filePath is absolute (content-layer); notebook_links.file_path is stored
+	// collection-relative, so the lookup key must be converted the same way
+	// RecordPush converted it when writing the link.
+	relPath, err := a.learnStore.Rel(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("GetNotebookLinks: %w", err)
+	}
+	links, err := a.learnStore.LinksForFile(relPath)
 	if err != nil {
 		return nil, err
 	}

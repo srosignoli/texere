@@ -52,7 +52,16 @@ func (a *App) GetExtractQueue(limit int) ([]ExtractView, error) {
 	}
 	out := make([]ExtractView, 0, len(exs))
 	for _, e := range exs {
-		out = append(out, ExtractView{ID: e.ID, Text: e.Text, FromAnchor: e.FromAnchor, FilePath: e.FilePath})
+		// Best-effort: a row whose stored path can no longer be resolved under
+		// the open collection must not hide the rest of the queue. FilePath is
+		// not read for file I/O anywhere the frontend uses this view today, but
+		// it is exposed at the Wails boundary alongside ExtractTarget.FilePath
+		// (which is), so it is kept in the same absolute form for consistency.
+		filePath := e.FilePath
+		if abs, rerr := a.learnStore.Resolve(e.FilePath); rerr == nil {
+			filePath = abs
+		}
+		out = append(out, ExtractView{ID: e.ID, Text: e.Text, FromAnchor: e.FromAnchor, FilePath: filePath})
 	}
 	return out, nil
 }
@@ -82,11 +91,18 @@ func (a *App) GetExtractTarget(id string) (*ExtractTarget, error) {
 	if err != nil || !ok {
 		return nil, fmt.Errorf("GetExtractTarget: %q not found", id)
 	}
-	line, _, err := a.nodeByID(e.FilePath, id)
+	// e.FilePath is collection-relative as stored; the frontend hands this
+	// FilePath straight to GetFileContent/SaveFile, which need an absolute
+	// path — this is the exact site the reported incident came through.
+	filePath, err := a.learnStore.Resolve(e.FilePath)
+	if err != nil {
+		return nil, fmt.Errorf("GetExtractTarget: %w", err)
+	}
+	line, _, err := a.nodeByID(filePath, id)
 	if err != nil {
 		return nil, err
 	}
-	return &ExtractTarget{ID: e.ID, FilePath: e.FilePath, Line: line, Text: e.Text, FromAnchor: e.FromAnchor}, nil
+	return &ExtractTarget{ID: e.ID, FilePath: filePath, Line: line, Text: e.Text, FromAnchor: e.FromAnchor}, nil
 }
 
 func (a *App) PromoteExtract(id, kind string) error {
@@ -100,7 +116,13 @@ func (a *App) PromoteExtract(id, kind string) error {
 	if err != nil || !ok {
 		return fmt.Errorf("PromoteExtract: %q not found", id)
 	}
-	line, nodeText, err := a.nodeByID(e.FilePath, id)
+	// e.FilePath is collection-relative as stored; resolve once and reuse the
+	// absolute form for every file operation and frontend-facing event below.
+	filePath, err := a.learnStore.Resolve(e.FilePath)
+	if err != nil {
+		return fmt.Errorf("PromoteExtract: %w", err)
+	}
+	line, nodeText, err := a.nodeByID(filePath, id)
 	if err != nil {
 		return err
 	}
@@ -110,7 +132,7 @@ func (a *App) PromoteExtract(id, kind string) error {
 	if kind == "cloze" && !content.HasClozeTargets(nodeText) {
 		return errors.New("mark a deletion with {{double braces}} before making a cloze")
 	}
-	a.beginSelfWrite(e.FilePath)
+	a.beginSelfWrite(filePath)
 	var wErr error
 	if kind == "card" {
 		// Seed a basic card stub "<passage> >> " for the author to complete, and
@@ -118,16 +140,16 @@ func (a *App) PromoteExtract(id, kind string) error {
 		// lives on the retired extracts row, but the file is this app's durable
 		// store — leaving provenance only in the database meant a rebuilt
 		// learning.db lost where the passage came from, permanently.
-		wErr = content.SeedBasicCardNode(e.FilePath, line, e.Text, e.FromAnchor)
+		wErr = content.SeedBasicCardNode(filePath, line, e.Text, e.FromAnchor)
 	} else {
-		wErr = content.InsertMarkerAboveNode(e.FilePath, line, "# @cloze")
+		wErr = content.InsertMarkerAboveNode(filePath, line, "# @cloze")
 	}
-	a.endSelfWrite(e.FilePath)
+	a.endSelfWrite(filePath)
 	if wErr != nil {
 		return wErr
 	}
 	// Re-sync this one file: the node now has StudyMeta → item created, extract retired.
-	if _, err := learning.Sync(a.learnStore, []string{e.FilePath}, a.registry); err != nil {
+	if _, err := learning.Sync(a.learnStore, []string{filePath}, a.registry); err != nil {
 		return err
 	}
 	// Promotion does not go through rescheduleExtract, so it needs its own log
@@ -136,7 +158,7 @@ func (a *App) PromoteExtract(id, kind string) error {
 	// Best-effort: a statistics gap must never fail the user's action.
 	_ = a.learnStore.LogActivity("process", id, "promote", 0, time.Now())
 	if a.ctx != nil {
-		runtime.EventsEmit(a.ctx, "file:ids-injected", map[string]string{"path": e.FilePath})
+		runtime.EventsEmit(a.ctx, "file:ids-injected", map[string]string{"path": filePath})
 	}
 	return nil
 }

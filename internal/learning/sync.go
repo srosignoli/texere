@@ -19,6 +19,14 @@ func Sync(store *Store, files []string, reg *content.SSTRegistry) (SyncResult, e
 			skipped = append(skipped, path)
 			continue
 		}
+		// relPath is the collection-relative form stored in items.file_path and
+		// extracts.file_path. pf.Path (== path, absolute) must stay absolute below:
+		// InjectMissingIDs/InjectMissingExtractIDs read and write the real file
+		// through it. Only the values that end up in the DB are relativized.
+		relPath, err := store.Rel(path)
+		if err != nil {
+			return res, fmt.Errorf("learning: sync: %w", err)
+		}
 		// Assign # @id to study-marked nodes missing one (mutates pf in place).
 		injected, err := content.InjectMissingIDs(pf)
 		if err != nil {
@@ -37,6 +45,7 @@ func Sync(store *Store, files []string, reg *content.SSTRegistry) (SyncResult, e
 		cards := GenerateCards(pf)
 		keep := make(map[string]bool, len(cards))
 		for _, c := range cards {
+			c.FilePath = relPath
 			added, err := store.UpsertItem(c)
 			if err != nil {
 				return res, err
@@ -46,7 +55,7 @@ func Sync(store *Store, files []string, reg *content.SSTRegistry) (SyncResult, e
 			}
 			keep[c.ItemID()] = true
 		}
-		retired, err := store.RetireMissing(path, keep)
+		retired, err := store.RetireMissing(relPath, keep)
 		if err != nil {
 			return res, err
 		}
@@ -80,6 +89,7 @@ func Sync(store *Store, files []string, reg *content.SSTRegistry) (SyncResult, e
 		exs := GenerateExtracts(pf)
 		keepEx := make(map[string]bool, len(exs))
 		for _, e := range exs {
+			e.FilePath = relPath
 			added, err := store.UpsertExtract(e)
 			if err != nil {
 				return res, err
@@ -89,7 +99,7 @@ func Sync(store *Store, files []string, reg *content.SSTRegistry) (SyncResult, e
 			}
 			keepEx[e.ID] = true
 		}
-		retiredEx, err := store.RetireMissingExtracts(path, keepEx)
+		retiredEx, err := store.RetireMissingExtracts(relPath, keepEx)
 		if err != nil {
 			return res, err
 		}
