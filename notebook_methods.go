@@ -259,11 +259,11 @@ func (a *App) notebookLinksChanged(filePath string) {
 // notebooksChanged notifies the frontend that the set of nodes having notebooks
 // has changed, so any open editor should re-fetch its gutter marks.
 //
-// Deliberately carries no file path. A node id is "<path>:<chapter>:id:<short>"
-// and a colon is legal in a filename, so splitting a path back out of an id is
-// ambiguous — the same ambiguity that made a prefix range unsafe in
-// NotebooksForNodes. Listeners re-fetch marks for whichever file they have open;
-// that is one indexed query and one parse, and it is always correct.
+// Deliberately carries no file path. A node id is the node's bare short id
+// (see internal/content/nodeid.go) — no path or chapter is encoded in it, so
+// there is nothing to recover a file from, safely or otherwise. Listeners
+// re-fetch marks for whichever file they have open; that is one indexed query
+// and one parse, and it is always correct.
 func (a *App) notebooksChanged() {
 	if a.ctx != nil {
 		runtime.EventsEmit(a.ctx, "notebook:changed", map[string]string{})
@@ -371,9 +371,9 @@ func (a *App) NotebookMarks(filePath string) ([]NotebookMark, error) {
 	if pf == nil {
 		return out, nil
 	}
-	// Ask for exactly the ids this file contains. A node id is
-	// "<path>:<chapter>:id:<short>" and a colon is legal in a filename, so a
-	// prefix range over extract_node_id could match a different file entirely.
+	// Ask for exactly the ids this file contains. A node id is now the node's
+	// bare short id (see internal/content/nodeid.go) with no file path encoded
+	// in it to range over, so an exact-id lookup is the query that makes sense.
 	var ids []string
 	for _, ch := range pf.Chapters {
 		for _, n := range ch.Nodes {

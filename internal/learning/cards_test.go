@@ -3,7 +3,6 @@ package learning
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"texere/internal/content"
@@ -19,9 +18,9 @@ func writeFixture(t *testing.T, body string) (string, *content.SSTRegistry) {
 	return p, &content.SSTRegistry{Arrows: map[string]content.ArrowDef{}}
 }
 
-func findCard(cards []GeneratedCard, idSuffix, cardType, disc string) *GeneratedCard {
+func findCard(cards []GeneratedCard, nodeID, cardType, disc string) *GeneratedCard {
 	for i := range cards {
-		if strings.HasSuffix(cards[i].NodeID, idSuffix) &&
+		if cards[i].NodeID == nodeID &&
 			cards[i].CardType == cardType && cards[i].Discriminator == disc {
 			return &cards[i]
 		}
@@ -40,12 +39,12 @@ func TestGenerateBasicAndClozeCards(t *testing.T) {
 	if len(got) != 3 {
 		t.Fatalf("got %d cards want 3: %+v", len(got), got)
 	}
-	cloze0 := findCard(got, ":id:n1", CardTypeCloze, "0")
+	cloze0 := findCard(got, "n1", CardTypeCloze, "0")
 	if cloze0 == nil || cloze0.Front != "System 1 is […] and automatic" ||
 		cloze0.Back != "System 1 is fast and automatic" {
 		t.Fatalf("cloze0=%+v", cloze0)
 	}
-	basic := findCard(got, ":id:n2", CardTypeBasic, "0")
+	basic := findCard(got, "n2", CardTypeBasic, "0")
 	if basic == nil || basic.Front != "What is System 2?" || basic.Back != "effortful" {
 		t.Fatalf("basic=%+v", basic)
 	}
@@ -60,8 +59,8 @@ func TestGenerateReverseEmitsTwoCards(t *testing.T) {
 	if len(got) != 2 {
 		t.Fatalf("got %d cards want 2: %+v", len(got), got)
 	}
-	fwd := findCard(got, ":id:n1", CardTypeBasic, "0")
-	rev := findCard(got, ":id:n1", CardTypeBasic, "1")
+	fwd := findCard(got, "n1", CardTypeBasic, "0")
+	rev := findCard(got, "n1", CardTypeBasic, "1")
 	if fwd == nil || fwd.Front != "capital of France" || fwd.Back != "Paris" {
 		t.Fatalf("fwd=%+v", fwd)
 	}

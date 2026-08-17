@@ -119,10 +119,10 @@ func (s *Store) LinksForFile(filePath string) ([]NotebookLink, error) {
 // NotebooksForNodes returns node id -> notebook id for the given node ids.
 //
 // Callers pass the ids they parsed out of a file rather than a path prefix. A
-// node id is "<path>:<chapter>:id:<short>", and a file may legally be named with
-// a colon, so a prefix range over extract_node_id can match a DIFFERENT file:
-// "/c/notes.n4l:bak.n4l:Ch:id:x" falls inside the range for "/c/notes.n4l".
-// Exact ids have no such ambiguity, and extract_node_id is indexed either way.
+// node id is the node's bare short id (see internal/content/nodeid.go), with
+// no file path encoded in it — there is no path prefix to range over in the
+// first place. Exact ids have no such ambiguity, and extract_node_id is
+// indexed either way.
 //
 // Where a node somehow has two notebooks the earliest wins, matching
 // GetNotebookByExtract's "ORDER BY created_at ASC LIMIT 1".
