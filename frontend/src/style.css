@@ -201,6 +201,41 @@ html {
     --text-iso-message: #7a8ba0;      /* "No graph results" / error message text on IsoGraphView's
                                           --surface-sunken panel */
 
+    /* Roles minted theming the shared N4L editor chrome (n4l-editor.js
+       n4lTheme — Source tab, Process editor, Reading notes pane). Hue/
+       saturation of each Blue literal held constant; Dark and Light
+       lightness binary-searched so the foreground actually painted on top
+       clears 4.5:1 against it. */
+    --editor-search-match: #854d0e;   /* .cm-searchMatch background; foreground is the token's own
+                                          syntax colour, or --text where none applies. Dark kept
+                                          identical to Blue (5.60:1 against --text dark #e8e8ea),
+                                          matching how --warn/--danger/--ok hold their literal across
+                                          Blue and Dark. Light re-solved lighter (7.30:1 against
+                                          --text light #14181f) since Light's default text is dark. */
+    --editor-completion-header: #141d2b; /* .cm-completionSectionHeader background, paired with
+                                          --accent-dim text. Blue's own pairing is only 3.78:1 (kept,
+                                          per the no-tidying rule) but Dark (4.83:1) and Light
+                                          (4.89:1) are both solved to clear 4.5:1. */
+
+    /* Roles minted finishing the editor-chrome migration: arrowLint's
+       unregistered-arrow popover and notebookDotsGutter's provenance dot,
+       the two sibling EditorView.theme() blocks in n4l-editor.js that the
+       first pass missed. */
+    --editor-arrow-popover: #1a2537;  /* .cm-arrow-fix background. Close to but NOT the same as
+                                          --surface-overlay (#1a2535) — a near-match is not a match,
+                                          so this stays its own role. Paired foregrounds are --warn
+                                          (heading) and --text-modal (buttons); Dark kept identical to
+                                          Blue (7.17:1 / 9.86:1, both clear 4.5), Light re-solved to
+                                          4.68:1 / 13.85:1. */
+    --editor-notebook-dot: #a855f7;   /* .cm-nb-dot glyph colour. Byte-identical to
+                                          --explorer-edge-similar-to, but that role is documented as
+                                          fixed for the Three.js edge palette and unrelated to this
+                                          2D gutter glyph — minted separately rather than reused, so
+                                          the two concerns stay independently editable. Already
+                                          sub-AA against --surface-bar in Blue today (4.18:1) and
+                                          Dark stays there unchanged (4.69:1, still clears); Light
+                                          re-solved darker to actually clear 4.5:1 (was 3.47:1). */
+
     /* Roles minted fixing Task 5b's review — the LOWER-alpha members of the
        same glass-HUD family (0.35-0.6) do NOT hold up over Light's
        near-white backdrop; a fixed rgba(0,0,0,X) at that alpha composites to
@@ -247,6 +282,24 @@ html {
      * for 3D grid lines, this one is flat 2D panel text, and they must
      * stay independently editable. */
     --explorer-text-muted: #6b7c95;
+
+    /* --- Editor syntax highlighting (CodeMirror N4L grammar) ------------
+     * Blue's ten values are the literals n4l-highlight.js used before this
+     * migration, byte-for-byte — never "tidy" them, they are the pixel-diff
+     * baseline. Dark and Light below are Solarized-derived rather than
+     * Solarized: Solarized's own published accents measure 2.48:1 to 4.30:1
+     * against its base3 background, so the hues were kept and the lightness
+     * moved until every role cleared AA against Texere's own surfaces. */
+    --n4l-syntax-heading: #7dd3fc;
+    --n4l-syntax-keyword: #c084fc;
+    --n4l-syntax-arrow-code: #67e8f9;
+    --n4l-syntax-arrow-target: #86efac;
+    --n4l-syntax-ditto: #94a3b8;
+    --n4l-syntax-marker: #fde68a;
+    --n4l-syntax-provenance: #6b7280;
+    --n4l-syntax-label: #a78bfa;
+    --n4l-syntax-comment: #4b5563;
+    --n4l-syntax-invalid: #f59e0b;
 }
 
 /* --- Dark: neutral near-black. ---------------------------------------------
@@ -375,6 +428,11 @@ html {
     --editor-active-line: #1f3248;
     --text-iso-message: #8c8d8d;
 
+    --editor-search-match: #854d0e;
+    --editor-completion-header: #0a0e15;
+    --editor-arrow-popover: #1a2537;
+    --editor-notebook-dot: #a855f7;
+
     /* Dark's own canvas backdrop (--explorer-canvas-bg: #0b0c0f) is near-black
        too, same as Blue's — the black-based scrims stay correct unchanged. */
     --explorer-scrim: rgba(0, 0, 0, 0.55);
@@ -389,6 +447,19 @@ html {
     --explorer-plane-grid: #7a7c82;
     --explorer-plane-tint: #202226;
     --explorer-text-muted: #7d7e82;
+
+    /* Editor syntax highlighting — see the Blue block above for the
+     * Solarized-derived rationale. */
+    --n4l-syntax-heading: #268bd2;
+    --n4l-syntax-keyword: #767bc8;
+    --n4l-syntax-arrow-code: #2aa198;
+    --n4l-syntax-arrow-target: #859900;
+    --n4l-syntax-ditto: #6b868e;
+    --n4l-syntax-marker: #b58900;
+    --n4l-syntax-provenance: #738d95;
+    --n4l-syntax-label: #d84e91;
+    --n4l-syntax-comment: #758686;
+    --n4l-syntax-invalid: #e05318;
 }
 
 /* --- Light: white-to-grey with dark text. ----------------------------------
@@ -526,6 +597,11 @@ html {
     --editor-active-line: #c2d2e4;
     --text-iso-message: #44505f;
 
+    --editor-search-match: #e9922f;
+    --editor-completion-header: #f8f9fc;
+    --editor-arrow-popover: #f5f7fa;
+    --editor-notebook-dot: #820bf4;
+
     /* White/light-based so the composite stays light over Light's own
        near-white canvas backdrop (#f6f7f9) regardless of theme — see the
        Blue block's comment for the composite-contrast numbers this was
@@ -542,6 +618,19 @@ html {
     --explorer-plane-grid: #8a93a3;
     --explorer-plane-tint: #e9ecf1;
     --explorer-text-muted: #6d7a91;
+
+    /* Editor syntax highlighting — see the Blue block above for the
+     * Solarized-derived rationale. */
+    --n4l-syntax-heading: #2075b1;
+    --n4l-syntax-keyword: #6267c0;
+    --n4l-syntax-arrow-code: #207c75;
+    --n4l-syntax-arrow-target: #687700;
+    --n4l-syntax-ditto: #586e75;
+    --n4l-syntax-marker: #8e6b00;
+    --n4l-syntax-provenance: #576d74;
+    --n4l-syntax-label: #cd2d7b;
+    --n4l-syntax-comment: #637272;
+    --n4l-syntax-invalid: #c34815;
 }
 
 /* 2.5D Isometric Graph Explorer (feature 006) — shared semantic palette.
