@@ -104,8 +104,7 @@ func InjectMissingExtractIDs(parsed *ParsedFile) ([]IDInjection, error) {
 	existing := existingIDs(lines)
 
 	type pending struct {
-		chTitle string
-		node    *Node
+		node *Node
 	}
 	var todo []pending
 
@@ -119,7 +118,7 @@ func InjectMissingExtractIDs(parsed *ParsedFile) ([]IDInjection, error) {
 			if !nodeHasFromArrow(n) {
 				continue
 			}
-			todo = append(todo, pending{chTitle: ch.Title, node: n})
+			todo = append(todo, pending{node: n})
 		}
 	}
 
@@ -157,7 +156,7 @@ func InjectMissingExtractIDs(parsed *ParsedFile) ([]IDInjection, error) {
 			InsertBefore: true,
 		})
 		n.IDMarkerLine = a.insertAt
-		n.ID = NodeID(parsed.Path, a.p.chTitle, a.shortID)
+		n.ID = NodeID(a.shortID)
 	}
 
 	newLines := applyOps(lines, ops)

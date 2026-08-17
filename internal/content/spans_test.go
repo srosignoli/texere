@@ -3,7 +3,6 @@ package content
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -24,17 +23,16 @@ func spansOf(t *testing.T, src string) []NodeSpan {
 	return NodeSpans(pf)
 }
 
-// Node IDs are fully qualified (`<path>:<chapter>:id:<short>`) and the path is a
-// per-test temp dir, so match on the short id's suffix rather than hardcoding it.
-// The leading colon prevents `:abc` matching a node whose short id ends in "abc".
+// Node.ID is the bare short id (see nodeid.go), so a span's ID matches shortID
+// exactly.
 func findSpan(t *testing.T, spans []NodeSpan, shortID string) NodeSpan {
 	t.Helper()
 	for _, s := range spans {
-		if strings.HasSuffix(s.ID, ":"+shortID) {
+		if s.ID == shortID {
 			return s
 		}
 	}
-	t.Fatalf("no span whose id ends in %q, in %+v", ":"+shortID, spans)
+	t.Fatalf("no span with id %q, in %+v", shortID, spans)
 	return NodeSpan{}
 }
 
@@ -109,15 +107,16 @@ func TestNodeSpansEmptyInputs(t *testing.T) {
 	}
 }
 
-// The qualified id is what GetNotebookByExtract and GetExtract are keyed on, so a
-// span must carry it verbatim. A short id here would make every peek miss and the
-// pane would show the empty state forever.
-func TestNodeSpansCarriesTheFullyQualifiedID(t *testing.T) {
-	s := findSpan(t, spansOf(t, "- C\n\n# @id abc\nNewton\n"), "abc")
-	if s.ID == "abc" {
-		t.Fatal("span carries the short id; it must carry the fully-qualified Node.ID")
+// Node.ID (now the bare short id — see nodeid.go) is what GetNotebookByExtract
+// and GetExtract are keyed on, so a span must carry it verbatim. Checked
+// without going through findSpan's own ID match, so this isn't just
+// re-asserting that helper's matching logic.
+func TestNodeSpansCarriesNodeIDVerbatim(t *testing.T) {
+	spans := spansOf(t, "- C\n\n# @id abc\nNewton\n")
+	if len(spans) != 1 {
+		t.Fatalf("got %d spans, want 1: %+v", len(spans), spans)
 	}
-	if !strings.Contains(s.ID, ":id:abc") {
-		t.Fatalf("ID = %q, want the qualified form <path>:<chapter>:id:abc", s.ID)
+	if spans[0].ID != "abc" {
+		t.Fatalf("ID = %q, want the node's short id %q", spans[0].ID, "abc")
 	}
 }

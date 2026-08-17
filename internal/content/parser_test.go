@@ -600,21 +600,12 @@ func TestMain(m *testing.M) {
 // ---------------------------------------------------------------------------
 // T021 additional: NodeID utility
 // ---------------------------------------------------------------------------
-
-func TestNodeIDWithShortID(t *testing.T) {
-	got := NodeID("notes/french.n4l", "vocabulary", "k7mpq9rx")
-	want := "notes/french.n4l:vocabulary:id:k7mpq9rx"
-	if got != want {
-		t.Errorf("want %q, got %q", want, got)
-	}
-}
-
-func TestNodeIDEmptyShortID(t *testing.T) {
-	got := NodeID("notes/french.n4l", "vocabulary", "")
-	if got != "" {
-		t.Errorf("want empty string for untracked node, got %q", got)
-	}
-}
+//
+// TestNodeIDWithShortID and TestNodeIDEmptyShortID used to live here, asserting
+// the old "<path>:<chapter>:id:<short>" format. NodeID dropped the path/chapter
+// parameters (see nodeid.go) and its canonical tests now live in nodeid_test.go
+// (TestNodeIDIsTheShortID, TestNodeIDIsEmptyWithoutAShortID); repeating them
+// here would just be a stale duplicate of the old signature.
 
 func TestGenerateShortIDLength(t *testing.T) {
 	id, err := GenerateShortID()

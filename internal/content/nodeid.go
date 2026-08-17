@@ -9,20 +9,19 @@ import (
 const shortIDAlphabet = "0123456789abcdefghijklmnopqrstuvwxyz"
 const shortIDLen = 8
 
-// NodeID computes the stable node identifier from its file path, chapter title,
-// and system-assigned short ID.
+// NodeID computes the stable node identifier from the node's system-assigned
+// short ID.
 //
-// If shortID is non-empty, it returns "<filepath>:<chapterTitle>:id:<shortID>".
+// If shortID is non-empty, it returns shortID unchanged — the identity key is
+// the short ID and nothing else, so it survives the collection being moved or
+// copied to a new path.
 // If shortID is empty, it returns "" — the node is untracked and cannot be scheduled.
 //
 // NOTE: @label values must NOT be passed as shortID. Labels are cross-reference
 // anchors only and play no role in node identity. The shortID parameter must be
 // the value parsed from the node's "# @id" marker line.
-func NodeID(filepath, chapterTitle, shortID string) string {
-	if shortID == "" {
-		return ""
-	}
-	return filepath + ":" + chapterTitle + ":id:" + shortID
+func NodeID(shortID string) string {
+	return shortID
 }
 
 // GenerateShortID produces a cryptographically random 8-character base-36 string

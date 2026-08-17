@@ -212,7 +212,7 @@ func InjectMissingIDs(parsed *ParsedFile) ([]IDInjection, error) {
 
 			// Mutate the parsed node
 			node.IDMarkerLine = insertAt
-			node.ID = NodeID(parsed.Path, ch.Title, shortID)
+			node.ID = NodeID(shortID)
 		}
 	}
 
@@ -251,13 +251,11 @@ func findStudyMarkerAbove(lines []string, nodeLine int) int {
 	return nodeLine
 }
 
-// extractShortID extracts the shortid from a full NodeID string.
+// extractShortID extracts the shortid from a NodeID string. Node.ID is now the
+// short ID unchanged (see NodeID), so this is the identity function; the name
+// and the call sites are kept so a future format change has one place to touch.
 func extractShortID(id string) string {
-	parts := strings.Split(id, ":")
-	if len(parts) >= 4 {
-		return parts[len(parts)-1]
-	}
-	return ""
+	return id
 }
 
 // ---------------------------------------------------------------------------
