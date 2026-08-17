@@ -10,10 +10,11 @@ import (
 
 // Store is the handle to one collection's learning.db.
 type Store struct {
-	db *sql.DB
+	db  *sql.DB
+	dir string // collection root; file_path-like columns are stored relative to this
 }
 
-const schemaVersion = 6
+const schemaVersion = 7
 
 // Open opens (creating if needed) <collectionDir>/learning.db and migrates it
 // to the current schema version.
@@ -24,7 +25,7 @@ func Open(collectionDir string) (*Store, error) {
 		return nil, fmt.Errorf("learning: open %s: %w", path, err)
 	}
 	db.SetMaxOpenConns(1) // SQLite single-writer; avoids "database is locked"
-	s := &Store{db: db}
+	s := &Store{db: db, dir: filepath.Clean(collectionDir)}
 	if err := s.migrate(); err != nil {
 		db.Close()
 		return nil, err
@@ -80,6 +81,15 @@ func (s *Store) migrate() error {
 		case 5:
 			if _, err := s.db.Exec(ddlV6); err != nil {
 				return fmt.Errorf("learning: apply v6: %w", err)
+			}
+		case 6:
+			// No schema change: items.file_path, extracts.file_path,
+			// notebook_links.file_path and reading_elements.notes_path move
+			// from absolute to collection-relative values.
+			// reading_elements.ref_path is deliberately excluded — it already
+			// stores relative values.
+			if err := s.migrateRelativePaths(); err != nil {
+				return fmt.Errorf("learning: apply v7: %w", err)
 			}
 		}
 		v++
