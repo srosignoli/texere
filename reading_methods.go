@@ -40,6 +40,20 @@ type CreateExtractView struct {
 	ID string `json:"id"`
 }
 
+// upsertReadingRelative persists r with NotesPath rewritten to its
+// collection-relative form (what the four stored-path columns must hold).
+// r itself is left untouched — its absolute NotesPath is what the caller
+// still needs to build the *ReadingView returned to the frontend.
+func (a *App) upsertReadingRelative(r learning.ReadingElement) error {
+	rel, err := a.learnStore.Rel(r.NotesPath)
+	if err != nil {
+		return fmt.Errorf("notes path: %w", err)
+	}
+	stored := r
+	stored.NotesPath = rel
+	return a.learnStore.UpsertReading(stored)
+}
+
 func toReadingView(r learning.ReadingElement) ReadingView {
 	pct := 0
 	if r.ProjLen > 0 {
@@ -114,7 +128,7 @@ func (a *App) ImportTextSource() (*ReadingView, error) {
 	proj, _ := source.Projection(srcAbs)
 	r := learning.ReadingElement{ID: refID, RefPath: srcRel, NotesPath: notesAbs, Title: title,
 		Position: "char=0", ProjLen: utf8.RuneCountInString(proj), IntervalDays: 1}
-	if err := a.learnStore.UpsertReading(r); err != nil {
+	if err := a.upsertReadingRelative(r); err != nil {
 		os.Remove(srcAbs) // best-effort: don't litter sources/ on a failed import
 		return nil, fmt.Errorf("ImportTextSource: register: %w", err)
 	}
@@ -165,6 +179,17 @@ func (a *App) GetReadingList() ([]ReadingView, error) {
 	}
 	out := make([]ReadingView, 0, len(rs))
 	for _, r := range rs {
+		// r.NotesPath is stored collection-relative; the frontend passes
+		// ReadingView.NotesPath straight to GetFileContent/SaveFile, which need
+		// an absolute path. A row that cannot be resolved under the open
+		// collection is dropped from the list rather than risk file I/O outside
+		// it — the rest of the library must stay usable.
+		abs, rerr := a.learnStore.Resolve(r.NotesPath)
+		if rerr != nil {
+			log.Printf("GetReadingList: %q: %v", r.ID, rerr)
+			continue
+		}
+		r.NotesPath = abs
 		out = append(out, toReadingView(r))
 	}
 	return out, nil
@@ -228,7 +253,7 @@ func (a *App) CreateLLMSource(title, markdown string) (*ReadingView, error) {
 	}
 	r := learning.ReadingElement{ID: refID, RefPath: srcRel, NotesPath: notesAbs, Title: title,
 		Position: "char=0", ProjLen: utf8.RuneCountInString(markdown), IntervalDays: 1, Medium: "llm"}
-	if err := a.learnStore.UpsertReading(r); err != nil {
+	if err := a.upsertReadingRelative(r); err != nil {
 		os.Remove(srcAbs)
 		return nil, fmt.Errorf("CreateLLMSource: register: %w", err)
 	}
@@ -253,16 +278,22 @@ func (a *App) CreateExtract(id, text, position string, advanceProgress bool) (*C
 	if err != nil || !ok {
 		return nil, fmt.Errorf("CreateExtract: reading element %q not found", id)
 	}
+	// r.NotesPath is stored collection-relative; resolve once and reuse the
+	// absolute form for every file operation below.
+	notesPath, err := a.learnStore.Resolve(r.NotesPath)
+	if err != nil {
+		return nil, fmt.Errorf("CreateExtract: %w", err)
+	}
 	anchor := fmt.Sprintf("%s %s", r.RefPath, position)
 	// The collection watcher is now recursive, so reading/ writes do fire events;
 	// bracket them as self-writes to suppress a false external-mod toast if this
 	// notes file also happens to be open in the main editor.
-	a.beginSelfWrite(r.NotesPath)
-	exID, err := content.AppendExtract(r.NotesPath, text, anchor)
+	a.beginSelfWrite(notesPath)
+	exID, err := content.AppendExtract(notesPath, text, anchor)
 	if err == nil && advanceProgress {
-		err = content.UpdateProgressMarker(r.NotesPath, position)
+		err = content.UpdateProgressMarker(notesPath, position)
 	}
-	a.endSelfWrite(r.NotesPath)
+	a.endSelfWrite(notesPath)
 	if err != nil {
 		return nil, fmt.Errorf("CreateExtract: %w", err)
 	}
@@ -270,12 +301,12 @@ func (a *App) CreateExtract(id, text, position string, advanceProgress bool) (*C
 		_ = a.learnStore.SetReadingProgress(id, position, r.ProjLen)
 	}
 	// Register the new extract in the queue immediately (reuses the classify pass).
-	if _, err := learning.Sync(a.learnStore, []string{r.NotesPath}, a.registry); err != nil {
+	if _, err := learning.Sync(a.learnStore, []string{notesPath}, a.registry); err != nil {
 		// Non-fatal: it will be picked up on the next Build Graph.
 		log.Printf("CreateExtract: register sync: %v", err)
 	}
 	if a.ctx != nil {
-		runtime.EventsEmit(a.ctx, "file:ids-injected", map[string]string{"path": r.NotesPath})
+		runtime.EventsEmit(a.ctx, "file:ids-injected", map[string]string{"path": notesPath})
 	}
 	return &CreateExtractView{ID: exID}, nil
 }
@@ -306,7 +337,7 @@ func (a *App) ImportPdfSource() (*ReadingView, error) {
 	}
 	r := learning.ReadingElement{ID: refID, RefPath: srcRel, NotesPath: notesAbs, Title: title,
 		Position: "page=1", IntervalDays: 1, Medium: "pdf"}
-	if err := a.learnStore.UpsertReading(r); err != nil {
+	if err := a.upsertReadingRelative(r); err != nil {
 		os.Remove(srcAbs)
 		return nil, fmt.Errorf("ImportPdfSource: register: %w", err)
 	}
@@ -344,7 +375,7 @@ func (a *App) ImportWebSource(srcURL string) (*ReadingView, error) {
 	proj := source.TextFromHTML(art.HTML)
 	r := learning.ReadingElement{ID: refID, RefPath: srcRel, NotesPath: notesAbs, Title: title,
 		Position: "char=0", ProjLen: utf8.RuneCountInString(proj), IntervalDays: 1, Medium: "web", SourceURL: art.URL}
-	if err := a.learnStore.UpsertReading(r); err != nil {
+	if err := a.upsertReadingRelative(r); err != nil {
 		os.Remove(srcAbs)
 		return nil, fmt.Errorf("ImportWebSource: register: %w", err)
 	}
@@ -427,9 +458,16 @@ func (a *App) UpdateReadingProgress(id, position string) error {
 	if err != nil || !ok {
 		return fmt.Errorf("UpdateReadingProgress: %q not found", id)
 	}
-	a.beginSelfWrite(r.NotesPath)
-	wErr := content.UpdateProgressMarker(r.NotesPath, position)
-	a.endSelfWrite(r.NotesPath)
+	// r.NotesPath is stored collection-relative; this is the exact incident
+	// site — an unresolved stored path here silently rewrites the # @progress
+	// marker of whatever file the (possibly stale) value points to.
+	notesPath, err := a.learnStore.Resolve(r.NotesPath)
+	if err != nil {
+		return fmt.Errorf("UpdateReadingProgress: %w", err)
+	}
+	a.beginSelfWrite(notesPath)
+	wErr := content.UpdateProgressMarker(notesPath, position)
+	a.endSelfWrite(notesPath)
 	if wErr != nil {
 		return wErr
 	}
@@ -486,10 +524,18 @@ func (a *App) GetReadingExtracts() (map[string][]ReadingExtractView, error) {
 
 	out := make(map[string][]ReadingExtractView, len(rs))
 	for _, r := range rs {
+		// r.NotesPath is stored collection-relative; a row that cannot be
+		// resolved under the open collection is skipped the same way a parse
+		// error is — one bad file must not empty the whole library's trees.
+		notesPath, rerr := a.learnStore.Resolve(r.NotesPath)
+		if rerr != nil {
+			log.Printf("GetReadingExtracts: %q: %v", r.ID, rerr)
+			continue
+		}
 		// Parse errors are not fatal here: a notes file with an unknown arrow
 		// still yields the nodes that did parse, and one bad file must not empty
 		// the whole library's trees.
-		pf, _ := content.ParseFile(r.NotesPath, reg)
+		pf, _ := content.ParseFile(notesPath, reg)
 		if pf == nil {
 			continue
 		}
@@ -556,6 +602,14 @@ func (a *App) RescheduleReading(id, action string) (*ReadingView, error) {
 	if err := a.learnStore.ApplyReadingSchedule(id, sched); err != nil {
 		return nil, err
 	}
+	// sched.NotesPath is carried through unchanged from r (ApplyReadingSchedule
+	// does not touch notes_path), so it is still the stored, collection-relative
+	// value; resolve it before handing the view back to the frontend.
+	notesPath, err := a.learnStore.Resolve(sched.NotesPath)
+	if err != nil {
+		return nil, fmt.Errorf("RescheduleReading: %w", err)
+	}
+	sched.NotesPath = notesPath
 	v := toReadingView(sched)
 	return &v, nil
 }
