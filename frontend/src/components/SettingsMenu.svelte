@@ -1,5 +1,5 @@
 <script>
-  import { THEMES } from '../lib/themes.js'
+  import { AVAILABLE_THEMES } from '../lib/themes.js'
   import { theme, applyTheme } from '../stores/theme.js'
 
   let open = false
@@ -55,7 +55,7 @@
     <div class="sm-popover" id="sm-popover">
       <fieldset class="sm-section">
         <legend class="sm-legend">Appearance</legend>
-        {#each THEMES as t (t.id)}
+        {#each AVAILABLE_THEMES as t (t.id)}
           <label class="sm-choice">
             <input
               type="radio"
@@ -67,6 +67,7 @@
             <span class="sm-choice-label">{t.label}</span>
           </label>
         {/each}
+        <p class="sm-note">Dark and Light are in progress.</p>
       </fieldset>
     </div>
   {/if}
@@ -173,5 +174,17 @@
 
   .sm-choice-label {
     line-height: 1.4;
+  }
+
+  /* Honest rather than empty: with only one theme offered, a bare radio group
+     of one reads as broken. This says why the other two are missing instead
+     of leaving the section looking unfinished. */
+  .sm-note {
+    margin: 6px 0 0;
+    padding: 6px 6px 0;
+    border-top: 1px solid var(--border);
+    font-size: 0.72rem;
+    line-height: 1.4;
+    color: var(--text-muted);
   }
 </style>
