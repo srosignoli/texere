@@ -8,17 +8,13 @@
   // The line swatch on the left is the same edge colour the renderer
   // uses (Theme.js).
 
-  import {
-    COLOR_CONTAINS,
-    COLOR_LEADS_TO,
-    COLOR_PROPERTIES,
-    COLOR_SIMILAR_TO,
-    COLOR_UNCLASSIFIED,
-    COLOR_UNKNOWN,
-  } from './explorer/Theme.js'
+  import { getEdgeColor } from './explorer/Theme.js'
 
-  function hex(rgb) {
-    return '#' + rgb.toString(16).padStart(6, '0')
+  // The edge palette is theme-INVARIANT (a shared :root block with no
+  // per-theme override), so resolving once at module scope is correct — the
+  // swatches cannot drift from what Three.js draws on a theme switch.
+  function hex(meta) {
+    return '#' + getEdgeColor(meta).toString(16).padStart(6, '0')
   }
 
   // `marker` codes mirror the EdgeMeshes.js dispatcher:
@@ -28,12 +24,12 @@
   //   cone-both   → similarto       (two cones, both ends)
   //   none        → unclassified
   const ENTRIES = [
-    { key: 'contains',     label: 'Contains',     color: hex(COLOR_CONTAINS),     marker: 'diamond-src' },
-    { key: 'leadsto',      label: 'Leads to',     color: hex(COLOR_LEADS_TO),     marker: 'cone-end'    },
-    { key: 'properties',   label: 'Properties',   color: hex(COLOR_PROPERTIES),   marker: 'disc-end'    },
-    { key: 'similarto',    label: 'Similar to',   color: hex(COLOR_SIMILAR_TO),   marker: 'cone-both'   },
-    { key: 'unclassified', label: 'Other',        color: hex(COLOR_UNCLASSIFIED), marker: 'none'        },
-    { key: 'unknown',      label: 'Unknown arrow code', color: hex(COLOR_UNKNOWN), marker: 'dashed'     },
+    { key: 'contains',     label: 'Contains',     color: hex('contains'),     marker: 'diamond-src' },
+    { key: 'leadsto',      label: 'Leads to',     color: hex('leadsto'),      marker: 'cone-end'    },
+    { key: 'properties',   label: 'Properties',   color: hex('properties'),   marker: 'disc-end'    },
+    { key: 'similarto',    label: 'Similar to',   color: hex('similarto'),    marker: 'cone-both'   },
+    { key: 'unclassified', label: 'Other',        color: hex('unclassified'), marker: 'none'        },
+    { key: 'unknown',      label: 'Unknown arrow code', color: hex('unknown'), marker: 'dashed'     },
   ]
 </script>
 

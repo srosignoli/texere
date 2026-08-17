@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"texere/internal/content"
@@ -147,5 +148,97 @@ func TestSaveFileInjectsID(t *testing.T) {
 		if inj.ShortID == "" {
 			t.Error("injected ShortID is empty")
 		}
+	}
+}
+
+// TestSetThemeAcceptsEachTheme verifies SetTheme accepts each valid theme id
+// and GetTheme reflects it back.
+func TestSetThemeAcceptsEachTheme(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	app := &App{}
+	for _, want := range []string{"blue", "dark", "light"} {
+		if err := app.SetTheme(want); err != nil {
+			t.Fatalf("SetTheme(%q): %v", want, err)
+		}
+		if got := app.GetTheme(); got != want {
+			t.Errorf("GetTheme after SetTheme(%q) = %q", want, got)
+		}
+	}
+}
+
+// TestSetThemeRejectsUnknownValues verifies SetTheme rejects any value outside
+// the closed set and leaves the previously stored theme untouched.
+func TestSetThemeRejectsUnknownValues(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	app := &App{}
+	if err := app.SetTheme("light"); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	for _, bad := range []string{"", "Light", "solarized", "blue; drop", strings.Repeat("x", 500)} {
+		if err := app.SetTheme(bad); err == nil {
+			t.Errorf("SetTheme(%q) = nil, want error", bad)
+		}
+	}
+	// A rejected value must not disturb what is stored.
+	if got := app.GetTheme(); got != "light" {
+		t.Errorf("stored theme changed to %q after rejected writes", got)
+	}
+}
+
+// TestGetThemeDefaultsToBlue verifies GetTheme returns "blue" on a fresh
+// config with no theme field — first run, or an upgrade from before this
+// field existed.
+func TestGetThemeDefaultsToBlue(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	app := &App{}
+	if got := app.GetTheme(); got != "blue" {
+		t.Errorf("GetTheme on a fresh config = %q, want \"blue\"", got)
+	}
+}
+
+// TestThemeRoundTripsThroughConfigFile verifies Theme survives a save/load
+// round trip via saveConfig/loadConfig directly.
+func TestThemeRoundTripsThroughConfigFile(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	if err := saveConfig(&AppConfig{CollectionDir: "/tmp/x", Theme: "dark"}); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := loadConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Theme != "dark" {
+		t.Errorf("Theme after round trip = %q", cfg.Theme)
+	}
+	if cfg.CollectionDir != "/tmp/x" {
+		t.Errorf("CollectionDir after round trip = %q", cfg.CollectionDir)
+	}
+}
+
+// TestSetThemePreservesOtherFields verifies that calling SetTheme on a config
+// that already has a CollectionDir does not wipe it — the bug that would
+// silently log the user out of their collection every time they changed
+// theme. Unlike TestThemeRoundTripsThroughConfigFile (which drives
+// saveConfig/loadConfig directly), this test exercises app.SetTheme's
+// load-modify-save path specifically, since that is the path Control 3 in
+// the task brief targets.
+func TestSetThemePreservesOtherFields(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	if err := saveConfig(&AppConfig{CollectionDir: "/tmp/x"}); err != nil {
+		t.Fatal(err)
+	}
+	app := &App{}
+	if err := app.SetTheme("dark"); err != nil {
+		t.Fatalf("SetTheme: %v", err)
+	}
+	cfg, err := loadConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Theme != "dark" {
+		t.Errorf("Theme after SetTheme = %q, want %q", cfg.Theme, "dark")
+	}
+	if cfg.CollectionDir != "/tmp/x" {
+		t.Errorf("SetTheme wiped CollectionDir: got %q, want %q", cfg.CollectionDir, "/tmp/x")
 	}
 }

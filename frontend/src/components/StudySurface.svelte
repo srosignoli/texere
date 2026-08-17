@@ -213,17 +213,17 @@
 </div>
 
 <style>
-  .ss-root { position: absolute; inset: 0; z-index: 60; display: flex; flex-direction: column; background: #131c29; }
-  .ss-bar { display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-bottom: 1px solid #2a3a4a; background: #161f2e; }
-  .ss-title { color: #7dd3fc; font-weight: 600; margin-right: 8px; }
-  .ss-tab { background: none; border: 1px solid transparent; color: #8aa; border-radius: 6px; padding: 3px 10px; cursor: pointer; font-size: 12px; }
-  .ss-tab.active { background: #1e3a5a; color: #e8eaf0; border-color: #2a3a4a; }
-  .ss-tab sup { color: #7ecfa0; margin-left: 2px; }
+  .ss-root { position: absolute; inset: 0; z-index: 60; display: flex; flex-direction: column; background: var(--surface-study); }
+  .ss-bar { display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--surface-bar); }
+  .ss-title { color: var(--accent-text); font-weight: 600; margin-right: 8px; }
+  .ss-tab { background: none; border: 1px solid transparent; color: var(--text-quiet); border-radius: 6px; padding: 3px 10px; cursor: pointer; font-size: 12px; }
+  .ss-tab.active { background: var(--accent); color: var(--text); border-color: var(--border); }
+  .ss-tab sup { color: var(--ok); margin-left: 2px; }
   .ss-spacer { flex: 1; }
-  .ss-close { background: none; border: none; color: #8899aa; font-size: 18px; cursor: pointer; }
-  .ss-error { color: #ff8080; padding: 6px 12px; font-size: 12px; }
+  .ss-close { background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer; }
+  .ss-error { color: var(--danger); padding: 6px 12px; font-size: 12px; }
   .ss-body { flex: 1; min-height: 0; position: relative; }
   .ss-read { position: absolute; inset: 0; display: flex; min-height: 0; }
   .ss-reading { position: relative; flex: 1; min-width: 0; }
-  .ss-empty { display: flex; align-items: center; justify-content: center; height: 100%; color: #8aa; }
+  .ss-empty { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-quiet); }
 </style>

@@ -173,28 +173,28 @@
 </div>
 
 <style>
-  .lc-root { position: absolute; inset: 0; display: flex; flex-direction: column; background: #0f1724; }
+  .lc-root { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--surface-chat); }
   .lc-bar { display: flex; align-items: center; gap: 8px; padding: 8px 10px;
-    border-bottom: 1px solid #2a3a4a; background: #161f2e; }
-  .lc-title { color: #7dd3fc; font-weight: 600; flex: 1; font-size: 13px; }
-  .lc-prof { background: #101826; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px;
+    border-bottom: 1px solid var(--border); background: var(--surface-bar); }
+  .lc-title { color: var(--accent-text); font-weight: 600; flex: 1; font-size: 13px; }
+  .lc-prof { background: var(--surface-inset); color: var(--text); border: 1px solid var(--border); border-radius: 6px;
     font-size: 11px; padding: 2px 4px; }
-  .lc-create { background: #1e3a5a; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px;
+  .lc-create { background: var(--accent); color: var(--text); border: 1px solid var(--border); border-radius: 6px;
     padding: 3px 9px; cursor: pointer; font-size: 11px; }
   .lc-create:disabled { opacity: 0.5; cursor: default; }
   .lc-log { flex: 1; min-height: 0; overflow: auto; padding: 10px; }
-  .lc-empty { color: #5d7186; font-size: 13px; padding: 20px 4px; max-width: 46em; }
+  .lc-empty { color: var(--text-faint); font-size: 13px; padding: 20px 4px; max-width: 46em; }
   .lc-msg { white-space: pre-wrap; font-size: 13px; line-height: 1.55; margin-bottom: 12px; max-width: 46em; }
-  .lc-msg.user { color: #cdd6e0; }
-  .lc-msg.assistant { color: #9fb3c8; }
+  .lc-msg.user { color: var(--text-doc); }
+  .lc-msg.assistant { color: var(--text-doc-dim); }
   .lc-role { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
-    color: #5d7186; margin-bottom: 2px; }
-  .lc-error { color: #ff8080; padding: 6px 10px; font-size: 12px; border-top: 1px solid #2a3a4a; }
-  .lc-input { display: flex; gap: 8px; padding: 8px 10px; border-top: 1px solid #2a3a4a; background: #131c29; }
-  .lc-input textarea { flex: 1; min-width: 0; resize: vertical; background: #0b1220; color: #e8eaf0;
-    border: 1px solid #2a3a4a; border-radius: 6px; padding: 6px 8px; font-size: 13px;
+    color: var(--text-faint); margin-bottom: 2px; }
+  .lc-error { color: var(--danger); padding: 6px 10px; font-size: 12px; border-top: 1px solid var(--border); }
+  .lc-input { display: flex; gap: 8px; padding: 8px 10px; border-top: 1px solid var(--border); background: var(--surface-study); }
+  .lc-input textarea { flex: 1; min-width: 0; resize: vertical; background: var(--surface-sunken); color: var(--text);
+    border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-size: 13px;
     font-family: inherit; outline: none; }
-  .lc-send { align-self: flex-end; background: #1e3a5a; color: #e8eaf0; border: 1px solid #2a3a4a;
+  .lc-send { align-self: flex-end; background: var(--accent); color: var(--text); border: 1px solid var(--border);
     border-radius: 6px; padding: 4px 12px; cursor: pointer; font-size: 12px; }
   .lc-send:disabled { opacity: 0.5; cursor: default; }
 </style>

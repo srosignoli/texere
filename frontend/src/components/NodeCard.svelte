@@ -49,8 +49,8 @@
 
 <style>
   .node-card {
-    background: #1e2f40;
-    border: 1px solid #2a3a4a;
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
     border-radius: 6px;
     padding: 10px 14px;
     margin-bottom: 8px;
@@ -58,18 +58,18 @@
 
   .node-card.reminder {
     background: #fef3c7;
-    border-left: 3px solid #f59e0b;
+    border-left: 3px solid var(--warn);
     color: #1c1100;
   }
 
   .node-card.sequence-node {
-    border-left: 2px solid #4b5563;
+    border-left: 2px solid var(--sequence-connector);
   }
 
   .node-text {
     margin: 0 0 6px;
     font-size: 0.88rem;
-    color: #e8eaf0;
+    color: var(--text);
     line-height: 1.5;
   }
 
@@ -81,7 +81,7 @@
   .arrow-list {
     margin: 6px 0 0;
     padding: 0;
-    border-top: 1px solid #2a3a4a;
+    border-top: 1px solid var(--border);
     padding-top: 6px;
     display: flex;
     flex-direction: column;
@@ -99,7 +99,7 @@
   }
 
   .arrow-dt {
-    color: #5a7a9a;
+    color: var(--accent-dim);
     font-weight: 600;
     white-space: nowrap;
     min-width: 80px;

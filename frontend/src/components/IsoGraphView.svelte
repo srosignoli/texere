@@ -6,6 +6,8 @@
   // controller. Multiple instances may be mounted simultaneously, so
   // every three.js resource created here must be disposed on destroy.
   import { onMount, onDestroy } from 'svelte'
+  import { get } from 'svelte/store'
+  import { theme } from '../stores/theme.js'
   import { createScene } from './explorer/Scene.js'
   import { createPicker } from './explorer/Picking.js'
   import { buildNodeMeshes } from './explorer/NodeMeshes.js'
@@ -61,6 +63,20 @@
   // Re-render whenever the layout changes (and once sceneCtx exists after mount).
   $: if (sceneCtx) renderLayout(layout)
 
+  // Theme switch: repaint the live scene in place (labels are canvas
+  // textures, so they are redrawn, not just recoloured). Cheaper and less
+  // disruptive than renderLayout(), which refits the camera. Skips the
+  // store's initial emission — see the longer note in GraphExplorer.svelte.
+  let lastThemeApplied = get(theme)
+  $: if ($theme !== lastThemeApplied) {
+    lastThemeApplied = $theme
+    if (sceneCtx) {
+      nodeMeshes?.retheme()
+      layerPlanes?.retheme()
+      sceneCtx.render()
+    }
+  }
+
   onMount(() => {
     sceneCtx = createScene(canvas, {
       // A folded (display:none) cell measures 0 for canvas.clientHeight, so any
@@ -90,7 +106,7 @@
 </div>
 
 <style>
-  .iso-wrap { position: relative; width: 100%; background: #0b1220; border-radius: 6px; overflow: hidden; }
+  .iso-wrap { position: relative; width: 100%; background: var(--surface-sunken); border-radius: 6px; overflow: hidden; }
   .iso-wrap canvas { display: block; width: 100%; height: 100%; touch-action: none; }
-  .iso-msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #7a8ba0; font-size: 13px; padding: 12px; text-align: center; background: #0b1220; }
+  .iso-msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--text-iso-message); font-size: 13px; padding: 12px; text-align: center; background: var(--surface-sunken); }
 </style>

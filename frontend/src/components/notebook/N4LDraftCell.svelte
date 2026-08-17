@@ -45,9 +45,9 @@
 </div>
 
 <style>
-  .draft-cell { background: #0e1622; border: 1px solid #26374a; border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+  .draft-cell { background: var(--surface-modal); border: 1px solid var(--border-card); border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
   .draft-editor { min-height: 48px; }
-  .draft-bar { display: flex; gap: 6px; padding: 6px 8px; border-top: 1px solid #1c2a3a; }
-  .push-btn { background: #1e3a5a; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px; padding: 3px 10px; cursor: pointer; font-size: 12px; }
-  .push-btn:hover { background: #244a72; }
+  .draft-bar { display: flex; gap: 6px; padding: 6px 8px; border-top: 1px solid var(--border-subtle); }
+  .push-btn { background: var(--accent); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 3px 10px; cursor: pointer; font-size: 12px; }
+  .push-btn:hover { background: var(--accent-hover); }
 </style>

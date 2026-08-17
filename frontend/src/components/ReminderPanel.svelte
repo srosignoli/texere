@@ -94,8 +94,8 @@
     right: 0;
     bottom: 0;
     width: 320px;
-    background: #1a2535;
-    border-left: 1px solid #2a3a4a;
+    background: var(--surface-overlay);
+    border-left: 1px solid var(--border);
     display: flex;
     flex-direction: column;
     pointer-events: all;
@@ -107,27 +107,27 @@
     align-items: center;
     justify-content: space-between;
     padding: 10px 14px;
-    border-bottom: 1px solid #2a3a4a;
+    border-bottom: 1px solid var(--border);
     flex-shrink: 0;
   }
 
   .panel-title {
     font-size: 0.88rem;
     font-weight: 600;
-    color: #e8eaf0;
+    color: var(--text);
   }
 
   .close-btn {
     background: none;
     border: none;
-    color: #5a7a9a;
+    color: var(--accent-dim);
     cursor: pointer;
     font-size: 0.9rem;
     padding: 2px 6px;
   }
 
   .close-btn:hover {
-    color: #e8eaf0;
+    color: var(--text);
   }
 
   .panel-body {
@@ -139,13 +139,13 @@
   .empty-hint {
     padding: 20px;
     text-align: center;
-    color: #4a5a6a;
+    color: var(--text-dim);
     font-size: 0.82rem;
   }
 
   .reminder-item {
-    background: #1e2f40;
-    border: 1px solid #2a3a4a;
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
     border-radius: 6px;
     padding: 10px 12px;
     margin-bottom: 8px;
@@ -161,21 +161,21 @@
   .meta-chapter {
     font-size: 0.72rem;
     font-weight: 600;
-    color: #5a7a9a;
+    color: var(--accent-dim);
     text-transform: uppercase;
     letter-spacing: 0.04em;
   }
 
   .meta-ctx {
     font-size: 0.72rem;
-    color: #4a5a6a;
+    color: var(--text-dim);
     font-style: italic;
   }
 
   .reminder-text {
     margin: 0 0 8px;
     font-size: 0.84rem;
-    color: #f59e0b;
+    color: var(--warn);
     font-weight: 600;
   }
 
@@ -188,15 +188,15 @@
 
   .different-file-hint {
     font-size: 0.75rem;
-    color: #f59e0b;
+    color: var(--warn);
   }
 
   .resolve-btn {
     padding: 4px 12px;
-    background: #1e3a5a;
-    border: 1px solid #2563eb;
+    background: var(--accent);
+    border: 1px solid var(--accent-primary);
     border-radius: 4px;
-    color: #93c5fd;
+    color: var(--accent-text-alt);
     font-size: 0.8rem;
     cursor: pointer;
   }

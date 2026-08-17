@@ -141,22 +141,22 @@
 </div>
 
 <style>
-  .gq-cell { background: #0e1622; border: 1px solid #26374a; border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
-  .gq-ask { border-bottom: 1px solid #2a3a4a; }
+  .gq-cell { background: var(--surface-modal); border: 1px solid var(--border-card); border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+  .gq-ask { border-bottom: 1px solid var(--border); }
   .gq-bar { display: flex; align-items: flex-start; gap: 6px; padding: 6px 8px; }
   .gq-input-wrap { position: relative; flex: 1; min-width: 0; }
-  .gq-input { box-sizing: border-box; width: 100%; background: #0b1220; border: 1px solid #2a3a4a; border-radius: 6px; color: #e8eaf0; font-size: 13px; padding: 5px 8px; font-family: monospace; }
-  .gq-sug { position: absolute; z-index: 5; left: 0; right: 0; margin: 2px 0 0; padding: 4px; list-style: none; background: #101826; border: 1px solid #2a3a4a; border-radius: 6px; max-height: 200px; overflow-y: auto; }
-  .gq-sug li { padding: 3px 6px; cursor: pointer; font-size: 12px; color: #cdd6e2; border-radius: 4px; }
-  .gq-sug li:hover { background: #24374d; }
-  .s-sum { color: #5a7a9a; }
-  .gq-run { background: #1e3a5a; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px; padding: 5px 12px; cursor: pointer; font-size: 12px; }
-  .gq-error { color: #ff8080; font-size: 12px; padding: 0 8px 6px; }
-  .gq-results { padding: 6px 8px 8px; border-top: 1px solid #1c2a3a; }
+  .gq-input { box-sizing: border-box; width: 100%; background: var(--surface-sunken); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 13px; padding: 5px 8px; font-family: monospace; }
+  .gq-sug { position: absolute; z-index: 5; left: 0; right: 0; margin: 2px 0 0; padding: 4px; list-style: none; background: var(--surface-inset); border: 1px solid var(--border); border-radius: 6px; max-height: 200px; overflow-y: auto; }
+  .gq-sug li { padding: 3px 6px; cursor: pointer; font-size: 12px; color: var(--text-modal); border-radius: 4px; }
+  .gq-sug li:hover { background: var(--surface-inset-hover); }
+  .s-sum { color: var(--accent-dim); }
+  .gq-run { background: var(--accent); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 5px 12px; cursor: pointer; font-size: 12px; }
+  .gq-error { color: var(--danger); font-size: 12px; padding: 0 8px 6px; }
+  .gq-results { padding: 6px 8px 8px; border-top: 1px solid var(--border-subtle); }
   .gq-view { display: inline-flex; gap: 2px; }
-  .gq-view button { background: #14233a; color: #6b7a8a; border: 1px solid #2a3a4a; border-radius: 6px; padding: 4px 8px; cursor: pointer; font-size: 12px; }
-  .gq-view button.sel { color: #e8eaf0; background: #244a72; }
-  .gq-graph { border-top: 1px solid #1c2a3a; padding: 6px 8px 8px; }
+  .gq-view button { background: var(--control); color: var(--text-tab-muted); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; cursor: pointer; font-size: 12px; }
+  .gq-view button.sel { color: var(--text); background: var(--accent-hover); }
+  .gq-graph { border-top: 1px solid var(--border-subtle); padding: 6px 8px 8px; }
   .gq-graphbar { display: flex; justify-content: flex-end; margin-bottom: 4px; }
-  .gq-expand { background: #14233a; color: #93c5fd; border: 1px solid #2a3a4a; border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
+  .gq-expand { background: var(--control); color: var(--accent-text-alt); border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
 </style>

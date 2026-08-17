@@ -209,30 +209,35 @@
 </div>
 
 <style>
-  .sh-cell { border: 1px solid #2a3a4a; border-radius: 8px; background: #0e1626; overflow: hidden; }
-  .sh-bar { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-bottom: 1px solid #2a3a4a; }
-  .sh-shell, .sh-cwd { background: #14233a; color: #93c5fd; border: 1px solid #2a4a6a; border-radius: 6px; padding: 2px 6px; font-size: 12px; }
+  .sh-cell { border: 1px solid var(--border); border-radius: 8px; background: var(--surface-shell); overflow: hidden; }
+  .sh-bar { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-bottom: 1px solid var(--border); }
+  .sh-shell, .sh-cwd { background: var(--control); color: var(--accent-text-alt); border: 1px solid var(--control-border); border-radius: 6px; padding: 2px 6px; font-size: 12px; }
   .sh-cwd { flex: 1; min-width: 0; }
-  .sh-run, .sh-stop { background: #14233a; color: #93c5fd; border: 1px solid #2a4a6a; border-radius: 6px; padding: 2px 10px; cursor: pointer; font-size: 12px; }
+  .sh-run, .sh-stop { background: var(--control); color: var(--accent-text-alt); border: 1px solid var(--control-border); border-radius: 6px; padding: 2px 10px; cursor: pointer; font-size: 12px; }
   .sh-run:disabled { opacity: .45; cursor: default; }
-  .sh-stop { color: #ff8080; border-color: #5a2a2a; }
-  .sh-cmd { width: 100%; box-sizing: border-box; background: #0b1220; color: #e8eaf0; border: none; border-bottom: 1px solid #2a3a4a; padding: 6px 8px; font-family: ui-monospace, monospace; font-size: 12px; resize: vertical; }
+  /* border-color #5a2a2a against var(--control) is 1.35:1 in Blue and 1.40:1
+     in Dark — below the 3:1 UI-component-boundary threshold, a pre-existing
+     weakness carried forward unchanged by the migration, not introduced by
+     it (9.93:1 in Light). No coupled text-legibility risk (it's a border,
+     not text over a themed fill); semantic (danger-adjacent), kept literal. */
+  .sh-stop { color: var(--danger); border-color: #5a2a2a; }
+  .sh-cmd { width: 100%; box-sizing: border-box; background: var(--surface-sunken); color: var(--text); border: none; border-bottom: 1px solid var(--border); padding: 6px 8px; font-family: ui-monospace, monospace; font-size: 12px; resize: vertical; }
   .sh-out { max-height: 320px; overflow: auto; padding: 6px 8px; font-family: ui-monospace, monospace; font-size: 12px; }
-  .sh-line { white-space: pre-wrap; word-break: break-word; color: #c9d4e3; }
-  .sh-line.err { color: #ffb4a0; }
+  .sh-line { white-space: pre-wrap; word-break: break-word; color: var(--text-shell-output); }
+  .sh-line.err { color: var(--text-shell-err); }
   /* Dimmed, italic and ruled off so it reads as a notice about the pane rather
      than as a line the command printed. */
-  .sh-trunc { color: #5d7186; font-style: italic; border-bottom: 1px dashed #2a3a4a; padding-bottom: 3px; margin-bottom: 3px; user-select: none; }
-  .sh-cmd.ro { color: #93a3b8; }
-  .sh-status { margin-top: 4px; color: #5d7186; font-size: 11px; }
-  .sh-status.bad { color: #ff8080; }
-  .sh-error { padding: 8px; color: #ff8080; font-size: 12px; }
+  .sh-trunc { color: var(--text-faint); font-style: italic; border-bottom: 1px dashed var(--border); padding-bottom: 3px; margin-bottom: 3px; user-select: none; }
+  .sh-cmd.ro { color: var(--text-shell-readonly); }
+  .sh-status { margin-top: 4px; color: var(--text-faint); font-size: 11px; }
+  .sh-status.bad { color: var(--danger); }
+  .sh-error { padding: 8px; color: var(--danger); font-size: 12px; }
   /* Amber, not red: a missing saved shell is a heads-up to resolve, not a
      failure — discoverErr (no shell found at all) is the failure case. */
-  .sh-warn { padding: 6px 8px; color: #b58a3a; font-size: 12px; border-bottom: 1px solid #2a3a4a; }
-  .sh-promote { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-top: 1px solid #2a3a4a; background: #101826; }
-  .sh-count { color: #5d7186; font-size: 11px; white-space: nowrap; }
-  .sh-subj { flex: 1; min-width: 0; background: #14233a; color: #e8eaf0; border: 1px solid #2a4a6a; border-radius: 6px; padding: 2px 6px; font-size: 12px; }
-  .sh-n4l { background: #14233a; color: #93c5fd; border: 1px solid #2a4a6a; border-radius: 6px; padding: 2px 10px; cursor: pointer; font-size: 12px; white-space: nowrap; }
+  .sh-warn { padding: 6px 8px; color: var(--text-notice); font-size: 12px; border-bottom: 1px solid var(--border); }
+  .sh-promote { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-top: 1px solid var(--border); background: var(--surface-inset); }
+  .sh-count { color: var(--text-faint); font-size: 11px; white-space: nowrap; }
+  .sh-subj { flex: 1; min-width: 0; background: var(--control); color: var(--text); border: 1px solid var(--control-border); border-radius: 6px; padding: 2px 6px; font-size: 12px; }
+  .sh-n4l { background: var(--control); color: var(--accent-text-alt); border: 1px solid var(--control-border); border-radius: 6px; padding: 2px 10px; cursor: pointer; font-size: 12px; white-space: nowrap; }
   .sh-n4l:disabled { opacity: .45; cursor: default; }
 </style>

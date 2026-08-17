@@ -96,12 +96,12 @@
 </div>
 
 <style>
-  .pdf-root { flex: 1; display: flex; flex-direction: column; min-width: 0; background: #1b2230; }
-  .pdf-bar { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; justify-content: center; padding: 6px; border-bottom: 1px solid #2a3a4a; }
-  .pdf-nav { background: #1e3a5a; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px; padding: 2px 10px; cursor: pointer; }
+  .pdf-root { flex: 1; display: flex; flex-direction: column; min-width: 0; background: var(--surface-pane); }
+  .pdf-bar { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; justify-content: center; padding: 6px; border-bottom: 1px solid var(--border); }
+  .pdf-nav { background: var(--accent); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 2px 10px; cursor: pointer; }
   .pdf-nav:disabled { opacity: .4; cursor: default; }
-  .pdf-page { color: #8aa; font-size: 12px; }
-  .pdf-err { color: #ff8080; padding: 8px 12px; font-size: 12px; }
+  .pdf-page { color: var(--text-quiet); font-size: 12px; }
+  .pdf-err { color: var(--danger); padding: 8px 12px; font-size: 12px; }
   .pdf-scroll { flex: 1; overflow: auto; display: flex; justify-content: center; padding: 12px; }
   .pdf-page-wrap { position: relative; }
   /* Text layer sizing/positioning must match what pdf.js v5's TextLayer.render()
@@ -125,5 +125,5 @@
     font-size: calc(var(--text-scale-factor) * var(--font-height));
     transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv)); }
   .pdf-textlayer :global(.markedContent) { display: contents; }
-  .pdf-textlayer :global(::selection) { background: #7dd3fc; }
+  .pdf-textlayer :global(::selection) { background: var(--accent-text); }
 </style>

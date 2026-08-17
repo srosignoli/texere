@@ -113,6 +113,9 @@
 
 <style>
   .vv-wrap { padding: 8px; }
+  /* Video-element letterbox: always black regardless of theme, the standard
+     convention for a video player's own background. Semantic, no coupled
+     text, left literal. */
   .vv-player { width: 100%; aspect-ratio: 16 / 9; background: #000; border: 0; border-radius: 4px; display: block; }
   /* Correct fullscreen sizing: the browser sizes the element itself, so
      width:100% plus a fixed aspect-ratio would fight it. NOTE this did NOT fix
@@ -122,12 +125,12 @@
      because it is correct regardless. */
   .vv-player:fullscreen { width: 100%; height: 100%; aspect-ratio: auto; border-radius: 0; }
   .vv-tools { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
-  .vv-btn { background: #1b2636; color: #cde; border: 1px solid #2a3a4a; border-radius: 4px; padding: 2px 8px; cursor: pointer; }
-  .vv-btn:hover { background: #24334a; }
-  .vv-start { font-size: 11px; color: #8aa; }
-  .vv-time { width: 72px; background: #0b1220; color: #cde; border: 1px solid #2a3a4a; border-radius: 4px; padding: 2px 6px; font-size: 12px; }
-  .vv-err { padding: 8px 0; color: #d88; font-size: 13px; }
-  .vv-ext { padding: 14px 12px; background: #0b1220; border: 1px solid #2a3a4a; border-radius: 4px; }
-  .vv-exttitle { color: #cde; font-size: 13px; }
-  .vv-extnote { color: #8aa; font-size: 11px; margin-top: 4px; }
+  .vv-btn { background: var(--surface); color: var(--text-media); border: 1px solid var(--border); border-radius: 4px; padding: 2px 8px; cursor: pointer; }
+  .vv-btn:hover { background: var(--surface-hover); }
+  .vv-start { font-size: 11px; color: var(--text-quiet); }
+  .vv-time { width: 72px; background: var(--surface-sunken); color: var(--text-media); border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px; font-size: 12px; }
+  .vv-err { padding: 8px 0; color: var(--text-media-error); font-size: 13px; }
+  .vv-ext { padding: 14px 12px; background: var(--surface-sunken); border: 1px solid var(--border); border-radius: 4px; }
+  .vv-exttitle { color: var(--text-media); font-size: 13px; }
+  .vv-extnote { color: var(--text-quiet); font-size: 11px; margin-top: 4px; }
 </style>

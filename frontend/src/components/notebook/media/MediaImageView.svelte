@@ -73,8 +73,11 @@
 
 <style>
   .mv-view { position: relative; overflow: hidden; margin: 8px; }
-  .mv-missing { padding: 12px; color: #d88; font-size: 13px; }
+  .mv-missing { padding: 12px; color: var(--text-media-error); font-size: 13px; }
   .mv-cropwrap { position: relative; }
+  /* Translucent rgba() background paired with a literal border colour: left
+     alone deliberately (per the migration brief's MiniMap precedent), same
+     as ImageCell's .im-sel. */
   .mv-sel { position: absolute; border: 1px solid #6ad; background: rgba(102, 170, 221, 0.2); pointer-events: none; }
-  .mv-hint { padding: 0 8px 8px; color: #8aa; font-size: 11px; }
+  .mv-hint { padding: 0 8px 8px; color: var(--text-quiet); font-size: 11px; }
 </style>

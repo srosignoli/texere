@@ -56,13 +56,13 @@
 
 <style>
   .rc-center { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px; }
-  .rc-card { max-width: 640px; width: 100%; border: 1px solid #2a3a4a; border-radius: 8px; padding: 28px; background: #1b2636; text-align: center; }
-  .rc-front { color: #e8eaf0; font-size: 16px; }
-  .rc-back { color: #7ecfa0; font-size: 15px; }
-  .rc-card hr { border: none; border-top: 1px solid #2a3a4a; margin: 16px 0; }
+  .rc-card { max-width: 640px; width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 28px; background: var(--surface); text-align: center; }
+  .rc-front { color: var(--text); font-size: 16px; }
+  .rc-back { color: var(--ok); font-size: 15px; }
+  .rc-card hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
   .rc-card :global(.inline-media),
   .rc-card :global(.inline-audio) { margin: 6px auto; }
-  .rc-btn { background: #1e3a5a; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px; padding: 8px 14px; cursor: pointer; font-size: 13px; }
-  .rc-btn:hover { background: #244a72; }
+  .rc-btn { background: var(--accent); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 14px; cursor: pointer; font-size: 13px; }
+  .rc-btn:hover { background: var(--accent-hover); }
   .rc-grades { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
 </style>

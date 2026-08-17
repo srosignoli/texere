@@ -144,7 +144,7 @@
     font-size: 9px;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: #6b7c95;
+    color: var(--explorer-text-muted);
     margin-bottom: 3px;
   }
   .value {

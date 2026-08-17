@@ -70,25 +70,25 @@
 </div>
 
 <style>
-  .gr { font-size: 12px; color: #cdd6e2; display: flex; flex-direction: column; gap: 10px; }
-  .gr-hint { color: #5a7a9a; margin: 0; }
-  .gr-error { color: #ff8080; margin: 0; }
+  .gr { font-size: 12px; color: var(--text-modal); display: flex; flex-direction: column; gap: 10px; }
+  .gr-hint { color: var(--accent-dim); margin: 0; }
+  .gr-error { color: var(--danger); margin: 0; }
   section { display: flex; flex-direction: column; gap: 6px; }
-  .node, .nb { background: #101826; border: 1px solid #26374a; border-radius: 6px; padding: 6px 8px; }
-  .node-head, .nb-head { color: #e8eaf0; font-weight: 600; }
-  .chap { color: #5a7a9a; font-weight: 400; font-size: 11px; }
+  .node, .nb { background: var(--surface-inset); border: 1px solid var(--border-card); border-radius: 6px; padding: 6px 8px; }
+  .node-head, .nb-head { color: var(--text); font-weight: 600; }
+  .chap { color: var(--accent-dim); font-weight: 400; font-size: 11px; }
   .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
-  .tag { background: #1e3a5a; color: #93c5fd; border-radius: 4px; padding: 0 5px; font-size: 11px; }
-  .orbit { margin: 4px 0 0; padding-left: 14px; color: #b9c6d6; }
-  .arrow { color: #7dd3fc; }
-  .rad { color: #5a7a9a; font-size: 10px; }
-  .chain { background: #101826; border: 1px solid #26374a; border-radius: 6px; padding: 6px 8px; }
-  .chain-label { color: #93c5fd; font-size: 11px; margin-bottom: 3px; }
-  .cn { color: #e8eaf0; }
-  .cn-arrow { color: #7dd3fc; }
+  .tag { background: var(--accent); color: var(--accent-text-alt); border-radius: 4px; padding: 0 5px; font-size: 11px; }
+  .orbit { margin: 4px 0 0; padding-left: 14px; color: var(--text-cell-muted); }
+  .arrow { color: var(--accent-text); }
+  .rad { color: var(--accent-dim); font-size: 10px; }
+  .chain { background: var(--surface-inset); border: 1px solid var(--border-card); border-radius: 6px; padding: 6px 8px; }
+  .chain-label { color: var(--accent-text-alt); font-size: 11px; margin-bottom: 3px; }
+  .cn { color: var(--text); }
+  .cn-arrow { color: var(--accent-text); }
   .chain.seq .chain-nodes { display: flex; flex-direction: column; }
   .listing { padding: 2px 0; }
-  .detail { color: #b9c6d6; }
-  .listing-nodes { color: #8aa0b6; font-size: 11px; }
-  .note-chap { color: #7dd3fc; font-size: 11px; margin-top: 4px; }
+  .detail { color: var(--text-cell-muted); }
+  .listing-nodes { color: var(--text-listing-dim); font-size: 11px; }
+  .note-chap { color: var(--accent-text); font-size: 11px; margin-top: 4px; }
 </style>

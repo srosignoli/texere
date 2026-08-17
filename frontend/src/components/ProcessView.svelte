@@ -119,7 +119,7 @@
      positioned flex child — otherwise it covers the focus header. */
   .pv-right { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
   .pv-notebook { position: relative; flex: 1 1 auto; min-height: 0; }
-  .pv-focus { flex: 0 0 auto; padding: 4px 8px; border-bottom: 1px solid #2a3a4a; color: #5d7186; font-size: 11px; }
-  .pv-focus b { color: #93c5fd; font-weight: 600; }
-  .pv-empty { padding: 16px; color: #5d7186; font-size: 12px; }
+  .pv-focus { flex: 0 0 auto; padding: 4px 8px; border-bottom: 1px solid var(--border); color: var(--text-faint); font-size: 11px; }
+  .pv-focus b { color: var(--accent-text-alt); font-weight: 600; }
+  .pv-empty { padding: 16px; color: var(--text-faint); font-size: 12px; }
 </style>

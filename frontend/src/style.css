@@ -1,25 +1,564 @@
 html {
-    background-color: rgba(27, 38, 54, 1);
+    background-color: var(--surface);
     text-align: center;
-    color: white;
+    color: var(--text);
 }
 
-/* 2.5D Isometric Graph Explorer (feature 006) — theme palette.
- * These CSS variables are the single source of truth for the explorer's
- * territory colors, edge colors, and label / ground / anchor colors.
- * Three.js reads them at scene-build time via Theme.js's resolve* helpers.
- * Override these in a theme switcher to retheme the explorer without
- * touching JS.
+/* ==========================================================================
+ * Theme layer.
  *
- * Hex strings only (#rrggbb) — Theme.js parses them into 24-bit ints.
- */
+ * Three themes: Blue (the default, and the palette every surface in the app
+ * was designed against), Dark (neutral near-black) and Light. Blue lives on
+ * `:root`; Dark and Light override it via a `data-theme` attribute set on
+ * <html> by the pre-paint bootstrap in index.html and by the theme store.
+ *
+ * Blue's values ARE the literals the components used before the migration, so
+ * switching a component from a literal to a token is a visual no-op. Never
+ * "tidy" a Blue value — it is load-bearing for the pixel-diff verification.
+ *
+ * Every token is written out in all three blocks. A theme that inherits half
+ * its tokens from Blue is a bug that only shows on the surfaces nobody opened.
+ * ========================================================================== */
+
 :root {
     /* Tell the webview this app is dark so WebKitGTK themes native form
        controls (the <select> box AND its popup menu) and scrollbars in dark
        mode. Without this, native selects render light-on-light and ignore
-       CSS/<option> styling of the native popup. */
+       CSS/<option> styling of the native popup. Light flips this below. */
     color-scheme: dark;
 
+    /* --- Surfaces, back to front ------------------------------------- */
+    --surface-sunken: #0b1220;   /* deepest wells: output panes, code blocks */
+    --surface-inset: #101826;    /* blocks and cards set into a panel */
+    --surface-bar: #161f2e;      /* toolbar / header strips inside a pane */
+    --surface-overlay: #1a2535;  /* popovers, menus, floating panels */
+    --surface: #1b2636;          /* the app background */
+    --surface-raised: #1e2f40;   /* chips and cards lifted off the surface */
+
+    /* --- Lines --------------------------------------------------------- */
+    --border-subtle: #1c2a3a;    /* hairline dividers inside a component */
+    --border-card: #26374a;      /* outline of a card / notebook cell */
+    --border: #2a3a4a;           /* the default panel and control edge */
+    --border-strong: #334455;    /* splitters and emphasised edges */
+
+    /* --- Small controls ------------------------------------------------ */
+    --control: #14233a;          /* background of a button / input / select */
+    --control-border: #2a4a6a;   /* border of those controls */
+
+    /* --- Text ---------------------------------------------------------- */
+    --text: #e8eaf0;             /* body text */
+    --text-secondary: #c8d0dc;   /* a step dimmer than --text: hover labels, toolbar-button text */
+    --text-muted: #8899aa;       /* secondary text, labels, counts */
+    --text-faint: #5d7186;       /* placeholders, disabled, line numbers */
+    --text-hint: #4a6a7a;        /* italic helper/hint text — dimmer than --text-faint */
+    --text-dim: #4a5a6a;         /* empty-state and very-dim placeholder text — dimmer still */
+
+    /* --- Accents ------------------------------------------------------- */
+    --accent: #1e3a5a;           /* selected row / active chip background */
+    --accent-hover: #244a72;     /* the same, hovered or more prominent */
+    --accent-text: #7dd3fc;      /* actionable text and active icons */
+    --accent-text-alt: #93c5fd;  /* the second accent hue, on chips/controls */
+    --accent-dim: #5a7a9a;       /* muted accent: inactive icons, rules */
+    --accent-faint: #3a5a7a;     /* a step dimmer than --accent-dim: placeholder text, hover borders on chips */
+    --accent-primary: #2563eb;      /* saturated CTA/active-indicator blue: selected-item rails, primary buttons */
+    --accent-primary-hover: #1d4ed8; /* the same, hovered/pressed */
+
+    /* --- Status (semantic; the hue means the same in every theme, but the
+           value is tuned per theme so it stays legible on that surface) --- */
+    --ok: #7ecfa0;
+    --warn: #f59e0b;
+    --danger: #ff8080;
+
+    /* Roles minted while migrating the workbench shell. Each replaces a
+       literal that is thematic chrome — a panel body, a button fill, a chip
+       edge — but whose value matched no role above byte-for-byte. Using a
+       near-match would have changed how Blue renders, which the migration
+       may not do. */
+    --surface-panel: #131c2a;         /* body of a full-width utility panel (log) */
+    --control-raised: #263547;        /* fill of a toolbar button */
+    --control-raised-hover: #2e4060;  /* the same, hovered */
+    --chip-hover: #253545;            /* fill of a hovered chip */
+    --chip-border: #2a4258;           /* edge of a context chip, and its hover fill */
+    --divider: #1a2530;               /* an inline rule between rows inside a pane */
+    --text-inert: #6a8aa0;            /* non-actionable result rows, end-of-list hints */
+    --text-row: #b0bec5;              /* default text of a list row */
+    --chip-text: #a0b4c4;             /* label text on a context chip */
+    --chip-text-strong: #c8d2dc;      /* the same, hovered */
+    --chip-text-dim: #8aa0b0;         /* label text on a transparent filter chip */
+    --input-bg: #0f1a27;              /* fill of a text input sunk into a panel */
+    --surface-block: #14202c;         /* an example/callout block inside a help pane */
+    --text-block: #c4d0dc;            /* body text inside that block */
+
+    /* Roles minted finishing the workbench-shell migration (Task 3, third
+       pass): the remaining thematic literals the earlier passes catalogued
+       but deferred. Each value is derived mechanically — hue/saturation of
+       the Blue literal held constant, Dark solved to the same contrast
+       ratio Blue has against its paired background/text, Light solved to
+       the same ratio against Light's (inverted-lightness) counterpart. */
+    --seq-num: #3b82f6;               /* sequence step-number text (OmniBar + ColumnNodes) */
+    --seq-stem: #1e40af;              /* sequence connector-stem fill, pairs with --seq-num */
+    --row-cursor-bg: #1e3550;         /* cursor-position row highlight, dimmer than --accent */
+    --control-active: #1a2d45;        /* active-state fill of a small toolbar control */
+    --chevron-muted: #4a6a8a;         /* collapse/expand chevron glyph */
+    --control-border-hover: #3b5a7a;  /* hover border of a small toolbar control */
+    --arrow-sep: #3a5a6a;             /* punctuation between an arrow code and its target */
+    --icon-graph-muted: #4a7a6a;      /* graph-mode icon accent (OmniBar) */
+    --text-arrow-hint: #6a9aaa;       /* arrow glyph in orbit/note result rows (OmniBar) */
+    --text-note-marker: #8aa8c9;      /* \notes group marker label (OmniBar) */
+    --text-listing-muted: #8a9aaa;    /* \context listing empty-hint / node-row text (OmniBar) */
+    --text-idx-muted: #5a7a8a;        /* result-row index number (OmniBar) */
+    --text-orbit-neighbor: #c0ccd8;   /* orbit-neighbor node text (OmniBar) */
+    --text-orbit-context: #7a8a70;    /* orbit-entry context label (OmniBar) */
+    --text-arrow-context: #6a7a7a;    /* arrow-context italic text (OmniBar) */
+    --text-sequence-muted: #6a7a8a;   /* sequence-context-muted label (OmniBar) */
+    --text-path-arrow: #6a8a9a;       /* \from \to path-chain arrow glyph (OmniBar) */
+    --text-note-arrow-target: #b0bac5; /* \notes arrow-target text (OmniBar) */
+    --help-body-text: #d8e0ea;        /* QueryHelpPanel body copy */
+    --help-lead-text: #aab8c6;        /* QueryHelpPanel lead paragraph */
+    --help-divider: #22303f;          /* QueryHelpPanel table/list hairline */
+    --chapter-file-text: #7a9ab5;     /* ColumnChapters file-name label */
+    --chapter-tree-line: #2e4a5a;     /* ColumnChapters monospace tree connector */
+    --sequence-connector: #4b5563;    /* sequence-node connector line (ReadTab + NodeCard) */
+    --text-loc: #7da0c0;              /* monospace file-location text (LogPanel) */
+
+    /* Roles minted migrating the study and source surfaces (Task 4). */
+    --surface-study: #131c29;         /* root/body of the Study & Sources full-panel surfaces; 1 unit
+                                          darker in the blue channel than --surface-panel — distinct on
+                                          purpose, not the same literal */
+    --text-quiet: #88aaaa;            /* secondary/muted text across Study & Sources: tab labels, counts,
+                                          empty/loading/error states */
+    --text-doc: #cdd6e0;              /* primary reading-content text: document name, chat user message,
+                                          plain-text source body */
+    --text-doc-dim: #9fb3c8;          /* secondary reading-content text, a step dimmer than --text-doc:
+                                          extract preview text, chat assistant message */
+
+    /* Roles minted fixing Task 4's review — literals that were wrongly left
+       "thematic-deferred" for being single-use. The method has no such branch:
+       a thematic colour with no byte-identical role means the layer is
+       missing a role, not licence to defer. */
+    --surface-modal: #0e1622;         /* background of a floating modal/dialog (LLMSettings) */
+    --text-modal: #cdd6e2;            /* body text on a modal surface */
+    --text-tab-muted: #6b7a8a;        /* header/tab-bar button rest-state text inside a modal */
+    --border-row: #1b2735;            /* hairline divider between rows inside a modal list */
+    --text-notice: #b58a3a;           /* a muted brown-gold "no content"/notice marker, distinct from --warn */
+    --surface-chat: #0f1724;          /* root background of an embedded chat pane (LLMChatPane) */
+    --surface-pane: #1b2230;          /* root background of an embedded content pane (PdfSourcePane) */
+    --surface-highlight: #16243a;     /* fill of a highlighted/live action row (e.g. "chat in progress") */
+    --text-article: #d6dde6;          /* rendered-article body text (WebSourcePane) */
+    --border-faint: #1d2a3a;          /* a hairline divider fainter than --border-subtle */
+    --text-badge: #8aa7c0;            /* label text on a small status badge/marker chip */
+
+    /* Roles minted migrating the notebook cells (Task 5a). Derivation: Dark
+       via nearest-Blue-neighbour RGB-delta transfer (mechanical, per Task 4's
+       method); Light values for every token paired with a background were
+       solved by holding the Blue literal's HSL hue/saturation constant and
+       binary-searching lightness until the WCAG contrast ratio against that
+       background's Light value matched (or exceeded) the same ratio Blue
+       itself has — so no pairing is less legible in Light than it already is
+       in Blue. */
+    --surface-shell: #0e1626;         /* ShellCell root background — distinct from --surface-modal
+                                          (#0e1622) by 4 in the blue channel; kept separate per no-tidying */
+    --text-shell-output: #c9d4e3;     /* ShellCell stdout line text */
+    --text-shell-err: #ffb4a0;        /* ShellCell stderr line text */
+    --text-shell-readonly: #93a3b8;   /* ShellCell read-only command text */
+    --danger-fill: #5a1e1e;           /* fill of a filled "stop/destructive" button (ComputeCell, LLMCell) */
+    --danger-fill-text: #ffd7d7;      /* text on that fill */
+    --text-cell-muted: #b9c6d6;       /* secondary/muted text inside a notebook cell: log
+                                          output, quoted passages, orbit/detail listings, assistant chat body */
+    --warn-output: #e0b050;           /* warning-level line in ComputeCell's run log */
+    --text-listing-dim: #8aa0b6;      /* muted node-listing text (GraphResults) */
+    --text-media: #ccddee;            /* text/icon colour on media-cell controls and inputs */
+    --surface-hover: #24334a;         /* hover fill of a plain --surface button (media cells) */
+    --surface-inset-hover: #24374d;   /* hover fill of a row on --surface-inset (GraphQueryCell suggestions) */
+    --control-hover: #1a2f4a;         /* hover fill of a plain --control button (NotebookPane add-cell) */
+    --text-license: #667788;          /* small media-license caption text (MediaCell) */
+    --link-text: #66aadd;             /* inline text-link colour (MediaCell "source" link) */
+    --select-toggle-bg: #2e6ca8;      /* fill of a selected kind/filter toggle (MediaSearchPanel) */
+    --select-toggle-border: #6aa6dd;  /* border of that toggle */
+    --select-toggle-text: #f2f8ff;    /* text of that toggle */
+    --media-hover-border: #4a7aa8;    /* hover border of a media search result tile/row */
+    --text-control-muted: #46586a;    /* rest-state text of a chrome-only icon control (NotebookPane reorder/delete) */
+    --text-media-error: #dd8888;      /* missing-asset/error text in a media view (audio/image/video) */
+
+    /* Roles minted migrating the explorer components (Task 5b). The floating
+       glass-HUD chrome of GraphExplorer/ExplorerSidebar/ExplorerStats/
+       ExplorerLegend (close button, query bar, sidebar, stats strip,
+       tooltips, legend) sits on permanently-dark rgba() backgrounds chosen
+       so the panel stays legible over arbitrary 3D scene content — the
+       MiniMap precedent (Task 3) leaves that whole family literal on
+       purpose, and this pass follows it. Only these 3 roles were genuinely
+       independent of that translucent chrome. */
+    /* Correction from Task 5b's review: "permanently-dark" above only holds
+       for the ≥0.85-alpha members of that family (--stats/--legend at 0.85,
+       --empty-card/tooltips/--freeze-pill at 0.92-0.94, --sidebar at 0.94 —
+       all composite to ≥10.5:1 with #e8eaf0 text over both a near-black and
+       a near-white backdrop, so those stay fixed and literal in every
+       theme). The LOWER-alpha members of the family (0.35-0.6) do not hold
+       up the same way — see the roles below this block. */
+    --explorer-canvas-bg: #0e0f12;    /* GraphExplorer root background, behind the WebGL canvas (opaque,
+                                          not part of the glass-HUD family) */
+    --editor-active-line: #1d2e42;    /* CodeMirror active-line/active-line-gutter tint (EditCard) */
+    --text-iso-message: #7a8ba0;      /* "No graph results" / error message text on IsoGraphView's
+                                          --surface-sunken panel */
+
+    /* Roles minted fixing Task 5b's review — the LOWER-alpha members of the
+       same glass-HUD family (0.35-0.6) do NOT hold up over Light's
+       near-white backdrop; a fixed rgba(0,0,0,X) at that alpha composites to
+       a mid-grey regardless of theme, which fails AA against light text once
+       Light's canvas backdrop is actually near-white instead of near-black.
+       These scrims are themed instead: black-based (unchanged) in Blue and
+       Dark, since both themes' canvas backdrop stays near-black, and
+       white/light-based in Light, so the composite stays light there
+       regardless of theme. Composites computed against #f6f7f9
+       (--surface's Light value, the canvas's own resting colour) as the
+       representative backdrop. */
+    --explorer-scrim: rgba(0, 0, 0, 0.55);          /* rest-state fill: close button, query-bar buttons,
+                                                        sidebar toggle, .overlay.status */
+    --explorer-scrim-strong: rgba(0, 0, 0, 0.6);    /* .overlay.banner (truncated-results notice) */
+    --explorer-scrim-hover: rgba(0, 0, 0, 0.8);     /* hover fill of --explorer-scrim buttons */
+    --explorer-scrim-hover-accent: rgba(74, 123, 208, 0.35); /* query-bar run/help button hover (blue tint) */
+    --text-on-scrim: #d8d8d8;         /* .overlay text (Loading…/error/truncated banner) — was
+                                          var(--fg-2, #d8d8d8); --fg-2 is undefined anywhere in the
+                                          codebase, the same vestigial-stub pattern as --bg-1 */
+
+    /* --- Explorer, themeable half (see the shared block below) ---------- */
+    --explorer-label: #e8eaf0;
+    --explorer-label-halo: #0e0f12;
+    /* Secondary line on a plane label (the chapter list under the context
+     * name). Carries alpha on purpose so it reads as subordinate to
+     * --explorer-label on the same texture. */
+    --explorer-label-sub: rgba(200, 214, 230, 0.7);
+
+    /* Neutral plane tint — the synthetic "Untagged" floor, the one layer
+     * with no palette colour of its own. The tint backs the grid so the
+     * plane reads as a distinct surface even at low opacity, and
+     * LayerPlanes.js derives the grid line colour from THIS token via
+     * brighten(tint, 0.55) — the same formula every palette floor uses.
+     * Every OTHER floor takes its tint from --explorer-territory-N, which
+     * is invariant. --explorer-plane-grid below has no reader (LayerPlanes.js
+     * doesn't consume it); kept declared rather than removed, matching how
+     * it already sat unused before this feature's migration. */
+    --explorer-plane-grid: #6b7c95;
+    --explorer-plane-tint: #1f2a3a;
+
+    /* Secondary/count text in the Explorer family of panels (MiniMap,
+     * GraphExplorer, ExplorerStats, ExplorerSidebar). Coincides with
+     * --explorer-plane-grid's Blue value by chance only — that token is
+     * for 3D grid lines, this one is flat 2D panel text, and they must
+     * stay independently editable. */
+    --explorer-text-muted: #6b7c95;
+}
+
+/* --- Dark: neutral near-black. ---------------------------------------------
+ * The surfaces carry no blue cast at all — a tinted "dark" is just Blue again.
+ * Colour is confined to the accents and the status hues, which is what makes
+ * the actionable parts of a neutral UI findable. */
+:root[data-theme="dark"] {
+    color-scheme: dark;
+
+    --surface-sunken: #0b0c0e;
+    --surface-inset: #0f1012;
+    --surface-bar: #121316;
+    --surface-overlay: #1c1d21;
+    --surface: #16171a;
+    --surface-raised: #202226;
+
+    --border-subtle: #232529;
+    --border-card: #2a2c31;
+    --border: #2c2e33;
+    --border-strong: #3c3f45;
+
+    --control: #1e2024;
+    --control-border: #34373d;
+
+    --text: #e8e8ea;
+    --text-secondary: #ceced0;
+    --text-muted: #9a9ba1;
+    --text-faint: #6e7076;
+    --text-hint: #65676d;
+    --text-dim: #5f6066;
+
+    --accent: #2a2d33;
+    --accent-hover: #383c44;
+    --accent-text: #7dd3fc;
+    --accent-text-alt: #93c5fd;
+    --accent-dim: #7c7f87;
+    --accent-faint: #5d5f65;
+    --accent-primary: #2563eb;
+    --accent-primary-hover: #3b82f6;
+
+    --ok: #7ecfa0;
+    --warn: #f59e0b;
+    --danger: #ff8080;
+
+    --surface-panel: #141517;
+    --control-raised: #26282d;
+    --control-raised-hover: #32353c;
+    --chip-hover: #25272c;
+    --chip-border: #31343a;
+    --divider: #1b1c20;
+    --text-inert: #75777e;
+    --text-row: #c0c1c5;
+    --chip-text: #a8a9ae;
+    --chip-text-strong: #d2d3d6;
+    --chip-text-dim: #8f9096;
+    --input-bg: #0d0e10;
+    --surface-block: #191a1e;
+    --text-block: #d0d1d4;
+
+    --seq-num: #2f7bf5;
+    --seq-stem: #1c3ba3;
+    --row-cursor-bg: #203956;
+    --control-active: #1a2d45;
+    --chevron-muted: #435f7c;
+    --control-border-hover: #365270;
+    --arrow-sep: #33505e;
+    --icon-graph-muted: #467364;
+    --text-arrow-hint: #6094a5;
+    --text-note-marker: #80a1c5;
+    --text-listing-muted: #8294a5;
+    --text-idx-muted: #557483;
+    --text-orbit-neighbor: #b5c4d2;
+    --text-orbit-context: #74846b;
+    --text-arrow-context: #647373;
+    --text-sequence-muted: #657483;
+    --text-path-arrow: #648493;
+    --text-note-arrow-target: #a7b2bf;
+    --help-body-text: #cdd8e4;
+    --help-lead-text: #a1b1c0;
+    --help-divider: #1d2936;
+    --chapter-file-text: #6a8dac;
+    --chapter-tree-line: #27404d;
+    --sequence-connector: #424a57;
+    --text-loc: #769bbc;
+
+    --surface-study: #141516;
+    --text-quiet: #81a5a5;
+    --text-doc: #c5d0db;
+    --text-doc-dim: #98adc4;
+
+    --surface-modal: #0d0e0e;
+    --text-modal: #c5d0de;
+    --text-tab-muted: #677685;
+    --border-row: #161819;
+    --text-notice: #af8538;
+    --surface-chat: #0e0f10;
+    --surface-pane: #1c1920;
+    --surface-highlight: #202124;
+    --text-article: #ced6e1;
+    --border-faint: #242529;
+    --text-badge: #7a9bb7;
+
+    --surface-shell: #0d0e12;
+    --text-shell-output: #c1cedf;
+    --text-shell-err: #ffb4a0;
+    --text-shell-readonly: #98939e;
+    --danger-fill: #5a1e1e;
+    --danger-fill-text: #ffd7d7;
+    --text-cell-muted: #aebed0;
+    --warn-output: #e0b050;
+    --text-listing-dim: #8f909c;
+    --text-media: #c4d6e9;
+    --surface-hover: #242630;
+    --surface-inset-hover: #242a33;
+    --control-hover: #1c3350;
+    --text-license: #617181;
+    --link-text: #5fa5d9;
+    --select-toggle-bg: #2e6ca8;
+    --select-toggle-border: #63a1d9;
+    --select-toggle-text: #f2f6f9;
+    --media-hover-border: #6c7f95;
+    --text-control-muted: #5b5e66;
+    --text-media-error: #dd8888;
+
+    --explorer-canvas-bg: #0b0c0f;
+    --editor-active-line: #1f3248;
+    --text-iso-message: #8c8d8d;
+
+    /* Dark's own canvas backdrop (--explorer-canvas-bg: #0b0c0f) is near-black
+       too, same as Blue's — the black-based scrims stay correct unchanged. */
+    --explorer-scrim: rgba(0, 0, 0, 0.55);
+    --explorer-scrim-strong: rgba(0, 0, 0, 0.6);
+    --explorer-scrim-hover: rgba(0, 0, 0, 0.8);
+    --explorer-scrim-hover-accent: rgba(74, 123, 208, 0.35);
+    --text-on-scrim: #d8d8d8;
+
+    --explorer-label: #e8e8ea;
+    --explorer-label-halo: #0a0a0c;
+    --explorer-label-sub: rgba(204, 204, 210, 0.7);
+    --explorer-plane-grid: #7a7c82;
+    --explorer-plane-tint: #202226;
+    --explorer-text-muted: #7d7e82;
+}
+
+/* --- Light: white-to-grey with dark text. ----------------------------------
+ * The app is dense with adjacent panels, splitters and list rows, so the
+ * border ramp is deliberately stronger than Blue's: --border reaches ~2.4:1
+ * against --surface and --border-strong ~3.5:1, where Blue's --border is only
+ * ~1.3:1. A light theme whose panel edges vanish is unusable even though every
+ * individual colour looks fine in isolation.
+ *
+ * Text contrast against --surface (#f6f7f9): --text 16.5:1, --text-muted
+ * 5.9:1, --text-faint 3.7:1, --accent-dim 4.9:1, --accent-text 5.5:1,
+ * --accent-text-alt 6.2:1. The three status hues are re-picked for a light
+ * ground — Blue's #f59e0b is 2.0:1 on white and would be unreadable. */
+:root[data-theme="light"] {
+    /* Native selects and scrollbars must follow the theme, or the popup
+       renders dark-on-light and ignores our styling. */
+    color-scheme: light;
+
+    --surface-sunken: #e4e7ec;
+    --surface-inset: #eaedf2;
+    --surface-bar: #eef0f4;
+    --surface-overlay: #ffffff;
+    --surface: #f6f7f9;
+    --surface-raised: #ffffff;
+
+    --border-subtle: #d3d8e0;
+    --border-card: #a8b0be;
+    --border: #9aa3b2;
+    --border-strong: #7c8698;
+
+    --control: #e8edf5;
+    --control-border: #a3b3c9;
+
+    --text: #14181f;
+    --text-secondary: #262e3b;
+    --text-muted: #566072;
+    --text-faint: #77808f;
+    --text-hint: #818a9a;
+    --text-dim: #8892a3;
+
+    --accent: #dbeafe;
+    --accent-hover: #c3dafd;
+    --accent-text: #0369a1;
+    --accent-text-alt: #1d4ed8;
+    --accent-dim: #55708c;
+    --accent-faint: #6f93b7;
+    --accent-primary: #1d4ed8;
+    --accent-primary-hover: #1e40af;
+
+    --ok: #0f7a43;
+    --warn: #b45309;
+    --danger: #b91c1c;
+
+    --surface-panel: #e9ecf1;
+    --control-raised: #dfe4ec;
+    --control-raised-hover: #ccd4e0;
+    --chip-hover: #dde3ec;
+    --chip-border: #a8b6cc;
+    --divider: #d8dde4;
+    --text-inert: #5f6a7c;
+    --text-row: #3a4250;
+    --chip-text: #4c5666;
+    --chip-text-strong: #1f2733;
+    --chip-text-dim: #5a6472;
+    --input-bg: #e8edf5;
+    --surface-block: #e6eaf0;
+    --text-block: #2b3341;
+
+    --seq-num: #2976f5;
+    --seq-stem: #b3c1f2;
+    --row-cursor-bg: #bfd2e7;
+    --control-active: #ffffff;
+    --chevron-muted: #7d9bb9;
+    --control-border-hover: #83a3c3;
+    --arrow-sep: #92b3c3;
+    --icon-graph-muted: #5f9d88;
+    --text-arrow-hint: #4b7684;
+    --text-note-marker: #3f6389;
+    --text-listing-muted: #5b6c7e;
+    --text-idx-muted: #6f90a1;
+    --text-orbit-neighbor: #374858;
+    --text-orbit-context: #728068;
+    --text-arrow-context: #7c8d8d;
+    --text-sequence-muted: #7b8b9a;
+    --text-path-arrow: #61808f;
+    --text-note-arrow-target: #475361;
+    --help-body-text: #2a3a4e;
+    --help-lead-text: #455666;
+    --help-divider: #ebf0f4;
+    --chapter-file-text: #4b6b87;
+    --chapter-tree-line: #aec8d6;
+    --sequence-connector: #a8b1bd;
+    --text-loc: #395975;
+
+    --surface-study: #e9ecf0;
+    --text-quiet: #3c5454;
+    --text-doc: #232e39;
+    --text-doc-dim: #35485c;
+
+    --surface-modal: #e8ebee;
+    --text-modal: #1f2835;
+    --text-tab-muted: #647281;
+    --border-row: #f6f8f8;
+    --text-notice: #715624;
+    --surface-chat: #e9ecf0;
+    --surface-pane: #d9dae4;
+    --surface-highlight: #eaeef5;
+    --text-article: #1f2834;
+    --border-faint: #d4d8e0;
+    --text-badge: #273949;
+
+    --surface-shell: #e8ebf2;
+    --text-shell-output: #1f2b3b;
+    --text-shell-err: #651500;
+    --text-shell-readonly: #3c4a5b;
+    --danger-fill: #52090b;
+    --danger-fill-text: #f7c2c4;
+    --text-cell-muted: #283544;
+    --warn-output: #4f3a0e;
+    --text-listing-dim: #415468;
+    --text-media: #14283b;
+    --surface-hover: #dde2ef;
+    --surface-inset-hover: #dde6f2;
+    --control-hover: #bbcce1;
+    --text-license: #67788a;
+    --link-text: #1b517a;
+    --select-toggle-bg: #265795;
+    --select-toggle-border: #265f92;
+    --select-toggle-text: #eae3ec;
+    --media-hover-border: #45709a;
+    --text-control-muted: #9fb0c0;
+    --text-media-error: #952b2b;
+
+    --explorer-canvas-bg: #e5e8ec;
+    --editor-active-line: #c2d2e4;
+    --text-iso-message: #44505f;
+
+    /* White/light-based so the composite stays light over Light's own
+       near-white canvas backdrop (#f6f7f9) regardless of theme — see the
+       Blue block's comment for the composite-contrast numbers this was
+       solved against. */
+    --explorer-scrim: rgba(255, 255, 255, 0.65);
+    --explorer-scrim-strong: rgba(255, 255, 255, 0.7);
+    --explorer-scrim-hover: rgba(214, 220, 230, 0.85);
+    --explorer-scrim-hover-accent: rgba(74, 123, 208, 0.35);
+    --text-on-scrim: #1a2028;
+
+    --explorer-label: #14181f;
+    --explorer-label-halo: #ffffff;
+    --explorer-label-sub: rgba(38, 46, 58, 0.75);
+    --explorer-plane-grid: #8a93a3;
+    --explorer-plane-tint: #e9ecf1;
+    --explorer-text-muted: #6d7a91;
+}
+
+/* 2.5D Isometric Graph Explorer (feature 006) — shared semantic palette.
+ * These CSS variables are the single source of truth for the explorer's
+ * territory colors, edge colors, and node colors.
+ * Three.js reads them through Theme.js's get* helpers, which resolve at the
+ * moment the scene paints (build or retheme) — never at module-import time.
+ *
+ * These do NOT vary by theme: edge colors encode arrow meta-types and
+ * territory colors encode context identity, so they must stay stable and
+ * legible whichever theme is active, and ExplorerLegend's swatches have to
+ * keep matching what the scene draws. Only the label / plane variables above
+ * are themed.
+ *
+ * Hex strings only (#rrggbb) — Theme.js parses them into 24-bit ints.
+ */
+:root {
     /* Edge palette — meta-type → color (FR-011 / FR-012). */
     --explorer-edge-contains: #f59e0b;     /* amber, structural / pillar */
     --explorer-edge-leads-to: #06b6d4;     /* cyan, primary causal flow */
@@ -32,26 +571,8 @@ html {
     --explorer-node-default: #6cb4ee;
     --explorer-node-anchor: #ffffff;
 
-    /* Label + ground. */
-    --explorer-label: #e8eaf0;
-    --explorer-label-halo: #0e0f12;
-    --explorer-ground: #1b2636;
-
-    /* Layered grid-plane colors (post layered redesign). The grid
-     * lines stand out against the dark ground; the tint backs the grid
-     * so the plane reads as a distinct surface even at low opacity. */
-    --explorer-plane-grid: #6b7c95;
-    --explorer-plane-tint: #1f2a3a;
-
-    /* Extended-mode shared plane: a single floor under every cluster.
-     * Distinct hue from every per-context palette entry so the user can
-     * tell at a glance that they're in Extended mode (and not looking
-     * at, e.g., a stacked layout collapsed onto one Y). */
-    --explorer-extended-plane-tint: #2c2a40;
-    --explorer-extended-plane-grid: #7a78a5;
-
     /* Territory palette (FR-019). Each entry shifts ≥1 RGB channel by
-     * ≥120 from the ground color so the 0.42 alpha blend is clearly
+     * ≥120 from the canvas backdrop so the 0.42 alpha blend is clearly
      * visible. The palette wraps for results with more contexts. */
     --explorer-territory-0: #e07a3a; /* amber-orange */
     --explorer-territory-1: #3aa8e0; /* sky blue */

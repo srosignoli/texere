@@ -22,24 +22,18 @@
     hiddenMetas,
     layoutMode,
   } from '../stores/explorer.js'
-  import {
-    COLOR_CONTAINS,
-    COLOR_LEADS_TO,
-    COLOR_PROPERTIES,
-    COLOR_SIMILAR_TO,
-    COLOR_UNCLASSIFIED,
-  } from './explorer/Theme.js'
+  import { getEdgeColor } from './explorer/Theme.js'
 
   export let open = false
   const dispatch = createEventDispatcher()
 
   // Edge meta-types ordered to mirror the legend overlay.
   const META_TYPES = [
-    { id: 'contains', label: 'Contains', color: hex(COLOR_CONTAINS) },
-    { id: 'leadsto', label: 'Leads to', color: hex(COLOR_LEADS_TO) },
-    { id: 'properties', label: 'Properties', color: hex(COLOR_PROPERTIES) },
-    { id: 'similarto', label: 'Similar to', color: hex(COLOR_SIMILAR_TO) },
-    { id: 'unclassified', label: 'Unclassified', color: hex(COLOR_UNCLASSIFIED) },
+    { id: 'contains', label: 'Contains', color: hex('contains') },
+    { id: 'leadsto', label: 'Leads to', color: hex('leadsto') },
+    { id: 'properties', label: 'Properties', color: hex('properties') },
+    { id: 'similarto', label: 'Similar to', color: hex('similarto') },
+    { id: 'unclassified', label: 'Unclassified', color: hex('unclassified') },
   ]
 
   $: layers = $currentLayout?.layers ?? []
@@ -54,8 +48,11 @@
   let allCheckbox
   $: if (allCheckbox) allCheckbox.indeterminate = somePartial
 
-  function hex(rgb) {
-    return '#' + rgb.toString(16).padStart(6, '0')
+  // The edge palette is theme-INVARIANT (a shared :root block with no
+  // per-theme override), so resolving once at module scope is correct — the
+  // swatches cannot drift from what Three.js draws on a theme switch.
+  function hex(meta) {
+    return '#' + getEdgeColor(meta).toString(16).padStart(6, '0')
   }
 
   function toggleAllLayers() {
@@ -239,8 +236,8 @@
     left: 12px;
     width: 32px;
     height: 32px;
-    background: rgba(0, 0, 0, 0.55);
-    color: #e8eaf0;
+    background: var(--explorer-scrim);
+    color: var(--text);
     border: 1px solid #334455;
     border-radius: 16px;
     font-size: 14px;
@@ -251,7 +248,7 @@
   }
 
   .sidebar-toggle:hover {
-    background: rgba(0, 0, 0, 0.8);
+    background: var(--explorer-scrim-hover);
   }
 
   .sidebar {
@@ -326,7 +323,7 @@
 
   .section-badge {
     font-size: 11px;
-    color: #6b7c95;
+    color: var(--explorer-text-muted);
   }
 
   .list {
@@ -356,7 +353,7 @@
 
   .check input[type='checkbox'] {
     margin: 0;
-    accent-color: #6cb4ee;
+    accent-color: var(--explorer-node-default);
   }
 
   .row-all {
@@ -380,7 +377,7 @@
   }
 
   .row-count {
-    color: #6b7c95;
+    color: var(--explorer-text-muted);
     font-variant-numeric: tabular-nums;
     font-size: 11px;
   }
@@ -394,7 +391,7 @@
 
   .solo-btn {
     background: transparent;
-    color: #6b7c95;
+    color: var(--explorer-text-muted);
     border: 1px solid transparent;
     font-size: 10px;
     cursor: pointer;
@@ -411,7 +408,7 @@
 
   .text-btn {
     background: transparent;
-    color: #6cb4ee;
+    color: var(--explorer-node-default);
     border: none;
     font-size: 11px;
     cursor: pointer;
@@ -451,7 +448,7 @@
     grid-column: 1 / span 2;
     grid-row: 2;
     width: 100%;
-    accent-color: #6cb4ee;
+    accent-color: var(--explorer-node-default);
   }
 
   .reset-btn {

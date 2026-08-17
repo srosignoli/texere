@@ -123,12 +123,12 @@
 
 <style>
   .web-root { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-  .web-bar { flex: 0 0 auto; padding: 6px 12px; border-bottom: 1px solid #2a3a4a; }
-  .web-open { background: #1e3a5a; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px; padding: 3px 10px; cursor: pointer; font-size: 12px; }
-  .web-err { color: #ff8080; padding: 6px 12px; font-size: 12px; }
-  .web-article { flex: 1; overflow: auto; padding: 20px 28px; color: #d6dde6; line-height: 1.7; user-select: text; }
+  .web-bar { flex: 0 0 auto; padding: 6px 12px; border-bottom: 1px solid var(--border); }
+  .web-open { background: var(--accent); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 3px 10px; cursor: pointer; font-size: 12px; }
+  .web-err { color: var(--danger); padding: 6px 12px; font-size: 12px; }
+  .web-article { flex: 1; overflow: auto; padding: 20px 28px; color: var(--text-article); line-height: 1.7; user-select: text; }
   .web-article :global(img) { max-width: 100%; height: auto; }
-  .web-article :global(h1), .web-article :global(h2), .web-article :global(h3) { color: #e8eaf0; }
-  .web-article :global(a) { color: #7dd3fc; }
-  .web-article :global(pre), .web-article :global(code) { background: #161f2e; border-radius: 4px; }
+  .web-article :global(h1), .web-article :global(h2), .web-article :global(h3) { color: var(--text); }
+  .web-article :global(a) { color: var(--accent-text); }
+  .web-article :global(pre), .web-article :global(code) { background: var(--surface-bar); border-radius: 4px; }
 </style>

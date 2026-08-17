@@ -1311,8 +1311,8 @@
     left: 0;
     right: 0;
     z-index: 300;
-    background: #1a2535;
-    border-bottom: 1px solid #2a3a4a;
+    background: var(--surface-overlay);
+    border-bottom: 1px solid var(--border);
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55);
     display: flex;
     flex-direction: column;
@@ -1324,13 +1324,13 @@
     align-items: center;
     gap: 8px;
     padding: 6px 12px;
-    border-bottom: 1px solid #2a3a4a;
+    border-bottom: 1px solid var(--border);
     flex-shrink: 0;
   }
 
   .search-icon {
     font-size: 0.9rem;
-    color: #5a7a9a;
+    color: var(--accent-dim);
     flex-shrink: 0;
   }
 
@@ -1347,20 +1347,20 @@
     background: transparent;
     border: none;
     outline: none;
-    color: #e8eaf0;
+    color: var(--text);
     font-size: 0.95rem;
     font-family: inherit;
-    caret-color: #7dd3fc;
+    caret-color: var(--accent-text);
   }
 
 
   .omnibar-input::placeholder {
-    color: #3a5a7a;
+    color: var(--accent-faint);
   }
 
   .loading-hint {
     font-size: 0.75rem;
-    color: #4a6a7a;
+    color: var(--text-hint);
     flex-shrink: 0;
     font-style: italic;
   }
@@ -1375,7 +1375,7 @@
     border-radius: 3px;
     background: #1e3a50;
     color: #5a8aaa;
-    border: 1px solid #2a4a6a;
+    border: 1px solid var(--control-border);
   }
 
   .mode-badge.mode-graph {
@@ -1388,7 +1388,7 @@
   .omnibar-help {
     background: none;
     border: none;
-    color: #5a7a9a;
+    color: var(--accent-dim);
     cursor: pointer;
     font-size: 0.9rem;
     padding: 2px 6px;
@@ -1397,14 +1397,14 @@
 
   .omnibar-help {
     font-weight: 700;
-    border: 1px solid #2a4a6a;
+    border: 1px solid var(--control-border);
     border-radius: 3px;
     line-height: 1;
   }
 
   .omnibar-close:hover,
   .omnibar-help:hover {
-    color: #e8eaf0;
+    color: var(--text);
   }
 
   .omnibar-results {
@@ -1430,7 +1430,7 @@
     bottom: 0;
     height: 24px;
     pointer-events: none;
-    background: linear-gradient(to bottom, rgba(26, 37, 53, 0) 0%, #1a2535 100%);
+    background: linear-gradient(to bottom, rgba(26, 37, 53, 0) 0%, var(--surface-overlay) 100%);
   }
 
   .omnibar-summary {
@@ -1440,9 +1440,9 @@
     justify-content: space-between;
     gap: 12px;
     padding: 4px 14px 4px;
-    border-bottom: 1px solid #1a2530;
+    border-bottom: 1px solid var(--divider);
     font-size: 0.72rem;
-    color: #6a8aa0;
+    color: var(--text-inert);
   }
 
   .omnibar-summary-counts {
@@ -1451,7 +1451,7 @@
   }
 
   .omnibar-summary-hint {
-    color: #4a6a7a;
+    color: var(--text-hint);
     font-style: italic;
     flex-shrink: 0;
   }
@@ -1469,14 +1469,14 @@
   .omnibar-empty {
     padding: 16px;
     text-align: center;
-    color: #4a5a6a;
+    color: var(--text-dim);
     font-size: 0.84rem;
   }
 
   .omnibar-hint {
     padding: 12px 16px;
     font-size: 0.8rem;
-    color: #4a6a7a;
+    color: var(--text-hint);
     font-style: italic;
   }
 
@@ -1493,7 +1493,7 @@
     padding: 6px 14px 2px;
     font-size: 0.68rem;
     font-weight: 600;
-    color: #5a7a9a;
+    color: var(--accent-dim);
     text-transform: uppercase;
     letter-spacing: 0.06em;
   }
@@ -1506,7 +1506,7 @@
     padding: 6px 14px;
     background: none;
     border: none;
-    color: #c8d0dc;
+    color: var(--text-secondary);
     font-size: 0.84rem;
     text-align: left;
     cursor: pointer;
@@ -1515,12 +1515,12 @@
 
   .result-item:hover,
   .result-item.selected {
-    background: #1e2f40;
-    color: #e8eaf0;
+    background: var(--surface-raised);
+    color: var(--text);
   }
 
   .result-item.selected {
-    border-left: 2px solid #2563eb;
+    border-left: 2px solid var(--accent-primary);
     padding-left: 12px;
   }
 
@@ -1530,15 +1530,15 @@
      gets no false expectation. */
   .result-item-inert {
     cursor: default;
-    color: #6a8aa0;
+    color: var(--text-inert);
   }
   .result-item-inert:hover {
     background: none;
-    color: #6a8aa0;
+    color: var(--text-inert);
   }
 
   .result-icon {
-    color: #5a7a9a;
+    color: var(--accent-dim);
     font-family: monospace;
     font-size: 0.78rem;
     flex-shrink: 0;
@@ -1554,7 +1554,7 @@
 
   .result-hint {
     font-size: 0.75rem;
-    color: #4a6a7a;
+    color: var(--text-hint);
     flex-shrink: 0;
     white-space: nowrap;
     max-width: 30%;
@@ -1563,7 +1563,7 @@
   }
 
   .graph-icon {
-    color: #4a7a6a;
+    color: var(--icon-graph-muted);
   }
 
   .arrow-meta {
@@ -1577,7 +1577,7 @@
 
   .arrow-context {
     font-size: 0.7rem;
-    color: #6a7a7a;
+    color: var(--text-arrow-context);
     font-style: italic;
     flex-shrink: 0;
   }
@@ -1588,7 +1588,7 @@
     padding: 6px 14px;
     font-size: 0.8rem;
     font-style: italic;
-    color: #4a6a7a;
+    color: var(--text-hint);
   }
 
   .graph-error {
@@ -1604,7 +1604,7 @@
     flex-shrink: 0;
     width: 22px;
     text-align: right;
-    color: #5a7a8a;
+    color: var(--text-idx-muted);
     font-size: 0.78rem;
     margin-right: 4px;
   }
@@ -1626,22 +1626,22 @@
   }
 
   .orbit-dash {
-    color: #4a7a6a;
+    color: var(--icon-graph-muted);
     flex-shrink: 0;
   }
 
   .orbit-arrow {
-    color: #6a9aaa;
+    color: var(--text-arrow-hint);
     font-style: italic;
     flex-shrink: 0;
   }
 
   .orbit-neighbor {
-    color: #c0ccd8;
+    color: var(--text-orbit-neighbor);
   }
 
   .orbit-ctx {
-    color: #7a8a70;
+    color: var(--text-orbit-context);
     font-size: 0.72rem;
   }
 
@@ -1653,14 +1653,14 @@
     padding: 2px 0 6px 28px;
     font-size: 0.78rem;
     font-style: italic;
-    color: #8a9aaa;
+    color: var(--text-listing-muted);
   }
 
   .listing-node-row {
     display: flex;
     gap: 6px;
     font-size: 0.78rem;
-    color: #8a9aaa;
+    color: var(--text-listing-muted);
     padding: 1px 14px 1px 42px;
   }
 
@@ -1668,11 +1668,11 @@
     flex-shrink: 0;
     width: 20px;
     text-align: right;
-    color: #5a7a8a;
+    color: var(--text-idx-muted);
   }
 
   .listing-node-text {
-    color: #a0b4c4;
+    color: var(--chip-text);
   }
 
   /* \context listing row — tag button + inline chapter chips */
@@ -1691,11 +1691,11 @@
   }
   .listing-context-chip,
   .listing-context-more {
-    background: #1e2f40;
-    border: 1px solid #2a4258;
+    background: var(--surface-raised);
+    border: 1px solid var(--chip-border);
     border-radius: 10px;
     padding: 1px 8px;
-    color: #a0b4c4;
+    color: var(--chip-text);
     font-size: 0.72rem;
     font-family: inherit;
     cursor: pointer;
@@ -1703,17 +1703,17 @@
     transition: background 0.08s, color 0.08s, border-color 0.08s;
   }
   .listing-context-chip:hover {
-    background: #2a4258;
-    color: #e8eaf0;
-    border-color: #3a5a7a;
+    background: var(--chip-border);
+    color: var(--text);
+    border-color: var(--accent-faint);
   }
   .listing-context-more {
-    color: #6a8aa0;
+    color: var(--text-inert);
     font-style: italic;
   }
   .listing-context-more:hover {
-    color: #c8d2dc;
-    border-color: #3a5a7a;
+    color: var(--chip-text-strong);
+    border-color: var(--accent-faint);
   }
 
   /* Did-you-mean hints surfaced by the search backend */
@@ -1733,7 +1733,7 @@
     font-weight: 500;
   }
   .listing-hint-detail {
-    color: #8aa0b0;
+    color: var(--chip-text-dim);
     font-style: italic;
   }
 
@@ -1743,7 +1743,7 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
-    border-top: 1px solid #1a2530;
+    border-top: 1px solid var(--divider);
   }
   .sequence-group-header:first-of-type {
     border-top: none;
@@ -1755,19 +1755,19 @@
     letter-spacing: 0.02em;
   }
   .sequence-context-muted {
-    color: #6a7a8a;
+    color: var(--text-sequence-muted);
     font-style: italic;
     font-weight: 500;
   }
   .sequence-chapter {
     font-size: 0.65rem;
-    color: #5a7a9a;
+    color: var(--accent-dim);
     text-transform: uppercase;
     letter-spacing: 0.06em;
   }
   .sequence-chain-sep {
     height: 1px;
-    background: #1a2530;
+    background: var(--divider);
     margin: 4px 14px;
   }
 
@@ -1786,7 +1786,7 @@
   }
   .sequence-step .step-num {
     font-size: 0.65rem;
-    color: #3b82f6;
+    color: var(--seq-num);
     font-weight: 700;
     line-height: 1;
     white-space: nowrap;
@@ -1794,20 +1794,20 @@
   .sequence-step .step-stem {
     width: 2px;
     flex: 1;
-    background: #1e40af;
+    background: var(--seq-stem);
     margin-top: 2px;
     min-height: 8px;
   }
   .sequence-step .step-text {
     flex: 1;
     font-size: 0.82rem;
-    color: #c8d2dc;
+    color: var(--chip-text-strong);
     padding-top: 2px;
     padding-bottom: 2px;
     word-break: break-word;
   }
   .sequence-step.selected .step-text {
-    color: #e8eaf0;
+    color: var(--text);
   }
 
   /* ── Path chains (\from \to) ───────────────────────────────────────────── */
@@ -1821,17 +1821,17 @@
   }
   .path-chain .path-node {
     font-weight: 500;
-    color: #c8d2dc;
+    color: var(--chip-text-strong);
     white-space: nowrap;
   }
   .path-chain .path-arrow {
-    color: #6a8a9a;
+    color: var(--text-path-arrow);
     font-style: italic;
     font-size: 0.72rem;
     white-space: nowrap;
   }
   .path-chain.selected .path-node {
-    color: #e8eaf0;
+    color: var(--text);
   }
 
   /* ── Full notes (\notes) ───────────────────────────────────────────────── */
@@ -1840,7 +1840,7 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
-    border-top: 1px solid #1a2530;
+    border-top: 1px solid var(--divider);
   }
   .note-group-header:first-of-type {
     border-top: none;
@@ -1848,12 +1848,12 @@
   .note-group-marker {
     font-size: 0.72rem;
     font-weight: 600;
-    color: #8aa8c9;
+    color: var(--text-note-marker);
     letter-spacing: 0.02em;
   }
   .note-group-chapter {
     font-size: 0.65rem;
-    color: #5a7a9a;
+    color: var(--accent-dim);
     text-transform: uppercase;
     letter-spacing: 0.06em;
   }
@@ -1866,11 +1866,11 @@
   }
   .note-block-header .note-node-text {
     font-weight: 500;
-    color: #c8d2dc;
+    color: var(--chip-text-strong);
     font-size: 0.86rem;
   }
   .note-block-header.selected .note-node-text {
-    color: #e8eaf0;
+    color: var(--text);
   }
   .note-block-header .note-node-context {
     font-size: 0.68rem;
@@ -1885,12 +1885,12 @@
     padding: 1px 14px 1px 32px;
   }
   .note-arrow {
-    color: #6a9aaa;
+    color: var(--text-arrow-hint);
     font-style: italic;
     flex-shrink: 0;
   }
   .note-arrow-target {
-    color: #b0bac5;
+    color: var(--text-note-arrow-target);
   }
 
   .notes-end-of-page {
@@ -1899,16 +1899,16 @@
     align-items: center;
     gap: 2px;
     padding: 10px 14px 14px;
-    color: #6a8aa0;
+    color: var(--text-inert);
     font-size: 0.72rem;
     text-align: center;
   }
   .notes-end-rule {
     letter-spacing: 0.04em;
-    color: #4a6a7a;
+    color: var(--text-hint);
   }
   .notes-end-hint {
-    color: #6a8aa0;
+    color: var(--text-inert);
     font-style: italic;
   }
   .notes-end-hint code {

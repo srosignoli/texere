@@ -56,12 +56,12 @@
 </div>
 
 <style>
-  .study-root { position: absolute; inset: 0; z-index: 60; display: flex; flex-direction: column; background: #131c29; }
-  .study-bar { flex: 0 0 auto; display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-bottom: 1px solid #2a3a4a; background: #161f2e; }
-  .study-title { color: #7dd3fc; font-weight: 600; }
-  .study-count { color: #8aa; font-size: 12px; }
-  .study-close { margin-left: auto; background: none; border: none; color: #8899aa; font-size: 20px; line-height: 1; cursor: pointer; }
-  .study-close:hover { color: #e8eaf0; }
+  .study-root { position: absolute; inset: 0; z-index: 60; display: flex; flex-direction: column; background: var(--surface-study); }
+  .study-bar { flex: 0 0 auto; display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--surface-bar); }
+  .study-title { color: var(--accent-text); font-weight: 600; }
+  .study-count { color: var(--text-quiet); font-size: 12px; }
+  .study-close { margin-left: auto; background: none; border: none; color: var(--text-muted); font-size: 20px; line-height: 1; cursor: pointer; }
+  .study-close:hover { color: var(--text); }
   .study-center { flex: 1 1 0; display: flex; align-items: center; justify-content: center; }
-  .study-error { color: #ff8080; }
+  .study-error { color: var(--danger); }
 </style>

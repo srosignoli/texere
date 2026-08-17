@@ -135,16 +135,16 @@
 </div>
 
 <style>
-  .me-cell { border: 1px solid #2a3a4a; border-radius: 6px; background: #101826; }
-  .me-bar { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-bottom: 1px solid #2a3a4a; }
-  .me-lic { font-size: 11px; color: #678; }
+  .me-cell { border: 1px solid var(--border); border-radius: 6px; background: var(--surface-inset); }
+  .me-bar { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  .me-lic { font-size: 11px; color: var(--text-license); }
   .me-spacer { flex: 1 1 auto; }
-  .me-btn { background: #1b2636; color: #cde; border: 1px solid #2a3a4a; border-radius: 4px; padding: 2px 8px; cursor: pointer; }
-  .me-btn:hover { background: #24334a; }
-  .me-empty { padding: 12px; color: #8aa; font-size: 13px; }
+  .me-btn { background: var(--surface); color: var(--text-media); border: 1px solid var(--border); border-radius: 4px; padding: 2px 8px; cursor: pointer; }
+  .me-btn:hover { background: var(--surface-hover); }
+  .me-empty { padding: 12px; color: var(--text-quiet); font-size: 13px; }
   .me-src { padding: 0 8px 8px; font-size: 11px; }
-  .me-src-btn { background: none; border: none; padding: 0; color: #6ad; cursor: pointer; font-size: 11px; text-decoration: underline; }
+  .me-src-btn { background: none; border: none; padding: 0; color: var(--link-text); cursor: pointer; font-size: 11px; text-decoration: underline; }
   .me-tools { display: flex; gap: 6px; padding: 0 8px 8px; }
-  .me-subj { width: 140px; background: #0b1220; color: #cde; border: 1px solid #2a3a4a; border-radius: 4px; padding: 2px 6px; }
+  .me-subj { width: 140px; background: var(--surface-sunken); color: var(--text-media); border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px; }
   .me-btn:disabled { opacity: 0.5; cursor: default; }
 </style>

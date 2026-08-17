@@ -44,15 +44,15 @@
 </div>
 
 <style>
-  .ctx-cell { position: relative; background: #101826; border: 1px solid #26374a; border-radius: 8px; padding: 12px 14px 12px; margin-bottom: 10px; }
-  .ctx-badge { position: absolute; top: 8px; right: 10px; font-size: 9px; letter-spacing: .1em; color: #5a7a9a; }
+  .ctx-cell { position: relative; background: var(--surface-inset); border: 1px solid var(--border-card); border-radius: 8px; padding: 12px 14px 12px; margin-bottom: 10px; }
+  .ctx-badge { position: absolute; top: 8px; right: 10px; font-size: 9px; letter-spacing: .1em; color: var(--accent-dim); }
   section { margin-bottom: 10px; }
-  h4 { margin: 0 0 4px; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #7dd3fc; }
-  .extract { margin: 0; color: #e8eaf0; font-size: 13px; }
-  .passage { margin: 0; color: #b9c6d6; font-size: 12px; font-style: italic; }
-  .hint { margin: 0; color: #5a7a9a; font-size: 12px; }
+  h4 { margin: 0 0 4px; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent-text); }
+  .extract { margin: 0; color: var(--text); font-size: 13px; }
+  .passage { margin: 0; color: var(--text-cell-muted); font-size: 12px; font-style: italic; }
+  .hint { margin: 0; color: var(--accent-dim); font-size: 12px; }
   .tags { display: flex; flex-wrap: wrap; gap: 4px; }
-  .tag { background: #1e3a5a; color: #93c5fd; border-radius: 4px; padding: 1px 6px; font-size: 11px; }
-  .orbit { margin: 0; padding-left: 14px; color: #cdd6e2; font-size: 12px; }
-  .arrow { color: #7dd3fc; }
+  .tag { background: var(--accent); color: var(--accent-text-alt); border-radius: 4px; padding: 1px 6px; font-size: 11px; }
+  .orbit { margin: 0; padding-left: 14px; color: var(--text-modal); font-size: 12px; }
+  .arrow { color: var(--accent-text); }
 </style>

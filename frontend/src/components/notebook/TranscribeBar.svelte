@@ -50,8 +50,8 @@
 {/if}
 
 <style>
-  .tb { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-top: 1px solid #1c2a3a; }
-  .tb select, .tb button { background: #14233a; color: #93c5fd; border: 1px solid #2a3a4a; border-radius: 6px; padding: 2px 8px; font-size: 12px; cursor: pointer; }
+  .tb { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-top: 1px solid var(--border-subtle); }
+  .tb select, .tb button { background: var(--control); color: var(--accent-text-alt); border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; font-size: 12px; cursor: pointer; }
   .tb button:disabled, .tb select:disabled { opacity: 0.5; cursor: default; }
-  .tb-err { color: #ff8080; font-size: 11px; }
+  .tb-err { color: var(--danger); font-size: 11px; }
 </style>

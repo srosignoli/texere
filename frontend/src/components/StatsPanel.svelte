@@ -218,20 +218,27 @@
 </div>
 
 <style>
-  .sp-root { position: absolute; inset: 0; overflow: auto; padding: 12px; background: #131c29; }
+  .sp-root { position: absolute; inset: 0; overflow: auto; padding: 12px; background: var(--surface-study); }
   .sp-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
-  .sp-card { background: #131c29; border: 1px solid #2a3a4a; border-radius: 8px; padding: 12px; }
-  .sp-card h3 { margin: 0 0 8px; color: #7dd3fc; font-size: 13px; }
-  .sp-sub { color: #e8eaf0; font-size: 12px; margin: 4px 0; }
-  .sp-nodata { color: #8899aa; font-weight: normal; font-style: italic; }
+  .sp-card { background: var(--surface-study); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+  .sp-card h3 { margin: 0 0 8px; color: var(--accent-text); font-size: 13px; }
+  .sp-sub { color: var(--text); font-size: 12px; margin: 4px 0; }
+  .sp-nodata { color: var(--text-muted); font-weight: normal; font-style: italic; }
   .sp-stat { margin: 8px 0; }
-  .sp-label { display: block; color: #8899aa; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
-  .sp-value { display: block; color: #e8eaf0; font-size: 15px; font-weight: 600; }
+  .sp-label { display: block; color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .sp-value { display: block; color: var(--text); font-size: 15px; font-weight: 600; }
+  /* .sp-value.ok/.low/.high: one semantic, coupled 3-state unit — each colour
+     mirrors its matching chart series below (habit green / reviews-and-minutes
+     sky / forecast amber, see stats-charts.js) so the small value badge and its
+     chart agree in every theme. .high's #e0b000 has no matching token (see
+     stats-charts.js and .sb-tag.due above), so .ok/.low stay literal too even
+     though #7ecfa0/#7dd3fc individually byte-match --ok/--accent-text — tokenizing
+     2 of 3 states would break the group's internal consistency. */
   .sp-value.ok { color: #7ecfa0; }
   .sp-value.low { color: #7dd3fc; }
   .sp-value.high { color: #e0b000; }
-  .sp-meaning { display: block; color: #5d7186; font-size: 11px; line-height: 1.4; }
+  .sp-meaning { display: block; color: var(--text-faint); font-size: 11px; line-height: 1.4; }
   .sp-chartbox { position: relative; height: 140px; margin: 8px 0; }
-  .sp-loading, .sp-error { color: #8aa; padding: 20px; }
-  .sp-error { color: #ff8080; }
+  .sp-loading, .sp-error { color: var(--text-quiet); padding: 20px; }
+  .sp-error { color: var(--danger); }
 </style>

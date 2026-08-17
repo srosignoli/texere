@@ -26,6 +26,19 @@ window.addEventListener('unhandledrejection', function(e) {
     'UNHANDLED REJECTION: ' + e.reason + '</pre>';
 });
 </script>
+<script>
+  // Runs before first paint so a stored theme cannot flash blue: style.css
+  // paints html's background immediately, and a Wails binding cannot be read
+  // synchronously. config.json remains authoritative — the app reconciles this
+  // mirror from Go on startup.
+  //
+  // Blue needs no attribute — it is :root's own values — so this acts only for
+  // the two themes that differ, and a localStorage failure leaves the default.
+  try {
+    var t = localStorage.getItem('texere.theme')
+    if (t === 'dark' || t === 'light') document.documentElement.dataset.theme = t
+  } catch (e) {}
+</script>
 <script src="./src/main.js" type="module"></script>
 </body>
 </html>

@@ -192,19 +192,19 @@
 </div>
 
 <style>
-  .au-cell { background: #0e1622; border: 1px solid #26374a; border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
-  .au-bar { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-bottom: 1px solid #1c2a3a; }
-  .au-dur { color: #93c5fd; font-size: 11px; }
+  .au-cell { background: var(--surface-modal); border: 1px solid var(--border-card); border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+  .au-bar { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-bottom: 1px solid var(--border-subtle); }
+  .au-dur { color: var(--accent-text-alt); font-size: 11px; }
   .au-spacer { flex: 1; }
-  .au-bar button { background: #14233a; color: #93c5fd; border: 1px solid #2a3a4a; border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
+  .au-bar button { background: var(--control); color: var(--accent-text-alt); border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
   .au-empty { display: flex; align-items: center; gap: 8px; padding: 10px; flex-wrap: wrap; }
-  .au-empty button { background: #14233a; color: #93c5fd; border: 1px solid #2a3a4a; border-radius: 6px; padding: 4px 12px; cursor: pointer; font-size: 12px; }
+  .au-empty button { background: var(--control); color: var(--accent-text-alt); border: 1px solid var(--border); border-radius: 6px; padding: 4px 12px; cursor: pointer; font-size: 12px; }
   .au-empty button:disabled { opacity: .4; cursor: default; }
   .au-player { width: 100%; display: block; padding: 8px; }
-  .au-err { color: #ff8080; font-size: 12px; width: 100%; }
-  .au-missing { padding: 14px; color: #ff8080; font-size: 13px; }
-  .au-trans { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-top: 1px solid #1c2a3a; flex-wrap: wrap; }
-  .au-trans select, .au-trans button { background: #14233a; color: #93c5fd; border: 1px solid #2a3a4a; border-radius: 6px; padding: 2px 8px; font-size: 12px; cursor: pointer; }
+  .au-err { color: var(--danger); font-size: 12px; width: 100%; }
+  .au-missing { padding: 14px; color: var(--danger); font-size: 13px; }
+  .au-trans { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-top: 1px solid var(--border-subtle); flex-wrap: wrap; }
+  .au-trans select, .au-trans button { background: var(--control); color: var(--accent-text-alt); border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; font-size: 12px; cursor: pointer; }
   .au-trans button:disabled, .au-trans select:disabled { opacity: .5; cursor: default; }
-  .au-hint { color: #5a7a9a; font-size: 11px; }
+  .au-hint { color: var(--accent-dim); font-size: 11px; }
 </style>

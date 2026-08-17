@@ -32,11 +32,11 @@
     justify-content: center;
     height: 100%;
     gap: 12px;
-    color: #8899aa;
+    color: var(--text-muted);
   }
 
   .error-notice {
-    color: #f59e0b;
+    color: var(--warn);
     font-size: 0.85rem;
     max-width: 360px;
     text-align: center;
@@ -50,7 +50,7 @@
 
   .open-btn {
     padding: 8px 20px;
-    background: #2563eb;
+    background: var(--accent-primary);
     color: #fff;
     border: none;
     border-radius: 4px;
@@ -59,6 +59,6 @@
   }
 
   .open-btn:hover {
-    background: #1d4ed8;
+    background: var(--accent-primary-hover);
   }
 </style>

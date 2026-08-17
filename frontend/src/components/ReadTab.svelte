@@ -64,7 +64,7 @@
     height: 100%;
     overflow-y: auto;
     padding: 12px 16px;
-    background: #161f2e;
+    background: var(--surface-bar);
   }
 
   .empty-hint {
@@ -72,7 +72,7 @@
     align-items: center;
     justify-content: center;
     height: 100%;
-    color: #4a5a6a;
+    color: var(--text-dim);
     font-size: 0.85rem;
   }
 
@@ -95,14 +95,14 @@
     top: 0;
     bottom: 0;
     width: 2px;
-    background: #4b5563;
+    background: var(--sequence-connector);
     border-radius: 1px;
   }
 
   /* Amber reminder override — applied via NodeCard .reminder class */
   :global(.node-card.reminder) {
     background: #fef3c7;
-    border-left: 3px solid #f59e0b;
+    border-left: 3px solid var(--warn);
   }
 
   /* Sequence connector between adjacent sequence-node cards */
@@ -110,7 +110,7 @@
     content: '';
     display: block;
     height: 8px;
-    border-left: 2px solid #4b5563;
+    border-left: 2px solid var(--sequence-connector);
     margin-left: -14px;
     margin-bottom: -8px;
   }

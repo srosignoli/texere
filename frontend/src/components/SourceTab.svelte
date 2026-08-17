@@ -502,9 +502,9 @@
     position: relative;
   }
 
-  .nb-overlay { position: absolute; top: 0; right: 0; bottom: 0; width: 42%; min-width: 360px; display: flex; flex-direction: column; background: #0b1220; border-left: 1px solid #2a3a4a; z-index: 20; }
-  .nb-overlay-bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid #2a3a4a; background: #101826; color: #7dd3fc; }
-  .nb-overlay-bar button { margin-left: auto; background: #1e3a5a; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px; padding: 3px 10px; cursor: pointer; font-size: 12px; }
+  .nb-overlay { position: absolute; top: 0; right: 0; bottom: 0; width: 42%; min-width: 360px; display: flex; flex-direction: column; background: var(--surface-sunken); border-left: 1px solid var(--border); z-index: 20; }
+  .nb-overlay-bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--surface-inset); color: var(--accent-text); }
+  .nb-overlay-bar button { margin-left: auto; background: var(--accent); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 3px 10px; cursor: pointer; font-size: 12px; }
   .nb-overlay-bar button + button { margin-left: 6px; }
   .nb-overlay-body { position: relative; flex: 1; min-height: 0; }
 
@@ -513,17 +513,17 @@
     align-items: center;
     gap: 4px;
     padding: 2px 8px;
-    background: #161f2e;
-    border-bottom: 1px solid #2a3a4a;
+    background: var(--surface-bar);
+    border-bottom: 1px solid var(--border);
     flex-shrink: 0;
   }
 
   .vim-btn {
     padding: 1px 7px;
     background: none;
-    border: 1px solid #2a3a4a;
+    border: 1px solid var(--border);
     border-radius: 3px;
-    color: #4a5a6a;
+    color: var(--text-dim);
     font-size: 0.7rem;
     font-weight: 600;
     cursor: pointer;
@@ -531,9 +531,9 @@
   }
 
   .vim-btn.active {
-    border-color: #2563eb;
-    color: #93c5fd;
-    background: #1e3a5a;
+    border-color: var(--accent-primary);
+    color: var(--accent-text-alt);
+    background: var(--accent);
   }
 
   .ext-mod-banner {
@@ -560,11 +560,13 @@
   }
 
   .banner-btn.reload {
-    background: #f59e0b;
+    background: var(--warn);
     color: #1c1100;
   }
 
   .banner-btn.dismiss {
+    /* Semantic unit with its banner: a neutral dark chip on the amber strip.
+       Both halves stay literal so the pair cannot drift apart per theme. */
     background: #44403c;
     color: #e8eaf0;
   }

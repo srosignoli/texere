@@ -257,16 +257,16 @@
 </div>
 
 <style>
-  .pv-root { position: absolute; inset: 0; display: flex; flex-direction: column; background: #131c29; }
-  .pv-bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid #2a3a4a; background: #161f2e; }
-  .pv-title { color: #7dd3fc; font-weight: 600; }
-  .pv-anchor { color: #5a7a9a; font-size: 11px; }
+  .pv-root { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--surface-study); }
+  .pv-bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--surface-bar); }
+  .pv-title { color: var(--accent-text); font-weight: 600; }
+  .pv-anchor { color: var(--accent-dim); font-size: 11px; }
   .pv-spacer { flex: 1; }
-  .pv-btn { background: #1e3a5a; color: #e8eaf0; border: 1px solid #2a3a4a; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 12px; }
-  .pv-btn:hover { background: #244a72; }
-  .vim-btn { padding: 1px 7px; background: none; border: 1px solid #2a3a4a; border-radius: 3px;
-    color: #4a5a6a; font-size: 0.7rem; font-weight: 600; cursor: pointer; letter-spacing: 0.05em; }
-  .vim-btn.active { border-color: #2563eb; color: #93c5fd; background: #1e3a5a; }
-  .pv-error { color: #ff8080; padding: 6px 12px; font-size: 12px; }
+  .pv-btn { background: var(--accent); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 12px; }
+  .pv-btn:hover { background: var(--accent-hover); }
+  .vim-btn { padding: 1px 7px; background: none; border: 1px solid var(--border); border-radius: 3px;
+    color: var(--text-dim); font-size: 0.7rem; font-weight: 600; cursor: pointer; letter-spacing: 0.05em; }
+  .vim-btn.active { border-color: var(--accent-primary); color: var(--accent-text-alt); background: var(--accent); }
+  .pv-error { color: var(--danger); padding: 6px 12px; font-size: 12px; }
   .pv-editor { flex: 1; min-height: 0; overflow: hidden; }
 </style>

@@ -68,6 +68,7 @@
   import EditCard from './explorer/EditCard.svelte'
   import { resolveNodeSource } from '../lib/node-source.js'
   import { workbenchStore } from '../stores/workbench.js'
+  import { theme } from '../stores/theme.js'
   import { ParseFileForUI, BuildGraph } from '../../wailsjs/go/main/App'
 
   /** Fired by parent when the user requests close (Esc / button). */
@@ -854,6 +855,35 @@
     }
   }
 
+  // Theme switch with the explorer already open: repaint the live scene
+  // rather than rebuilding it.
+  //
+  // Only the label and neutral-plane colours are themed — the edge, node and
+  // territory hues are deliberately theme-invariant — so a rebuild would be
+  // pure cost: it would refit the camera, drop the pinned highlight, and
+  // replay the whole reveal animation over a palette change. retheme()
+  // re-resolves every CSS variable and redraws the label textures in place,
+  // touching nothing else, so camera position/zoom, the freeze pin, layer
+  // visibility, spacing and plane opacity all survive untouched.
+  //
+  // A Svelte store fires on subscribe with the value already in it, so the
+  // first emission is skipped: at that point the scene has either not been
+  // built yet, or was just built against exactly this theme. The store is
+  // only set AFTER <html data-theme> is updated (see stores/theme.js), so
+  // getComputedStyle here already reads the new palette.
+  let lastThemeApplied = get(theme)
+  $: if ($theme !== lastThemeApplied) {
+    lastThemeApplied = $theme
+    rethemeScene()
+  }
+
+  function rethemeScene() {
+    if (!sceneCtx) return
+    nodeMeshes?.retheme()
+    layerPlanes?.retheme()
+    sceneCtx.render()
+  }
+
   // =============================================================================
   // Hover detection — picks the topmost node under the cursor and feeds
   // the 2D HTML tooltip overlay with the full (untruncated) label. The
@@ -1560,7 +1590,7 @@
     position: fixed;
     inset: 0;
     z-index: 70; /* above StudySurface (60) so Expand from a notebook graph cell overlays it */
-    background: var(--bg-1, #0e0f12);
+    background: var(--explorer-canvas-bg);
     overflow: hidden;
   }
 
@@ -1582,8 +1612,8 @@
     right: 12px;
     width: 32px;
     height: 32px;
-    background: rgba(0, 0, 0, 0.55);
-    color: #e8eaf0;
+    background: var(--explorer-scrim);
+    color: var(--text);
     border: 1px solid #334455;
     border-radius: 16px;
     font-size: 14px;
@@ -1593,7 +1623,7 @@
   }
 
   .explorer-close:hover {
-    background: rgba(0, 0, 0, 0.8);
+    background: var(--explorer-scrim-hover);
   }
 
   /* The query bar used to position itself as a floating overlay. It now sits
@@ -1655,8 +1685,8 @@
   .explorer-querybar button {
     flex: 0 0 auto;
     width: 34px;
-    background: rgba(0, 0, 0, 0.55);
-    color: #e8eaf0;
+    background: var(--explorer-scrim);
+    color: var(--text);
     border: 1px solid #334455;
     border-radius: 6px;
     font-size: 14px;
@@ -1664,13 +1694,13 @@
   }
 
   .explorer-querybar button:hover {
-    background: rgba(74, 123, 208, 0.35);
+    background: var(--explorer-scrim-hover-accent);
   }
 
   .overlay {
     position: absolute;
     pointer-events: none;
-    color: var(--fg-2, #d8d8d8);
+    color: var(--text-on-scrim);
     font-size: 13px;
   }
 
@@ -1678,7 +1708,7 @@
     inset: 0;
     display: grid;
     place-items: center;
-    background: rgba(0, 0, 0, 0.55);
+    background: var(--explorer-scrim);
     backdrop-filter: blur(2px);
   }
 
@@ -1720,7 +1750,7 @@
   }
 
   .empty-label {
-    color: #6b7c95;
+    color: var(--explorer-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.04em;
     font-size: 10px;
@@ -1824,7 +1854,7 @@
   .layer-tooltip-meta {
     margin-top: 3px;
     font-size: 10px;
-    color: #6b7c95;
+    color: var(--explorer-text-muted);
     font-variant-numeric: tabular-nums;
     text-transform: lowercase;
     letter-spacing: 0.04em;
@@ -1834,7 +1864,7 @@
     top: 8px;
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.6);
+    background: var(--explorer-scrim-strong);
     padding: 6px 10px;
     border-radius: 6px;
     font-size: 12px;
@@ -1854,7 +1884,7 @@
     padding: 6px 12px;
     background: rgba(20, 24, 32, 0.92);
     color: #e8eaf0;
-    border: 1px solid #6cb4ee;
+    border: 1px solid var(--explorer-node-default);
     border-radius: 14px;
     font-size: 12px;
     cursor: pointer;
@@ -1866,7 +1896,7 @@
     background: rgba(30, 36, 48, 0.95);
   }
   .freeze-icon {
-    color: #6cb4ee;
+    color: var(--explorer-node-default);
     flex: 0 0 12px;
   }
   .freeze-label {
@@ -1877,7 +1907,7 @@
     white-space: nowrap;
   }
   .freeze-hint {
-    color: #6b7c95;
+    color: var(--explorer-text-muted);
     font-size: 10px;
     text-transform: lowercase;
     letter-spacing: 0.04em;

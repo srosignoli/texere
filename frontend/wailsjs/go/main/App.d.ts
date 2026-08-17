@@ -87,6 +87,8 @@ export function GetStudyCounts():Promise<learning.StudyStats3>;
 
 export function GetStudyStats():Promise<learning.Stats>;
 
+export function GetTheme():Promise<string>;
+
 export function GradeItem(arg1:string,arg2:number,arg3:number):Promise<learning.CardView>;
 
 export function GraphLayout(arg1:string,arg2:string):Promise<explorer.LayoutResult>;
@@ -166,6 +168,8 @@ export function SetActiveSTTProfile(arg1:string):Promise<void>;
 export function SetQueryLLMProfile(arg1:string):Promise<void>;
 
 export function SetReadingProjLen(arg1:string,arg2:number):Promise<void>;
+
+export function SetTheme(arg1:string):Promise<void>;
 
 export function SkillsDir():Promise<string>;
 

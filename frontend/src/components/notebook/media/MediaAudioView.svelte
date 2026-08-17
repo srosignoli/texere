@@ -32,5 +32,5 @@
 <style>
   .av-wrap { padding: 8px; }
   .av-player { width: 100%; }
-  .av-err { padding: 12px; color: #d88; font-size: 13px; }
+  .av-err { padding: 12px; color: var(--text-media-error); font-size: 13px; }
 </style>

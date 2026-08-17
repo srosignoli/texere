@@ -328,20 +328,24 @@
   .ms-kinds { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
   .ms-bar { display: flex; gap: 6px; align-items: center; }
   .ms-alt { display: flex; gap: 6px; align-items: center; margin-top: 6px; }
-  .ms-q { flex: 1 1 auto; background: #0b1220; color: #cde; border: 1px solid #2a3a4a; border-radius: 4px; padding: 4px 8px; }
-  .ms-btn { background: #1b2636; color: #cde; border: 1px solid #2a3a4a; border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  .ms-q { flex: 1 1 auto; background: var(--surface-sunken); color: var(--text-media); border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px; }
+  .ms-btn { background: var(--surface); color: var(--text-media); border: 1px solid var(--border); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
   .ms-btn:disabled { opacity: 0.5; cursor: default; }
   /* Must come AFTER .ms-btn and its :hover — equal specificity, so source order
      decides. Declared earlier it was silently overridden and the selected kind
      looked identical to the unselected one. The filled accent also has to differ
      from :hover, or hovering an unselected button mimics selection. */
-  .ms-btn.ms-on, .ms-btn.ms-on:hover { background: #2e6ca8; border-color: #6aa6dd; color: #f2f8ff; font-weight: 600; }
-  select { background: #0b1220; color: #cde; border: 1px solid #2a3a4a; border-radius: 4px; padding: 4px; }
+  .ms-btn.ms-on, .ms-btn.ms-on:hover { background: var(--select-toggle-bg); border-color: var(--select-toggle-border); color: var(--select-toggle-text); font-weight: 600; }
+  select { background: var(--surface-sunken); color: var(--text-media); border: 1px solid var(--border); border-radius: 4px; padding: 4px; }
+  /* Self-contained coupled alert unit — border, background and text are all
+     literal together, a status colour that means the same in every theme, so
+     the pairing rule's precondition (background stays literal) holds without
+     any risk of the light-on-light bug. */
   .ms-err { margin-top: 8px; padding: 6px 8px; border: 1px solid #6a3a3a; border-radius: 4px; background: #2a1616; color: #f9c; font-size: 12px; }
-  .ms-note { margin-top: 8px; color: #8aa; font-size: 12px; }
+  .ms-note { margin-top: 8px; color: var(--text-quiet); font-size: 12px; }
   .ms-grid { margin-top: 8px; display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; max-height: 320px; overflow-y: auto; }
-  .ms-hit { padding: 0; border: 1px solid #2a3a4a; border-radius: 4px; background: #0b1220; cursor: pointer; overflow: hidden; aspect-ratio: 1; }
-  .ms-hit:hover { border-color: #4a7aa8; }
+  .ms-hit { padding: 0; border: 1px solid var(--border); border-radius: 4px; background: var(--surface-sunken); cursor: pointer; overflow: hidden; aspect-ratio: 1; }
+  .ms-hit:hover { border-color: var(--media-hover-border); }
   .ms-hit.ms-loading { opacity: 0.4; cursor: default; }
   .ms-hit img { width: 100%; height: 100%; object-fit: cover; display: block; }
   /* MUST stay after every .ms-hit rule above: equal specificity, so source
@@ -351,15 +355,18 @@
   .ms-vgrid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
   .ms-vhit { position: relative; aspect-ratio: auto; display: flex; flex-direction: column; align-items: stretch; padding: 0 0 4px; }
   .ms-vhit img { width: 100%; aspect-ratio: 16 / 9; height: auto; object-fit: cover; display: block; }
+  /* Translucent rgba() background paired with literal white text: left alone
+     deliberately (per the migration brief's MiniMap precedent) — the video
+     duration badge always sits on a near-black wash regardless of theme. */
   .ms-dur { position: absolute; right: 4px; top: 4px; background: rgba(0,0,0,0.75); color: #fff; font-size: 10px; padding: 1px 4px; border-radius: 3px; }
-  .ms-vtitle { padding: 4px 6px 0; font-size: 11px; color: #cde; text-align: left; line-height: 1.25; max-height: 2.6em; overflow: hidden; }
+  .ms-vtitle { padding: 4px 6px 0; font-size: 11px; color: var(--text-media); text-align: left; line-height: 1.25; max-height: 2.6em; overflow: hidden; }
   .ms-rows { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; max-height: 320px; overflow-y: auto; }
   .ms-row { display: flex; align-items: stretch; gap: 6px; }
   .ms-row.ms-loading { opacity: 0.4; }
-  .ms-play { width: 32px; flex: 0 0 auto; background: #1b2636; color: #cde; border: 1px solid #2a3a4a; border-radius: 4px; cursor: pointer; }
-  .ms-play:hover { background: #24334a; }
-  .ms-pick { flex: 1 1 auto; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 4px 8px; background: #0b1220; color: #cde; border: 1px solid #2a3a4a; border-radius: 4px; cursor: pointer; text-align: left; }
-  .ms-pick:hover { border-color: #4a7aa8; }
+  .ms-play { width: 32px; flex: 0 0 auto; background: var(--surface); color: var(--text-media); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; }
+  .ms-play:hover { background: var(--surface-hover); }
+  .ms-pick { flex: 1 1 auto; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 4px 8px; background: var(--surface-sunken); color: var(--text-media); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; text-align: left; }
+  .ms-pick:hover { border-color: var(--media-hover-border); }
   .ms-word { font-size: 13px; }
-  .ms-meta { font-size: 11px; color: #8aa; }
+  .ms-meta { font-size: 11px; color: var(--text-quiet); }
 </style>

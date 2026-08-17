@@ -76,8 +76,8 @@
     z-index: 20;
     max-height: 320px;
     overflow-y: auto;
-    background: #1a2535;
-    border: 1px solid #2a3a4a;
+    background: var(--surface-overlay);
+    border: 1px solid var(--border);
     border-radius: 8px;
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55);
     padding: 4px;
@@ -88,7 +88,7 @@
     font-size: 0.68rem;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: #5a7a9a;
+    color: var(--accent-dim);
   }
 
   .qac-row {
@@ -101,14 +101,14 @@
     border: 0;
     border-radius: 5px;
     background: transparent;
-    color: #e8eaf0;
+    color: var(--text);
     font: inherit;
     cursor: pointer;
   }
 
   .qac-row.active,
   .qac-row:hover {
-    background: #1e3a5a;
+    background: var(--accent);
   }
 
   .qac-label {
@@ -122,7 +122,7 @@
     flex: 1 1 auto;
     min-width: 0;
     font-size: 0.8rem;
-    color: #8899aa;
+    color: var(--text-muted);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
