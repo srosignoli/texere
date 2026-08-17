@@ -229,11 +229,15 @@ html {
      * --explorer-label on the same texture. */
     --explorer-label-sub: rgba(200, 214, 230, 0.7);
 
-    /* Neutral grid-plane colors — the synthetic "Untagged" floor, the one
-     * layer with no palette colour of its own. The grid lines stand out
-     * against the canvas backdrop; the tint backs the grid so the plane
-     * reads as a distinct surface even at low opacity. Every OTHER floor
-     * takes its colour from --explorer-territory-N, which is invariant. */
+    /* Neutral plane tint — the synthetic "Untagged" floor, the one layer
+     * with no palette colour of its own. The tint backs the grid so the
+     * plane reads as a distinct surface even at low opacity, and
+     * LayerPlanes.js derives the grid line colour from THIS token via
+     * brighten(tint, 0.55) — the same formula every palette floor uses.
+     * Every OTHER floor takes its tint from --explorer-territory-N, which
+     * is invariant. --explorer-plane-grid below has no reader (LayerPlanes.js
+     * doesn't consume it); kept declared rather than removed, matching how
+     * it already sat unused before this feature's migration. */
     --explorer-plane-grid: #6b7c95;
     --explorer-plane-tint: #1f2a3a;
 

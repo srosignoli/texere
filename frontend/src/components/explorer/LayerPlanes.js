@@ -20,7 +20,6 @@
 
 import * as THREE from 'three'
 import {
-  getPlaneGridColor,
   getPlaneTintColor,
   getLabelColor,
   getLabelHaloColor,
@@ -321,18 +320,28 @@ function rescaleLabels(records, camera, canvas) {
 // planeColorsFor returns the { tint, grid } pair for a layer, resolved from
 // the CSS palette at call time.
 //
-// A user-tagged context takes its (theme-invariant) territory colour, with
-// grid lines a lighter shade of the same hue so the floor's colour identity
-// carries through. Untagged (colorSlot < 0) is the synthetic "no context"
-// layer: it has no identity to encode, so it takes the THEMED neutral pair.
-// It reads its grid colour from --explorer-plane-grid rather than
-// brighten(tint) — in a light theme brighten() on an already-pale tint
-// washes out to near-white and the floor loses its grid entirely.
+// A user-tagged context takes its (theme-invariant) territory colour.
+// Untagged (colorSlot < 0) is the synthetic "no context" layer: it has no
+// identity to encode, so it takes the THEMED neutral tint
+// (--explorer-plane-tint), resolved fresh every call/retheme.
+//
+// Both cases derive their grid the same way — brighten(tint, 0.55), a
+// lighter shade of the floor's own tint — so there is one relationship
+// between tint and grid, not a Blue-only special case for the neutral
+// floor. This is also the pre-migration derivation: Untagged never had a
+// distinct grid formula, it just fed its (themed) tint through the same
+// brighten() every palette floor uses. --explorer-plane-grid is declared in
+// style.css but has no reader; brighten() is what actually paints every
+// grid, in every theme. In Light, brightening an already-pale tint washes
+// out toward white and the grid is faint — a known, accepted trade-off
+// shared with the palette floors (see the module-level concerns note); the
+// alternative of darkening instead of brightening in light themes would
+// change the territory-derived colours too and is deliberately out of scope
+// here.
 function planeColorsFor(slot, palette) {
-  if (slot === undefined || slot === null || slot < 0) {
-    return { tint: getPlaneTintColor(), grid: getPlaneGridColor() }
-  }
-  const tint = palette[slot % palette.length]
+  const tint = (slot === undefined || slot === null || slot < 0)
+    ? getPlaneTintColor()
+    : palette[slot % palette.length]
   return { tint, grid: brighten(tint, 0.55) }
 }
 
