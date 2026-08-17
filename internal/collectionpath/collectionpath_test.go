@@ -151,3 +151,40 @@ func TestResolveRefusesASiblingDirectoryWithASharedNamePrefix(t *testing.T) {
 		t.Fatalf("Resolve(%q, %q) accepted a sibling sharing the root's name as a prefix", root, sibling)
 	}
 }
+
+// Found in review: under() built its prefix as root+separator unconditionally.
+// When root is already just a separator ("/" on Unix, and plausibly "D:\" on
+// Windows), that produces "//", which matches nothing — every path under a
+// filesystem-root collection was refused. It failed closed, not open, but a
+// collection opened at a filesystem root couldn't be used at all. Exercised
+// directly against under() rather than through Resolve: a real filesystem
+// root isn't something a test can safely populate with fixtures.
+func TestUnderTreatsAFilesystemRootAsContainingEverythingBeneathIt(t *testing.T) {
+	root := string(filepath.Separator)
+	full := filepath.Join(root, "etc", "passwd")
+	if !under(full, root) {
+		t.Errorf("under(%q, %q) = false, want true — root is the whole filesystem", full, root)
+	}
+}
+
+// The ancestor walk was only ever exercised one level deep (brand-new.n4l
+// under an existing "reading"). Found in review: nothing shipped covered
+// several consecutive missing directories, even though the recursion is
+// written to handle it.
+func TestResolveAcceptsAPathSeveralMissingDirectoriesDeep(t *testing.T) {
+	root := t.TempDir()
+	if _, err := Resolve(root, "a/b/c/brand-new.n4l"); err != nil {
+		t.Errorf("Resolve rejected a path several missing directories deep: %v", err)
+	}
+}
+
+// Same shape as TestResolveAcceptsDotsInsideAName but in a directory
+// component rather than the leaf name — the exact case the deleted
+// media white-box test covered ("a..b/c.png").
+func TestResolveAcceptsDotsInsideADirectoryName(t *testing.T) {
+	root := t.TempDir()
+	mustWrite(t, filepath.Join(root, "a..b", "c.png"), "x")
+	if _, err := Resolve(root, "a..b/c.png"); err != nil {
+		t.Errorf("Resolve rejected a legitimate directory name containing dots: %v", err)
+	}
+}

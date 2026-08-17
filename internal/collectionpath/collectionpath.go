@@ -70,8 +70,21 @@ func Resolve(root, rel string) (string, error) {
 // under reports whether full is root itself or sits under root plus a
 // separator. The separator matters: without it, "/tmp/xy" would count as
 // under "/tmp/x".
+//
+// root's own trailing separator, if it has one, is not duplicated before the
+// comparison. Without that, a root that is already just a separator ("/" on
+// Unix, plausibly "D:\" on Windows — the whole filesystem, or a symlink chain
+// that bottoms out there) would build "//" and match nothing, refusing every
+// path under it.
 func under(full, root string) bool {
-	return full == root || strings.HasPrefix(full, root+string(filepath.Separator))
+	if full == root {
+		return true
+	}
+	prefix := root
+	if !strings.HasSuffix(prefix, string(filepath.Separator)) {
+		prefix += string(filepath.Separator)
+	}
+	return strings.HasPrefix(full, prefix)
 }
 
 // evalSymlinksOrAncestor evaluates symlinks in path. When path does not exist
