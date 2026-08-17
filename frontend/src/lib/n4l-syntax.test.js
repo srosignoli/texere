@@ -2,6 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { n4lHighlightStyle } from './n4l-highlight.js'
+import { n4lTheme } from './n4l-editor.js'
 
 const CSS = readFileSync(new URL('../style.css', import.meta.url), 'utf8')
 
@@ -84,4 +85,20 @@ test('the highlight style emits only var() colours', () => {
   const rules = n4lHighlightStyle.module.rules.join('\n')
   assert.match(rules, /var\(--n4l-syntax-/)
   assert.doesNotMatch(rules, /#[0-9a-fA-F]{3,8}/, `literal colour in generated CSS:\n${rules}`)
+})
+
+// Same gate as the highlight style: the editor's chrome must emit no literal
+// colour. Note this asserts on colour literals only — lengths, radii and the
+// box-shadow's rgba() are not colours in a theme role's sense.
+//
+// n4lTheme() returns an EditorView.theme() extension, which — unlike
+// n4lHighlightStyle (a HighlightStyle instance with a top-level `.module`) —
+// is a two-element facet-provider array; the generated StyleModule lives at
+// index [1].value, not at a top-level `.module`. Confirmed by inspection:
+// n4lTheme()[1].value.rules holds the real generated CSS rule strings.
+test('the editor theme emits only var() colours', () => {
+  const rules = n4lTheme()[1].value.rules.join('\n')
+  assert.match(rules, /var\(--/)
+  const literals = rules.match(/#[0-9a-fA-F]{3,8}\b/g) ?? []
+  assert.deepEqual(literals, [], `literal colours in editor chrome: ${literals.join(', ')}`)
 })

@@ -18,23 +18,25 @@ import { arrowCompletion } from './arrow-autocomplete.js'
 // no-ops there. fontSize is the only per-editor knob.
 export function n4lTheme(fontSize = '0.85rem') {
   return EditorView.theme({
-    '&': { height: '100%', background: '#1b2636' },
-    '.cm-content': { fontFamily: 'monospace', fontSize, color: '#e8eaf0', textAlign: 'left' },
-    '.cm-gutters': { background: '#161f2e', borderRight: '1px solid #2a3a4a', color: '#4a5a6a' },
-    '.cm-cursor': { borderLeftColor: '#7dd3fc' },
-    '.cm-selectionBackground': { background: '#1e3a5a !important' },
-    '.cm-activeLineGutter': { background: '#1d2e42' },
-    '.cm-activeLine': { background: '#1d2e42' },
-    '.cm-searchMatch': { background: '#854d0e', borderRadius: '2px' },
-    '.cm-vim-panel': { background: '#1a2535', color: '#e8eaf0', borderTop: '1px solid #2a3a4a' },
-    '.cm-vim-panel input': { background: 'transparent', color: '#e8eaf0', outline: 'none' },
-    '.cm-tooltip.cm-tooltip-autocomplete': { background: '#1a2535', border: '1px solid #2a3a4a', borderRadius: '6px', boxShadow: '0 6px 24px rgba(0,0,0,0.55)' },
+    '&': { height: '100%', background: 'var(--surface)' },
+    '.cm-content': { fontFamily: 'monospace', fontSize, color: 'var(--text)', textAlign: 'left' },
+    '.cm-gutters': { background: 'var(--surface-bar)', borderRight: '1px solid var(--border)', color: 'var(--text-dim)' },
+    '.cm-cursor': { borderLeftColor: 'var(--accent-text)' },
+    '.cm-selectionBackground': { background: 'var(--accent) !important' },
+    '.cm-activeLineGutter': { background: 'var(--editor-active-line)' },
+    '.cm-activeLine': { background: 'var(--editor-active-line)' },
+    '.cm-searchMatch': { background: 'var(--editor-search-match)', borderRadius: '2px' },
+    '.cm-vim-panel': { background: 'var(--surface-overlay)', color: 'var(--text)', borderTop: '1px solid var(--border)' },
+    '.cm-vim-panel input': { background: 'transparent', color: 'var(--text)', outline: 'none' },
+    // boxShadow's rgba(0,0,0,0.55) is a drop shadow, not a themed colour — it
+    // stays dark under the tooltip in every theme, so it is left as-is.
+    '.cm-tooltip.cm-tooltip-autocomplete': { background: 'var(--surface-overlay)', border: '1px solid var(--border)', borderRadius: '6px', boxShadow: '0 6px 24px rgba(0,0,0,0.55)' },
     '.cm-tooltip-autocomplete ul': { fontFamily: 'monospace', fontSize: '0.82rem' },
-    '.cm-tooltip-autocomplete ul li': { color: '#b0bec5', padding: '3px 10px' },
-    '.cm-tooltip-autocomplete ul li[aria-selected]': { background: '#1e3a5a !important', color: '#e8eaf0' },
-    '.cm-completionLabel': { color: '#67e8f9' },
-    '.cm-completionDetail': { color: '#8899aa', fontStyle: 'normal', marginLeft: '8px' },
-    '.cm-completionSectionHeader': { color: '#5a7a9a', fontSize: '0.68rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '4px 10px 2px', background: '#141d2b' },
+    '.cm-tooltip-autocomplete ul li': { color: 'var(--text-row)', padding: '3px 10px' },
+    '.cm-tooltip-autocomplete ul li[aria-selected]': { background: 'var(--accent) !important', color: 'var(--text)' },
+    '.cm-completionLabel': { color: 'var(--n4l-syntax-arrow-code)' },
+    '.cm-completionDetail': { color: 'var(--text-muted)', fontStyle: 'normal', marginLeft: '8px' },
+    '.cm-completionSectionHeader': { color: 'var(--accent-dim)', fontSize: '0.68rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '4px 10px 2px', background: 'var(--editor-completion-header)' },
   })
 }
 

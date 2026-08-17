@@ -201,6 +201,22 @@ html {
     --text-iso-message: #7a8ba0;      /* "No graph results" / error message text on IsoGraphView's
                                           --surface-sunken panel */
 
+    /* Roles minted theming the shared N4L editor chrome (n4l-editor.js
+       n4lTheme — Source tab, Process editor, Reading notes pane). Hue/
+       saturation of each Blue literal held constant; Dark and Light
+       lightness binary-searched so the foreground actually painted on top
+       clears 4.5:1 against it. */
+    --editor-search-match: #854d0e;   /* .cm-searchMatch background; foreground is the token's own
+                                          syntax colour, or --text where none applies. Dark kept
+                                          identical to Blue (5.60:1 against --text dark #e8e8ea),
+                                          matching how --warn/--danger/--ok hold their literal across
+                                          Blue and Dark. Light re-solved lighter (7.30:1 against
+                                          --text light #14181f) since Light's default text is dark. */
+    --editor-completion-header: #141d2b; /* .cm-completionSectionHeader background, paired with
+                                          --accent-dim text. Blue's own pairing is only 3.78:1 (kept,
+                                          per the no-tidying rule) but Dark (4.83:1) and Light
+                                          (4.89:1) are both solved to clear 4.5:1. */
+
     /* Roles minted fixing Task 5b's review — the LOWER-alpha members of the
        same glass-HUD family (0.35-0.6) do NOT hold up over Light's
        near-white backdrop; a fixed rgba(0,0,0,X) at that alpha composites to
@@ -393,6 +409,9 @@ html {
     --editor-active-line: #1f3248;
     --text-iso-message: #8c8d8d;
 
+    --editor-search-match: #854d0e;
+    --editor-completion-header: #0a0e15;
+
     /* Dark's own canvas backdrop (--explorer-canvas-bg: #0b0c0f) is near-black
        too, same as Blue's — the black-based scrims stay correct unchanged. */
     --explorer-scrim: rgba(0, 0, 0, 0.55);
@@ -556,6 +575,9 @@ html {
     --explorer-canvas-bg: #e5e8ec;
     --editor-active-line: #c2d2e4;
     --text-iso-message: #44505f;
+
+    --editor-search-match: #e9922f;
+    --editor-completion-header: #f8f9fc;
 
     /* White/light-based so the composite stays light over Light's own
        near-white canvas backdrop (#f6f7f9) regardless of theme — see the
