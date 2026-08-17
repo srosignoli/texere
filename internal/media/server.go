@@ -5,6 +5,8 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+
+	"texere/internal/collectionpath"
 )
 
 // FileServer serves files under the media directory at /media/<name>. dirFn
@@ -44,8 +46,9 @@ func FileServer(dirFn func() string) http.Handler {
 //
 // Separate from FileServer rather than a widening of it: FileServer's collapse
 // to a base name IS its traversal defence, and the notebook depends on that
-// route. This one needs directories, so it defends differently — resolve, then
-// require the result to stay under the root.
+// route. This one needs directories, so it defends differently — via
+// collectionpath.Resolve, which requires the result to stay under the root
+// even through a symlink.
 //
 // That containment is stricter than GetSourceBytes, which cleans ".." and will
 // happily read outside the collection. Tightening it here is deliberate.
@@ -70,8 +73,8 @@ func CollectionServer(dirFn func() string) http.Handler {
 			http.NotFound(w, r)
 			return
 		}
-		full, ok := resolveUnder(root, strings.TrimPrefix(r.URL.Path, prefix))
-		if !ok {
+		full, err := collectionpath.Resolve(root, strings.TrimPrefix(r.URL.Path, prefix))
+		if err != nil {
 			http.NotFound(w, r)
 			return
 		}
@@ -80,23 +83,6 @@ func CollectionServer(dirFn func() string) http.Handler {
 		}
 		http.ServeFile(w, r, full)
 	})
-}
-
-// resolveUnder joins rel onto root and reports whether the result stayed inside
-// root. filepath.Join cleans "..", so the join alone proves nothing — the
-// prefix check is what enforces containment.
-//
-// Split out of the handler so it can be tested at all. http.ServeFile
-// independently rejects any request whose URL path contains a ".." element
-// (net/http/fs.go:815), so no request reaching CollectionServer can exercise
-// this: it is defence in depth for a caller whose path did not come from a URL,
-// and a handler-level test of it would pass with the check deleted.
-func resolveUnder(root, rel string) (string, bool) {
-	full := filepath.Join(root, filepath.FromSlash(rel))
-	if full != root && !strings.HasPrefix(full, root+string(filepath.Separator)) {
-		return "", false
-	}
-	return full, true
 }
 
 // audioOnlyMimeByExt is audioMimeByExt without .mp4 and .webm.
