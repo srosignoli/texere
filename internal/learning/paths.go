@@ -45,6 +45,16 @@ func (s *Store) Resolve(stored string) (string, error) {
 //
 // ok is false when no suffix exists under collectionDir; the caller must
 // leave the original value untouched rather than guess.
+//
+// Known limitation: the split is on "/" (after filepath.ToSlash, which only
+// rewrites the current OS's own separator). A value written with Windows-style
+// backslashes and then read back on a different platform — or vice versa —
+// will not be segmented on those backslashes and so will not be found, even
+// if the file exists. This fails safe: the caller sees ok=false and leaves
+// the row untouched, the same outcome as any other unresolvable row. Left
+// undone deliberately: also splitting on "\" would misparse any segment that
+// legitimately contains a literal backslash (a valid filename byte on Unix),
+// so handling both separators needs more than a one-line fix.
 func rehome(stored, collectionDir string) (rel string, ok bool) {
 	cleaned := filepath.ToSlash(filepath.Clean(stored))
 	cleaned = strings.TrimPrefix(cleaned, "/")

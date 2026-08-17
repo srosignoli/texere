@@ -67,6 +67,26 @@ func TestRehomePrefersTheLongestMatchingSuffix(t *testing.T) {
 	}
 }
 
+// A single-segment value has only one tail to try — itself — and no
+// shortening beyond it.
+func TestRehomeResolvesASingleSegmentValue(t *testing.T) {
+	dir := t.TempDir()
+	mustWrite(t, filepath.Join(dir, "x.n4l"), "x")
+	rel, ok := rehome("x.n4l", dir)
+	if !ok || rel != "x.n4l" {
+		t.Fatalf("rehome = %q, %v", rel, ok)
+	}
+}
+
+// The explicit empty-string guard in rehome, exercised directly rather than
+// left to "correct by inspection".
+func TestRehomeGivesUpOnAnEmptyValue(t *testing.T) {
+	dir := t.TempDir()
+	if rel, ok := rehome("", dir); ok {
+		t.Fatalf("rehome resolved an empty value: %q", rel)
+	}
+}
+
 // --- Store.Rel / Store.Resolve --------------------------------------------
 
 func TestStoreRelAndResolveRoundTrip(t *testing.T) {
@@ -185,23 +205,49 @@ func TestMigrationRewritesAllFourColumns(t *testing.T) {
 	}
 }
 
+// TestMigrationIsIdempotent covers all four migrated columns, not just
+// items.file_path: notebook_links.file_path in particular is part of that
+// table's composite primary key, so a second UPDATE against an
+// already-migrated row is a different shape of risk than for the
+// single-column-keyed tables. Each table gets one resolvable row (proving a
+// second pass over an already-relative value is a true no-op) and one
+// unresolvable row (proving a second pass doesn't newly damage a row it
+// already gave up on).
 func TestMigrationIsIdempotent(t *testing.T) {
 	dir := t.TempDir()
 	mustWrite(t, filepath.Join(dir, "reading", "x.n4l"), "x")
-	abs := filepath.Join(dir, "reading", "x.n4l")
+	mustWrite(t, filepath.Join(dir, "notes", "y.n4l"), "y")
+	resolvableA := filepath.Join(dir, "reading", "x.n4l")
+	resolvableB := filepath.Join(dir, "notes", "y.n4l")
 	stale := "/old/place/gone.n4l"
 
 	raw := openAtSchemaSix(t, dir)
-	if _, err := raw.Exec(`INSERT INTO items
-		(id, node_id, file_path, card_type, front, back, active, reps, lapses, state, created_at)
-		VALUES ('i1','n1',?,'cloze','f','b',1,0,0,0,0)`, abs); err != nil {
-		t.Fatalf("seed items: %v", err)
+	seed := func(query string, args ...any) {
+		t.Helper()
+		if _, err := raw.Exec(query, args...); err != nil {
+			t.Fatalf("seed %q: %v", query, err)
+		}
 	}
-	if _, err := raw.Exec(`INSERT INTO items
+	seed(`INSERT INTO items
 		(id, node_id, file_path, card_type, front, back, active, reps, lapses, state, created_at)
-		VALUES ('i2','n2',?,'cloze','f','b',1,0,0,0,0)`, stale); err != nil {
-		t.Fatalf("seed items (unresolvable): %v", err)
-	}
+		VALUES ('i1','n1',?,'cloze','f','b',1,0,0,0,0)`, resolvableA)
+	seed(`INSERT INTO items
+		(id, node_id, file_path, card_type, front, back, active, reps, lapses, state, created_at)
+		VALUES ('i2','n2',?,'cloze','f','b',1,0,0,0,0)`, stale)
+
+	seed(`INSERT INTO extracts (id, file_path, text, created_at) VALUES ('e1',?,'t',0)`, resolvableA)
+	seed(`INSERT INTO extracts (id, file_path, text, created_at) VALUES ('e2',?,'t',0)`, stale)
+
+	seed(`INSERT INTO notebook_links (file_path, chapter, node_text, notebook_id, created_at)
+		VALUES (?,'ch1','node1','nb1',0)`, resolvableA)
+	seed(`INSERT INTO notebook_links (file_path, chapter, node_text, notebook_id, created_at)
+		VALUES (?,'ch2','node2','nb2',0)`, stale)
+
+	seed(`INSERT INTO reading_elements (id, ref_path, notes_path, title, created_at)
+		VALUES ('r1','sources/book.pdf',?,'t',0)`, resolvableB)
+	seed(`INSERT INTO reading_elements (id, ref_path, notes_path, title, created_at)
+		VALUES ('r2','sources/other.pdf',?,'t',0)`, stale)
+
 	if err := raw.Close(); err != nil {
 		t.Fatalf("close raw: %v", err)
 	}
@@ -213,19 +259,29 @@ func TestMigrationIsIdempotent(t *testing.T) {
 	defer s.Close()
 
 	dump := func() map[string]string {
-		rows, err := s.db.Query(`SELECT id, file_path FROM items ORDER BY id`)
-		if err != nil {
-			t.Fatalf("dump query: %v", err)
-		}
-		defer rows.Close()
 		out := map[string]string{}
-		for rows.Next() {
-			var id, fp string
-			if err := rows.Scan(&id, &fp); err != nil {
-				t.Fatalf("dump scan: %v", err)
+		add := func(key, query string) {
+			t.Helper()
+			rows, err := s.db.Query(query)
+			if err != nil {
+				t.Fatalf("dump %s: %v", key, err)
 			}
-			out[id] = fp
+			defer rows.Close()
+			for rows.Next() {
+				var id, val string
+				if err := rows.Scan(&id, &val); err != nil {
+					t.Fatalf("dump scan %s: %v", key, err)
+				}
+				out[key+":"+id] = val
+			}
+			if err := rows.Err(); err != nil {
+				t.Fatalf("dump rows %s: %v", key, err)
+			}
 		}
+		add("items", `SELECT id, file_path FROM items ORDER BY id`)
+		add("extracts", `SELECT id, file_path FROM extracts ORDER BY id`)
+		add("notebook_links", `SELECT notebook_id, file_path FROM notebook_links ORDER BY notebook_id`)
+		add("reading_elements", `SELECT id, notes_path FROM reading_elements ORDER BY id`)
 		return out
 	}
 
