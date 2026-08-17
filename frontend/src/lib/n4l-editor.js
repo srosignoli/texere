@@ -161,11 +161,11 @@ export function arrowLint(getArrowDefs) {
   })
 
   const theme = EditorView.theme({
-    '.cm-arrow-unreg': { textDecoration: 'underline wavy #f59e0b' },
-    '.cm-arrow-fix': { background: '#1a2537', border: '1px solid #2a3a4a', borderRadius: '6px', padding: '6px', maxWidth: '260px' },
-    '.cm-arrow-fix-h': { color: '#f59e0b', fontSize: '11px', marginBottom: '4px' },
-    '.cm-arrow-fix button': { display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', color: '#cdd6e2', cursor: 'pointer', fontSize: '12px', padding: '2px 4px' },
-    '.cm-arrow-fix button:hover': { background: '#24374d' },
+    '.cm-arrow-unreg': { textDecoration: 'underline wavy var(--warn)' },
+    '.cm-arrow-fix': { background: 'var(--editor-arrow-popover)', border: '1px solid var(--border)', borderRadius: '6px', padding: '6px', maxWidth: '260px' },
+    '.cm-arrow-fix-h': { color: 'var(--warn)', fontSize: '11px', marginBottom: '4px' },
+    '.cm-arrow-fix button': { display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', color: 'var(--text-modal)', cursor: 'pointer', fontSize: '12px', padding: '2px 4px' },
+    '.cm-arrow-fix button:hover': { background: 'var(--surface-inset-hover)' },
   })
 
   return [decoPlugin, tip, theme]
@@ -219,7 +219,7 @@ export function notebookDotsGutter(onClick) {
       },
     }),
     EditorView.theme({
-      '.cm-nb-dot': { color: '#a855f7', cursor: 'pointer', fontSize: '10px' },
+      '.cm-nb-dot': { color: 'var(--editor-notebook-dot)', cursor: 'pointer', fontSize: '10px' },
     }),
   ]
 }

@@ -217,6 +217,25 @@ html {
                                           per the no-tidying rule) but Dark (4.83:1) and Light
                                           (4.89:1) are both solved to clear 4.5:1. */
 
+    /* Roles minted finishing the editor-chrome migration: arrowLint's
+       unregistered-arrow popover and notebookDotsGutter's provenance dot,
+       the two sibling EditorView.theme() blocks in n4l-editor.js that the
+       first pass missed. */
+    --editor-arrow-popover: #1a2537;  /* .cm-arrow-fix background. Close to but NOT the same as
+                                          --surface-overlay (#1a2535) — a near-match is not a match,
+                                          so this stays its own role. Paired foregrounds are --warn
+                                          (heading) and --text-modal (buttons); Dark kept identical to
+                                          Blue (7.17:1 / 9.86:1, both clear 4.5), Light re-solved to
+                                          4.68:1 / 13.85:1. */
+    --editor-notebook-dot: #a855f7;   /* .cm-nb-dot glyph colour. Byte-identical to
+                                          --explorer-edge-similar-to, but that role is documented as
+                                          fixed for the Three.js edge palette and unrelated to this
+                                          2D gutter glyph — minted separately rather than reused, so
+                                          the two concerns stay independently editable. Already
+                                          sub-AA against --surface-bar in Blue today (4.18:1) and
+                                          Dark stays there unchanged (4.69:1, still clears); Light
+                                          re-solved darker to actually clear 4.5:1 (was 3.47:1). */
+
     /* Roles minted fixing Task 5b's review — the LOWER-alpha members of the
        same glass-HUD family (0.35-0.6) do NOT hold up over Light's
        near-white backdrop; a fixed rgba(0,0,0,X) at that alpha composites to
@@ -411,6 +430,8 @@ html {
 
     --editor-search-match: #854d0e;
     --editor-completion-header: #0a0e15;
+    --editor-arrow-popover: #1a2537;
+    --editor-notebook-dot: #a855f7;
 
     /* Dark's own canvas backdrop (--explorer-canvas-bg: #0b0c0f) is near-black
        too, same as Blue's — the black-based scrims stay correct unchanged. */
@@ -578,6 +599,8 @@ html {
 
     --editor-search-match: #e9922f;
     --editor-completion-header: #f8f9fc;
+    --editor-arrow-popover: #f5f7fa;
+    --editor-notebook-dot: #820bf4;
 
     /* White/light-based so the composite stays light over Light's own
        near-white canvas backdrop (#f6f7f9) regardless of theme — see the
