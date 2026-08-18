@@ -588,6 +588,14 @@ html {
     --media-err-bg: #2a1616;
     --media-err-border: #6a3a3a;
     --media-err-text: #ff99cc;  /* 8.72:1 Blue/Dark, 4.53:1 Light */
+
+    /* ShellCell's .sh-stop border (Task 5). #5a2a2a in every theme — near,
+       not exact, match for var(--danger-fill) (#5a1e1e); kept unchanged
+       across all three since it's a pre-existing sub-3:1 weakness in
+       Blue/Dark (1.35:1/1.40:1) that this migration carries forward rather
+       than silently fixing, and it already clears comfortably in Light
+       (9.93:1). */
+    --stop-btn-border: #5a2a2a;
 }
 
 /* --- Dark: neutral near-black. ---------------------------------------------
@@ -826,6 +834,8 @@ html {
     --media-err-bg: #2a1616;
     --media-err-border: #6a3a3a;
     --media-err-text: #ff99cc;
+
+    --stop-btn-border: #5a2a2a;
 }
 
 /* --- Light: white-to-grey with dark text. ----------------------------------
@@ -1076,6 +1086,8 @@ html {
     --media-err-bg: #eddede;
     --media-err-border: #ae6b6b;
     --media-err-text: #c50063;
+
+    --stop-btn-border: #5a2a2a;
 }
 
 /* 2.5D Isometric Graph Explorer (feature 006) — shared semantic palette.

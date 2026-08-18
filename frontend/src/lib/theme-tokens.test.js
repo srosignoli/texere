@@ -109,6 +109,19 @@ const ALLOW = {
   // so it stays a fixed black-scrim-plus-white-text pair in every theme
   // (same reasoning as the explorer's high-alpha glass-HUD family).
   'components/notebook/MediaSearchPanel.svelte': ['rgba(0,0,0,0.75)', '#fff'],
+  // .im-sel is a crop/selection marquee drawn over an arbitrary image, not a
+  // themed surface — same MiniMap-precedent reasoning already documented
+  // in-file (ImageCell.svelte:133-136): the translucent rgba() fill and its
+  // literal border are a coupled pair, and tokenizing one while the other
+  // stays a fixed literal would decouple them.
+  'components/notebook/ImageCell.svelte': ['#7dd3fc', 'rgba(125, 211, 252, 0.15)'],
+  // .mv-sel is the same crop/selection marquee pattern as ImageCell's
+  // .im-sel above, documented in-file (MediaImageView.svelte:78-80).
+  'components/notebook/media/MediaImageView.svelte': ['#6ad', 'rgba(102, 170, 221, 0.2)'],
+  // .vv-player's letterbox background is always black regardless of theme —
+  // the standard convention for a video element's own background (no
+  // coupled text), documented in-file (MediaVideoView.svelte:116-118).
+  'components/notebook/media/MediaVideoView.svelte': ['#000'],
 }
 
 // Files not yet converted. Shrinks to nothing across Tasks 2-6; when it is
@@ -117,10 +130,6 @@ const PENDING = [
   'components/AskBox.svelte',
   'components/EmptyState.svelte',
   'components/Splitter.svelte',
-  'components/notebook/ImageCell.svelte',
-  'components/notebook/ShellCell.svelte',
-  'components/notebook/media/MediaImageView.svelte',
-  'components/notebook/media/MediaVideoView.svelte',
 ]
 
 function sourceFiles() {

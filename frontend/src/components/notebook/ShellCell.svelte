@@ -215,12 +215,14 @@
   .sh-cwd { flex: 1; min-width: 0; }
   .sh-run, .sh-stop { background: var(--control); color: var(--accent-text-alt); border: 1px solid var(--control-border); border-radius: 6px; padding: 2px 10px; cursor: pointer; font-size: 12px; }
   .sh-run:disabled { opacity: .45; cursor: default; }
-  /* border-color #5a2a2a against var(--control) is 1.35:1 in Blue and 1.40:1
-     in Dark — below the 3:1 UI-component-boundary threshold, a pre-existing
-     weakness carried forward unchanged by the migration, not introduced by
-     it (9.93:1 in Light). No coupled text-legibility risk (it's a border,
-     not text over a themed fill); semantic (danger-adjacent), kept literal. */
-  .sh-stop { color: var(--danger); border-color: #5a2a2a; }
+  /* --stop-btn-border is #5a2a2a in every theme — a near, not exact, match
+     for var(--danger-fill) (#5a1e1e), too close to reuse without tidying
+     Blue. Against var(--control) it's 1.35:1 in Blue, 1.40:1 in Dark — below
+     the 3:1 UI-component-boundary threshold, a pre-existing weakness kept
+     unchanged rather than "fixed" by this migration (9.93:1 in Light,
+     already comfortably clear). No coupled text-legibility risk (it's a
+     border, not text over a themed fill). */
+  .sh-stop { color: var(--danger); border-color: var(--stop-btn-border); }
   .sh-cmd { width: 100%; box-sizing: border-box; background: var(--surface-sunken); color: var(--text); border: none; border-bottom: 1px solid var(--border); padding: 6px 8px; font-family: ui-monospace, monospace; font-size: 12px; resize: vertical; }
   .sh-out { max-height: 320px; overflow: auto; padding: 6px 8px; font-family: ui-monospace, monospace; font-size: 12px; }
   .sh-line { white-space: pre-wrap; word-break: break-word; color: var(--text-shell-output); }
