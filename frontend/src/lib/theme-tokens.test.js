@@ -75,6 +75,15 @@ const ALLOW = {
   // document) — same fallback reasoning as the Theme.js/css-var.js entries
   // above.
   'lib/stats-charts.js': ['#7ecfa0', '#8899aa', '#2a3a4a'],
+  // .omnibar-backdrop is a click-catcher behind the OmniBar dropdown, dimming
+  // arbitrary app content beneath it — no text sits on it, so the "scrim over
+  // content, stays dark in every theme" reasoning is the same as EditCard's
+  // backdrop above, not the explorer's low-alpha family (which had to flip in
+  // Light because it doubles as a background FOR text). arrow-meta is a
+  // self-contained bg+fg pill showing an arrow's MetaType (the arrow's own
+  // category, i.e. data) — 7.31:1 internal contrast, carries its own
+  // legibility into any theme, same carve-out as SourcesSidebar's due tag.
+  'components/OmniBar.svelte': ['rgba(0, 0, 0, 0.35)', '#e4efe9', '#345244'],
 }
 
 // Files not yet converted. Shrinks to nothing across Tasks 2-6; when it is
@@ -90,7 +99,6 @@ const PENDING = [
   'components/LLMSettings.svelte',
   'components/MiddleBand.svelte',
   'components/NodeCard.svelte',
-  'components/OmniBar.svelte',
   'components/QueryAutocomplete.svelte',
   'components/QueryHelpPanel.svelte',
   'components/ReadTab.svelte',

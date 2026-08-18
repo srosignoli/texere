@@ -427,6 +427,41 @@ html {
     --n4l-syntax-label: #a78bfa;
     --n4l-syntax-comment: #4b5563;
     --n4l-syntax-invalid: #f59e0b;
+
+    /* Roles minted tokenising the long tail (Task 5, feature 052) — OmniBar's
+       remaining literals. Method matches the OmniBar/editor family above:
+       Dark via nearest-Blue-neighbour RGB-delta transfer; Light via the same
+       transfer for backgrounds, then hue/saturation-held lightness
+       binary-search for any paired foreground until it clears 4.5:1 against
+       that background (skipped where the transferred value already clears —
+       matches --stat-high's "no reason to move it" precedent). */
+    --mode-badge-bg: #1e3a50;            /* .mode-badge fill (search-mode indicator) */
+    --mode-badge-text: #5a8aaa;          /* .mode-badge label text */
+    --mode-badge-graph-bg: #1a3a2a;      /* .mode-badge.mode-graph fill */
+    --mode-badge-graph-text: #5a9a7a;    /* .mode-badge.mode-graph label text */
+    --mode-badge-graph-border: #2a5a3a;  /* .mode-badge.mode-graph border */
+    /* Matches --surface-overlay's own RGB at alpha 0 — the fade-to-bottom
+       hint at the foot of the results list interpolates into the panel's own
+       background, not a fixed literal, so the fade doesn't fringe once
+       --surface-overlay itself changes per theme. */
+    --surface-overlay-fade: rgba(26, 37, 53, 0);
+    --hint-code-text: #6a9aaa;           /* .omnibar-hint code text */
+    --hint-code-bg: #0f1e2e;             /* .omnibar-hint code / .notes-end-hint code fill */
+    --hint-code-text-alt: #8aa8c9;       /* .notes-end-hint code text (same fill, different hue) */
+    --text-graph-error: #8a4a4a;         /* .graph-error message text */
+    /* Byte-identical to --log-filter-active-bg/border/text (LogPanel, Task
+       4) by coincidence of using the same gold-on-navy "highlighted" family,
+       but minted as OmniBar's own roles rather than reused — that token is
+       documented LogPanel-specific, and retuning it for OmniBar would
+       silently move LogPanel too (same reasoning as --sev-info's comment
+       above). Dark/Light carried over from --log-filter-active-*'s own
+       already-reviewed derivation, since the source literal is identical. */
+    --listing-hint-bg: #1e3242;          /* .listing-hint (did-you-mean) fill */
+    --listing-hint-text: #d8c590;        /* .listing-hint-title text */
+    --omnibar-gold-accent: #c9a96e;      /* .listing-hint border-left, .sequence-context text,
+                                             .note-block-header .note-node-context text — one
+                                             shared "context/highlight" accent used three times
+                                             within OmniBar */
 }
 
 /* --- Dark: neutral near-black. ---------------------------------------------
@@ -616,6 +651,20 @@ html {
     --n4l-syntax-label: #d84e91;
     --n4l-syntax-comment: #758686;
     --n4l-syntax-invalid: #e05318;
+
+    --mode-badge-bg: #203e56;
+    --mode-badge-text: #86aac1;
+    --mode-badge-graph-bg: #102e1b;
+    --mode-badge-graph-text: #5b9c7b;
+    --mode-badge-graph-border: #2c4e23;
+    --surface-overlay-fade: rgba(28, 29, 33, 0);
+    --hint-code-text: #6a9aaa;
+    --hint-code-bg: #141820;
+    --hint-code-text-alt: #8aa8c9;
+    --text-graph-error: #b47373;
+    --listing-hint-bg: #16242f;
+    --listing-hint-text: #ccb36e;
+    --omnibar-gold-accent: #bf9852;
 }
 
 /* --- Light: white-to-grey with dark text. ----------------------------------
@@ -817,6 +866,20 @@ html {
     --n4l-syntax-label: #cd2d7b;
     --n4l-syntax-comment: #637272;
     --n4l-syntax-invalid: #c34815;
+
+    --mode-badge-bg: #bfd7e7;
+    --mode-badge-text: #3d5f76;
+    --mode-badge-graph-bg: #cbead8;
+    --mode-badge-graph-text: #416e58;
+    --mode-badge-graph-border: #2a5a3a;
+    --surface-overlay-fade: rgba(255, 255, 255, 0);
+    --hint-code-text: #466e7c;
+    --hint-code-bg: #e1e8f2;
+    --hint-code-text-alt: #446b94;
+    --text-graph-error: #8a4a4a;
+    --listing-hint-bg: #d5e2ec;
+    --listing-hint-text: #4d401b;
+    --omnibar-gold-accent: #654f26;
 }
 
 /* 2.5D Isometric Graph Explorer (feature 006) — shared semantic palette.
