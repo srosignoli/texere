@@ -254,7 +254,7 @@
   }
 
   .arrow-code {
-    color: #67e8f9;
+    color: var(--n4l-syntax-arrow-code);
     font-family: monospace;
     flex-shrink: 0;
   }

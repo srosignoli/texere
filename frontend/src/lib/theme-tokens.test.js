@@ -91,20 +91,21 @@ const ALLOW = {
   // byte-identical to --ok but kept coupled to its literal background so the
   // pairing's contrast can't drift the moment a theme diverges from Blue.
   'components/SourcesSidebar.svelte': ['#4a3a1a', '#e0b000', '#1a3a2a', '#7ecfa0', '#2c2340', '#b9a3e3'],
+  // .palette-backdrop is the exact same click-catcher scrim as OmniBar's
+  // .omnibar-backdrop above (identical literal, identical role) — same
+  // reasoning.
+  'components/ArrowPalette.svelte': ['rgba(0, 0, 0, 0.35)'],
 }
 
 // Files not yet converted. Shrinks to nothing across Tasks 2-6; when it is
 // empty, Task 6 deletes it and the constant below.
 const PENDING = [
-  'components/ArrowPalette.svelte',
   'components/AskBox.svelte',
   'components/EmptyState.svelte',
   'components/explorer/EditCard.svelte',
   'components/LLMSettings.svelte',
   'components/MiddleBand.svelte',
   'components/NodeCard.svelte',
-  'components/QueryAutocomplete.svelte',
-  'components/QueryHelpPanel.svelte',
   'components/ReadTab.svelte',
   'components/ReminderPanel.svelte',
   'components/SourceTab.svelte',

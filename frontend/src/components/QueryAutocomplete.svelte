@@ -114,7 +114,7 @@
   .qac-label {
     flex: 0 0 auto;
     font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-    color: #67e8f9;
+    color: var(--help-code-text);
     white-space: nowrap;
   }
 

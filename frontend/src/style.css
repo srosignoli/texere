@@ -512,6 +512,20 @@ html {
     --parse-spinner-accent: #3b82f6;
     --ha-btn-text: #7ab0d4;      /* 5.97:1 Blue/Dark against var(--control-active), 4.53:1 Light */
     --arrow-code-text: #5a9abd;  /* 4.93:1 Blue, 5.80:1 Dark against var(--surface), 4.51:1 Light */
+
+    /* QueryHelpPanel + QueryAutocomplete (Task 5) — sibling parts of the same
+       query system, so one shared token. --help-code-text is byte-identical
+       to var(--n4l-syntax-arrow-code) but NOT reused from it directly — that
+       token is the editor's syntax highlighter, an unrelated concern from
+       this pair's inline <code>/match-title/label text; minted separately,
+       values carried over from n4l-syntax-arrow-code's own solve since the
+       source literal is identical (ArrowPalette's .arrow-code, below, is the
+       opposite case: it IS an arrow-code role, so it reuses the token
+       directly rather than re-minting). --help-example-text is a near, not
+       exact, match for var(--ok) (#8fd9a8 vs #7ecfa0) — too close to reuse
+       without silently tidying Blue, so minted on its own. */
+    --help-code-text: #67e8f9;     /* 10.65:1 Blue, 5.33:1 Dark, 5.00:1 Light against --surface-overlay */
+    --help-example-text: #8fd9a8;  /* 9.95:1 Blue/Dark against --surface-block, 4.50:1 Light */
 }
 
 /* --- Dark: neutral near-black. ---------------------------------------------
@@ -732,6 +746,9 @@ html {
     --parse-spinner-accent: #2f7bf5;
     --ha-btn-text: #7ab0d4;
     --arrow-code-text: #5a9abd;
+
+    --help-code-text: #2aa198;
+    --help-example-text: #8fd9a8;
 }
 
 /* --- Light: white-to-grey with dark text. ----------------------------------
@@ -964,6 +981,9 @@ html {
     --parse-spinner-accent: #2976f5;
     --ha-btn-text: #377cab;
     --arrow-code-text: #3d7899;
+
+    --help-code-text: #207c75;
+    --help-example-text: #297844;
 }
 
 /* 2.5D Isometric Graph Explorer (feature 006) — shared semantic palette.
