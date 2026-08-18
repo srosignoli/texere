@@ -103,6 +103,12 @@ const ALLOW = {
   // above — dims arbitrary app content behind the LLM settings modal, no
   // text sits on it.
   'components/LLMSettings.svelte': ['rgba(0,0,0,0.5)'],
+  // .ms-dur overlays a duration badge on an arbitrary thumbnail <img> — like
+  // a video player's duration chip in any app, it needs to stay legible
+  // against unpredictable photo content, not the app's own themed surface,
+  // so it stays a fixed black-scrim-plus-white-text pair in every theme
+  // (same reasoning as the explorer's high-alpha glass-HUD family).
+  'components/notebook/MediaSearchPanel.svelte': ['rgba(0,0,0,0.75)', '#fff'],
 }
 
 // Files not yet converted. Shrinks to nothing across Tasks 2-6; when it is
@@ -112,7 +118,6 @@ const PENDING = [
   'components/EmptyState.svelte',
   'components/Splitter.svelte',
   'components/notebook/ImageCell.svelte',
-  'components/notebook/MediaSearchPanel.svelte',
   'components/notebook/ShellCell.svelte',
   'components/notebook/media/MediaImageView.svelte',
   'components/notebook/media/MediaVideoView.svelte',

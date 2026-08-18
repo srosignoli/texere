@@ -341,7 +341,7 @@
      literal together, a status colour that means the same in every theme, so
      the pairing rule's precondition (background stays literal) holds without
      any risk of the light-on-light bug. */
-  .ms-err { margin-top: 8px; padding: 6px 8px; border: 1px solid #6a3a3a; border-radius: 4px; background: #2a1616; color: #f9c; font-size: 12px; }
+  .ms-err { margin-top: 8px; padding: 6px 8px; border: 1px solid var(--media-err-border); border-radius: 4px; background: var(--media-err-bg); color: var(--media-err-text); font-size: 12px; }
   .ms-note { margin-top: 8px; color: var(--text-quiet); font-size: 12px; }
   .ms-grid { margin-top: 8px; display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; max-height: 320px; overflow-y: auto; }
   .ms-hit { padding: 0; border: 1px solid var(--border); border-radius: 4px; background: var(--surface-sunken); cursor: pointer; overflow: hidden; aspect-ratio: 1; }

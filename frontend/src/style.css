@@ -576,6 +576,18 @@ html {
        var(--accent-text-alt) still clears 4.5:1 against both results
        (6.17:1 Dark, 4.67:1 Light) rather than assumed. */
     --resolve-btn-hover: #1e4a7a;
+
+    /* MediaSearchPanel's .ms-err (Task 5) — no existing token is even a near
+       match. Dark kept identical to Blue (8.72:1, matching the family's "no
+       reason to move it" pattern); Light re-solved the same way as the
+       App.svelte graph-error banner: hue/saturation held, fill lightened to
+       the pastel range, border to ~0.55 lightness, text solved to 4.5:1
+       against the fill. (.ms-dur, MediaSearchPanel's other literal pair, is
+       allowlisted below — it overlays an arbitrary thumbnail image, not a
+       themed surface.) */
+    --media-err-bg: #2a1616;
+    --media-err-border: #6a3a3a;
+    --media-err-text: #ff99cc;  /* 8.72:1 Blue/Dark, 4.53:1 Light */
 }
 
 /* --- Dark: neutral near-black. ---------------------------------------------
@@ -810,6 +822,10 @@ html {
     --reminder-card-text-strong: #92400e;
 
     --resolve-btn-hover: #323c4c;
+
+    --media-err-bg: #2a1616;
+    --media-err-border: #6a3a3a;
+    --media-err-text: #ff99cc;
 }
 
 /* --- Light: white-to-grey with dark text. ----------------------------------
@@ -1056,6 +1072,10 @@ html {
     --reminder-card-text-strong: #92400e;
 
     --resolve-btn-hover: #bddaff;
+
+    --media-err-bg: #eddede;
+    --media-err-border: #ae6b6b;
+    --media-err-text: #c50063;
 }
 
 /* 2.5D Isometric Graph Explorer (feature 006) — shared semantic palette.
