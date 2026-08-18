@@ -53,6 +53,24 @@ const ALLOW = {
   // with no real document) — same reasoning as the Theme.js entry above.
   // Documented at the top of lib/css-var.js.
   'lib/css-var.js': ['#e8eaf0', '#0b1220'],
+  // Chart series colours (Task 4, feature 052). Each identifies a specific
+  // series across the four Stats-focus cards, and .sp-value.ok/.low/.high
+  // (mirroring the matching chart's colour on the small stat badge) reuses
+  // the same three. #7ecfa0 doubles as stats-charts.js's own default series
+  // colour. #e0b000 is the deliberately-shared "amber/high/due" hue decided
+  // once here for all three files that carry it (see StatsPanel.svelte's own
+  // .sp-value.high comment, and this task's report) — data, not chrome, so it
+  // stays literal rather than being tokenised.
+  'components/StatsPanel.svelte': ['#7dd3fc', '#b9a3e3', '#e0b000', '#7ecfa0'],
+  // '#7ecfa0' is the default series colour when a caller doesn't pass one.
+  // Data, not chrome — it identifies a series, the same reasoning as
+  // StatsPanel's chart colours above. '#8899aa'/'#2a3a4a' are TICK_FALLBACK/
+  // GRID_FALLBACK — real chrome (axis ticks/gridlines), now resolved at call
+  // time via cssVar('--text-muted', …)/cssVar('--border', …), but cssVar
+  // still needs a literal to fall back to under node --test (no real
+  // document) — same fallback reasoning as the Theme.js/css-var.js entries
+  // above.
+  'lib/stats-charts.js': ['#7ecfa0', '#8899aa', '#2a3a4a'],
 }
 
 // Files not yet converted. Shrinks to nothing across Tasks 2-6; when it is
@@ -66,7 +84,6 @@ const PENDING = [
   'components/EmptyState.svelte',
   'components/explorer/EditCard.svelte',
   'components/LLMSettings.svelte',
-  'components/LogPanel.svelte',
   'components/MiddleBand.svelte',
   'components/NodeCard.svelte',
   'components/OmniBar.svelte',
@@ -77,13 +94,11 @@ const PENDING = [
   'components/SourceTab.svelte',
   'components/SourcesSidebar.svelte',
   'components/Splitter.svelte',
-  'components/StatsPanel.svelte',
   'components/notebook/ImageCell.svelte',
   'components/notebook/MediaSearchPanel.svelte',
   'components/notebook/ShellCell.svelte',
   'components/notebook/media/MediaImageView.svelte',
   'components/notebook/media/MediaVideoView.svelte',
-  'lib/stats-charts.js',
 ]
 
 function sourceFiles() {

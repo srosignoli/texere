@@ -121,6 +121,23 @@ html {
     --sequence-connector: #4b5563;    /* sequence-node connector line (ReadTab + NodeCard) */
     --text-loc: #7da0c0;              /* monospace file-location text (LogPanel) */
 
+    /* Roles minted finishing LogPanel's severity-filter chip (Task 4, feature
+       052). The active "all/errors/warnings" filter chip is a gold/amber
+       affordance with no existing token: background is a barely-lighter navy
+       wash over --surface-overlay (contrast ~1.17:1 in Blue — the chip mostly
+       reads via its text/border, not the fill), text and border are a warm
+       gold. Method: background derived by holding this literal's own hue/
+       saturation constant and applying the same Blue→Dark / Blue→Light
+       lightness delta --accent (the closest existing "selected chip
+       background" role) undergoes; text and border then solved, hue/
+       saturation held constant, to the same contrast ratio each has against
+       Blue's background, but against the newly-solved Dark/Light background
+       (matches the WCAG-solve method already used above for the OmniBar/
+       editor token families). */
+    --log-filter-active-bg: #1e3242;
+    --log-filter-active-text: #d8c590;
+    --log-filter-active-border: #c9a96e;
+
     /* Roles minted migrating the study and source surfaces (Task 4). */
     --surface-study: #131c29;         /* root/body of the Study & Sources full-panel surfaces; 1 unit
                                           darker in the blue channel than --surface-panel — distinct on
@@ -460,6 +477,10 @@ html {
     --sequence-connector: #424a57;
     --text-loc: #769bbc;
 
+    --log-filter-active-bg: #16242f;
+    --log-filter-active-text: #ccb36e;
+    --log-filter-active-border: #bf9852;
+
     --surface-study: #141516;
     --text-quiet: #81a5a5;
     --text-doc: #c5d0db;
@@ -650,6 +671,10 @@ html {
     --chapter-tree-line: #aec8d6;
     --sequence-connector: #a8b1bd;
     --text-loc: #395975;
+
+    --log-filter-active-bg: #d5e2ec;
+    --log-filter-active-text: #4d401b;
+    --log-filter-active-border: #654f26;
 
     --surface-study: #e9ecf0;
     --text-quiet: #3c5454;

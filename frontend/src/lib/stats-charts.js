@@ -5,8 +5,14 @@
 // has no Svelte component harness, so a config built inside the component would
 // have no tests at all.
 
-const TICK = '#8899aa'
-const GRID = '#2a3a4a'
+import { cssVar } from './css-var.js'
+
+// Fallbacks for when getComputedStyle returns nothing (node --test has no real
+// document) — same reasoning as css-var.js's own fallback constants. Also the
+// values these two chart-chrome roles carry in Blue, so a themeless test
+// environment renders exactly what Blue would.
+const TICK_FALLBACK = '#8899aa'
+const GRID_FALLBACK = '#2a3a4a'
 
 /**
  * @param {{labels?: string[], values?: number[], yLabel: string, unit: string, color?: string}} o
@@ -21,6 +27,16 @@ export function lineConfig(o) {
 }
 
 function config(type, { labels, values, yLabel, unit, color = '#7ecfa0' }) {
+  // Read at call-time (not module load), same as Theme.js / css-var.js: a
+  // config is built fresh on every mount (see StatsPanel.svelte's chart()
+  // action comment), so this always reflects whichever theme is live when the
+  // panel opens. TICK/GRID are chrome — axis ticks and gridlines, byte-
+  // identical to --text-muted/--border's own Blue values, so reusing those
+  // existing tokens is a visual no-op in Blue and a real fix in Light (a
+  // #2a3a4a gridline is nearly black on a light canvas). `color` stays a bare
+  // literal: it identifies which series this is, not a themed surface.
+  const tick = cssVar('--text-muted', TICK_FALLBACK)
+  const grid = cssVar('--border', GRID_FALLBACK)
   return {
     type,
     data: {
@@ -62,14 +78,14 @@ function config(type, { labels, values, yLabel, unit, color = '#7ecfa0' }) {
           // forecast stopped at +12d with a fourteenth bar drawn past it.
           // Thinning from the end instead keeps the most recent bucket labelled,
           // which is the one a reader looks at first.
-          ticks: { color: TICK, maxRotation: 0, autoSkip: false, callback: thinFromEnd },
-          grid: { color: GRID },
+          ticks: { color: tick, maxRotation: 0, autoSkip: false, callback: thinFromEnd },
+          grid: { color: grid },
         },
         y: {
           beginAtZero: true,
-          ticks: { color: TICK, precision: 0 },
-          grid: { color: GRID },
-          title: { display: true, text: yLabel, color: TICK },
+          ticks: { color: tick, precision: 0 },
+          grid: { color: grid },
+          title: { display: true, text: yLabel, color: tick },
         },
       },
     },
