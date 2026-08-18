@@ -2,6 +2,7 @@
   import InlineMedia from './InlineMedia.svelte'
   import MathText from './MathText.svelte'
   import { mediaTokens, stripMediaTokens } from '../lib/n4l-media.js'
+  import Icon from './Icon.svelte'
 
   export let card = null      // CardView | null
   export let onGrade = null   // (n:1..4) => void
@@ -26,7 +27,7 @@
 <svelte:window on:keydown={onKey} />
 
 {#if !card}
-  <div class="rc-center"><p>Nothing due. 🎉</p></div>
+  <div class="rc-center"><p>Nothing due. <Icon name="celebrate" /></p></div>
 {:else}
   <div class="rc-center">
     <div class="rc-card">

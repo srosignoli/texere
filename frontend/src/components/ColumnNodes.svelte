@@ -163,7 +163,6 @@
                   </button>
                   <div class="hover-actions">
                     <button class="ha-btn" on:click|stopPropagation={() => console.log('Promote to Card', node.Line)}>+ Card</button>
-                    <button class="ha-btn" on:click|stopPropagation={() => console.log('Discuss', node.Line)}>💬</button>
                   </div>
                 </div>
                 {#if expanded.has(node.Line)}
@@ -192,7 +191,6 @@
                   </button>
                   <div class="hover-actions">
                     <button class="ha-btn" on:click|stopPropagation={() => console.log('Promote to Card', node.Line)}>+ Card</button>
-                    <button class="ha-btn" on:click|stopPropagation={() => console.log('Discuss', node.Line)}>💬</button>
                   </div>
                 </div>
               {/if}
@@ -216,7 +214,6 @@
               </button>
               <div class="hover-actions">
                 <button class="ha-btn" on:click|stopPropagation={() => console.log('Promote to Card', node.Line)}>+ Card</button>
-                <button class="ha-btn" on:click|stopPropagation={() => console.log('Discuss', node.Line)}>💬</button>
               </div>
             </div>
             {#if expanded.has(node.Line)}
@@ -252,7 +249,6 @@
               </button>
               <div class="hover-actions">
                 <button class="ha-btn" on:click|stopPropagation={() => console.log('Promote to Card', node.Line)}>+ Card</button>
-                <button class="ha-btn" on:click|stopPropagation={() => console.log('Discuss', node.Line)}>💬</button>
               </div>
             </div>
           </div>

@@ -69,3 +69,25 @@ test('every <Icon name=…> in a component exists in ICONS', () => {
   // which is exactly what a renamed prop or a changed tag would cause.
   assert.ok(checked > 0, 'found no <Icon> usages at all; the scan is broken')
 })
+
+const SRC = new URL('../', import.meta.url)
+
+// Astral-plane emoji (U+1F300–U+1FAFF) are the ones with no glyph in the fonts
+// a bare Linux install ships, so they render as tofu boxes. BMP symbols like ⚙
+// and ↩ are fine and deliberately not matched here.
+const ASTRAL = /[\u{1F300}-\u{1FAFF}]/u
+
+test('no astral-plane emoji remain in the UI source', () => {
+  const files = readdirSync(SRC, { recursive: true })
+    .map(String)
+    .filter((f) => (f.endsWith('.svelte') || f.endsWith('.js')) && !f.endsWith('.test.js'))
+  assert.ok(files.length > 0, 'scanned no files; the walk is broken')
+  const offenders = []
+  for (const f of files) {
+    const src = readFileSync(new URL(f, SRC), 'utf8')
+    for (const [i, line] of src.split('\n').entries()) {
+      if (ASTRAL.test(line)) offenders.push(`${f}:${i + 1}: ${line.trim()}`)
+    }
+  }
+  assert.deepEqual(offenders, [], `emoji left in the UI:\n${offenders.join('\n')}`)
+})

@@ -9,6 +9,7 @@
   import ProcessView from './ProcessView.svelte'
   import RecallCard from './RecallCard.svelte'
   import StatsPanel from './StatsPanel.svelte'
+  import Icon from './Icon.svelte'
 
   export let onClose = null
 
@@ -207,7 +208,7 @@
     {:else if $studyFocus === 'stats'}
       <StatsPanel />
     {:else}
-      <div class="ss-empty">Nothing due. 🎉</div>
+      <div class="ss-empty">Nothing due. <Icon name="celebrate" /></div>
     {/if}
   </div>
 </div>
