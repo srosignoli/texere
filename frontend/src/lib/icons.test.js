@@ -1,6 +1,28 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readdirSync, readFileSync } from 'node:fs'
 import { ICONS } from './icons.js'
+
+const COMPONENTS = new URL('../components/', import.meta.url)
+
+function svelteSources() {
+  const files = readdirSync(COMPONENTS, { recursive: true })
+    .map(String)
+    .filter((f) => f.endsWith('.svelte'))
+  return files.map((f) => [f, readFileSync(new URL(f, COMPONENTS), 'utf8')])
+}
+
+// Names reach <Icon> two ways: as a literal (name="save") and inside an
+// expression (name={expanded ? 'collapse' : 'expand'}). Both must be checked,
+// so the expression branch pulls every quoted string out of the braces.
+function iconNamesIn(src) {
+  const names = new Set()
+  for (const m of src.matchAll(/<Icon\b[^>]*?\bname=(?:"([^"]+)"|\{([^}]*)\})/g)) {
+    if (m[1]) names.add(m[1])
+    else for (const q of m[2].matchAll(/'([^']+)'/g)) names.add(q[1])
+  }
+  return names
+}
 
 // The nine names the components reference. Spelled out rather than derived from
 // ICONS itself: a test that reads its expectations out of the thing under test
@@ -33,4 +55,17 @@ test('every icon has a viewBox and at least one non-empty path', () => {
       assert.match(d.trim(), /^[Mm]/, `${name}: path does not start with a move`)
     }
   }
+})
+
+test('every <Icon name=…> in a component exists in ICONS', () => {
+  let checked = 0
+  for (const [file, src] of svelteSources()) {
+    for (const name of iconNamesIn(src)) {
+      checked++
+      assert.ok(ICONS[name], `${file} uses unknown icon "${name}"`)
+    }
+  }
+  // Without this the test passes when the regex silently matches nothing —
+  // which is exactly what a renamed prop or a changed tag would cause.
+  assert.ok(checked > 0, 'found no <Icon> usages at all; the scan is broken')
 })
