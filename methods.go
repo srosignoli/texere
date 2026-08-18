@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -219,8 +220,23 @@ func (a *App) SaveFile(path, fileContent string) (*SaveFileResult, error) {
 	parsed, _ := content.ParseFile(path, a.registry)
 	var injections []content.IDInjection
 	if parsed != nil {
+		// Short IDs are the whole identity key, so uniqueness is collection-wide;
+		// the set of IDs already in use has to come from the whole collection, not
+		// from this file. When no collection is open (a bare file opened directly)
+		// there is no collection to be unique against and taken stays nil, which
+		// falls back to file-scoped uniqueness. A scan error is not fatal for the
+		// same reason a save must not be: it degrades to file-scoped uniqueness
+		// and is logged.
+		var taken map[string]bool
+		if root := a.collectionRoot(); root != "" {
+			var scanErr error
+			taken, scanErr = content.CollectionShortIDs(root)
+			if scanErr != nil {
+				log.Printf("SaveFile: collection id scan: %v", scanErr)
+			}
+		}
 		var err error
-		injections, err = content.InjectMissingIDs(parsed)
+		injections, err = content.InjectMissingIDs(parsed, taken)
 		if err != nil {
 			return nil, fmt.Errorf("SaveFile: inject IDs: %w", err)
 		}

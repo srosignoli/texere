@@ -600,21 +600,12 @@ func TestMain(m *testing.M) {
 // ---------------------------------------------------------------------------
 // T021 additional: NodeID utility
 // ---------------------------------------------------------------------------
-
-func TestNodeIDWithShortID(t *testing.T) {
-	got := NodeID("notes/french.n4l", "vocabulary", "k7mpq9rx")
-	want := "notes/french.n4l:vocabulary:id:k7mpq9rx"
-	if got != want {
-		t.Errorf("want %q, got %q", want, got)
-	}
-}
-
-func TestNodeIDEmptyShortID(t *testing.T) {
-	got := NodeID("notes/french.n4l", "vocabulary", "")
-	if got != "" {
-		t.Errorf("want empty string for untracked node, got %q", got)
-	}
-}
+//
+// TestNodeIDWithShortID and TestNodeIDEmptyShortID used to live here, asserting
+// the old "<path>:<chapter>:id:<short>" format. NodeID dropped the path/chapter
+// parameters (see nodeid.go) and its canonical tests now live in nodeid_test.go
+// (TestNodeIDIsTheShortID, TestNodeIDIsEmptyWithoutAShortID); repeating them
+// here would just be a stale duplicate of the old signature.
 
 func TestGenerateShortIDLength(t *testing.T) {
 	id, err := GenerateShortID()
@@ -858,7 +849,7 @@ func TestInjectMissingIDs(t *testing.T) {
 
 	original := readFileBytes(t, dst)
 
-	injections, err := InjectMissingIDs(pf)
+	injections, err := InjectMissingIDs(pf, nil)
 	if err != nil {
 		t.Fatalf("InjectMissingIDs: %v", err)
 	}
@@ -907,7 +898,7 @@ func TestInjectMissingIDsIdempotent(t *testing.T) {
 	pf, _ := ParseFile(dst, reg)
 
 	// First injection
-	injections1, err := InjectMissingIDs(pf)
+	injections1, err := InjectMissingIDs(pf, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -916,7 +907,7 @@ func TestInjectMissingIDsIdempotent(t *testing.T) {
 
 	// Re-parse and inject again
 	pf2, _ := ParseFile(dst, reg)
-	injections2, err := InjectMissingIDs(pf2)
+	injections2, err := InjectMissingIDs(pf2, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -947,7 +938,7 @@ func TestInjectNodeIDIdempotent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	inj1, err := InjectNodeID(dst, 3)
+	inj1, err := InjectNodeID(dst, 3, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -957,7 +948,7 @@ func TestInjectNodeIDIdempotent(t *testing.T) {
 
 	before := readFileBytes(t, dst)
 
-	inj2, err := InjectNodeID(dst, 4) // line shifted by 1 after injection
+	inj2, err := InjectNodeID(dst, 4, nil) // line shifted by 1 after injection
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -982,7 +973,7 @@ func TestExtractToItemPromotion(t *testing.T) {
 	}
 
 	// Step 1: inject as extract (line 3)
-	extractInj, err := InjectNodeID(dst, 3)
+	extractInj, err := InjectNodeID(dst, 3, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1010,7 +1001,7 @@ func TestExtractToItemPromotion(t *testing.T) {
 	// Step 3: parse and inject as item — should find existing ID (AlreadyHad=true)
 	reg := emptyRegistry()
 	pf, _ := ParseFile(dst, reg)
-	itemInjections, err := InjectMissingIDs(pf)
+	itemInjections, err := InjectMissingIDs(pf, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

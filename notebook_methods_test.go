@@ -219,11 +219,10 @@ func TestFileNodeSpansReturnsSpansForIDBearingNodes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("FileNodeSpans: %v", err)
 	}
-	// NodeSpan.ID carries the fully-qualified content.Node.ID
-	// ("<path>:<chapter>:id:<short>"), not the bare short id, so match on the
-	// suffix rather than an exact "abc".
-	if len(spans) != 1 || !strings.HasSuffix(spans[0].ID, ":C:id:abc") {
-		t.Fatalf("got %+v, want one span whose id ends in :C:id:abc (the plain node has no id)", spans)
+	// NodeSpan.ID carries content.Node.ID verbatim, which is now the bare
+	// short id (see internal/content/nodeid.go), so match it exactly.
+	if len(spans) != 1 || spans[0].ID != "abc" {
+		t.Fatalf("got %+v, want one span with id \"abc\" (the plain node has no id)", spans)
 	}
 }
 
@@ -259,7 +258,7 @@ func TestNotebookMarksMarksOnlyNodesThatHaveANotebook(t *testing.T) {
 	var hasID string
 	for _, ch := range pf.Chapters {
 		for _, n := range ch.Nodes {
-			if strings.HasSuffix(n.ID, ":id:has") {
+			if n.ID == "has" {
 				hasID = n.ID
 			}
 		}

@@ -13,6 +13,18 @@ import (
 func Sync(store *Store, files []string, reg *content.SSTRegistry) (SyncResult, error) {
 	var res SyncResult
 	var skipped []string
+	// Short IDs are the whole identity key now, so they must be unique across the
+	// collection, not merely within a file. One scan of the collection root up
+	// front — not one per file — seeds the set; the injectors add each ID they
+	// issue, so a file later in this pass cannot be handed an ID that a file
+	// earlier in the same pass just took. Scanning the root rather than
+	// accumulating from `files` is deliberate: `files` may be a subset of the
+	// collection, and IDs held by the files outside it are exactly the ones a
+	// per-list scan would miss.
+	taken, err := content.CollectionShortIDs(store.dir)
+	if err != nil {
+		return res, fmt.Errorf("learning: sync: %w", err)
+	}
 	for _, path := range files {
 		pf, _ := content.ParseFile(path, reg)
 		if pf == nil {
@@ -28,7 +40,7 @@ func Sync(store *Store, files []string, reg *content.SSTRegistry) (SyncResult, e
 			return res, fmt.Errorf("learning: sync: %w", err)
 		}
 		// Assign # @id to study-marked nodes missing one (mutates pf in place).
-		injected, err := content.InjectMissingIDs(pf)
+		injected, err := content.InjectMissingIDs(pf, taken)
 		if err != nil {
 			return res, err
 		}
@@ -75,7 +87,7 @@ func Sync(store *Store, files []string, reg *content.SSTRegistry) (SyncResult, e
 		}
 
 		// Extract ids for hand-authored (from) nodes lacking one (writes back).
-		exInjected, err := content.InjectMissingExtractIDs(pf)
+		exInjected, err := content.InjectMissingExtractIDs(pf, taken)
 		if err != nil {
 			return res, err
 		}

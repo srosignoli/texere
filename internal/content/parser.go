@@ -539,7 +539,7 @@ func parseNode(pf *ParsedFile, state *parserState, path, line string, lineNum in
 	var idMarkerLine int
 	if state.pendingIDMarker != "" {
 		idMarkerLine = state.pendingIDLine
-		id = NodeID(path, state.currentChapter.Title, state.pendingIDMarker)
+		id = NodeID(state.pendingIDMarker)
 		state.pendingIDMarker = ""
 		state.pendingIDLine = 0
 	}

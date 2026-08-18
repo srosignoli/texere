@@ -95,7 +95,10 @@ func nodeHasFromArrow(n *Node) bool {
 // Note: after injection the in-memory parsed nodes' line numbers (Line /
 // IDMarkerLine) are NOT shifted to reflect the inserted "# @id" lines. Callers
 // that need line-accurate positions after the rewrite should re-parse the file.
-func InjectMissingExtractIDs(parsed *ParsedFile) ([]IDInjection, error) {
+// taken carries the short IDs already in use elsewhere in the collection (see
+// [CollectionShortIDs]) and learns each ID issued here. Extracts and study items
+// share one ID space, so an ID taken by either blocks the other. It may be nil.
+func InjectMissingExtractIDs(parsed *ParsedFile, taken map[string]bool) ([]IDInjection, error) {
 	lines, err := readLines(parsed.Path)
 	if err != nil {
 		return nil, fmt.Errorf("content: InjectMissingExtractIDs: %w", err)
@@ -104,8 +107,7 @@ func InjectMissingExtractIDs(parsed *ParsedFile) ([]IDInjection, error) {
 	existing := existingIDs(lines)
 
 	type pending struct {
-		chTitle string
-		node    *Node
+		node *Node
 	}
 	var todo []pending
 
@@ -119,7 +121,7 @@ func InjectMissingExtractIDs(parsed *ParsedFile) ([]IDInjection, error) {
 			if !nodeHasFromArrow(n) {
 				continue
 			}
-			todo = append(todo, pending{chTitle: ch.Title, node: n})
+			todo = append(todo, pending{node: n})
 		}
 	}
 
@@ -137,11 +139,11 @@ func InjectMissingExtractIDs(parsed *ParsedFile) ([]IDInjection, error) {
 	for i := 0; i < len(todo); i++ {
 		p := todo[i]
 		n := p.node
-		shortID, err := generateUniqueID(existing, 10)
+		shortID, err := generateUniqueID(existing, taken, 10)
 		if err != nil {
 			return nil, err
 		}
-		existing[shortID] = true
+		claimID(existing, taken, shortID)
 		assigns[i] = assigned{p: p, shortID: shortID, insertAt: n.Line}
 	}
 
@@ -157,7 +159,7 @@ func InjectMissingExtractIDs(parsed *ParsedFile) ([]IDInjection, error) {
 			InsertBefore: true,
 		})
 		n.IDMarkerLine = a.insertAt
-		n.ID = NodeID(parsed.Path, a.p.chTitle, a.shortID)
+		n.ID = NodeID(a.shortID)
 	}
 
 	newLines := applyOps(lines, ops)

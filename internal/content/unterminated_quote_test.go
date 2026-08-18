@@ -58,7 +58,7 @@ func TestUnterminatedDoubleQuoteDoesNotSwallowTheRestOfTheFile(t *testing.T) {
 			if strings.Contains(n.Text, "# @card") || strings.Contains(n.Text, "# @id") {
 				t.Errorf("marker lines were swallowed into node text: %q", n.Text)
 			}
-			if strings.HasSuffix(n.ID, ":id:keepme") {
+			if n.ID == "keepme" {
 				found = true
 				if n.StudyMeta == nil {
 					t.Error("node keepme lost its # @card StudyMeta")
@@ -133,10 +133,10 @@ func TestQuoteBlockDoesNotSwallowStructuralLines(t *testing.T) {
 			if strings.Contains(n.Text, "# @id") {
 				t.Errorf("marker line swallowed into node text: %.80q", n.Text)
 			}
-			if strings.HasSuffix(n.ID, ":id:keepme") {
+			if n.ID == "keepme" {
 				keep = true
 			}
-			if strings.HasSuffix(n.ID, ":id:later") {
+			if n.ID == "later" {
 				later = true
 			}
 		}
@@ -153,7 +153,7 @@ func TestQuoteBlockDoesNotSwallowStructuralLines(t *testing.T) {
 	// present but unspanned would still show "No notebook for this line".
 	var spanned bool
 	for _, s := range NodeSpans(pf) {
-		if strings.HasSuffix(s.ID, ":id:keepme") {
+		if s.ID == "keepme" {
 			spanned = true
 		}
 	}

@@ -48,7 +48,7 @@ func TestSeededCardTextExcludesTheProvenanceDitto(t *testing.T) {
 	var n *Node
 	for ci := range pf.Chapters {
 		for ni := range pf.Chapters[ci].Nodes {
-			if strings.HasSuffix(pf.Chapters[ci].Nodes[ni].ID, ":id:e1") {
+			if pf.Chapters[ci].Nodes[ni].ID == "e1" {
 				n = &pf.Chapters[ci].Nodes[ni]
 			}
 		}
