@@ -256,6 +256,28 @@ html {
                                           var(--fg-2, #d8d8d8); --fg-2 is undefined anywhere in the
                                           codebase, the same vestigial-stub pattern as --bg-1 */
 
+    /* Roles minted completing the explorer DOM chrome (Task 2, feature 052).
+       These finish what the Task 5b review left literal — the ≥0.85-alpha
+       "glass" panels (MiniMap/ExplorerStats/ExplorerLegend bodies,
+       GraphExplorer's empty-card/tooltips/freeze-pill) reuse --surface-raised
+       / --surface-overlay above (their values are close in spirit, not
+       byte-identical to the old literals — this pass intentionally lets
+       those panels go properly light in Light rather than staying
+       permanently dark glass, which is the point of finishing the theme).
+       The tokens below are for chrome with no existing role at all. */
+    --explorer-control: #1f2630;         /* small HUD control/chip surface: sidebar reset button,
+                                             kbd hint chip */
+    --explorer-control-active: #2a3340;  /* hover/active fill of that control */
+    --explorer-divider: #243040;         /* hairline rule inside an explorer HUD panel (sidebar
+                                             "All" row, minimap hover-bar) */
+    --explorer-input-underline: #45607a; /* rest-state dashed underline of an editable stat cell
+                                             (ExplorerStats Limit/Radius inputs) */
+    --explorer-input-underline-hover: #6b8db0; /* the same, hovered */
+    --surface-raised-hover: #1e2430;     /* hover fill of a --surface-raised panel (freeze-pill) */
+    --explorer-viewport-fill: rgba(255, 255, 255, 0.06); /* MiniMap's camera-viewport rectangle
+                                             wash — a light tint on a dark floor in Blue/Dark;
+                                             Light flips to a dark tint since its floor is light */
+
     /* --- Explorer, themeable half (see the shared block below) ---------- */
     --explorer-label: #e8eaf0;
     --explorer-label-halo: #0e0f12;
@@ -423,6 +445,14 @@ html {
     --media-hover-border: #6c7f95;
     --text-control-muted: #5b5e66;
     --text-media-error: #dd8888;
+
+    --explorer-control: #202226;
+    --explorer-control-active: #2c2f35;
+    --explorer-divider: #232529;
+    --explorer-input-underline: #4a5a68;
+    --explorer-input-underline-hover: #6f88a0;
+    --surface-raised-hover: #262930;
+    --explorer-viewport-fill: rgba(255, 255, 255, 0.06);
 
     --explorer-canvas-bg: #0b0c0f;
     --editor-active-line: #1f3248;
@@ -593,6 +623,14 @@ html {
     --text-control-muted: #9fb0c0;
     --text-media-error: #952b2b;
 
+    --explorer-control: #dde3ec;
+    --explorer-control-active: #ccd4e0;
+    --explorer-divider: #d3d8e0;
+    --explorer-input-underline: #8a9cb0;
+    --explorer-input-underline-hover: #5f7a94;
+    --surface-raised-hover: #eef0f4;
+    --explorer-viewport-fill: rgba(20, 30, 45, 0.08);
+
     --explorer-canvas-bg: #e5e8ec;
     --editor-active-line: #c2d2e4;
     --text-iso-message: #44505f;
@@ -671,6 +709,16 @@ html {
     --explorer-territory-5: #e03a8a; /* hot pink */
     --explorer-territory-6: #e0c83a; /* gold */
     --explorer-territory-7: #3ae0e0; /* cyan */
+
+    /* Roles minted finishing NodeMeshes.js's move to Theme.js as the single
+     * source of truth (Task 2, feature 052) and MiniMap's two remaining
+     * literals. Same family as the palette above — data colours, not
+     * chrome — so :root-only, no per-theme override. */
+    --explorer-cycle-glyph: #f4b545;   /* cycle-warning glyph fill (amber) */
+    --explorer-cycle-halo: #1a1306;    /* cycle-warning glyph stroke/halo */
+    --explorer-territory-none: #3a4555; /* MiniMap swatch when a layer has no territory slot */
+    --explorer-row-hover: rgba(108, 180, 238, 0.12); /* MiniMap legend row hover tint — the same
+                                          hue as --explorer-node-default at low alpha */
 }
 
 body {

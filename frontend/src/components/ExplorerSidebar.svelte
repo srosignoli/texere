@@ -238,7 +238,7 @@
     height: 32px;
     background: var(--explorer-scrim);
     color: var(--text);
-    border: 1px solid #334455;
+    border: 1px solid var(--border-strong);
     border-radius: 16px;
     font-size: 14px;
     cursor: pointer;
@@ -258,13 +258,13 @@
     width: 280px;
     max-height: calc(100vh - 24px);
     overflow-y: auto;
-    background: rgba(20, 24, 32, 0.94);
-    border: 1px solid #334455;
+    background: var(--surface-raised);
+    border: 1px solid var(--border-strong);
     border-radius: 8px;
     padding: 12px 14px;
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
     z-index: 5;
-    color: #e8eaf0;
+    color: var(--text);
     font-size: 12px;
   }
 
@@ -284,7 +284,7 @@
     width: 22px;
     height: 22px;
     background: transparent;
-    color: #aab4c2;
+    color: var(--help-lead-text);
     border: 1px solid transparent;
     border-radius: 11px;
     font-size: 12px;
@@ -294,8 +294,8 @@
   }
 
   .close-btn:hover {
-    border-color: #334455;
-    color: #e8eaf0;
+    border-color: var(--border-strong);
+    color: var(--text);
   }
 
   .section {
@@ -318,7 +318,7 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: #aab4c2;
+    color: var(--help-lead-text);
   }
 
   .section-badge {
@@ -357,7 +357,7 @@
   }
 
   .row-all {
-    border-bottom: 1px solid #243040;
+    border-bottom: 1px solid var(--explorer-divider);
     padding-bottom: 4px;
     margin-bottom: 2px;
   }
@@ -366,7 +366,7 @@
     text-transform: uppercase;
     font-size: 10px;
     letter-spacing: 0.06em;
-    color: #aab4c2;
+    color: var(--help-lead-text);
   }
 
   .row-label {
@@ -402,8 +402,8 @@
   }
 
   .solo-btn:hover {
-    border-color: #334455;
-    color: #e8eaf0;
+    border-color: var(--border-strong);
+    color: var(--text);
   }
 
   .text-btn {
@@ -433,7 +433,7 @@
     grid-column: 1;
     grid-row: 1;
     font-size: 11px;
-    color: #aab4c2;
+    color: var(--help-lead-text);
   }
 
   .slider-row .slider-value {
@@ -441,7 +441,7 @@
     grid-row: 1;
     font-variant-numeric: tabular-nums;
     font-size: 11px;
-    color: #e8eaf0;
+    color: var(--text);
   }
 
   .slider-row input[type='range'] {
@@ -455,16 +455,16 @@
     margin-top: 6px;
     width: 100%;
     padding: 6px 8px;
-    background: #1f2630;
-    color: #e8eaf0;
-    border: 1px solid #334455;
+    background: var(--explorer-control);
+    color: var(--text);
+    border: 1px solid var(--border-strong);
     border-radius: 4px;
     cursor: pointer;
     font-size: 12px;
   }
 
   .reset-btn:hover {
-    background: #2a3340;
+    background: var(--explorer-control-active);
   }
 
   /* Layout-mode radio group (Stacked / Extended). Rendered as a
@@ -479,12 +479,12 @@
   }
   .mode-label {
     font-size: 11px;
-    color: #aab4c2;
+    color: var(--help-lead-text);
   }
   .mode-buttons {
     display: inline-flex;
-    background: #1a2028;
-    border: 1px solid #334455;
+    background: var(--surface-inset);
+    border: 1px solid var(--border-strong);
     border-radius: 4px;
     overflow: hidden;
   }
@@ -494,7 +494,7 @@
     justify-content: center;
     padding: 4px 10px;
     font-size: 11px;
-    color: #aab4c2;
+    color: var(--help-lead-text);
     cursor: pointer;
     user-select: none;
     transition: background 0.12s, color 0.12s;
@@ -511,11 +511,11 @@
     border: 0;
   }
   .mode-btn.active {
-    background: #2a3340;
-    color: #e8eaf0;
+    background: var(--explorer-control-active);
+    color: var(--text);
   }
   .mode-btn:hover:not(.active) {
-    background: #232a35;
-    color: #d8dde8;
+    background: var(--chip-hover);
+    color: var(--help-body-text);
   }
 </style>

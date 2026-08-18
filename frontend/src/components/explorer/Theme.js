@@ -34,6 +34,8 @@ const DEFAULTS = {
   labelSub: 'rgba(200, 214, 230, 0.7)',
   planeGrid: 0x6b7c95,
   planeTint: 0x1f2a3a,
+  cycleGlyph: '#f4b545',
+  cycleHalo: '#1a1306',
 
   territory: [
     0xe07a3a,
@@ -156,4 +158,16 @@ export function getLabelHaloColor() {
 
 export function getLabelSubColor() {
   return cssStringFromVar('--explorer-label-sub', DEFAULTS.labelSub)
+}
+
+// Cycle-warning glyph fill/halo. Same theme-invariant family as
+// getEdgeColor/getTerritoryPalette above — declared in the :root-only data
+// block, no per-theme override — but CSS strings like the label resolvers
+// since NodeMeshes.js feeds them straight to canvas2d fillStyle/strokeStyle.
+export function getCycleGlyphColor() {
+  return cssStringFromVar('--explorer-cycle-glyph', DEFAULTS.cycleGlyph)
+}
+
+export function getCycleGlyphHaloColor() {
+  return cssStringFromVar('--explorer-cycle-halo', DEFAULTS.cycleHalo)
 }

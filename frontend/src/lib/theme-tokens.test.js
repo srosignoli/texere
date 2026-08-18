@@ -30,8 +30,19 @@ const ALLOW = {
   // Fallbacks for when getComputedStyle returns nothing (a test environment
   // with no real document). Documented at the top of Theme.js. The 0x… values
   // beside them are Three.js hex integers, not CSS colours, and COLOUR does not
-  // match them — which is correct, they are not styling anything.
-  'components/explorer/Theme.js': ['#e8eaf0', '#0e0f12', 'rgba(200, 214, 230, 0.7)'],
+  // match them — which is correct, they are not styling anything. The last two
+  // (cycleGlyph/cycleHalo) were added moving NodeMeshes.js's two literals
+  // behind resolvers (Task 2, feature 052) — same fallback reasoning as the
+  // other three.
+  'components/explorer/Theme.js': ['#e8eaf0', '#0e0f12', 'rgba(200, 214, 230, 0.7)', '#f4b545', '#1a1306'],
+  // .editcard-backdrop dims the arbitrary 3D graph scene behind the modal for
+  // readability — same "scrim over content" reasoning as the rgba(0,0,0,0.6)
+  // case (Task 2 brief), so it stays dark in every theme rather than
+  // inverting in Light. #e0b000 is the app-wide "amber" notice hue that
+  // StatsPanel/SourcesSidebar also keep literal on purpose (see the comment
+  // on .editcard-ambiguous) — minting a texere-explorer-only token here would
+  // drift it from that shared hue.
+  'components/explorer/EditCard.svelte': ['rgba(10, 16, 26, 0.72)', '#e0b000'],
 }
 
 // Files not yet converted. Shrinks to nothing across Tasks 2-6; when it is
@@ -43,14 +54,9 @@ const PENDING = [
   'components/ColumnContextTags.svelte',
   'components/ColumnNodes.svelte',
   'components/EmptyState.svelte',
-  'components/ExplorerLegend.svelte',
-  'components/ExplorerSidebar.svelte',
-  'components/ExplorerStats.svelte',
-  'components/GraphExplorer.svelte',
   'components/LLMSettings.svelte',
   'components/LogPanel.svelte',
   'components/MiddleBand.svelte',
-  'components/MiniMap.svelte',
   'components/NodeCard.svelte',
   'components/OmniBar.svelte',
   'components/QueryAutocomplete.svelte',
@@ -61,8 +67,6 @@ const PENDING = [
   'components/SourcesSidebar.svelte',
   'components/Splitter.svelte',
   'components/StatsPanel.svelte',
-  'components/explorer/EditCard.svelte',
-  'components/explorer/NodeMeshes.js',
   'components/notebook/ImageCell.svelte',
   'components/notebook/MediaSearchPanel.svelte',
   'components/notebook/ShellCell.svelte',

@@ -1614,7 +1614,7 @@
     height: 32px;
     background: var(--explorer-scrim);
     color: var(--text);
-    border: 1px solid #334455;
+    border: 1px solid var(--border-strong);
     border-radius: 16px;
     font-size: 14px;
     cursor: pointer;
@@ -1642,8 +1642,8 @@
   }
 
   .explorer-ask {
-    background: rgba(0, 0, 0, 0.6);
-    border: 1px solid #334455;
+    background: var(--explorer-scrim-strong);
+    border: 1px solid var(--border-strong);
     border-radius: 10px;
     overflow: hidden;
   }
@@ -1652,8 +1652,8 @@
     display: flex;
     gap: 6px;
     padding: 6px;
-    background: rgba(0, 0, 0, 0.6);
-    border: 1px solid #334455;
+    background: var(--explorer-scrim-strong);
+    border: 1px solid var(--border-strong);
     border-radius: 10px;
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
   }
@@ -1668,9 +1668,9 @@
   .explorer-querybar input {
     flex: 1;
     min-width: 0;
-    background: rgba(12, 14, 20, 0.9);
-    color: #e8eaf0;
-    border: 1px solid #2a3a4a;
+    background: var(--surface-overlay);
+    color: var(--text);
+    border: 1px solid var(--border);
     border-radius: 6px;
     padding: 7px 10px;
     font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace);
@@ -1679,7 +1679,7 @@
   }
 
   .explorer-querybar input:focus {
-    border-color: #4a7bd0;
+    border-color: var(--accent-primary);
   }
 
   .explorer-querybar button {
@@ -1687,7 +1687,7 @@
     width: 34px;
     background: var(--explorer-scrim);
     color: var(--text);
-    border: 1px solid #334455;
+    border: 1px solid var(--border-strong);
     border-radius: 6px;
     font-size: 14px;
     cursor: pointer;
@@ -1716,10 +1716,10 @@
     pointer-events: auto;
     max-width: 560px;
     padding: 20px 24px;
-    background: rgba(20, 24, 32, 0.92);
-    border: 1px solid #334455;
+    background: var(--surface-raised);
+    border: 1px solid var(--border-strong);
     border-radius: 8px;
-    color: #e8eaf0;
+    color: var(--text);
     font-size: 13px;
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
     text-align: left;
@@ -1746,7 +1746,7 @@
 
   .empty-meta code {
     overflow-wrap: anywhere;
-    color: #a8c4ff;
+    color: var(--accent-text);
   }
 
   .empty-label {
@@ -1758,19 +1758,19 @@
   }
 
   .empty-hint {
-    color: #aab4c2;
+    color: var(--help-lead-text);
     font-size: 12px;
     line-height: 1.5;
   }
 
   .empty-hint kbd {
-    background: #1f2630;
-    border: 1px solid #334455;
+    background: var(--explorer-control);
+    border: 1px solid var(--border-strong);
     border-radius: 3px;
     padding: 1px 5px;
     font-family: ui-monospace, monospace;
     font-size: 11px;
-    color: #d8dde8;
+    color: var(--help-body-text);
   }
 
   /* 2D HTML tooltip for the hovered node's full (untruncated) text.
@@ -1782,9 +1782,9 @@
     transform: translate(-50%, calc(-100% - 16px));
     max-width: 320px;
     padding: 6px 10px;
-    background: rgba(20, 24, 32, 0.94);
-    color: #e8eaf0;
-    border: 1px solid #334455;
+    background: var(--surface-raised);
+    color: var(--text);
+    border: 1px solid var(--border-strong);
     border-radius: 6px;
     font-size: 12px;
     line-height: 1.45;
@@ -1802,9 +1802,9 @@
     transform: translate(12px, -100%);
     max-width: 320px;
     padding: 6px 10px;
-    background: rgba(20, 24, 32, 0.94);
-    color: #e8eaf0;
-    border: 1px solid #334455;
+    background: var(--surface-raised);
+    color: var(--text);
+    border: 1px solid var(--border-strong);
     border-radius: 6px;
     font-size: 12px;
     line-height: 1.4;
@@ -1818,7 +1818,7 @@
   .edge-tooltip-meta {
     margin-top: 3px;
     font-size: 10px;
-    color: #aab4c2;
+    color: var(--help-lead-text);
     font-variant-numeric: tabular-nums;
     text-transform: lowercase;
     letter-spacing: 0.04em;
@@ -1833,9 +1833,9 @@
     transform: translate(12px, -100%);
     max-width: 360px;
     padding: 6px 10px;
-    background: rgba(20, 24, 32, 0.94);
-    color: #e8eaf0;
-    border: 1px solid #334455;
+    background: var(--surface-raised);
+    color: var(--text);
+    border: 1px solid var(--border-strong);
     border-radius: 6px;
     font-size: 12px;
     line-height: 1.4;
@@ -1849,7 +1849,7 @@
   .layer-tooltip-tags {
     margin-top: 3px;
     font-size: 11px;
-    color: #d8dde8;
+    color: var(--help-body-text);
   }
   .layer-tooltip-meta {
     margin-top: 3px;
@@ -1882,8 +1882,8 @@
     align-items: center;
     gap: 8px;
     padding: 6px 12px;
-    background: rgba(20, 24, 32, 0.92);
-    color: #e8eaf0;
+    background: var(--surface-raised);
+    color: var(--text);
     border: 1px solid var(--explorer-node-default);
     border-radius: 14px;
     font-size: 12px;
@@ -1893,7 +1893,7 @@
     z-index: 5;
   }
   .freeze-pill:hover {
-    background: rgba(30, 36, 48, 0.95);
+    background: var(--surface-raised-hover);
   }
   .freeze-icon {
     color: var(--explorer-node-default);
