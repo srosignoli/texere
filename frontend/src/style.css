@@ -483,6 +483,35 @@ html {
     --graph-banner-done-border: #2a7a3a;
     --graph-banner-error-bg: #4a1a1a;       /* text is var(--danger): 5.95:1 Blue/Dark, 4.84:1 Light */
     --graph-banner-error-border: #7a2a2a;
+
+    /* ColumnContextTags's chip states (Task 5). .chip.cursor-at reuses
+       var(--row-cursor-bg) for its background — byte-identical to the
+       literal it replaced, and the same "cursor-position highlight" role
+       the token already documents. --chip-cursor-text is its paired label.
+       .chip.sequence.active's triad is its own family: Dark kept identical
+       to Blue (a saturated green accent, same "no reason to move it"
+       pattern as --danger/--ok); Light re-solved, hue/saturation held, fill
+       lightened to the pastel-badge range, border solved to 3:1 (a
+       non-text UI-component minimum) and text to 4.5:1 against it. */
+    --chip-cursor-text: #b0c4d8;             /* 6.98:1 Blue/Dark against --row-cursor-bg, 8.39:1 Light */
+    --chip-sequence-active-bg: #1a3020;
+    --chip-sequence-active-border: #4ade80;  /* 8.10:1 Blue/Dark, 3.02:1 Light (border, not text) */
+    --chip-sequence-active-text: #86efac;    /* 10.05:1 Blue/Dark, 4.50:1 Light */
+
+    /* ColumnNodes (Task 5). .ha-btn's background and .arrow-target's colour
+       both byte-match existing tokens with a genuinely matching role —
+       var(--control-active) (a small toolbar control's fill) and
+       var(--n4l-syntax-arrow-target) (this literally IS an arrow-target
+       colour, same concept the N4L grammar highlighter uses it for) — so
+       both are reused directly rather than re-minted. The parse-spinner's
+       accent is NOT reused from var(--seq-num) despite being byte-identical:
+       that token is documented for sequence step-number text specifically,
+       and a spinner ring is an unrelated concern; minted separately but its
+       Dark/Light carried over from --seq-num's own already-solved values
+       since the source literal is identical. */
+    --parse-spinner-accent: #3b82f6;
+    --ha-btn-text: #7ab0d4;      /* 5.97:1 Blue/Dark against var(--control-active), 4.53:1 Light */
+    --arrow-code-text: #5a9abd;  /* 4.93:1 Blue, 5.80:1 Dark against var(--surface), 4.51:1 Light */
 }
 
 /* --- Dark: neutral near-black. ---------------------------------------------
@@ -694,6 +723,15 @@ html {
     --graph-banner-done-border: #2a7a3a;
     --graph-banner-error-bg: #4a1a1a;
     --graph-banner-error-border: #7a2a2a;
+
+    --chip-cursor-text: #a5bcd2;
+    --chip-sequence-active-bg: #1a3020;
+    --chip-sequence-active-border: #4ade80;
+    --chip-sequence-active-text: #86efac;
+
+    --parse-spinner-accent: #2f7bf5;
+    --ha-btn-text: #7ab0d4;
+    --arrow-code-text: #5a9abd;
 }
 
 /* --- Light: white-to-grey with dark text. ----------------------------------
@@ -917,6 +955,15 @@ html {
     --graph-banner-done-border: #54c46b;
     --graph-banner-error-bg: #f2d9d9;
     --graph-banner-error-border: #c45454;
+
+    --chip-cursor-text: #1f3346;
+    --chip-sequence-active-bg: #e5f1e8;
+    --chip-sequence-active-border: #1d9d4c;
+    --chip-sequence-active-text: #117d38;
+
+    --parse-spinner-accent: #2976f5;
+    --ha-btn-text: #377cab;
+    --arrow-code-text: #3d7899;
 }
 
 /* 2.5D Isometric Graph Explorer (feature 006) — shared semantic palette.

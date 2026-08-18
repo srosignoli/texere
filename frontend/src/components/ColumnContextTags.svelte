@@ -174,9 +174,9 @@
   }
 
   .chip.sequence.active {
-    background: #1a3020;
-    border-color: #4ade80;
-    color: #86efac;
+    background: var(--chip-sequence-active-bg);
+    border-color: var(--chip-sequence-active-border);
+    color: var(--chip-sequence-active-text);
   }
 
   .seq-icon {
@@ -184,8 +184,8 @@
   }
 
   .chip.cursor-at:not(.active) {
-    background: #1e3550;
+    background: var(--row-cursor-bg);
     border-color: var(--accent-faint);
-    color: #b0c4d8;
+    color: var(--chip-cursor-text);
   }
 </style>

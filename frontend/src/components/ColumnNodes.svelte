@@ -292,7 +292,7 @@
     width: 10px;
     height: 10px;
     border: 2px solid var(--border);
-    border-top-color: #3b82f6;
+    border-top-color: var(--parse-spinner-accent);
     border-radius: 50%;
     animation: spin 0.7s linear infinite;
     flex-shrink: 0;
@@ -442,10 +442,10 @@
 
   .ha-btn {
     padding: 2px 6px;
-    background: #1a2d45;
+    background: var(--control-active);
     border: 1px solid var(--control-border);
     border-radius: 3px;
-    color: #7ab0d4;
+    color: var(--ha-btn-text);
     font-size: 0.7rem;
     cursor: pointer;
   }
@@ -468,7 +468,7 @@
   }
 
   .arrow-code {
-    color: #5a9abd;
+    color: var(--arrow-code-text);
     font-weight: 600;
     white-space: nowrap;
     flex-shrink: 0;
@@ -481,7 +481,7 @@
   }
 
   .arrow-target {
-    color: #86efac;
+    color: var(--n4l-syntax-arrow-target);
     overflow-wrap: anywhere;
   }
 
