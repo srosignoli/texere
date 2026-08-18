@@ -57,9 +57,9 @@
   }
 
   .node-card.reminder {
-    background: #fef3c7;
+    background: var(--reminder-card-bg);
     border-left: 3px solid var(--warn);
-    color: #1c1100;
+    color: var(--reminder-card-text);
   }
 
   .node-card.sequence-node {
@@ -74,7 +74,7 @@
   }
 
   .node-card.reminder .node-text {
-    color: #92400e;
+    color: var(--reminder-card-text-strong);
     font-weight: 600;
   }
 
@@ -110,7 +110,7 @@
   }
 
   .arrow-dd {
-    color: #86efac;
+    color: var(--n4l-syntax-arrow-target);
     margin: 0;
     overflow-wrap: anywhere;
   }

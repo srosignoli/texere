@@ -202,6 +202,6 @@
   }
 
   .resolve-btn:hover {
-    background: #1e4a7a;
+    background: var(--resolve-btn-hover);
   }
 </style>

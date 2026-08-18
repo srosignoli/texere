@@ -101,7 +101,7 @@
 
   /* Amber reminder override — applied via NodeCard .reminder class */
   :global(.node-card.reminder) {
-    background: #fef3c7;
+    background: var(--reminder-card-bg);
     border-left: 3px solid var(--warn);
   }
 

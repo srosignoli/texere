@@ -551,6 +551,31 @@ html {
        amber button" the same way white text would, without abandoning the
        anchor hue. */
     --text-on-warn: #1c1100;        /* 8.66:1 Blue/Dark against var(--warn), 4.51:1 Light */
+
+    /* The reminder-card highlight (NodeCard.svelte's .node-card.reminder,
+       reapplied via :global() in ReadTab.svelte — one shared token, not two
+       copies of the literal). Deliberately theme-invariant, the same
+       "recognisable regardless of which theme it's viewed in" reasoning as
+       the sketch-pen swatches (Task 3): a pale highlighter/sticky-note card
+       distinguishing a reminder from ordinary notes should look the same
+       highlighter-yellow whether the surrounding app is Blue, Dark or
+       Light, and its hue is far enough from all three --surface values that
+       it never blends in. --arrow-dd is NOT part of this family — byte-
+       identical to var(--n4l-syntax-arrow-target) with the same genuine
+       "this is an arrow's target" role, so reused directly. */
+    --reminder-card-bg: #fef3c7;
+    --reminder-card-text: #1c1100;         /* 16.70:1 — unchanged in every theme */
+    --reminder-card-text-strong: #92400e;  /* 6.37:1 — unchanged in every theme */
+
+    /* .resolve-btn:hover (ReminderPanel). Near, not exact, match for
+       var(--accent-hover) (#1e4a7a vs #244a72) — too close to reuse without
+       tidying Blue. Dark/Light via nearest-neighbour delta transfer from
+       --accent-hover, since the two roles (a hovered accent chip, a hovered
+       resolve button) are close enough in kind that its own already-solved
+       ageing is a reasonable donor; verified the paired
+       var(--accent-text-alt) still clears 4.5:1 against both results
+       (6.17:1 Dark, 4.67:1 Light) rather than assumed. */
+    --resolve-btn-hover: #1e4a7a;
 }
 
 /* --- Dark: neutral near-black. ---------------------------------------------
@@ -779,6 +804,12 @@ html {
     --warn-banner-text: #fde68a;
     --warn-banner-hover: #92400e;
     --text-on-warn: #1c1100;
+
+    --reminder-card-bg: #fef3c7;
+    --reminder-card-text: #1c1100;
+    --reminder-card-text-strong: #92400e;
+
+    --resolve-btn-hover: #323c4c;
 }
 
 /* --- Light: white-to-grey with dark text. ----------------------------------
@@ -1019,6 +1050,12 @@ html {
     --warn-banner-text: #7c6402;
     --warn-banner-hover: #f6c2a2;
     --text-on-warn: #fff1da;
+
+    --reminder-card-bg: #fef3c7;
+    --reminder-card-text: #1c1100;
+    --reminder-card-text-strong: #92400e;
+
+    --resolve-btn-hover: #bddaff;
 }
 
 /* 2.5D Isometric Graph Explorer (feature 006) — shared semantic palette.
