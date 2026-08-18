@@ -28,13 +28,16 @@ export async function bakeSketch(cell) {
   out.width = w
   out.height = h
   const ctx = out.getContext('2d')
-  // Bake onto the background the strokes were actually drawn against —
-  // resolved from the theme at bake time, same as the ink itself (see
-  // sketch-render.js). A fixed dark background here would silently erase a
-  // Light-theme sketch's dark strokes in the saved file, permanently and
-  // after the fact: the on-screen canvas (.sk-wrap) already tracks the theme
-  // via --surface-sunken, and --sketch-bg is defined to match it per theme,
-  // so the baked PNG reproduces exactly what the artist saw while drawing.
+  // Resolve the background from the CURRENT theme at bake time, matching
+  // --sketch-bg to --surface-sunken (the same token .sk-wrap's on-screen
+  // canvas already uses) so a sketch baked in the theme it was drawn in
+  // keeps its strokes visible — strictly better than a background fixed to
+  // one theme's literal, which would silently erase the OTHER theme's ink
+  // every time. This is NOT a guarantee for every case: each stroke's colour
+  // is a literal stored on the stroke at draw time and is never re-resolved
+  // (see sketch-render.js), so a sketch drawn in one theme and then baked
+  // after switching to another can still bake low-contrast — the strokes
+  // keep the ink they were drawn with, only the background moves.
   ctx.fillStyle = sketchBgColor()
   ctx.fillRect(0, 0, w, h)
   ctx.drawImage(strokeCanvas, 0, 0)
