@@ -24,6 +24,13 @@ func NodeID(shortID string) string {
 	return shortID
 }
 
+// newShortID is the source of new short IDs. It exists as a variable so tests
+// can make issuance deterministic — a uniqueness guarantee cannot be tested
+// against a random source, because a collision that the code fails to prevent
+// is improbable rather than impossible and the test would pass on luck.
+// Production code never reassigns it.
+var newShortID = GenerateShortID
+
 // GenerateShortID produces a cryptographically random 8-character base-36 string
 // from the alphabet [0-9a-z].
 func GenerateShortID() (string, error) {

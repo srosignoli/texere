@@ -133,19 +133,32 @@ func existingIDs(lines []string) map[string]bool {
 	return ids
 }
 
-// generateUniqueID generates a unique short ID not present in the given set.
+// generateUniqueID generates a short ID present in neither of the given sets:
+// existing holds the IDs of the file being written, taken the IDs in use
+// anywhere else in the collection (see [CollectionShortIDs]). taken may be nil,
+// in which case only the current file constrains the result.
 // Retries up to maxTries times.
-func generateUniqueID(existing map[string]bool, maxTries int) (string, error) {
+func generateUniqueID(existing, taken map[string]bool, maxTries int) (string, error) {
 	for i := 0; i < maxTries; i++ {
-		id, err := GenerateShortID()
+		id, err := newShortID()
 		if err != nil {
 			return "", err
 		}
-		if !existing[id] {
+		if !existing[id] && !taken[id] {
 			return id, nil
 		}
 	}
 	return "", fmt.Errorf("content: could not generate unique ID after %d attempts", maxTries)
+}
+
+// claimID records a newly issued ID in both sets. taken must learn about it too:
+// one Sync pass injects into many files, and an ID written into the first file
+// was not in the set scanned before the pass began.
+func claimID(existing, taken map[string]bool, id string) {
+	existing[id] = true
+	if taken != nil {
+		taken[id] = true
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -159,8 +172,13 @@ func generateUniqueID(existing map[string]bool, maxTries int) (string, error) {
 // On success, the ParsedFile passed in is mutated to reflect the new IDs.
 // On error, the file is untouched.
 //
+// taken carries the short IDs already in use elsewhere in the collection (see
+// [CollectionShortIDs]); newly issued IDs are added to it so a caller injecting
+// into several files in one pass never reissues one. It may be nil, which
+// restricts uniqueness to this file alone.
+//
 // Caller: app.go on every Ctrl+S save event (FR-019).
-func InjectMissingIDs(parsed *ParsedFile) ([]IDInjection, error) {
+func InjectMissingIDs(parsed *ParsedFile, taken map[string]bool) ([]IDInjection, error) {
 	lines, err := readLines(parsed.Path)
 	if err != nil {
 		return nil, fmt.Errorf("content: InjectMissingIDs: %w", err)
@@ -179,19 +197,19 @@ func InjectMissingIDs(parsed *ParsedFile) ([]IDInjection, error) {
 			}
 			if node.ID != "" {
 				injections = append(injections, IDInjection{
-					FilePath:  parsed.Path,
-					NodeLine:  node.Line,
-					ShortID:   extractShortID(node.ID),
+					FilePath:   parsed.Path,
+					NodeLine:   node.Line,
+					ShortID:    extractShortID(node.ID),
 					AlreadyHad: true,
 				})
 				continue
 			}
 
-			shortID, err := generateUniqueID(existing, 10)
+			shortID, err := generateUniqueID(existing, taken, 10)
 			if err != nil {
 				return nil, err
 			}
-			existing[shortID] = true
+			claimID(existing, taken, shortID)
 
 			// Find insertion point: just above the closest preceding study marker
 			insertAt := findStudyMarkerAbove(lines, node.Line)
@@ -269,8 +287,11 @@ func extractShortID(id string) string {
 // Idempotent: if the node already has a "# @id" marker, returns the existing
 // IDInjection with AlreadyHad=true and no file modification.
 //
+// taken carries the short IDs already in use elsewhere in the collection (see
+// [CollectionShortIDs]) and learns the ID issued here. It may be nil.
+//
 // Caller: internal/learning scheduler (FR-019b).
-func InjectNodeID(path string, nodeLineNumber int) (*IDInjection, error) {
+func InjectNodeID(path string, nodeLineNumber int, taken map[string]bool) (*IDInjection, error) {
 	lines, err := readLines(path)
 	if err != nil {
 		return nil, fmt.Errorf("content: InjectNodeID: %w", err)
@@ -287,10 +308,11 @@ func InjectNodeID(path string, nodeLineNumber int) (*IDInjection, error) {
 	}
 
 	existing := existingIDs(lines)
-	shortID, err := generateUniqueID(existing, 10)
+	shortID, err := generateUniqueID(existing, taken, 10)
 	if err != nil {
 		return nil, err
 	}
+	claimID(existing, taken, shortID)
 
 	insertAt := findStudyMarkerAbove(lines, nodeLineNumber)
 

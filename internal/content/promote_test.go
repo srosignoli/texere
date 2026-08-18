@@ -37,7 +37,7 @@ func TestInjectMissingExtractIDs(t *testing.T) {
 	os.WriteFile(p, []byte(body), 0o644)
 	reg := &SSTRegistry{Arrows: map[string]ArrowDef{"from": {Code: "from", LongName: "from"}}}
 	pf, _ := ParseFile(p, reg)
-	injs, err := InjectMissingExtractIDs(pf)
+	injs, err := InjectMissingExtractIDs(pf, nil)
 	if err != nil || len(injs) != 1 {
 		t.Fatalf("InjectMissingExtractIDs n=%d err=%v want 1", len(injs), err)
 	}
@@ -73,7 +73,7 @@ func TestInjectMissingExtractIDsForwardOrder(t *testing.T) {
 	os.WriteFile(p, []byte(body), 0o644)
 	reg := &SSTRegistry{Arrows: map[string]ArrowDef{"from": {Code: "from", LongName: "from"}}}
 	pf, _ := ParseFile(p, reg)
-	injs, err := InjectMissingExtractIDs(pf)
+	injs, err := InjectMissingExtractIDs(pf, nil)
 	if err != nil || len(injs) != 2 {
 		t.Fatalf("len=%d err=%v want 2", len(injs), err)
 	}
