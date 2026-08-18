@@ -136,11 +136,17 @@ export const reminderCount = derived(workbenchStore, ($w) => {
   return $w.parsedFile?.Reminders?.length ?? 0
 })
 
-/** omnibarMode — null = closed, 'fuzzy' = Ctrl+K, 'graph' = Ctrl+Shift+K */
+/**
+ * omnibarMode — null = closed, 'fuzzy' = Ctrl+K, 'graph' = Ctrl+Shift+K
+ *
+ * There used to be an `omnibarOpen` alias beside this — `{ subscribe:
+ * omnibarMode.subscribe }`, kept "for any existing imports". It read like a
+ * boolean store and wasn't one: it had no `update`, and MiddleBand's Search
+ * button called `omnibarOpen.update(v => !v)`, which threw and blanked the
+ * whole webview on every click. By the time that was found the alias had no
+ * importers left, so it is gone rather than repaired. Toggle the mode directly.
+ */
 export const omnibarMode = writable(/** @type {null|'fuzzy'|'graph'} */ (null))
-
-/** omnibarOpen — legacy alias kept for any existing imports; derive from mode. */
-export const omnibarOpen = { subscribe: omnibarMode.subscribe }
 
 /**
  * editorAPI — live reference to SourceTab's imperative methods.

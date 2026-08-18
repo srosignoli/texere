@@ -1,7 +1,7 @@
 <script>
   import { createEventDispatcher } from 'svelte'
   import { OpenCollection, PickCollectionDir, CreateNewFile } from '../../wailsjs/go/main/App'
-  import { workbenchStore, reminderCount, omnibarOpen, editorAPI } from '../stores/workbench.js'
+  import { workbenchStore, reminderCount, omnibarMode, editorAPI } from '../stores/workbench.js'
   import { explorerOpen, explorerQuery } from '../stores/explorer.js'
   import { studySurfaceOpen, studyFocus } from '../stores/study.js'
   import ReminderPanel from './ReminderPanel.svelte'
@@ -60,7 +60,13 @@
   }
 
   function handleSearch() {
-    omnibarOpen.update(v => !v)
+    // Exactly what Ctrl+K does (OmniBar.svelte:152) — the button's title
+    // advertises that shortcut, so it must not diverge from it. omnibarMode is
+    // null | 'fuzzy' | 'graph', not a boolean: the previous
+    // omnibarOpen.update(v => !v) threw, because omnibarOpen is a
+    // subscribe-only alias with no update method, and the throw blanked the
+    // whole webview.
+    omnibarMode.update(m => m === 'fuzzy' ? null : 'fuzzy')
   }
 
   function handleUndo() {
