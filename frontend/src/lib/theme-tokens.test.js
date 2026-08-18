@@ -43,6 +43,16 @@ const ALLOW = {
   // carry the same literal and still need the shared-amber decision made, so
   // EditCard stays pending alongside them rather than pre-empting it.)
   'components/explorer/EditCard.svelte': ['rgba(10, 16, 26, 0.72)'],
+  // The four non-default sketch swatches (SketchCell.svelte, Task 3, feature
+  // 052). Deliberately theme-invariant: they read on both a dark and a light
+  // canvas, and per-theme accents would make a saved sketch look different
+  // depending on which theme it is reopened in. Only the first swatch (the
+  // default pen) is themed, via the --sketch-ink token.
+  'components/notebook/SketchCell.svelte': ['#f59e0b', '#7dd3fc', '#ff6b6b', '#10b981'],
+  // Fallbacks for when getComputedStyle returns nothing (a test environment
+  // with no real document) — same reasoning as the Theme.js entry above.
+  // Documented at the top of lib/css-var.js.
+  'lib/css-var.js': ['#e8eaf0', '#0b1220'],
 }
 
 // Files not yet converted. Shrinks to nothing across Tasks 2-6; when it is
@@ -71,11 +81,8 @@ const PENDING = [
   'components/notebook/ImageCell.svelte',
   'components/notebook/MediaSearchPanel.svelte',
   'components/notebook/ShellCell.svelte',
-  'components/notebook/SketchCell.svelte',
   'components/notebook/media/MediaImageView.svelte',
   'components/notebook/media/MediaVideoView.svelte',
-  'lib/bake.js',
-  'lib/sketch-render.js',
   'lib/stats-charts.js',
 ]
 

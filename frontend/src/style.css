@@ -318,6 +318,19 @@ html {
                                              --help-body-text (#d8e0ea, QueryHelpPanel's body copy)
                                              but not equal to it */
 
+    /* Roles minted theming the sketch cell (Task 3, feature 052). Blue's
+       values are byte-identical to the two literals they replace (the pen's
+       '#e8eaf0' and bake.js's SKETCH_BG '#0b1220'), so Blue is unchanged.
+       --sketch-ink pairs with --text's per-theme value: near-white in
+       Blue/Dark, near-black in Light, so the default pen is always visible
+       on the canvas. --sketch-bg pairs with --surface-sunken's per-theme
+       value — the same token .sk-wrap already uses for the on-screen canvas
+       background — so lib/bake.js flattens a sketch onto the exact surface
+       it was drawn against, in every theme, and a Light-theme sketch's dark
+       ink survives baking rather than vanishing onto a fixed dark PNG. */
+    --sketch-ink: #e8eaf0;
+    --sketch-bg: #0b1220;
+
     /* --- Explorer, themeable half (see the shared block below) ---------- */
     --explorer-label: #e8eaf0;
     --explorer-label-halo: #0e0f12;
@@ -504,6 +517,9 @@ html {
     --explorer-minimap-canvas-bg: #0c1114;
     --explorer-hint-text: #a1acbc;
     --explorer-detail-text: #cdd4e2;
+
+    --sketch-ink: #e8e8ea;
+    --sketch-bg: #0b0c0e;
 
     --explorer-canvas-bg: #0b0c0f;
     --editor-active-line: #1f3248;
@@ -693,6 +709,9 @@ html {
     --explorer-minimap-canvas-bg: #e6edf1;
     --explorer-hint-text: #465161;
     --explorer-detail-text: #2c354a;
+
+    --sketch-ink: #14181f;
+    --sketch-bg: #e4e7ec;
 
     --explorer-canvas-bg: #e5e8ec;
     --editor-active-line: #c2d2e4;

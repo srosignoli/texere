@@ -3,6 +3,7 @@
   import { renderStrokes, fitTransform } from '../../lib/sketch-render.js'
   import TranscribeBar from './TranscribeBar.svelte'
   import { bakeSketch } from '../../lib/bake.js'
+  import { sketchInkColor } from '../../lib/css-var.js'
   import Icon from '../Icon.svelte'
 
   export let cell
@@ -13,7 +14,12 @@
   export let onPush = () => {} // unused; shared cell prop set
   export let onInsert = () => {}
 
-  const COLORS = ['#e8eaf0', '#f59e0b', '#7dd3fc', '#ff6b6b', '#10b981']
+  // First swatch is the theme's default ink (near-white in Blue/Dark,
+  // near-black in Light — see --sketch-ink in style.css); the other four are
+  // deliberately theme-invariant so they read on both backgrounds and a
+  // saved sketch doesn't change appearance depending on which theme it is
+  // reopened in.
+  const COLORS = [sketchInkColor(), '#f59e0b', '#7dd3fc', '#ff6b6b', '#10b981']
   const SIZES = { pen: 3, highlighter: 14 }
 
   let wrap, canvas, ctx, ro

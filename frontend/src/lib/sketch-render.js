@@ -1,4 +1,5 @@
 import { getStroke } from 'perfect-freehand'
+import { sketchInkColor } from './css-var.js'
 
 const STROKE_OPTS = { thinning: 0.6, smoothing: 0.5, streamline: 0.5, simulatePressure: true }
 
@@ -52,7 +53,9 @@ export function renderStrokes(ctx, strokes, { width, height, dpr = 1, logicalW =
       ctx.globalAlpha = 0.35
       ctx.globalCompositeOperation = 'multiply'
     }
-    ctx.fillStyle = s.color ?? '#e8eaf0'
+    // A legacy stroke with no stored colour draws in the CURRENT theme's ink
+    // (resolved fresh on every render call) rather than always near-white.
+    ctx.fillStyle = s.color ?? sketchInkColor()
     ctx.fill(path)
     ctx.restore()
   }

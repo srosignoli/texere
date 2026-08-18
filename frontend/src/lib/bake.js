@@ -1,9 +1,9 @@
 // bake.js — render a sketch or image cell to a downscaled base64 image for
 // multimodal LLM turns. Returns { mediaType, data } with data = base64 (no prefix).
 import { renderStrokes } from './sketch-render.js'
+import { sketchBgColor } from './css-var.js'
 
 const MAX_EDGE = 1568 // Anthropic's recommended max long edge
-const SKETCH_BG = '#0b1220' // dark bg preserves contrast for light strokes
 
 function loadImage(src) {
   return new Promise((resolve, reject) => {
@@ -28,7 +28,14 @@ export async function bakeSketch(cell) {
   out.width = w
   out.height = h
   const ctx = out.getContext('2d')
-  ctx.fillStyle = SKETCH_BG
+  // Bake onto the background the strokes were actually drawn against —
+  // resolved from the theme at bake time, same as the ink itself (see
+  // sketch-render.js). A fixed dark background here would silently erase a
+  // Light-theme sketch's dark strokes in the saved file, permanently and
+  // after the fact: the on-screen canvas (.sk-wrap) already tracks the theme
+  // via --surface-sunken, and --sketch-bg is defined to match it per theme,
+  // so the baked PNG reproduces exactly what the artist saw while drawing.
+  ctx.fillStyle = sketchBgColor()
   ctx.fillRect(0, 0, w, h)
   ctx.drawImage(strokeCanvas, 0, 0)
   return { mediaType: 'image/png', data: out.toDataURL('image/png').split(',')[1] }
