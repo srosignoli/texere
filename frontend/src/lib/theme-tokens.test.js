@@ -95,6 +95,11 @@ const ALLOW = {
   // .omnibar-backdrop above (identical literal, identical role) — same
   // reasoning.
   'components/ArrowPalette.svelte': ['rgba(0, 0, 0, 0.35)'],
+  // .banner-btn.dismiss: a neutral dark chip sitting on the amber
+  // .ext-mod-banner strip, documented in-file (SourceTab.svelte:568-569) as
+  // a self-contained bg+fg pair kept literal so the two halves cannot drift
+  // apart per theme — same reasoning as SourcesSidebar's status tags.
+  'components/SourceTab.svelte': ['#44403c', '#e8eaf0'],
 }
 
 // Files not yet converted. Shrinks to nothing across Tasks 2-6; when it is
@@ -104,11 +109,9 @@ const PENDING = [
   'components/EmptyState.svelte',
   'components/explorer/EditCard.svelte',
   'components/LLMSettings.svelte',
-  'components/MiddleBand.svelte',
   'components/NodeCard.svelte',
   'components/ReadTab.svelte',
   'components/ReminderPanel.svelte',
-  'components/SourceTab.svelte',
   'components/Splitter.svelte',
   'components/notebook/ImageCell.svelte',
   'components/notebook/MediaSearchPanel.svelte',

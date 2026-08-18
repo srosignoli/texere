@@ -214,13 +214,13 @@
   }
 
   .reminder-badge {
-    background: #78350f;
+    background: var(--warn-banner-bg);
     border-color: var(--warn);
-    color: #fde68a;
+    color: var(--warn-banner-text);
     font-weight: 600;
   }
 
   .reminder-badge:hover {
-    background: #92400e;
+    background: var(--warn-banner-hover);
   }
 </style>

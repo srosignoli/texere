@@ -541,8 +541,8 @@
     align-items: center;
     gap: 8px;
     padding: 6px 12px;
-    background: #78350f;
-    color: #fde68a;
+    background: var(--warn-banner-bg);
+    color: var(--warn-banner-text);
     font-size: 0.82rem;
     flex-shrink: 0;
   }
@@ -561,7 +561,7 @@
 
   .banner-btn.reload {
     background: var(--warn);
-    color: #1c1100;
+    color: var(--text-on-warn);
   }
 
   .banner-btn.dismiss {

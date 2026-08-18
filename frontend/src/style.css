@@ -526,6 +526,31 @@ html {
        without silently tidying Blue, so minted on its own. */
     --help-code-text: #67e8f9;     /* 10.65:1 Blue, 5.33:1 Dark, 5.00:1 Light against --surface-overlay */
     --help-example-text: #8fd9a8;  /* 9.95:1 Blue/Dark against --surface-block, 4.50:1 Light */
+
+    /* Shared "external modification" amber warning banner (SourceTab's
+       .ext-mod-banner, MiddleBand's .reminder-badge — same literal bg/text
+       in both files, one token pair rather than two). Dark kept identical to
+       Blue (already clears 7.28:1, matching the family's "no reason to move
+       it" pattern); Light's fill lightened to the pastel-badge range and its
+       text re-solved, hue/saturation held, to 4.5:1 against it.
+       --warn-banner-text is NOT reused from the byte-identical
+       var(--n4l-syntax-marker) — that token is the editor's syntax
+       highlighter and its own Dark/Light don't clear 4.5:1 against this
+       pairing's background, confirming it's the wrong role to borrow from
+       even before the "unrelated concern" rule rules it out. */
+    --warn-banner-bg: #78350f;
+    --warn-banner-text: #fde68a;    /* 7.28:1 Blue/Dark, 4.52:1 Light */
+    --warn-banner-hover: #92400e;   /* MiddleBand's .reminder-badge:hover */
+    /* SourceTab's .banner-btn.reload sits directly on var(--warn), not on
+       --warn-banner-bg. Blue's dark-on-amber pairing (8.66:1) cannot reach
+       4.5:1 against Light's var(--warn) (#b45309, a materially darker
+       orange than Blue's #f59e0b — solving BLACK against it caps at
+       4.18:1) — so Light flips direction instead of merely darkening:
+       hue/saturation held from the Blue literal, lightened to a pale cream
+       (4.51:1), which reads correctly as "light text on a saturated
+       amber button" the same way white text would, without abandoning the
+       anchor hue. */
+    --text-on-warn: #1c1100;        /* 8.66:1 Blue/Dark against var(--warn), 4.51:1 Light */
 }
 
 /* --- Dark: neutral near-black. ---------------------------------------------
@@ -749,6 +774,11 @@ html {
 
     --help-code-text: #2aa198;
     --help-example-text: #8fd9a8;
+
+    --warn-banner-bg: #78350f;
+    --warn-banner-text: #fde68a;
+    --warn-banner-hover: #92400e;
+    --text-on-warn: #1c1100;
 }
 
 /* --- Light: white-to-grey with dark text. ----------------------------------
@@ -984,6 +1014,11 @@ html {
 
     --help-code-text: #207c75;
     --help-example-text: #297844;
+
+    --warn-banner-bg: #f9e0d2;
+    --warn-banner-text: #7c6402;
+    --warn-banner-hover: #f6c2a2;
+    --text-on-warn: #fff1da;
 }
 
 /* 2.5D Isometric Graph Explorer (feature 006) — shared semantic palette.
