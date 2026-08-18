@@ -1758,7 +1758,7 @@
   }
 
   .empty-hint {
-    color: var(--help-lead-text);
+    color: var(--explorer-hint-text);
     font-size: 12px;
     line-height: 1.5;
   }
@@ -1770,7 +1770,7 @@
     padding: 1px 5px;
     font-family: ui-monospace, monospace;
     font-size: 11px;
-    color: var(--help-body-text);
+    color: var(--explorer-detail-text);
   }
 
   /* 2D HTML tooltip for the hovered node's full (untruncated) text.
@@ -1818,7 +1818,7 @@
   .edge-tooltip-meta {
     margin-top: 3px;
     font-size: 10px;
-    color: var(--help-lead-text);
+    color: var(--explorer-hint-text);
     font-variant-numeric: tabular-nums;
     text-transform: lowercase;
     letter-spacing: 0.04em;
@@ -1849,7 +1849,7 @@
   .layer-tooltip-tags {
     margin-top: 3px;
     font-size: 11px;
-    color: var(--help-body-text);
+    color: var(--explorer-detail-text);
   }
   .layer-tooltip-meta {
     margin-top: 3px;

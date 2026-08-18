@@ -284,7 +284,7 @@
     width: 22px;
     height: 22px;
     background: transparent;
-    color: var(--help-lead-text);
+    color: var(--explorer-hint-text);
     border: 1px solid transparent;
     border-radius: 11px;
     font-size: 12px;
@@ -318,7 +318,7 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: var(--help-lead-text);
+    color: var(--explorer-hint-text);
   }
 
   .section-badge {
@@ -366,7 +366,7 @@
     text-transform: uppercase;
     font-size: 10px;
     letter-spacing: 0.06em;
-    color: var(--help-lead-text);
+    color: var(--explorer-hint-text);
   }
 
   .row-label {
@@ -433,7 +433,7 @@
     grid-column: 1;
     grid-row: 1;
     font-size: 11px;
-    color: var(--help-lead-text);
+    color: var(--explorer-hint-text);
   }
 
   .slider-row .slider-value {
@@ -479,11 +479,11 @@
   }
   .mode-label {
     font-size: 11px;
-    color: var(--help-lead-text);
+    color: var(--explorer-hint-text);
   }
   .mode-buttons {
     display: inline-flex;
-    background: var(--surface-inset);
+    background: var(--explorer-segment-bg);
     border: 1px solid var(--border-strong);
     border-radius: 4px;
     overflow: hidden;
@@ -494,7 +494,7 @@
     justify-content: center;
     padding: 4px 10px;
     font-size: 11px;
-    color: var(--help-lead-text);
+    color: var(--explorer-hint-text);
     cursor: pointer;
     user-select: none;
     transition: background 0.12s, color 0.12s;
@@ -515,7 +515,7 @@
     color: var(--text);
   }
   .mode-btn:hover:not(.active) {
-    background: var(--chip-hover);
-    color: var(--help-body-text);
+    background: var(--explorer-segment-hover);
+    color: var(--explorer-detail-text);
   }
 </style>

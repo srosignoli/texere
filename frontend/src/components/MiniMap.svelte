@@ -149,7 +149,7 @@
         y={worldBox.minZ}
         width={worldBox.maxX - worldBox.minX}
         height={worldBox.maxZ - worldBox.minZ}
-        style="fill: var(--explorer-canvas-bg); stroke: var(--border-strong);"
+        style="fill: var(--explorer-minimap-canvas-bg); stroke: var(--border-strong);"
         stroke-width="0.3"
         vector-effect="non-scaling-stroke" />
       {#each layers as l (l.contextId)}
@@ -240,7 +240,7 @@
   }
   .hover-tags {
     font-size: 10px;
-    color: var(--help-lead-text);
+    color: var(--explorer-hint-text);
     padding: 0 4px 4px;
     line-height: 1.35;
   }

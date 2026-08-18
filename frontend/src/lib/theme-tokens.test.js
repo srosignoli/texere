@@ -38,11 +38,11 @@ const ALLOW = {
   // .editcard-backdrop dims the arbitrary 3D graph scene behind the modal for
   // readability — same "scrim over content" reasoning as the rgba(0,0,0,0.6)
   // case (Task 2 brief), so it stays dark in every theme rather than
-  // inverting in Light. #e0b000 is the app-wide "amber" notice hue that
-  // StatsPanel/SourcesSidebar also keep literal on purpose (see the comment
-  // on .editcard-ambiguous) — minting a texere-explorer-only token here would
-  // drift it from that shared hue.
-  'components/explorer/EditCard.svelte': ['rgba(10, 16, 26, 0.72)', '#e0b000'],
+  // inverting in Light. (#e0b000, EditCard's other literal, is NOT allowlisted
+  // here — see PENDING below: StatsPanel.svelte and SourcesSidebar.svelte
+  // carry the same literal and still need the shared-amber decision made, so
+  // EditCard stays pending alongside them rather than pre-empting it.)
+  'components/explorer/EditCard.svelte': ['rgba(10, 16, 26, 0.72)'],
 }
 
 // Files not yet converted. Shrinks to nothing across Tasks 2-6; when it is
@@ -54,6 +54,7 @@ const PENDING = [
   'components/ColumnContextTags.svelte',
   'components/ColumnNodes.svelte',
   'components/EmptyState.svelte',
+  'components/explorer/EditCard.svelte',
   'components/LLMSettings.svelte',
   'components/LogPanel.svelte',
   'components/MiddleBand.svelte',

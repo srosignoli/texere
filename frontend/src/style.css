@@ -278,6 +278,46 @@ html {
                                              wash — a light tint on a dark floor in Blue/Dark;
                                              Light flips to a dark tint since its floor is light */
 
+    /* MiniMap's legend row hover/active tint (Task 2 review fix, feature 052).
+       Was minted :root-only in the data-colour block below on the theory that
+       its base hue (--explorer-node-default) is a data colour; but the ROLE is
+       "this row is hovered" — an interaction affordance, i.e. chrome, not data
+       — so it belongs here, themed. Blue/Dark keep the original low-alpha
+       tint (it reads fine over both themes' dark --surface-raised); Light
+       needs a stronger tint or it nearly vanishes over the white
+       --surface-raised there (0.12 composites to ~#edf6fd on white). */
+    --explorer-row-hover: rgba(108, 180, 238, 0.12);
+
+    /* Roles minted fixing Task 2's review — five explorer literals that were
+       reused from an existing token whose Blue value was close but not
+       byte-identical, which silently "tidied" Blue (forbidden by this file's
+       own header). Each is its own role, anchored to the ORIGINAL literal in
+       Blue; Dark/Light are derived by holding the anchor's hue/saturation
+       constant and applying the same lightness delta the reused sibling
+       token underwent between its own Blue and Dark/Light values — i.e. the
+       new token ages the same way its near-neighbour does, without ever
+       equalling Blue to that neighbour's exact pixels. */
+    --explorer-segment-bg: #1a2028;      /* ExplorerSidebar's Stacked/Extended segmented-control
+                                             container — near --surface-inset (#101826) but not
+                                             equal to it, and --surface-inset is already spoken for
+                                             (AskBox, ShellCell, NotebookPane, …) */
+    --explorer-segment-hover: #232a35;   /* hover fill of an unselected segment in that control —
+                                             near --chip-hover (#253545) but not equal to it, and
+                                             --chip-hover is already spoken for (ColumnContextTags,
+                                             SettingsMenu) */
+    --explorer-minimap-canvas-bg: #0e1418; /* MiniMap's own opaque SVG backdrop rect — near
+                                             --explorer-canvas-bg (#0e0f12, the 3D canvas's root
+                                             background) but not equal to it; kept as its own role
+                                             so the two floors stay independently editable */
+    --explorer-hint-text: #aab4c2;       /* label/hint text across the explorer HUD (sidebar
+                                             labels, empty-state hint, tooltip meta lines,
+                                             MiniMap hover-tags) — near --help-lead-text (#aab8c6,
+                                             QueryHelpPanel's lead paragraph) but not equal to it */
+    --explorer-detail-text: #d8dde8;     /* secondary/detail text on the same HUD (kbd chip text,
+                                             layer-tooltip tag list, hovered segment label) — near
+                                             --help-body-text (#d8e0ea, QueryHelpPanel's body copy)
+                                             but not equal to it */
+
     /* --- Explorer, themeable half (see the shared block below) ---------- */
     --explorer-label: #e8eaf0;
     --explorer-label-halo: #0e0f12;
@@ -453,6 +493,17 @@ html {
     --explorer-input-underline-hover: #6f88a0;
     --surface-raised-hover: #262930;
     --explorer-viewport-fill: rgba(255, 255, 255, 0.06);
+
+    /* Dark's own canvas backdrop is near-black too, same as Blue's — the
+       low-alpha row-hover tint stays correct unchanged (see the Blue block's
+       comment for why Light differs). */
+    --explorer-row-hover: rgba(108, 180, 238, 0.12);
+
+    --explorer-segment-bg: #12161b;
+    --explorer-segment-hover: #191e26;
+    --explorer-minimap-canvas-bg: #0c1114;
+    --explorer-hint-text: #a1acbc;
+    --explorer-detail-text: #cdd4e2;
 
     --explorer-canvas-bg: #0b0c0f;
     --editor-active-line: #1f3248;
@@ -631,6 +682,18 @@ html {
     --surface-raised-hover: #eef0f4;
     --explorer-viewport-fill: rgba(20, 30, 45, 0.08);
 
+    /* Stronger than Blue/Dark's 0.12 — at 0.12 this composites to ~#edf6fd
+       over Light's white --surface-raised, which is nearly invisible as a
+       hover cue. 0.4 composites to ~#c4e1f8, comparable in strength to
+       --accent-hover (#c3dafd) — clearly visible without being a heavy fill. */
+    --explorer-row-hover: rgba(108, 180, 238, 0.4);
+
+    --explorer-segment-bg: #f2f4f6;
+    --explorer-segment-hover: #d4dae3;
+    --explorer-minimap-canvas-bg: #e6edf1;
+    --explorer-hint-text: #465161;
+    --explorer-detail-text: #2c354a;
+
     --explorer-canvas-bg: #e5e8ec;
     --editor-active-line: #c2d2e4;
     --text-iso-message: #44505f;
@@ -711,14 +774,15 @@ html {
     --explorer-territory-7: #3ae0e0; /* cyan */
 
     /* Roles minted finishing NodeMeshes.js's move to Theme.js as the single
-     * source of truth (Task 2, feature 052) and MiniMap's two remaining
-     * literals. Same family as the palette above — data colours, not
-     * chrome — so :root-only, no per-theme override. */
+     * source of truth (Task 2, feature 052) and MiniMap's remaining data
+     * literal. Same family as the palette above — data colours, not
+     * chrome — so :root-only, no per-theme override.
+     * (MiniMap's row-hover tint was minted here too originally, but its role
+     * is an interaction affordance, not data — moved to the themed block
+     * above in the Task 2 review fix; see the comment there.) */
     --explorer-cycle-glyph: #f4b545;   /* cycle-warning glyph fill (amber) */
     --explorer-cycle-halo: #1a1306;    /* cycle-warning glyph stroke/halo */
     --explorer-territory-none: #3a4555; /* MiniMap swatch when a layer has no territory slot */
-    --explorer-row-hover: rgba(108, 180, 238, 0.12); /* MiniMap legend row hover tint — the same
-                                          hue as --explorer-node-default at low alpha */
 }
 
 body {
