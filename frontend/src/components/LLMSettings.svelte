@@ -199,8 +199,13 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath fill='%23cdd6e2' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
     background-repeat: no-repeat; background-position: right 9px center;
   }
-  /* Native select popup option list — out of scope, see above. */
-  .ov-form select option { background: #0b1220; color: #e8eaf0; }
+  /* Native select popup option list. The chevron/appearance styling above
+     stays untouched (color-scheme-driven, per that comment) but this
+     explicit option fallback was hardcoded to Blue's dark palette, which
+     fights color-scheme once Light flips it to light — reuses the general
+     --surface-sunken/--text tokens (byte-identical to the literals here in
+     Blue) so the option list follows the active theme instead. */
+  .ov-form select option { background: var(--surface-sunken); color: var(--text); }
   .ov-actions { flex-direction: row; display: flex; gap: 8px; }
   .skills { display: flex; flex-direction: column; gap: 8px; }
   .hint { color: var(--text-faint); font-size: 12px; margin: 0 0 4px; }

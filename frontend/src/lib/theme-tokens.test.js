@@ -38,10 +38,9 @@ const ALLOW = {
   // .editcard-backdrop dims the arbitrary 3D graph scene behind the modal for
   // readability — same "scrim over content" reasoning as the rgba(0,0,0,0.6)
   // case (Task 2 brief), so it stays dark in every theme rather than
-  // inverting in Light. (#e0b000, EditCard's other literal, is NOT allowlisted
-  // here — see PENDING below: StatsPanel.svelte and SourcesSidebar.svelte
-  // carry the same literal and still need the shared-amber decision made, so
-  // EditCard stays pending alongside them rather than pre-empting it.)
+  // inverting in Light. (#e0b000, EditCard's other literal, is NOT
+  // allowlisted — it was bare chrome text at 1.77:1 in Light, per the Task 5
+  // ruling; it now reads var(--stat-high) instead, see EditCard.svelte.)
   'components/explorer/EditCard.svelte': ['rgba(10, 16, 26, 0.72)'],
   // The four non-default sketch swatches (SketchCell.svelte, Task 3, feature
   // 052). Deliberately theme-invariant: they read on both a dark and a light
@@ -100,6 +99,10 @@ const ALLOW = {
   // a self-contained bg+fg pair kept literal so the two halves cannot drift
   // apart per theme — same reasoning as SourcesSidebar's status tags.
   'components/SourceTab.svelte': ['#44403c', '#e8eaf0'],
+  // .ov-backdrop is the same click-catcher scrim as OmniBar's/ArrowPalette's
+  // above — dims arbitrary app content behind the LLM settings modal, no
+  // text sits on it.
+  'components/LLMSettings.svelte': ['rgba(0,0,0,0.5)'],
 }
 
 // Files not yet converted. Shrinks to nothing across Tasks 2-6; when it is
@@ -107,8 +110,6 @@ const ALLOW = {
 const PENDING = [
   'components/AskBox.svelte',
   'components/EmptyState.svelte',
-  'components/explorer/EditCard.svelte',
-  'components/LLMSettings.svelte',
   'components/Splitter.svelte',
   'components/notebook/ImageCell.svelte',
   'components/notebook/MediaSearchPanel.svelte',

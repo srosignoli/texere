@@ -160,12 +160,16 @@
   }
   .editcard-file { color: var(--accent-text); font-weight: 600; }
   .editcard-node { color: var(--text-row); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40%; }
-  /* #e0b000 has no matching token and is deliberately left literal — it's the
-     same fixed "amber" hex StatsPanel/SourcesSidebar already keep literal
-     app-wide (see StatsPanel.svelte's .sp-value.high comment) so an
-     ambiguous-match notice reads with the same hue as every other amber
-     notice in the app; minting a separate token here would drift from it. */
-  .editcard-ambiguous { color: #e0b000; font-size: 11px; }
+  /* Bare 11px text directly on var(--surface-bar) — chrome, not data (unlike
+     SourcesSidebar's self-contained due-tag pair below), so it needed a real
+     Light value rather than staying literal: #e0b000 measures 1.77:1 against
+     --surface-bar's Light fill. Reuses var(--stat-high) rather than minting
+     a fresh token — same amber "notice" hue StatsPanel already solved for
+     Light (4.69:1 here against --surface-bar; that token's own comment
+     records 4.52:1 against --surface-study), so this ambiguous-match notice
+     keeps reading as the same amber notice everywhere in the app, which was
+     the whole point of sharing the hex in the first place. */
+  .editcard-ambiguous { color: var(--stat-high); font-size: 11px; }
   .editcard-spacer { flex: 1 1 auto; }
   .editcard-hint { color: var(--accent-dim); font-size: 11px; }
   .editcard-close {
