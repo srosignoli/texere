@@ -48,7 +48,7 @@ export const ICONS = {
       'm16 6 4 14',
     ],
   },
-  fuzzy: {
+  graph: {
     viewBox: '0 0 24 24',
     paths: [
       'M12 2.7 21.3 12 12 21.3 2.7 12z',

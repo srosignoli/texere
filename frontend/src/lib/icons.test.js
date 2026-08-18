@@ -29,7 +29,7 @@ function iconNamesIn(src) {
 // passes no matter what that thing contains.
 const EXPECTED = [
   'save', 'search', 'globe', 'book-open', 'books',
-  'fuzzy', 'expand', 'collapse', 'celebrate',
+  'graph', 'expand', 'collapse', 'celebrate',
 ]
 
 test('every expected icon exists', () => {

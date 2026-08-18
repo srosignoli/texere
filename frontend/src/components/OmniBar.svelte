@@ -953,7 +953,7 @@
     {/if}
 
     <div class="omnibar-input-row">
-      <span class="search-icon" aria-hidden="true"><Icon name={isFuzzyMode ? 'search' : 'fuzzy'} /></span>
+      <span class="search-icon" aria-hidden="true"><Icon name={isFuzzyMode ? 'search' : 'graph'} /></span>
       <div class="omnibar-input-field">
         <input
           bind:this={inputEl}
