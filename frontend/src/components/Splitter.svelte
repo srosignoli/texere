@@ -152,7 +152,7 @@
   .splitter:hover > .line,
   .splitter:focus-visible > .line,
   .splitter.dragging > .line {
-    background: #4a7aaa;
+    background: var(--splitter-hover);
   }
   .splitter.vertical:hover > .line,
   .splitter.vertical.dragging > .line {

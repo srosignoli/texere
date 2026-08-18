@@ -126,11 +126,7 @@ const ALLOW = {
 
 // Files not yet converted. Shrinks to nothing across Tasks 2-6; when it is
 // empty, Task 6 deletes it and the constant below.
-const PENDING = [
-  'components/AskBox.svelte',
-  'components/EmptyState.svelte',
-  'components/Splitter.svelte',
-]
+const PENDING = []
 
 function sourceFiles() {
   return readdirSync(SRC, { recursive: true })

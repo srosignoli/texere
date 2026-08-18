@@ -596,6 +596,22 @@ html {
        than silently fixing, and it already clears comfortably in Light
        (9.93:1). */
     --stop-btn-border: #5a2a2a;
+
+    /* AskBox's .ask-note code (Task 5) — near, not exact, match for
+       var(--warn); Dark kept unchanged (11.40:1 against --surface-inset,
+       comfortably clears), Light re-solved to 4.52:1 against it. */
+    --ask-note-code-text: #fbbf24;
+    /* EmptyState's .open-btn — white text on the var(--accent-primary)
+       fill. No existing token pairs text with that fill (elsewhere it's
+       only ever used as a border colour); already clears 5.17:1 Blue,
+       6.70:1 Light against accent-primary's own per-theme value, so kept
+       unchanged in every theme. */
+    --text-on-accent-primary: #fff;
+    /* Splitter's hover/focus/dragging divider highlight — near, not exact,
+       match for var(--media-hover-border) (#4a7aaa vs #4a7aa8); Dark/Light
+       via nearest-neighbour delta transfer from it (decorative, no text
+       pairing to verify). */
+    --splitter-hover: #4a7aaa;
 }
 
 /* --- Dark: neutral near-black. ---------------------------------------------
@@ -836,6 +852,10 @@ html {
     --media-err-text: #ff99cc;
 
     --stop-btn-border: #5a2a2a;
+
+    --ask-note-code-text: #fbbf24;
+    --text-on-accent-primary: #fff;
+    --splitter-hover: #6c7f97;
 }
 
 /* --- Light: white-to-grey with dark text. ----------------------------------
@@ -1088,6 +1108,10 @@ html {
     --media-err-text: #c50063;
 
     --stop-btn-border: #5a2a2a;
+
+    --ask-note-code-text: #8b6503;
+    --text-on-accent-primary: #fff;
+    --splitter-hover: #45709c;
 }
 
 /* 2.5D Isometric Graph Explorer (feature 006) — shared semantic palette.
