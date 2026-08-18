@@ -3,6 +3,7 @@
   import { renderStrokes, fitTransform } from '../../lib/sketch-render.js'
   import TranscribeBar from './TranscribeBar.svelte'
   import { bakeSketch } from '../../lib/bake.js'
+  import Icon from '../Icon.svelte'
 
   export let cell
   export let onChange = () => {}
@@ -192,7 +193,7 @@
       <button on:click={redo} disabled={!redoStack.length} title="Redo">↷</button>
       <button on:click={clearAll} title="Clear">Clear</button>
       <label class="sk-mouse" title="Allow mouse/pen to draw. Turn off for pen-only palm rejection (only effective where the platform reports a real pen — not Linux/WebKitGTK)."><input type="checkbox" bind:checked={mouseDraw} /> mouse/pen</label>
-      <button class="sk-expand" on:click={toggleExpand} title="Expand to fill the window (Esc to exit)">{expanded ? '🗕 Collapse' : '⛶ Expand'}</button>
+      <button class="sk-expand" on:click={toggleExpand} title="Expand to fill the window (Esc to exit)"><Icon name={expanded ? 'collapse' : 'expand'} /> {expanded ? 'Collapse' : 'Expand'}</button>
     </div>
   {/if}
   <TranscribeBar {cell} bake={bakeSketch} {onInsert} onChange={() => onChange(cell)} {readOnly} />

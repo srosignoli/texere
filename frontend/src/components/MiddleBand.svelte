@@ -6,6 +6,7 @@
   import { studySurfaceOpen, studyFocus } from '../stores/study.js'
   import ReminderPanel from './ReminderPanel.svelte'
   import SettingsMenu from './SettingsMenu.svelte'
+  import Icon from './Icon.svelte'
 
   const dispatch = createEventDispatcher()
   let reminderPanelOpen = false
@@ -121,9 +122,9 @@
 
     <div class="separator" />
 
-    <button class="btn" on:click={handleSave} title="Save (Ctrl+S)">💾</button>
+    <button class="btn" on:click={handleSave} title="Save (Ctrl+S)" aria-label="Save"><Icon name="save" /></button>
     <button class="btn" on:click={handleUndo} title="Undo">↩</button>
-    <button class="btn" on:click={handleSearch} title="Search (Ctrl+K / Cmd+K)">🔍</button>
+    <button class="btn" on:click={handleSearch} title="Search (Ctrl+K / Cmd+K)" aria-label="Search"><Icon name="search" /></button>
 
     <div class="separator" />
 
@@ -132,12 +133,13 @@
       on:click={handleOpenExplorer}
       disabled={!explorerLaunchQuery}
       title={explorerLaunchQuery ? 'Open 2.5D Graph Explorer' : 'Select a chapter to enable'}
-    >🌐</button>
+      aria-label="Open 2.5D Graph Explorer"
+    ><Icon name="globe" /></button>
 
     <div class="separator" />
 
-    <button class="btn" on:click={handleOpenRead} title="Read & import sources — + Text / PDF / Web (Ctrl+Shift+E)">📖 Read</button>
-    <button class="btn" on:click={handleOpenStudy} title="Study — Read · Process · Recall queue (Ctrl+Shift+S)">📚 Study</button>
+    <button class="btn" on:click={handleOpenRead} title="Read & import sources — + Text / PDF / Web (Ctrl+Shift+E)"><Icon name="book-open" /> Read</button>
+    <button class="btn" on:click={handleOpenStudy} title="Study — Read · Process · Recall queue (Ctrl+Shift+S)"><Icon name="books" /> Study</button>
   {/if}
 
   <div class="spacer" />
