@@ -14,7 +14,7 @@ type Store struct {
 	dir string // collection root; file_path-like columns are stored relative to this
 }
 
-const schemaVersion = 7
+const schemaVersion = 8
 
 // Open opens (creating if needed) <collectionDir>/learning.db and migrates it
 // to the current schema version.
@@ -90,6 +90,13 @@ func (s *Store) migrate() error {
 			// stores relative values.
 			if err := s.migrateRelativePaths(); err != nil {
 				return fmt.Errorf("learning: apply v7: %w", err)
+			}
+		case 7:
+			// No schema change: the six columns holding identity keys drop the
+			// embedded file path, so keys survive the collection being moved or
+			// copied. See migrateIdentityKeys.
+			if err := s.migrateIdentityKeys(); err != nil {
+				return fmt.Errorf("learning: apply v8: %w", err)
 			}
 		}
 		v++
