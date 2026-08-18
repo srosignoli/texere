@@ -53,14 +53,18 @@ const ALLOW = {
   // with no real document) — same reasoning as the Theme.js entry above.
   // Documented at the top of lib/css-var.js.
   'lib/css-var.js': ['#e8eaf0', '#0b1220'],
-  // Chart series colours (Task 4, feature 052). Each identifies a specific
-  // series across the four Stats-focus cards, and .sp-value.ok/.low/.high
-  // (mirroring the matching chart's colour on the small stat badge) reuses
-  // the same three. #7ecfa0 doubles as stats-charts.js's own default series
-  // colour. #e0b000 is the deliberately-shared "amber/high/due" hue decided
-  // once here for all three files that carry it (see StatsPanel.svelte's own
-  // .sp-value.high comment, and this task's report) — data, not chrome, so it
-  // stays literal rather than being tokenised.
+  // Chart series colours (Task 4, feature 052) — the `color` passed to each
+  // <canvas use:chart>, identifying which series it is (a bar/line's own
+  // hue is data, per the brief's ruling on stats-charts.js's default). Not
+  // .sp-value.ok/.low/.high any more: review fix round 1 (Critical 1) found
+  // those are chrome — 15px bold badge text sitting directly on
+  // --surface-study — and freezing them at these same literals left Light
+  // illegible (1.4-1.7:1 contrast); they now read var(--ok)/var(--accent-
+  // text)/var(--stat-high) instead (see StatsPanel.svelte and style.css).
+  // #e0b000 is still the deliberately-shared "amber/due" hue as a *series*
+  // identity (see this task's report for the narrowed ruling: canvas series
+  // and self-contained background+foreground pairs stay literal; bare text
+  // on a themed surface, like the badge this used to also cover, does not).
   'components/StatsPanel.svelte': ['#7dd3fc', '#b9a3e3', '#e0b000', '#7ecfa0'],
   // '#7ecfa0' is the default series colour when a caller doesn't pass one.
   // Data, not chrome — it identifies a series, the same reasoning as

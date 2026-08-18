@@ -166,12 +166,16 @@
      brief calls this out explicitly: a log severity should read as the same
      red/amber the rest of the app already uses, rather than keep its own
      one-off pair. info has no matching status hue (--ok means success, not
-     "informational"), so it reuses --text-arrow-hint (OmniBar's arrow-glyph
-     colour) — chosen because its Blue value is byte-identical to the literal
-     it replaces (#6a9aaa), the safest possible reuse. */
+     "informational"), so it gets its own --sev-info token (review fix,
+     round 1: reusing --text-arrow-hint — documented as OmniBar's arrow-
+     glyph colour — would have meant retuning OmniBar's own colour silently
+     moved this severity too; the brief's "reuse the triad, don't invent"
+     only covers danger/warn/ok). --sev-info is anchored to the literal it
+     replaces (#6a9aaa) in Blue/Dark and re-solved for contrast in Light —
+     see style.css. */
   .count-err { color: var(--danger); }
   .count-warn { color: var(--warn); }
-  .count-info { color: var(--text-arrow-hint); }
+  .count-info { color: var(--sev-info); }
   .count-empty { color: var(--text-hint); font-style: italic; }
 
   .filter-chips {
@@ -202,7 +206,7 @@
   .spacer { flex: 1; }
 
   .copy-badge {
-    color: var(--text-arrow-hint);
+    color: var(--sev-info);
     font-size: 0.7rem;
     font-style: italic;
     flex-shrink: 0;
@@ -262,7 +266,7 @@
   }
   .log-row.sev-error { border-left-color: var(--danger); }
   .log-row.sev-warning { border-left-color: var(--warn); }
-  .log-row.sev-info { border-left-color: var(--text-arrow-hint); }
+  .log-row.sev-info { border-left-color: var(--sev-info); }
 
   .sev {
     flex-shrink: 0;
@@ -272,7 +276,7 @@
   }
   .sev-error .sev { color: var(--danger); }
   .sev-warning .sev { color: var(--warn); }
-  .sev-info .sev { color: var(--text-arrow-hint); }
+  .sev-info .sev { color: var(--sev-info); }
 
   .loc {
     flex-shrink: 0;

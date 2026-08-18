@@ -138,6 +138,41 @@ html {
     --log-filter-active-text: #d8c590;
     --log-filter-active-border: #c9a96e;
 
+    /* --stat-high: StatsPanel's forgetting-index badge in its "high" (bad)
+       band (Task 4 review fix, feature 052 — Critical 1). Was the bare
+       #e0b000 literal shared with the forecast chart's series colour;
+       moved behind its own token because this use is chrome (15px bold
+       text directly on --surface-study), not data, and freezing it at the
+       series literal left Light at 1.71:1 contrast. Blue/Dark keep #e0b000
+       unchanged — already 8.5:1 / 9.0:1 against --surface-study, no reason
+       to move them. Light re-solved, hue/saturation held constant, to the
+       nearest lightness that still clears 4.5:1 against --surface-study
+       Light (#e9ecf0) — landed at 4.52:1, the closest solution to the
+       anchor's own lightness that clears the threshold. See sibling badges
+       .sp-value.ok/.low, which reuse --ok/--accent-text (already themed,
+       already clearing 4.5+:1 in Light) for the same reason. */
+    --stat-high: #e0b000;
+
+    /* --sev-info: LogPanel's "info" severity (Task 4 review fix, feature
+       052 — Important 4). Was reusing --text-arrow-hint (OmniBar's arrow-
+       glyph colour, byte-identical in Blue) to avoid a mint, but that token
+       is documented as OmniBar-specific; retuning it for OmniBar's own
+       needs would silently move LogPanel's info severity and .copy-badge
+       too. The brief's "reuse --danger/--warn/--ok, don't invent new
+       tokens" was scoped to that danger/warn/ok triad — info isn't in it,
+       so it gets its own token instead of borrowing an unrelated one.
+       Anchored to the literal it replaces (#6a9aaa) in Blue, unchanged.
+       Checked against both backgrounds this colour actually paints on
+       (--surface-panel, the log body's default, and --surface-overlay, the
+       header/hover state): Blue clears 4.5:1 on both (5.55:1 / 5.01:1)
+       already, so Dark keeps the same literal too (5.93:1 / 5.47:1, also
+       clears unchanged). Light re-solved — hue/saturation held constant,
+       lightness binary-searched — to the value that clears 4.5:1 against
+       the tougher of the two Light backgrounds (--surface-panel, since it's
+       marginally darker than --surface-overlay's white): #48717e clears
+       4.50:1 there and 5.33:1 against --surface-overlay. */
+    --sev-info: #6a9aaa;
+
     /* Roles minted migrating the study and source surfaces (Task 4). */
     --surface-study: #131c29;         /* root/body of the Study & Sources full-panel surfaces; 1 unit
                                           darker in the blue channel than --surface-panel — distinct on
@@ -481,6 +516,9 @@ html {
     --log-filter-active-text: #ccb36e;
     --log-filter-active-border: #bf9852;
 
+    --stat-high: #e0b000;
+    --sev-info: #6a9aaa;
+
     --surface-study: #141516;
     --text-quiet: #81a5a5;
     --text-doc: #c5d0db;
@@ -675,6 +713,9 @@ html {
     --log-filter-active-bg: #d5e2ec;
     --log-filter-active-text: #4d401b;
     --log-filter-active-border: #654f26;
+
+    --stat-high: #846700;
+    --sev-info: #48717e;
 
     --surface-study: #e9ecf0;
     --text-quiet: #3c5454;
