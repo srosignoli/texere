@@ -462,6 +462,27 @@ html {
                                              .note-block-header .note-node-context text — one
                                              shared "context/highlight" accent used three times
                                              within OmniBar */
+
+    /* App.svelte's graph-build status banner (Task 5). Three self-contained
+       bg/border/text triads, chrome (a build-status toast, not data) so
+       tokenised rather than allowlisted. --done and --error reuse var(--ok)/
+       var(--danger) for text — byte-identical to the literals they replace —
+       rather than minting new roles for a hue that already has one. Dark
+       kept identical to Blue throughout: this banner's saturated hues track
+       Blue closely the same way --danger/--ok/--warn do, and the unchanged
+       pairing still clears the ratio below. Light re-solved: hue/saturation
+       held, lightness raised to ~0.90 for the fill and ~0.55 for the border
+       (matching the pastel-badge pattern --mode-badge-graph-bg/
+       --log-filter-active-bg already established), foreground re-solved
+       (--graph-banner-building-text) or left unchanged (--ok/--danger,
+       which already clear here) until each pairing reaches 4.5:1. */
+    --graph-banner-building-bg: #2a4a6a;
+    --graph-banner-building-text: #7ecfff;  /* 5.36:1 in Blue/Dark (unchanged), 4.55:1 in Light */
+    --graph-banner-building-border: #3a6a9a;
+    --graph-banner-done-bg: #1a4a2a;        /* text is var(--ok): 5.50:1 Blue/Dark, 4.57:1 Light */
+    --graph-banner-done-border: #2a7a3a;
+    --graph-banner-error-bg: #4a1a1a;       /* text is var(--danger): 5.95:1 Blue/Dark, 4.84:1 Light */
+    --graph-banner-error-border: #7a2a2a;
 }
 
 /* --- Dark: neutral near-black. ---------------------------------------------
@@ -665,6 +686,14 @@ html {
     --listing-hint-bg: #16242f;
     --listing-hint-text: #ccb36e;
     --omnibar-gold-accent: #bf9852;
+
+    --graph-banner-building-bg: #2a4a6a;
+    --graph-banner-building-text: #7ecfff;
+    --graph-banner-building-border: #3a6a9a;
+    --graph-banner-done-bg: #1a4a2a;
+    --graph-banner-done-border: #2a7a3a;
+    --graph-banner-error-bg: #4a1a1a;
+    --graph-banner-error-border: #7a2a2a;
 }
 
 /* --- Light: white-to-grey with dark text. ----------------------------------
@@ -880,6 +909,14 @@ html {
     --listing-hint-bg: #d5e2ec;
     --listing-hint-text: #4d401b;
     --omnibar-gold-accent: #654f26;
+
+    --graph-banner-building-bg: #dae6f1;
+    --graph-banner-building-text: #006aaa;
+    --graph-banner-building-border: #588cc0;
+    --graph-banner-done-bg: #d9f2e1;
+    --graph-banner-done-border: #54c46b;
+    --graph-banner-error-bg: #f2d9d9;
+    --graph-banner-error-border: #c45454;
 }
 
 /* 2.5D Isometric Graph Explorer (feature 006) — shared semantic palette.
