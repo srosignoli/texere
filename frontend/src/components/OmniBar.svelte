@@ -11,6 +11,7 @@
   import { analyzeQuery, getSuggestions } from '../lib/query-grammar.js'
   import { queryHints, queryHelpOpen, ensureQueryHints, refreshQueryHints } from '../stores/queryHints.js'
   import { resolveNodeSource } from '../lib/node-source.js'
+  import Icon from './Icon.svelte'
 
   let query = ''
   let selectedIndex = -1
@@ -952,7 +953,7 @@
     {/if}
 
     <div class="omnibar-input-row">
-      <span class="search-icon" aria-hidden="true">{isFuzzyMode ? '🔍' : '◈'}</span>
+      <span class="search-icon" aria-hidden="true"><Icon name={isFuzzyMode ? 'search' : 'fuzzy'} /></span>
       <div class="omnibar-input-field">
         <input
           bind:this={inputEl}
