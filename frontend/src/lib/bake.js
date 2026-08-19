@@ -1,9 +1,9 @@
 // bake.js — render a sketch or image cell to a downscaled base64 image for
 // multimodal LLM turns. Returns { mediaType, data } with data = base64 (no prefix).
 import { renderStrokes } from './sketch-render.js'
+import { sketchBgColor } from './css-var.js'
 
 const MAX_EDGE = 1568 // Anthropic's recommended max long edge
-const SKETCH_BG = '#0b1220' // dark bg preserves contrast for light strokes
 
 function loadImage(src) {
   return new Promise((resolve, reject) => {
@@ -28,7 +28,17 @@ export async function bakeSketch(cell) {
   out.width = w
   out.height = h
   const ctx = out.getContext('2d')
-  ctx.fillStyle = SKETCH_BG
+  // Resolve the background from the CURRENT theme at bake time, via the same
+  // --sketch-bg token .sk-wrap's on-screen canvas paints with (SketchCell.svelte),
+  // so a sketch baked in the theme it was drawn in
+  // keeps its strokes visible — strictly better than a background fixed to
+  // one theme's literal, which would silently erase the OTHER theme's ink
+  // every time. This is NOT a guarantee for every case: each stroke's colour
+  // is a literal stored on the stroke at draw time and is never re-resolved
+  // (see sketch-render.js), so a sketch drawn in one theme and then baked
+  // after switching to another can still bake low-contrast — the strokes
+  // keep the ink they were drawn with, only the background moves.
+  ctx.fillStyle = sketchBgColor()
   ctx.fillRect(0, 0, w, h)
   ctx.drawImage(strokeCanvas, 0, 0)
   return { mediaType: 'image/png', data: out.toDataURL('image/png').split(',')[1] }

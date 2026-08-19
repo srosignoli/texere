@@ -120,8 +120,8 @@
     right: 92px; /* leave room for legend (?) at 52 and close (✕) at 12 */
     display: flex;
     gap: 18px;
-    background: rgba(14, 20, 24, 0.85);
-    border: 1px solid #334455;
+    background: var(--surface-raised);
+    border: 1px solid var(--border-strong);
     border-radius: 6px;
     padding: 6px 12px;
     /* Panel itself is glanceable, but the limit input must be clickable, so
@@ -150,26 +150,26 @@
   .value {
     font-size: 14px;
     font-weight: 600;
-    color: #e8eaf0;
+    color: var(--text);
   }
   .num-input {
     width: 4ch;
     background: transparent;
     border: none;
-    border-bottom: 1px dashed #45607a;
+    border-bottom: 1px dashed var(--explorer-input-underline);
     padding: 0 0 1px;
     font: inherit;
     font-size: 14px;
     font-weight: 600;
-    color: #e8eaf0;
+    color: var(--text);
     outline: none;
     cursor: text;
   }
   .num-input:hover {
-    border-bottom-color: #6b8db0;
+    border-bottom-color: var(--explorer-input-underline-hover);
   }
   .num-input:focus {
-    border-bottom-color: #4a7bd0;
+    border-bottom-color: var(--accent-primary);
   }
   /* Hide the number spinner for a cleaner look. */
   .num-input::-webkit-inner-spin-button,

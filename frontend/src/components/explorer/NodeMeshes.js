@@ -26,6 +26,8 @@ import {
   getLabelColor,
   getLabelHaloColor,
   getTerritoryPalette,
+  getCycleGlyphColor,
+  getCycleGlyphHaloColor,
 } from './Theme.js'
 
 // Visible-radius scale factor applied to NodeView.size. NodeView.size
@@ -48,8 +50,6 @@ const LABEL_OFFSET = 0.55
 // shown for nodes where NodeView.cycleWarning === true (the Go layout
 // engine flags every member of a containment cycle).
 const CYCLE_GLYPH_PIXEL_HEIGHT = 14
-const CYCLE_GLYPH_COLOR = '#f4b545'      // amber
-const CYCLE_GLYPH_HALO = '#1a1306'
 
 // Label truncation limits. The 3D scene shows only the first words of
 // long node texts; the full text is surfaced in a 2D HTML tooltip on
@@ -418,13 +418,13 @@ function createCycleGlyphSprite() {
   ctx.closePath()
   ctx.lineJoin = 'round'
   ctx.lineWidth = 4
-  ctx.strokeStyle = CYCLE_GLYPH_HALO
+  ctx.strokeStyle = getCycleGlyphHaloColor()
   ctx.stroke()
-  ctx.fillStyle = CYCLE_GLYPH_COLOR
+  ctx.fillStyle = getCycleGlyphColor()
   ctx.fill()
 
   // Centered "!" character so the glyph reads as a warning.
-  ctx.fillStyle = CYCLE_GLYPH_HALO
+  ctx.fillStyle = getCycleGlyphHaloColor()
   ctx.font = `700 ${SIZE * 0.5}px -apple-system, "Segoe UI", Roboto, sans-serif`
   ctx.textBaseline = 'middle'
   ctx.textAlign = 'center'

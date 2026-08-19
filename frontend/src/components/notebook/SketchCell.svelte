@@ -1,8 +1,11 @@
 <script>
   import { onMount, onDestroy, tick } from 'svelte'
+  import { get } from 'svelte/store'
   import { renderStrokes, fitTransform } from '../../lib/sketch-render.js'
   import TranscribeBar from './TranscribeBar.svelte'
   import { bakeSketch } from '../../lib/bake.js'
+  import { sketchInkColor } from '../../lib/css-var.js'
+  import { theme } from '../../stores/theme.js'
   import Icon from '../Icon.svelte'
 
   export let cell
@@ -13,7 +16,12 @@
   export let onPush = () => {} // unused; shared cell prop set
   export let onInsert = () => {}
 
-  const COLORS = ['#e8eaf0', '#f59e0b', '#7dd3fc', '#ff6b6b', '#10b981']
+  // First swatch is the theme's default ink (near-white in Blue/Dark,
+  // near-black in Light — see --sketch-ink in style.css); the other four are
+  // deliberately theme-invariant so they read on both backgrounds and a
+  // saved sketch doesn't change appearance depending on which theme it is
+  // reopened in.
+  let COLORS = [sketchInkColor(), '#f59e0b', '#7dd3fc', '#ff6b6b', '#10b981']
   const SIZES = { pen: 3, highlighter: 14 }
 
   let wrap, canvas, ctx, ro
@@ -21,6 +29,24 @@
   let tool = 'pen'
   let color = COLORS[0]
   let size = SIZES.pen
+
+  // Keep the default pen live across a theme switch, not just across a
+  // remount — same $theme-driven pattern as GraphExplorer.svelte's
+  // rethemeScene(). A Svelte store fires on subscribe with the value
+  // already in it, so the first emission is skipped: lastThemeApplied
+  // already matches $theme here. Only reassigns `color` when it still
+  // equals the OLD default ink, so switching theme mid-sketch changes the
+  // pen a NEW stroke will use without clobbering a manually picked accent
+  // swatch — and without ever recolouring strokes already drawn (those keep
+  // their stored literal, by design; see bake.js's comment on that).
+  let lastThemeApplied = get(theme)
+  $: if ($theme !== lastThemeApplied) {
+    lastThemeApplied = $theme
+    const ink = sketchInkColor()
+    const wasDefault = color === COLORS[0]
+    COLORS = [ink, ...COLORS.slice(1)]
+    if (wasDefault) color = ink
+  }
   // On WebKitGTK (Linux) a pen tablet reports pointerType 'mouse', so it is
   // indistinguishable from a mouse; default this ON so the pen/mouse draw out of
   // the box. Turn OFF for pen-only palm rejection on platforms that report
@@ -214,7 +240,7 @@
   .sw.sel { outline: 2px solid var(--accent-text); }
   .sk-size { width: 80px; }
   .sk-mouse { color: var(--accent-text-alt); font-size: 11px; display: flex; align-items: center; gap: 3px; }
-  .sk-wrap { position: relative; height: 240px; min-height: 80px; resize: vertical; overflow: hidden; background: var(--surface-sunken); }
+  .sk-wrap { position: relative; height: 240px; min-height: 80px; resize: vertical; overflow: hidden; background: var(--sketch-bg); }
   .sk-wrap canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
   .sk-cell.expanded { position: fixed; inset: 0; z-index: 1000; margin: 0; border-radius: 0; display: flex; flex-direction: column; }
   .sk-cell.expanded .sk-wrap { flex: 1; height: auto !important; resize: none; }

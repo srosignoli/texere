@@ -144,7 +144,7 @@
 
   code {
     font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-    color: #67e8f9;
+    color: var(--help-code-text);
   }
 
   .dir-table { width: 100%; border-collapse: collapse; }
@@ -158,7 +158,7 @@
   .aliases { margin-top: 3px; font-size: 0.72rem; color: var(--accent-dim); }
   .cell-summary { color: var(--text-block); }
   .example { margin-top: 4px; }
-  .example code { color: #8fd9a8; font-size: 0.8rem; }
+  .example code { color: var(--help-example-text); font-size: 0.8rem; }
 
   .combine {
     background: var(--surface-block);
@@ -166,7 +166,7 @@
     border-radius: 6px;
     padding: 10px 12px;
   }
-  .combine-q { display: block; margin-bottom: 6px; color: #8fd9a8; }
+  .combine-q { display: block; margin-bottom: 6px; color: var(--help-example-text); }
   .combine p { margin: 0; color: var(--text-block); }
 
   .match-list { list-style: none; margin: 0; padding: 0; }
@@ -175,7 +175,7 @@
   .match-title {
     display: block;
     font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-    color: #67e8f9;
+    color: var(--help-code-text);
     margin-bottom: 2px;
   }
   .match-body { color: var(--text-block); }

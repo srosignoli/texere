@@ -541,8 +541,8 @@
     align-items: center;
     gap: 8px;
     padding: 6px 12px;
-    background: #78350f;
-    color: #fde68a;
+    background: var(--warn-banner-bg);
+    color: var(--warn-banner-text);
     font-size: 0.82rem;
     flex-shrink: 0;
   }
@@ -561,14 +561,18 @@
 
   .banner-btn.reload {
     background: var(--warn);
-    color: #1c1100;
+    color: var(--text-on-warn);
   }
 
   .banner-btn.dismiss {
-    /* Semantic unit with its banner: a neutral dark chip on the amber strip.
-       Both halves stay literal so the pair cannot drift apart per theme. */
-    background: #44403c;
-    color: #e8eaf0;
+    /* A neutral dark chip on the amber strip — self-contained (8.54:1
+       internal), unchanged in every theme (Task 5 review round 1: this is a
+       real chrome control, so it now goes through var(--dismiss-chip-bg)/
+       var(--dismiss-chip-text) rather than staying a bare ALLOW-listed
+       literal, but the VALUES are still deliberately frozen — see the
+       tokens' own comment in style.css for why. */
+    background: var(--dismiss-chip-bg);
+    color: var(--dismiss-chip-text);
   }
 
   .editor-container {

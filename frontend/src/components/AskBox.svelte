@@ -152,7 +152,7 @@
   .ask-go { background: var(--accent); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; cursor: pointer; }
   .ask-go:disabled { opacity: 0.6; cursor: default; }
   .ask-note { padding: 6px 10px; border-top: 1px solid var(--border); background: var(--surface-inset); color: var(--text); font-size: 12px; }
-  .ask-note code { display: block; margin: 4px 0; color: #fbbf24; }
+  .ask-note code { display: block; margin: 4px 0; color: var(--ask-note-code-text); }
   .ask-actions { display: flex; gap: 6px; }
   .ask-actions button { background: var(--accent); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 11px; }
 </style>

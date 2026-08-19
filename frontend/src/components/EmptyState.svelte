@@ -51,7 +51,7 @@
   .open-btn {
     padding: 8px 20px;
     background: var(--accent-primary);
-    color: #fff;
+    color: var(--text-on-accent-primary);
     border: none;
     border-radius: 4px;
     cursor: pointer;

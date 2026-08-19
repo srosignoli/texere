@@ -292,7 +292,7 @@
     width: 10px;
     height: 10px;
     border: 2px solid var(--border);
-    border-top-color: #3b82f6;
+    border-top-color: var(--parse-spinner-accent);
     border-radius: 50%;
     animation: spin 0.7s linear infinite;
     flex-shrink: 0;
@@ -406,6 +406,24 @@
   .node-item:hover { color: var(--text); }
   .node-row-wrap.active .node-item { color: var(--text); }
 
+  /* .arrow-children lives inside .node-row-wrap, so when the row is active
+     (background var(--accent)) or cursor-matched (var(--row-cursor-bg)) its
+     arrow-code/arrow-target text sits on that fill instead of the plain
+     list surface --arrow-code-text and var(--n4l-syntax-arrow-target) were
+     solved against (Task 5 review round 1 — Important 2: Light measured
+     3.96:1/4.07:1 there, Dark 4.31:1 where the unconverted literal had been
+     9.83:1, an outright regression). Same fix as .node-item above rather
+     than re-solving the shared tokens themselves — var(--n4l-syntax-arrow-
+     target) in particular is used elsewhere (NodeCard, the editor grammar)
+     and re-tuning it for this one row state would ripple into those.
+     var(--text) clears both backgrounds in every theme (9.64-14.58:1). */
+  .node-row-wrap.active .arrow-code,
+  .node-row-wrap.active .arrow-target,
+  .node-row-wrap.cursor-at:not(.active) .arrow-code,
+  .node-row-wrap.cursor-at:not(.active) .arrow-target {
+    color: var(--text);
+  }
+
   /* Extract: left-pad to align with chevron'd items */
   .node-item.extract-node { padding-left: 4px; }
 
@@ -442,10 +460,10 @@
 
   .ha-btn {
     padding: 2px 6px;
-    background: #1a2d45;
+    background: var(--control-active);
     border: 1px solid var(--control-border);
     border-radius: 3px;
-    color: #7ab0d4;
+    color: var(--ha-btn-text);
     font-size: 0.7rem;
     cursor: pointer;
   }
@@ -468,7 +486,7 @@
   }
 
   .arrow-code {
-    color: #5a9abd;
+    color: var(--arrow-code-text);
     font-weight: 600;
     white-space: nowrap;
     flex-shrink: 0;
@@ -481,7 +499,7 @@
   }
 
   .arrow-target {
-    color: #86efac;
+    color: var(--n4l-syntax-arrow-target);
     overflow-wrap: anywhere;
   }
 

@@ -68,8 +68,8 @@
     transform: translateX(-50%);
     display: flex;
     gap: 14px;
-    background: rgba(14, 20, 24, 0.85);
-    border: 1px solid #334455;
+    background: var(--surface-raised);
+    border: 1px solid var(--border-strong);
     border-radius: 6px;
     padding: 6px 12px;
     pointer-events: none;
@@ -81,7 +81,7 @@
     align-items: center;
     gap: 6px;
     font-size: 11px;
-    color: #e8eaf0;
+    color: var(--text);
     white-space: nowrap;
   }
   .glyph {

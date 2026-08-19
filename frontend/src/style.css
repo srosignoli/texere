@@ -121,6 +121,78 @@ html {
     --sequence-connector: #4b5563;    /* sequence-node connector line (ReadTab + NodeCard) */
     --text-loc: #7da0c0;              /* monospace file-location text (LogPanel) */
 
+    /* Roles minted finishing LogPanel's severity-filter chip (Task 4, feature
+       052). The active "all/errors/warnings" filter chip is a gold/amber
+       affordance with no existing token: background is a barely-lighter navy
+       wash over --surface-overlay (contrast ~1.17:1 in Blue — the chip mostly
+       reads via its text/border, not the fill), text and border are a warm
+       gold. Method: background derived by holding this literal's own hue/
+       saturation constant and applying the same Blue→Dark / Blue→Light
+       lightness delta --accent (the closest existing "selected chip
+       background" role) undergoes; text and border then solved, hue/
+       saturation held constant, to the same contrast ratio each has against
+       Blue's background, but against the newly-solved Dark/Light background
+       (matches the WCAG-solve method already used above for the OmniBar/
+       editor token families). */
+    --log-filter-active-bg: #1e3242;
+    --log-filter-active-text: #d8c590;
+    --log-filter-active-border: #c9a96e;
+
+    /* --stat-high: StatsPanel's forgetting-index badge in its "high" (bad)
+       band (Task 4 review fix, feature 052 — Critical 1). Was the bare
+       #e0b000 literal shared with the forecast chart's series colour;
+       moved behind its own token because this use is chrome (15px bold
+       text directly on --surface-study), not data, and freezing it at the
+       series literal left Light at 1.71:1 contrast. Blue/Dark keep #e0b000
+       unchanged — already 8.5:1 / 9.0:1 against --surface-study, no reason
+       to move them. Light re-solved, hue/saturation held constant, to the
+       nearest lightness that still clears 4.5:1 against --surface-study
+       Light (#e9ecf0) — landed at 4.52:1, the closest solution to the
+       anchor's own lightness that clears the threshold. See sibling badges
+       .sp-value.ok/.low, which reuse --ok/--accent-text (already themed,
+       already clearing 4.5+:1 in Light) for the same reason. */
+    --stat-high: #e0b000;
+
+    /* --sev-info: LogPanel's "info" severity (Task 4 review fix, feature
+       052 — Important 4). Was reusing --text-arrow-hint (OmniBar's arrow-
+       glyph colour, byte-identical in Blue) to avoid a mint, but that token
+       is documented as OmniBar-specific; retuning it for OmniBar's own
+       needs would silently move LogPanel's info severity and .copy-badge
+       too. The brief's "reuse --danger/--warn/--ok, don't invent new
+       tokens" was scoped to that danger/warn/ok triad — info isn't in it,
+       so it gets its own token instead of borrowing an unrelated one.
+       Anchored to the literal it replaces (#6a9aaa) in Blue, unchanged.
+       Checked against both backgrounds this colour actually paints on
+       (--surface-panel, the log body's default, and --surface-overlay, the
+       header/hover state): Blue clears 4.5:1 on both (5.55:1 / 5.01:1)
+       already, so Dark keeps the same literal too (5.93:1 / 5.47:1, also
+       clears unchanged). Light re-solved — hue/saturation held constant,
+       lightness binary-searched — to the value that clears 4.5:1 against
+       the tougher of the two Light backgrounds (--surface-panel, since it's
+       marginally darker than --surface-overlay's white): #48717e clears
+       4.50:1 there and 5.33:1 against --surface-overlay. */
+    --sev-info: #6a9aaa;
+
+    /* Chart-series colours (final-fix review, feature 052 — Important 1).
+       stats-charts.js's `color` param and StatsPanel's six chart call sites
+       were bare literals — chart series ARE data (a bar/line's hue
+       identifies which series it is, same reasoning the file's own comment
+       already gives), but unlike the --explorer-* data palette above they
+       were never run through the "lacks contrast on a light background,
+       gets a light override" step: measured against --surface-study Light
+       (#e9ecf0), the four sat at 1.41-1.88:1, all below WCAG's 3:1 floor for
+       graphical objects. Blue/Dark keep these literals unchanged (already
+       7.7-10.3:1 there). Light re-solved per colour, hue/saturation held
+       constant, lightness binary-searched to the nearest value that still
+       clears 3:1 — landed at 3.02-3.04:1 each, the closest solution to the
+       anchor's own lightness that clears the threshold (same method as
+       --stat-high/--sev-info above). The four hues (199/261/47/145) stay
+       spread apart after darkening, so the series remain tellable apart. */
+    --chart-blue: #7dd3fc;
+    --chart-purple: #b9a3e3;
+    --chart-amber: #e0b000;
+    --chart-green: #7ecfa0;
+
     /* Roles minted migrating the study and source surfaces (Task 4). */
     --surface-study: #131c29;         /* root/body of the Study & Sources full-panel surfaces; 1 unit
                                           darker in the blue channel than --surface-panel — distinct on
@@ -249,12 +321,88 @@ html {
        representative backdrop. */
     --explorer-scrim: rgba(0, 0, 0, 0.55);          /* rest-state fill: close button, query-bar buttons,
                                                         sidebar toggle, .overlay.status */
-    --explorer-scrim-strong: rgba(0, 0, 0, 0.6);    /* .overlay.banner (truncated-results notice) */
+    --explorer-scrim-strong: rgba(0, 0, 0, 0.6);    /* .overlay.banner (truncated-results notice),
+                                          .explorer-ask and .explorer-querybar (GraphExplorer.svelte) */
     --explorer-scrim-hover: rgba(0, 0, 0, 0.8);     /* hover fill of --explorer-scrim buttons */
     --explorer-scrim-hover-accent: rgba(74, 123, 208, 0.35); /* query-bar run/help button hover (blue tint) */
     --text-on-scrim: #d8d8d8;         /* .overlay text (Loading…/error/truncated banner) — was
                                           var(--fg-2, #d8d8d8); --fg-2 is undefined anywhere in the
                                           codebase, the same vestigial-stub pattern as --bg-1 */
+
+    /* Roles minted completing the explorer DOM chrome (Task 2, feature 052).
+       These finish what the Task 5b review left literal — the ≥0.85-alpha
+       "glass" panels (MiniMap/ExplorerStats/ExplorerLegend bodies,
+       GraphExplorer's empty-card/tooltips/freeze-pill) reuse --surface-raised
+       / --surface-overlay above (their values are close in spirit, not
+       byte-identical to the old literals — this pass intentionally lets
+       those panels go properly light in Light rather than staying
+       permanently dark glass, which is the point of finishing the theme).
+       The tokens below are for chrome with no existing role at all. */
+    --explorer-control: #1f2630;         /* small HUD control/chip surface: sidebar reset button,
+                                             kbd hint chip */
+    --explorer-control-active: #2a3340;  /* hover/active fill of that control */
+    --explorer-divider: #243040;         /* hairline rule inside an explorer HUD panel (sidebar
+                                             "All" row, minimap hover-bar) */
+    --explorer-input-underline: #45607a; /* rest-state dashed underline of an editable stat cell
+                                             (ExplorerStats Limit/Radius inputs) */
+    --explorer-input-underline-hover: #6b8db0; /* the same, hovered */
+    --surface-raised-hover: #1e2430;     /* hover fill of a --surface-raised panel (freeze-pill) */
+    --explorer-viewport-fill: rgba(255, 255, 255, 0.06); /* MiniMap's camera-viewport rectangle
+                                             wash — a light tint on a dark floor in Blue/Dark;
+                                             Light flips to a dark tint since its floor is light */
+
+    /* MiniMap's legend row hover/active tint (Task 2 review fix, feature 052).
+       Was minted :root-only in the data-colour block below on the theory that
+       its base hue (--explorer-node-default) is a data colour; but the ROLE is
+       "this row is hovered" — an interaction affordance, i.e. chrome, not data
+       — so it belongs here, themed. Blue/Dark keep the original low-alpha
+       tint (it reads fine over both themes' dark --surface-raised); Light
+       needs a stronger tint or it nearly vanishes over the white
+       --surface-raised there (0.12 composites to ~#edf6fd on white). */
+    --explorer-row-hover: rgba(108, 180, 238, 0.12);
+
+    /* Roles minted fixing Task 2's review — five explorer literals that were
+       reused from an existing token whose Blue value was close but not
+       byte-identical, which silently "tidied" Blue (forbidden by this file's
+       own header). Each is its own role, anchored to the ORIGINAL literal in
+       Blue; Dark/Light are derived by holding the anchor's hue/saturation
+       constant and applying the same lightness delta the reused sibling
+       token underwent between its own Blue and Dark/Light values — i.e. the
+       new token ages the same way its near-neighbour does, without ever
+       equalling Blue to that neighbour's exact pixels. */
+    --explorer-segment-bg: #1a2028;      /* ExplorerSidebar's Stacked/Extended segmented-control
+                                             container — near --surface-inset (#101826) but not
+                                             equal to it, and --surface-inset is already spoken for
+                                             (AskBox, ShellCell, NotebookPane, …) */
+    --explorer-segment-hover: #232a35;   /* hover fill of an unselected segment in that control —
+                                             near --chip-hover (#253545) but not equal to it, and
+                                             --chip-hover is already spoken for (ColumnContextTags,
+                                             SettingsMenu) */
+    --explorer-minimap-canvas-bg: #0e1418; /* MiniMap's own opaque SVG backdrop rect — near
+                                             --explorer-canvas-bg (#0e0f12, the 3D canvas's root
+                                             background) but not equal to it; kept as its own role
+                                             so the two floors stay independently editable */
+    --explorer-hint-text: #aab4c2;       /* label/hint text across the explorer HUD (sidebar
+                                             labels, empty-state hint, tooltip meta lines,
+                                             MiniMap hover-tags) — near --help-lead-text (#aab8c6,
+                                             QueryHelpPanel's lead paragraph) but not equal to it */
+    --explorer-detail-text: #d8dde8;     /* secondary/detail text on the same HUD (kbd chip text,
+                                             layer-tooltip tag list, hovered segment label) — near
+                                             --help-body-text (#d8e0ea, QueryHelpPanel's body copy)
+                                             but not equal to it */
+
+    /* Roles minted theming the sketch cell (Task 3, feature 052). Blue's
+       values are byte-identical to the two literals they replace (the pen's
+       '#e8eaf0' and bake.js's SKETCH_BG '#0b1220'), so Blue is unchanged.
+       --sketch-ink pairs with --text's per-theme value: near-white in
+       Blue/Dark, near-black in Light, so the default pen is always visible
+       on the canvas. --sketch-bg pairs with --surface-sunken's per-theme
+       value — the same token .sk-wrap already uses for the on-screen canvas
+       background — so lib/bake.js flattens a sketch onto the exact surface
+       it was drawn against, in every theme, and a Light-theme sketch's dark
+       ink survives baking rather than vanishing onto a fixed dark PNG. */
+    --sketch-ink: #e8eaf0;
+    --sketch-bg: #0b1220;
 
     /* --- Explorer, themeable half (see the shared block below) ---------- */
     --explorer-label: #e8eaf0;
@@ -300,6 +448,251 @@ html {
     --n4l-syntax-label: #a78bfa;
     --n4l-syntax-comment: #4b5563;
     --n4l-syntax-invalid: #f59e0b;
+
+    /* Roles minted tokenising the long tail (Task 5, feature 052) — OmniBar's
+       remaining literals. Method matches the OmniBar/editor family above:
+       Dark via nearest-Blue-neighbour RGB-delta transfer; Light via the same
+       transfer for backgrounds, then hue/saturation-held lightness
+       binary-search for any paired foreground until it clears 4.5:1 against
+       that background (skipped where the transferred value already clears —
+       matches --stat-high's "no reason to move it" precedent). */
+    --mode-badge-bg: #1e3a50;            /* .mode-badge fill (search-mode indicator) */
+    --mode-badge-text: #5a8aaa;          /* .mode-badge label text */
+    --mode-badge-graph-bg: #1a3a2a;      /* .mode-badge.mode-graph fill */
+    --mode-badge-graph-text: #5a9a7a;    /* .mode-badge.mode-graph label text */
+    --mode-badge-graph-border: #2a5a3a;  /* .mode-badge.mode-graph border */
+    /* Matches --surface-overlay's own RGB at alpha 0 — the fade-to-bottom
+       hint at the foot of the results list interpolates into the panel's own
+       background, not a fixed literal, so the fade doesn't fringe once
+       --surface-overlay itself changes per theme. */
+    --surface-overlay-fade: rgba(26, 37, 53, 0);
+    --hint-code-text: #6a9aaa;           /* .omnibar-hint code text */
+    --hint-code-bg: #0f1e2e;             /* .omnibar-hint code / .notes-end-hint code fill */
+    --hint-code-text-alt: #8aa8c9;       /* .notes-end-hint code text (same fill, different hue) */
+    --text-graph-error: #8a4a4a;         /* .graph-error message text */
+    /* Byte-identical to --log-filter-active-bg/border/text (LogPanel, Task
+       4) by coincidence of using the same gold-on-navy "highlighted" family,
+       but minted as OmniBar's own roles rather than reused — that token is
+       documented LogPanel-specific, and retuning it for OmniBar would
+       silently move LogPanel too (same reasoning as --sev-info's comment
+       above). Dark/Light carried over from --log-filter-active-*'s own
+       already-reviewed derivation, since the source literal is identical. */
+    --listing-hint-bg: #1e3242;          /* .listing-hint (did-you-mean) fill */
+    --listing-hint-text: #d8c590;        /* .listing-hint-title text */
+    --omnibar-gold-accent: #c9a96e;      /* .listing-hint border-left, .sequence-context text,
+                                             .note-block-header .note-node-context text — one
+                                             shared "context/highlight" accent used three times
+                                             within OmniBar */
+
+    /* App.svelte's graph-build status banner (Task 5). Three self-contained
+       bg/border/text triads, chrome (a build-status toast, not data) so
+       tokenised rather than allowlisted. --done and --error reuse var(--ok)/
+       var(--danger) for text — byte-identical to the literals they replace —
+       rather than minting new roles for a hue that already has one. Dark
+       kept identical to Blue throughout: this banner's saturated hues track
+       Blue closely the same way --danger/--ok/--warn do, and the unchanged
+       pairing still clears the ratio below. Light re-solved: hue/saturation
+       held, lightness raised to ~0.90 for the fill and ~0.55 for the border
+       (matching the pastel-badge pattern --mode-badge-graph-bg/
+       --log-filter-active-bg already established), foreground re-solved
+       (--graph-banner-building-text) or left unchanged (--ok/--danger,
+       which already clear here) until each pairing reaches 4.5:1. */
+    --graph-banner-building-bg: #2a4a6a;
+    --graph-banner-building-text: #7ecfff;  /* 5.36:1 in Blue/Dark (unchanged), 4.55:1 in Light */
+    --graph-banner-building-border: #3a6a9a;
+    --graph-banner-done-bg: #1a4a2a;        /* text is var(--ok): 5.50:1 Blue/Dark, 4.57:1 Light */
+    --graph-banner-done-border: #2a7a3a;
+    --graph-banner-error-bg: #4a1a1a;       /* text is var(--danger): 5.95:1 Blue/Dark, 4.84:1 Light */
+    --graph-banner-error-border: #7a2a2a;
+
+    /* ColumnContextTags's chip states (Task 5). .chip.cursor-at reuses
+       var(--row-cursor-bg) for its background — byte-identical to the
+       literal it replaced, and the same "cursor-position highlight" role
+       the token already documents. --chip-cursor-text is its paired label.
+       .chip.sequence.active's triad is its own family: Dark kept identical
+       to Blue (a saturated green accent, same "no reason to move it"
+       pattern as --danger/--ok); Light re-solved, hue/saturation held, fill
+       lightened to the pastel-badge range, border solved to 3:1 (a
+       non-text UI-component minimum) and text to 4.5:1 against it. */
+    --chip-cursor-text: #b0c4d8;             /* 6.98:1 Blue/Dark against --row-cursor-bg, 8.39:1 Light */
+    --chip-sequence-active-bg: #1a3020;
+    --chip-sequence-active-border: #4ade80;  /* 8.10:1 Blue/Dark, 3.02:1 Light (border, not text) */
+    --chip-sequence-active-text: #86efac;    /* 10.05:1 Blue/Dark, 4.50:1 Light */
+
+    /* ColumnNodes (Task 5). .ha-btn's background and .arrow-target's colour
+       both byte-match existing tokens with a genuinely matching role —
+       var(--control-active) (a small toolbar control's fill) and
+       var(--n4l-syntax-arrow-target) (this literally IS an arrow-target
+       colour, same concept the N4L grammar highlighter uses it for) — so
+       both are reused directly rather than re-minted. The parse-spinner's
+       accent is NOT reused from var(--seq-num) despite being byte-identical:
+       that token is documented for sequence step-number text specifically,
+       and a spinner ring is an unrelated concern; minted separately but its
+       Dark/Light carried over from --seq-num's own already-solved values
+       since the source literal is identical. */
+    --parse-spinner-accent: #3b82f6;
+    --ha-btn-text: #7ab0d4;      /* 5.97:1 Blue/Dark against var(--control-active), 4.53:1 Light */
+    --arrow-code-text: #5a9abd;  /* 4.93:1 Blue, 5.80:1 Dark against var(--surface), 4.51:1 Light */
+
+    /* QueryHelpPanel's --help-code-text (Task 5, revised in review round 1).
+       Byte-identical to var(--n4l-syntax-arrow-code) but NOT reused from it
+       directly (ArrowPalette's .arrow-code, below, IS that role and reuses
+       it directly; QueryHelpPanel's inline <code>/.match-title is a
+       different concern). Round 1 ALSO copied n4l-syntax-arrow-code's own
+       Dark/Light values here as a "same literal" shortcut — rejected on
+       review: that token is Solarized-derived, which changes saturation as
+       well as lightness (0.92 -> 0.59), so borrowing its Dark/Light is not
+       actually a hue/sat-held derivation of #67e8f9, it is a different
+       colour that happens to start from the same Blue value. Re-solved
+       independently instead, against the one background this token's two
+       consumers (`code`, `.match-title`) actually paint on
+       (--surface-overlay; QueryHelpPanel has no active/hover-highlighted
+       row for either). Dark kept unchanged (11.62:1, comfortably clears —
+       no reason to move it); Light solved holding #67e8f9's own hue/
+       saturation. QueryAutocomplete no longer shares this token — see
+       --qac-label-text below, split out in the same review round because
+       .qac-label's real background is NOT the panel. */
+    --help-code-text: #67e8f9;   /* 10.65:1 Blue, 11.62:1 Dark, 4.54:1 Light against --surface-overlay */
+    /* --help-example-text is a near, not exact, match for var(--ok)
+       (#8fd9a8 vs #7ecfa0) — too close to reuse without silently tidying
+       Blue, so minted on its own. Derived via delta-transfer from --ok
+       itself (an analogous "positive/success" role, not a hue-shifting
+       Solarized donor), which is why this one didn't need a review-round
+       correction. */
+    --help-example-text: #8fd9a8;  /* 9.95:1 Blue/Dark against --surface-block, 4.50:1 Light */
+    /* QueryAutocomplete's .qac-label (Task 5 review round 1). One row is
+       always .active/:hover — background var(--accent), not the panel — so
+       this needed its own value rather than sharing --help-code-text's
+       panel-solved one. Non-active rows still show the label on the panel
+       background too, so the value is verified against BOTH: Blue/Dark kept
+       unchanged (8.01:1 / 9.52:1 against --accent, 10.65:1 / 11.62:1 against
+       --surface-overlay — no reason to move either), Light solved holding
+       hue/saturation, picking whichever of the two candidate solves (against
+       --accent's pale #dbeafe, against --surface-overlay's white) was
+       darker, so the single value clears both: 4.55:1 against --accent,
+       5.55:1 against --surface-overlay. */
+    --qac-label-text: #67e8f9;
+
+    /* Shared "external modification" amber warning banner (SourceTab's
+       .ext-mod-banner, MiddleBand's .reminder-badge — same literal bg/text
+       in both files, one token pair rather than two). Dark kept identical to
+       Blue (already clears 7.28:1, matching the family's "no reason to move
+       it" pattern); Light's fill lightened to the pastel-badge range and its
+       text re-solved, hue/saturation held, to 4.5:1 against it.
+       --warn-banner-text is NOT reused from the byte-identical
+       var(--n4l-syntax-marker) — that token is the editor's syntax
+       highlighter and its own Dark/Light don't clear 4.5:1 against this
+       pairing's background, confirming it's the wrong role to borrow from
+       even before the "unrelated concern" rule rules it out. */
+    --warn-banner-bg: #78350f;
+    --warn-banner-text: #fde68a;    /* 7.28:1 Blue/Dark, 4.52:1 Light */
+    --warn-banner-hover: #92400e;   /* MiddleBand's .reminder-badge:hover */
+    /* SourceTab's .banner-btn.reload sits directly on var(--warn), not on
+       --warn-banner-bg. Blue's dark-on-amber pairing (8.66:1) cannot reach
+       4.5:1 against Light's var(--warn) (#b45309, a materially darker
+       orange than Blue's #f59e0b — solving BLACK against it caps at
+       4.18:1) — so Light flips direction instead of merely darkening:
+       hue/saturation held from the Blue literal, lightened to a pale cream
+       (4.51:1), which reads correctly as "light text on a saturated
+       amber button" the same way white text would, without abandoning the
+       anchor hue. */
+    --text-on-warn: #1c1100;        /* 8.66:1 Blue/Dark against var(--warn), 4.51:1 Light */
+
+    /* The reminder-card highlight (NodeCard.svelte's .node-card.reminder,
+       reapplied via :global() in ReadTab.svelte — one shared token, not two
+       copies of the literal). Deliberately theme-invariant: a pale
+       highlighter/sticky-note card distinguishing a reminder from ordinary
+       notes should look the same highlighter-yellow whether the surrounding
+       app is Blue, Dark or Light, and its hue is far enough from all three
+       --surface values that it never blends in.
+       Task 5 review round 1, Important 4: this reasoning originally leaned
+       on the sketch-pen swatches (Task 3) as precedent, which was rejected
+       — that precedent is USER-AUTHORED DATA (a saved sketch's ink must
+       look the same when reopened in a different theme), not chrome, and
+       doesn't transfer. The freeze itself is kept (the bg/text pair is
+       still 16.70:1/6.37:1 and the sticky-note argument stands on its own),
+       but the concrete defect the review found — --n4l-syntax-arrow-target
+       measuring 1.26:1 in Blue / 2.88:1 in Dark against this frozen surface,
+       --accent-dim 3.60:1 in Dark, --border 2.28:1 in Light, because none of
+       those THEMED tokens were ever designed against a fixed pale-yellow
+       floor — is fixed in NodeCard.svelte: .node-card.reminder overrides
+       .arrow-dt/.arrow-dd/.arrow-list's border to frozen ink instead
+       (--reminder-card-text-strong/--reminder-card-text/
+       --reminder-card-border), so everything painting on the frozen surface
+       is frozen with it. Outside a reminder card, .arrow-dd still reads
+       var(--n4l-syntax-arrow-target) as before (that byte-identical, same-
+       role reuse is unaffected — only the frozen-surface case needed an
+       override). */
+    --reminder-card-bg: #fef3c7;
+    --reminder-card-text: #1c1100;         /* 16.70:1 — unchanged in every theme */
+    --reminder-card-text-strong: #92400e;  /* 6.37:1 — unchanged in every theme */
+    --reminder-card-border: #d15c14;       /* 3.59:1 against --reminder-card-bg — unchanged in every theme */
+
+    /* .resolve-btn:hover (ReminderPanel). Near, not exact, match for
+       var(--accent-hover) (#1e4a7a vs #244a72) — too close to reuse without
+       tidying Blue. Dark/Light via nearest-neighbour delta transfer from
+       --accent-hover, since the two roles (a hovered accent chip, a hovered
+       resolve button) are close enough in kind that its own already-solved
+       ageing is a reasonable donor; verified the paired
+       var(--accent-text-alt) still clears 4.5:1 against both results
+       (6.17:1 Dark, 4.67:1 Light) rather than assumed. */
+    --resolve-btn-hover: #1e4a7a;
+
+    /* MediaSearchPanel's .ms-err (Task 5) — no existing token is even a near
+       match. Dark kept identical to Blue (8.72:1, matching the family's "no
+       reason to move it" pattern); Light re-solved the same way as the
+       App.svelte graph-error banner: hue/saturation held, fill lightened to
+       the pastel range, border to ~0.55 lightness, text solved to 4.5:1
+       against the fill. (.ms-dur, MediaSearchPanel's other literal pair, is
+       allowlisted below — it overlays an arbitrary thumbnail image, not a
+       themed surface.) */
+    --media-err-bg: #2a1616;
+    --media-err-border: #6a3a3a;
+    --media-err-text: #ff99cc;  /* 8.72:1 Blue/Dark, 4.53:1 Light */
+
+    /* ShellCell's .sh-stop border (Task 5). #5a2a2a in every theme — near,
+       not exact, match for var(--danger-fill) (#5a1e1e); kept unchanged
+       across all three since it's a pre-existing sub-3:1 weakness in
+       Blue/Dark (1.35:1/1.40:1) that this migration carries forward rather
+       than silently fixing, and it already clears comfortably in Light
+       (9.93:1). */
+    --stop-btn-border: #5a2a2a;
+
+    /* AskBox's .ask-note code (Task 5) — near, not exact, match for
+       var(--warn); Dark kept unchanged (11.40:1 against --surface-inset,
+       comfortably clears), Light re-solved to 4.52:1 against it. */
+    --ask-note-code-text: #fbbf24;
+    /* EmptyState's .open-btn — white text on the var(--accent-primary)
+       fill. No existing token pairs text with that fill (elsewhere it's
+       only ever used as a border colour); already clears 5.17:1 Blue,
+       6.70:1 Light against accent-primary's own per-theme value, so kept
+       unchanged in every theme. */
+    --text-on-accent-primary: #fff;
+    /* Splitter's hover/focus/dragging divider highlight — near, not exact,
+       match for var(--media-hover-border) (#4a7aaa vs #4a7aa8); Dark/Light
+       via nearest-neighbour delta transfer from it (decorative, no text
+       pairing to verify). */
+    --splitter-hover: #4a7aaa;
+
+    /* Task 5 review round 1, Important 3: OmniBar's .arrow-meta and
+       SourceTab's .banner-btn.dismiss were ALLOW-listed on the theory that
+       each is a coupled bg+fg pair carrying its own contrast. Rejected on
+       review — that carve-out's premise is that the HUE encodes state (the
+       due/done/llm tags' amber/green/purple identify which state a tag is
+       in); neither of these does: .arrow-meta paints the identical hue for
+       every MetaType, and .dismiss is a plain button. Both are chrome and
+       now go through real tokens. The VALUES are unchanged (Blue is
+       unchanged as required, and neither had a legibility problem — 7.31:1
+       / 8.54:1 internal contrast) and deliberately frozen across all three
+       themes: each is a small, fully self-contained two-colour unit with no
+       independently-themed children painting on it (unlike the reminder
+       card below, where freezing the surface without also accounting for
+       its children was the actual defect) — freezing the pair here doesn't
+       carry that risk. */
+    --arrow-meta-bg: #e4efe9;
+    --arrow-meta-text: #345244;    /* 7.31:1, unchanged in every theme */
+    --dismiss-chip-bg: #44403c;
+    --dismiss-chip-text: #e8eaf0;  /* 8.54:1, unchanged in every theme */
 }
 
 /* --- Dark: neutral near-black. ---------------------------------------------
@@ -385,6 +778,20 @@ html {
     --sequence-connector: #424a57;
     --text-loc: #769bbc;
 
+    --log-filter-active-bg: #16242f;
+    --log-filter-active-text: #ccb36e;
+    --log-filter-active-border: #bf9852;
+
+    --stat-high: #e0b000;
+    --sev-info: #6a9aaa;
+
+    /* Chart-series colours — see the Blue block's comment for the full
+       rationale. Dark keeps the literals unchanged (already clears 3:1). */
+    --chart-blue: #7dd3fc;
+    --chart-purple: #b9a3e3;
+    --chart-amber: #e0b000;
+    --chart-green: #7ecfa0;
+
     --surface-study: #141516;
     --text-quiet: #81a5a5;
     --text-doc: #c5d0db;
@@ -424,6 +831,28 @@ html {
     --text-control-muted: #5b5e66;
     --text-media-error: #dd8888;
 
+    --explorer-control: #202226;
+    --explorer-control-active: #2c2f35;
+    --explorer-divider: #232529;
+    --explorer-input-underline: #4a5a68;
+    --explorer-input-underline-hover: #6f88a0;
+    --surface-raised-hover: #262930;
+    --explorer-viewport-fill: rgba(255, 255, 255, 0.06);
+
+    /* Dark's own canvas backdrop is near-black too, same as Blue's — the
+       low-alpha row-hover tint stays correct unchanged (see the Blue block's
+       comment for why Light differs). */
+    --explorer-row-hover: rgba(108, 180, 238, 0.12);
+
+    --explorer-segment-bg: #12161b;
+    --explorer-segment-hover: #191e26;
+    --explorer-minimap-canvas-bg: #0c1114;
+    --explorer-hint-text: #a1acbc;
+    --explorer-detail-text: #cdd4e2;
+
+    --sketch-ink: #e8e8ea;
+    --sketch-bg: #0b0c0e;
+
     --explorer-canvas-bg: #0b0c0f;
     --editor-active-line: #1f3248;
     --text-iso-message: #8c8d8d;
@@ -460,6 +889,68 @@ html {
     --n4l-syntax-label: #d84e91;
     --n4l-syntax-comment: #758686;
     --n4l-syntax-invalid: #e05318;
+
+    --mode-badge-bg: #203e56;
+    --mode-badge-text: #86aac1;
+    --mode-badge-graph-bg: #102e1b;
+    --mode-badge-graph-text: #5b9c7b;
+    --mode-badge-graph-border: #2c4e23;
+    --surface-overlay-fade: rgba(28, 29, 33, 0);
+    --hint-code-text: #6a9aaa;
+    --hint-code-bg: #141820;
+    --hint-code-text-alt: #8aa8c9;
+    --text-graph-error: #b47373;
+    --listing-hint-bg: #16242f;
+    --listing-hint-text: #ccb36e;
+    --omnibar-gold-accent: #bf9852;
+
+    --graph-banner-building-bg: #2a4a6a;
+    --graph-banner-building-text: #7ecfff;
+    --graph-banner-building-border: #3a6a9a;
+    --graph-banner-done-bg: #1a4a2a;
+    --graph-banner-done-border: #2a7a3a;
+    --graph-banner-error-bg: #4a1a1a;
+    --graph-banner-error-border: #7a2a2a;
+
+    --chip-cursor-text: #a5bcd2;
+    --chip-sequence-active-bg: #1a3020;
+    --chip-sequence-active-border: #4ade80;
+    --chip-sequence-active-text: #86efac;
+
+    --parse-spinner-accent: #2f7bf5;
+    --ha-btn-text: #7ab0d4;
+    --arrow-code-text: #5a9abd;
+
+    --help-code-text: #67e8f9;
+    --help-example-text: #8fd9a8;
+    --qac-label-text: #67e8f9;
+
+    --warn-banner-bg: #78350f;
+    --warn-banner-text: #fde68a;
+    --warn-banner-hover: #92400e;
+    --text-on-warn: #1c1100;
+
+    --reminder-card-bg: #fef3c7;
+    --reminder-card-text: #1c1100;
+    --reminder-card-text-strong: #92400e;
+    --reminder-card-border: #d15c14;
+
+    --resolve-btn-hover: #323c4c;
+
+    --media-err-bg: #2a1616;
+    --media-err-border: #6a3a3a;
+    --media-err-text: #ff99cc;
+
+    --stop-btn-border: #5a2a2a;
+
+    --ask-note-code-text: #fbbf24;
+    --text-on-accent-primary: #fff;
+    --splitter-hover: #6c7f97;
+
+    --arrow-meta-bg: #e4efe9;
+    --arrow-meta-text: #345244;
+    --dismiss-chip-bg: #44403c;
+    --dismiss-chip-text: #e8eaf0;
 }
 
 /* --- Light: white-to-grey with dark text. ----------------------------------
@@ -554,6 +1045,21 @@ html {
     --sequence-connector: #a8b1bd;
     --text-loc: #395975;
 
+    --log-filter-active-bg: #d5e2ec;
+    --log-filter-active-text: #4d401b;
+    --log-filter-active-border: #654f26;
+
+    --stat-high: #846700;
+    --sev-info: #48717e;
+
+    /* Chart-series colours — see the Blue block's comment for the full
+       rationale. Re-solved for Light: 3.03:1 / 3.02:1 / 3.02:1 / 3.04:1
+       against --surface-study (#e9ecf0), in the same order as declared. */
+    --chart-blue: #058fd1;
+    --chart-purple: #9776d5;
+    --chart-amber: #a68300;
+    --chart-green: #399861;
+
     --surface-study: #e9ecf0;
     --text-quiet: #3c5454;
     --text-doc: #232e39;
@@ -593,6 +1099,29 @@ html {
     --text-control-muted: #9fb0c0;
     --text-media-error: #952b2b;
 
+    --explorer-control: #dde3ec;
+    --explorer-control-active: #ccd4e0;
+    --explorer-divider: #d3d8e0;
+    --explorer-input-underline: #8a9cb0;
+    --explorer-input-underline-hover: #5f7a94;
+    --surface-raised-hover: #eef0f4;
+    --explorer-viewport-fill: rgba(20, 30, 45, 0.08);
+
+    /* Stronger than Blue/Dark's 0.12 — at 0.12 this composites to ~#edf6fd
+       over Light's white --surface-raised, which is nearly invisible as a
+       hover cue. 0.4 composites to ~#c4e1f8, comparable in strength to
+       --accent-hover (#c3dafd) — clearly visible without being a heavy fill. */
+    --explorer-row-hover: rgba(108, 180, 238, 0.4);
+
+    --explorer-segment-bg: #f2f4f6;
+    --explorer-segment-hover: #d4dae3;
+    --explorer-minimap-canvas-bg: #e6edf1;
+    --explorer-hint-text: #465161;
+    --explorer-detail-text: #2c354a;
+
+    --sketch-ink: #14181f;
+    --sketch-bg: #e4e7ec;
+
     --explorer-canvas-bg: #e5e8ec;
     --editor-active-line: #c2d2e4;
     --text-iso-message: #44505f;
@@ -631,6 +1160,68 @@ html {
     --n4l-syntax-label: #cd2d7b;
     --n4l-syntax-comment: #637272;
     --n4l-syntax-invalid: #c34815;
+
+    --mode-badge-bg: #bfd7e7;
+    --mode-badge-text: #3d5f76;
+    --mode-badge-graph-bg: #cbead8;
+    --mode-badge-graph-text: #416e58;
+    --mode-badge-graph-border: #2a5a3a;
+    --surface-overlay-fade: rgba(255, 255, 255, 0);
+    --hint-code-text: #466e7c;
+    --hint-code-bg: #e1e8f2;
+    --hint-code-text-alt: #446b94;
+    --text-graph-error: #8a4a4a;
+    --listing-hint-bg: #d5e2ec;
+    --listing-hint-text: #4d401b;
+    --omnibar-gold-accent: #654f26;
+
+    --graph-banner-building-bg: #dae6f1;
+    --graph-banner-building-text: #006aaa;
+    --graph-banner-building-border: #588cc0;
+    --graph-banner-done-bg: #d9f2e1;
+    --graph-banner-done-border: #54c46b;
+    --graph-banner-error-bg: #f2d9d9;
+    --graph-banner-error-border: #c45454;
+
+    --chip-cursor-text: #1f3346;
+    --chip-sequence-active-bg: #e5f1e8;
+    --chip-sequence-active-border: #1d9d4c;
+    --chip-sequence-active-text: #117d38;
+
+    --parse-spinner-accent: #2976f5;
+    --ha-btn-text: #377cab;
+    --arrow-code-text: #3d7899;
+
+    --help-code-text: #068293;
+    --help-example-text: #297844;
+    --qac-label-text: #057382;
+
+    --warn-banner-bg: #f9e0d2;
+    --warn-banner-text: #7c6402;
+    --warn-banner-hover: #f6c2a2;
+    --text-on-warn: #fff1da;
+
+    --reminder-card-bg: #fef3c7;
+    --reminder-card-text: #1c1100;
+    --reminder-card-text-strong: #92400e;
+    --reminder-card-border: #d15c14;
+
+    --resolve-btn-hover: #bddaff;
+
+    --media-err-bg: #eddede;
+    --media-err-border: #ae6b6b;
+    --media-err-text: #c50063;
+
+    --stop-btn-border: #5a2a2a;
+
+    --ask-note-code-text: #8b6503;
+    --text-on-accent-primary: #fff;
+    --splitter-hover: #45709c;
+
+    --arrow-meta-bg: #e4efe9;
+    --arrow-meta-text: #345244;
+    --dismiss-chip-bg: #44403c;
+    --dismiss-chip-text: #e8eaf0;
 }
 
 /* 2.5D Isometric Graph Explorer (feature 006) — shared semantic palette.
@@ -671,6 +1262,17 @@ html {
     --explorer-territory-5: #e03a8a; /* hot pink */
     --explorer-territory-6: #e0c83a; /* gold */
     --explorer-territory-7: #3ae0e0; /* cyan */
+
+    /* Roles minted finishing NodeMeshes.js's move to Theme.js as the single
+     * source of truth (Task 2, feature 052) and MiniMap's remaining data
+     * literal. Same family as the palette above — data colours, not
+     * chrome — so :root-only, no per-theme override.
+     * (MiniMap's row-hover tint was minted here too originally, but its role
+     * is an interaction affordance, not data — moved to the themed block
+     * above in the Task 2 review fix; see the comment there.) */
+    --explorer-cycle-glyph: #f4b545;   /* cycle-warning glyph fill (amber) */
+    --explorer-cycle-halo: #1a1306;    /* cycle-warning glyph stroke/halo */
+    --explorer-territory-none: #3a4555; /* MiniMap swatch when a layer has no territory slot */
 }
 
 body {

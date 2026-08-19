@@ -57,9 +57,9 @@
   }
 
   .node-card.reminder {
-    background: #fef3c7;
+    background: var(--reminder-card-bg);
     border-left: 3px solid var(--warn);
-    color: #1c1100;
+    color: var(--reminder-card-text);
   }
 
   .node-card.sequence-node {
@@ -74,7 +74,7 @@
   }
 
   .node-card.reminder .node-text {
-    color: #92400e;
+    color: var(--reminder-card-text-strong);
     font-weight: 600;
   }
 
@@ -110,8 +110,33 @@
   }
 
   .arrow-dd {
-    color: #86efac;
+    color: var(--n4l-syntax-arrow-target);
     margin: 0;
     overflow-wrap: anywhere;
+  }
+
+  /* .node-card.reminder freezes its own surface (--reminder-card-bg) to the
+     same pale highlighter-yellow in every theme (Task 5, and reaffirmed on
+     review round 1) — but --accent-dim, --n4l-syntax-arrow-target and
+     --border, which .arrow-dt/.arrow-dd/.arrow-list normally use, are
+     THEMED, and none of them were designed against a fixed pale-yellow
+     floor: --n4l-syntax-arrow-target alone measures 1.26:1 in Blue and
+     2.88:1 in Dark against --reminder-card-bg (both pre-existing, not
+     introduced by this migration, but freezing the surface without also
+     freezing what paints on it turns that pre-existing weakness permanent
+     across every theme, not just Blue). Fixed by overriding the children
+     inside a reminder card to the same frozen ink already used for
+     .node-text, rather than re-theming the card (the sticky-note motif is a
+     real argument for staying pale-in-every-theme; re-theming the surface
+     back would abandon it, and would only move the mismatch onto whichever
+     child colour DIDN'T get re-solved). */
+  .node-card.reminder .arrow-dt {
+    color: var(--reminder-card-text-strong);  /* 6.37:1 — same as .node-text, unchanged in every theme */
+  }
+  .node-card.reminder .arrow-dd {
+    color: var(--reminder-card-text);  /* 16.70:1 — unchanged in every theme */
+  }
+  .node-card.reminder .arrow-list {
+    border-top-color: var(--reminder-card-border);  /* ~3:1 non-text minimum, unchanged in every theme */
   }
 </style>

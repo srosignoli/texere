@@ -1374,15 +1374,15 @@
     letter-spacing: 0.08em;
     padding: 1px 6px;
     border-radius: 3px;
-    background: #1e3a50;
-    color: #5a8aaa;
+    background: var(--mode-badge-bg);
+    color: var(--mode-badge-text);
     border: 1px solid var(--control-border);
   }
 
   .mode-badge.mode-graph {
-    background: #1a3a2a;
-    color: #5a9a7a;
-    border-color: #2a5a3a;
+    background: var(--mode-badge-graph-bg);
+    color: var(--mode-badge-graph-text);
+    border-color: var(--mode-badge-graph-border);
   }
 
   .omnibar-close,
@@ -1431,7 +1431,7 @@
     bottom: 0;
     height: 24px;
     pointer-events: none;
-    background: linear-gradient(to bottom, rgba(26, 37, 53, 0) 0%, var(--surface-overlay) 100%);
+    background: linear-gradient(to bottom, var(--surface-overlay-fade) 0%, var(--surface-overlay) 100%);
   }
 
   .omnibar-summary {
@@ -1483,8 +1483,8 @@
 
   .omnibar-hint code {
     font-style: normal;
-    color: #6a9aaa;
-    background: #0f1e2e;
+    color: var(--hint-code-text);
+    background: var(--hint-code-bg);
     padding: 1px 5px;
     border-radius: 3px;
     font-family: monospace;
@@ -1571,8 +1571,8 @@
     font-size: 0.7rem;
     padding: 1px 6px;
     border-radius: 3px;
-    background: #e4efe9;
-    color: #345244;
+    background: var(--arrow-meta-bg);
+    color: var(--arrow-meta-text);
     flex-shrink: 0;
   }
 
@@ -1593,7 +1593,7 @@
   }
 
   .graph-error {
-    color: #8a4a4a;
+    color: var(--text-graph-error);
     font-style: normal;
   }
 
@@ -1724,13 +1724,13 @@
     gap: 2px;
     margin: 6px 14px;
     padding: 8px 12px;
-    background: #1e3242;
-    border-left: 2px solid #c9a96e;
+    background: var(--listing-hint-bg);
+    border-left: 2px solid var(--omnibar-gold-accent);
     border-radius: 3px;
     font-size: 0.78rem;
   }
   .listing-hint-title {
-    color: #d8c590;
+    color: var(--listing-hint-text);
     font-weight: 500;
   }
   .listing-hint-detail {
@@ -1752,7 +1752,7 @@
   .sequence-context {
     font-size: 0.72rem;
     font-weight: 600;
-    color: #c9a96e;
+    color: var(--omnibar-gold-accent);
     letter-spacing: 0.02em;
   }
   .sequence-context-muted {
@@ -1875,7 +1875,7 @@
   }
   .note-block-header .note-node-context {
     font-size: 0.68rem;
-    color: #c9a96e;
+    color: var(--omnibar-gold-accent);
     font-style: italic;
   }
   .note-arrow-line {
@@ -1914,8 +1914,8 @@
   }
   .notes-end-hint code {
     font-style: normal;
-    background: #0f1e2e;
-    color: #8aa8c9;
+    background: var(--hint-code-bg);
+    color: var(--hint-code-text-alt);
     padding: 0 4px;
     border-radius: 3px;
     font-family: monospace;

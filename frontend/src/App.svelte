@@ -483,18 +483,18 @@
     pointer-events: none;
   }
   .graph-banner--building {
-    background: #2a4a6a;
-    color: #7ecfff;
-    border: 1px solid #3a6a9a;
+    background: var(--graph-banner-building-bg);
+    color: var(--graph-banner-building-text);
+    border: 1px solid var(--graph-banner-building-border);
   }
   .graph-banner--done {
-    background: #1a4a2a;
-    color: #7ecfa0;
-    border: 1px solid #2a7a3a;
+    background: var(--graph-banner-done-bg);
+    color: var(--ok);
+    border: 1px solid var(--graph-banner-done-border);
   }
   .graph-banner--error {
-    background: #4a1a1a;
-    color: #ff8080;
-    border: 1px solid #7a2a2a;
+    background: var(--graph-banner-error-bg);
+    color: var(--danger);
+    border: 1px solid var(--graph-banner-error-border);
   }
 </style>

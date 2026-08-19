@@ -109,7 +109,7 @@
   }
 
   function colorFor(slot) {
-    if (slot === undefined || slot === null || slot < 0) return '#3a4555'
+    if (slot === undefined || slot === null || slot < 0) return 'var(--explorer-territory-none)'
     const palette = getTerritoryPalette()
     const c = palette[slot % palette.length]
     return '#' + c.toString(16).padStart(6, '0')
@@ -140,14 +140,16 @@
       on:pointermove={onPointerMove}
       on:pointerup={onPointerUp}
       on:pointercancel={onPointerUp}>
-      <!-- Backdrop. -->
+      <!-- Backdrop. Colours set via `style` (not bare fill/stroke attributes)
+           so the browser resolves the var() the same way it does for any
+           other CSS property — presentation-attribute var() support is less
+           consistent across WebKit versions. -->
       <rect
         x={worldBox.minX}
         y={worldBox.minZ}
         width={worldBox.maxX - worldBox.minX}
         height={worldBox.maxZ - worldBox.minZ}
-        fill="#0e1418"
-        stroke="#334455"
+        style="fill: var(--explorer-minimap-canvas-bg); stroke: var(--border-strong);"
         stroke-width="0.3"
         vector-effect="non-scaling-stroke" />
       {#each layers as l (l.contextId)}
@@ -157,9 +159,8 @@
         <rect
           x={r.x} y={r.z}
           width={r.w} height={r.d}
-          fill={color}
+          style="fill: {color}; stroke: {color};"
           fill-opacity={isActive ? 0.75 : 0.4}
-          stroke={color}
           stroke-width={isActive ? 1.6 : 0.8}
           stroke-opacity={isActive ? 1 : 0.7}
           vector-effect="non-scaling-stroke"
@@ -170,8 +171,7 @@
         <rect
           x={viewport.x} y={viewport.z}
           width={viewport.w} height={viewport.d}
-          fill="rgba(255,255,255,0.06)"
-          stroke="#e8eaf0"
+          style="fill: var(--explorer-viewport-fill); stroke: var(--text);"
           stroke-width="1"
           vector-effect="non-scaling-stroke"
           pointer-events="none" />
@@ -202,13 +202,13 @@
     left: 12px;
     bottom: 12px;
     width: 200px;
-    background: rgba(14, 20, 24, 0.92);
-    border: 1px solid #334455;
+    background: var(--surface-raised);
+    border: 1px solid var(--border-strong);
     border-radius: 6px;
     padding: 6px;
     pointer-events: auto;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
-    color: #e8eaf0;
+    color: var(--text);
     font-size: 11px;
     z-index: 4;
   }
@@ -217,7 +217,7 @@
     align-items: center;
     gap: 6px;
     padding: 2px 4px 4px;
-    border-bottom: 1px solid #243040;
+    border-bottom: 1px solid var(--explorer-divider);
     margin-bottom: 4px;
   }
   .hover-swatch {
@@ -240,7 +240,7 @@
   }
   .hover-tags {
     font-size: 10px;
-    color: #aab4c2;
+    color: var(--explorer-hint-text);
     padding: 0 4px 4px;
     line-height: 1.35;
   }
@@ -271,7 +271,7 @@
   }
   .row:hover,
   .row.active {
-    background: rgba(108, 180, 238, 0.12);
+    background: var(--explorer-row-hover);
   }
   .swatch {
     display: inline-block;
