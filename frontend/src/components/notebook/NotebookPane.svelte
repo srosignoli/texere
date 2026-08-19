@@ -5,7 +5,6 @@
   import { cellLabel } from '../../lib/cell-label.js'
   import { cellPreview } from '../../lib/cell-preview.js'
   import ContextCell from './ContextCell.svelte'
-  import LLMSettings from '../LLMSettings.svelte'
 
   export let nodeID
   export let notebookId = null      // when set, reopen this notebook read-only
@@ -18,7 +17,6 @@
   let nbId = null
   let error = ''
   let saveTimer = null
-  let showSettings = false
 
   async function load() {
     error = ''
@@ -107,7 +105,6 @@
     {#if cells.length}
       <button class="nb-foldall" on:click={foldAll}>{allFolded ? '▾ Unfold all' : '▸ Fold all'}</button>
     {/if}
-    <button class="nb-gear" on:click={() => (showSettings = true)} title="LLM providers">⚙ Models</button>
   </div>
   {#if error}<div class="nb-error">{error}</div>{/if}
   <div class="nb-scroll">
@@ -153,14 +150,12 @@
     {/if}
   </div>
 </div>
-{#if showSettings}<LLMSettings onClose={() => (showSettings = false)} />{/if}
 
 <style>
   .nb-pane { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--surface-sunken); }
   .nb-head { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--surface-inset); }
   .nb-title { color: var(--accent-text); font-weight: 600; }
   .nb-ro { color: var(--text-notice); font-size: 11px; }
-  .nb-gear { background: var(--control); color: var(--accent-text-alt); border: 1px solid var(--control-border); border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
   .nb-foldall { background: none; color: var(--text-faint); border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
   .nb-foldall:hover { color: var(--accent-text); border-color: var(--control-border); }
   .nb-error { color: var(--danger); padding: 6px 12px; font-size: 12px; }
