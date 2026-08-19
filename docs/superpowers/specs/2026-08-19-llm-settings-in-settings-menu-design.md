@@ -78,8 +78,8 @@ opened it**. Raising it above 70 is part of this change, not a follow-up.
    with no `update` is what made the toolbar's Search button blank the whole
    webview in feature 051.
 2. **`SettingsMenu.svelte`** — a second `<fieldset class="sm-section">` with
-   `<legend class="sm-legend">Models</legend>`, matching the existing Appearance
-   section, containing a single launcher button. Clicking it opens the overlay
+   `<legend class="sm-legend">LLM, Speech &amp; Skills</legend>`, matching the
+   existing Appearance section's markup, containing a single launcher button. Clicking it opens the overlay
    and closes the popover.
 3. **`App.svelte`** — mount `<LLMSettings>` on `$llmSettingsOpen`, beside the
    existing `ShortcutsPanel` mount.
@@ -90,9 +90,13 @@ opened it**. Raising it above 70 is part of this change, not a follow-up.
    state (21), the `⚙ Models` button (110), the conditional mount (156), and the
    `.nb-gear` style (163) if nothing else uses it.
 
-**Section naming.** The legend reads **Models**, matching today's button, even
-though the overlay also holds Speech-to-text and Skills. Continuity beats
-precision here; if the tab set grows again, rename then.
+**Section naming.** The legend reads **LLM, Speech & Skills** — it names all
+three tabs, so nothing behind the button is a surprise. It is deliberately not
+"Models": that is what the notebook button said, and it named neither the
+technology nor two of the three things it configures. The cost is a legend
+heavier than the one-word **Appearance** above it, which is accepted: a settings
+menu that undersells what a button does is worse than one with an uneven
+rhythm.
 
 ## Testing
 
