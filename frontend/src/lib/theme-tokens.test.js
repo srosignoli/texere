@@ -14,7 +14,32 @@ function stripComments(s) {
     .replace(/(^|[^:])\/\/[^\n]*/g, '$1')
 }
 
-const COLOUR = /(#[0-9a-fA-F]{3,8}\b|\brgba?\([^)]*\))/g
+// Named CSS colours are far more collision-prone than #hex/rgb() literals —
+// a bare English word can legitimately appear as part of a property name
+// ("white-space"), a custom-property or class identifier ("var(--x-white)",
+// ".icon-red"), or a value the guard must keep allowing outright
+// ("transparent", "currentColor" — theme-invariant keywords, not literal
+// colours, so deliberately left off this list). The lookbehind/lookahead
+// require the word to stand alone — not glued to a letter, digit, underscore
+// or hyphen on either side — so none of those collide. A few colour-shaped
+// words that double as common identifiers elsewhere in JS (e.g. `tan`, as in
+// Math.tan) are deliberately left off; comments are stripped before scanning
+// so prose is not the risk, a bare identifier is.
+const NAMED_COLOUR_WORDS = [
+  'black', 'silver', 'gray', 'grey', 'white', 'maroon', 'red', 'purple',
+  'fuchsia', 'magenta', 'green', 'lime', 'olive', 'yellow', 'navy', 'blue',
+  'teal', 'aqua', 'cyan', 'orange', 'pink', 'brown', 'indigo', 'violet',
+  'turquoise', 'salmon', 'khaki', 'coral', 'crimson', 'gold', 'beige',
+  'ivory', 'lavender', 'chocolate', 'sienna', 'azure', 'orchid', 'plum',
+]
+const COLOUR = new RegExp(
+  '(#[0-9a-fA-F]{3,8}\\b' +
+    '|\\brgba?\\([^)]*\\)' +
+    '|\\bhsla?\\([^)]*\\)' +
+    `|(?<![\\w-])(?:${NAMED_COLOUR_WORDS.join('|')})(?![\\w-])` +
+    ')',
+  'gi'
+)
 
 // A colour inside a shadow declaration is a depth cue, not a surface: it stays
 // dark in every theme. n4l-editor.js states the rule already. Both spellings
@@ -52,28 +77,34 @@ const ALLOW = {
   // with no real document) — same reasoning as the Theme.js entry above.
   // Documented at the top of lib/css-var.js.
   'lib/css-var.js': ['#e8eaf0', '#0b1220'],
-  // Chart series colours (Task 4, feature 052) — the `color` passed to each
-  // <canvas use:chart>, identifying which series it is (a bar/line's own
-  // hue is data, per the brief's ruling on stats-charts.js's default). Not
-  // .sp-value.ok/.low/.high any more: review fix round 1 (Critical 1) found
-  // those are chrome — 15px bold badge text sitting directly on
+  // StatsPanel.svelte no longer has an entry: its six chart call sites used
+  // to pass bare literals for `color` (Task 4, feature 052), but final-fix
+  // review (Important 1) found those literals were illegible in Light
+  // (1.41-1.88:1 against --surface-study, below WCAG's 3:1 floor for
+  // graphical objects — never run through the "lacks contrast, gets a light
+  // override" step the --explorer-* data palette got). They now read
+  // cssVar('--chart-blue'|'--chart-purple'|'--chart-amber'|'--chart-green',
+  // …) instead, with the fallback literal imported from lib/stats-charts.js
+  // rather than duplicated here — see that file's entry below, and
+  // style.css's --chart-* comment for the contrast numbers. Not
+  // .sp-value.ok/.low/.high any more either: review fix round 1 (Critical 1)
+  // found those are chrome — 15px bold badge text sitting directly on
   // --surface-study — and freezing them at these same literals left Light
-  // illegible (1.4-1.7:1 contrast); they now read var(--ok)/var(--accent-
-  // text)/var(--stat-high) instead (see StatsPanel.svelte and style.css).
-  // #e0b000 is still the deliberately-shared "amber/due" hue as a *series*
-  // identity (see this task's report for the narrowed ruling: canvas series
-  // and self-contained background+foreground pairs stay literal; bare text
-  // on a themed surface, like the badge this used to also cover, does not).
-  'components/StatsPanel.svelte': ['#7dd3fc', '#b9a3e3', '#e0b000', '#7ecfa0'],
-  // '#7ecfa0' is the default series colour when a caller doesn't pass one.
-  // Data, not chrome — it identifies a series, the same reasoning as
-  // StatsPanel's chart colours above. '#8899aa'/'#2a3a4a' are TICK_FALLBACK/
+  // illegible too; they now read var(--ok)/var(--accent-text)/var(--stat-
+  // high) instead (see StatsPanel.svelte and style.css).
+  // '#7ecfa0' is the default series colour when a caller doesn't pass one,
+  // now resolved via cssVar('--chart-green', CHART_GREEN_FALLBACK) — data,
+  // not chrome, same reasoning as the four chart-series fallbacks below.
+  // CHART_BLUE_FALLBACK/CHART_PURPLE_FALLBACK/CHART_AMBER_FALLBACK are the
+  // other three series' Blue literals, exported so StatsPanel.svelte's call
+  // sites pass them to cssVar too instead of duplicating the literal there
+  // (final-fix review, Important 1). '#8899aa'/'#2a3a4a' are TICK_FALLBACK/
   // GRID_FALLBACK — real chrome (axis ticks/gridlines), now resolved at call
   // time via cssVar('--text-muted', …)/cssVar('--border', …), but cssVar
   // still needs a literal to fall back to under node --test (no real
   // document) — same fallback reasoning as the Theme.js/css-var.js entries
   // above.
-  'lib/stats-charts.js': ['#7ecfa0', '#8899aa', '#2a3a4a'],
+  'lib/stats-charts.js': ['#7ecfa0', '#8899aa', '#2a3a4a', '#7dd3fc', '#b9a3e3', '#e0b000'],
   // .omnibar-backdrop is a click-catcher behind the OmniBar dropdown, dimming
   // arbitrary app content beneath it — no text sits on it, so the "scrim over
   // content, stays dark in every theme" reasoning is the same as EditCard's
@@ -118,6 +149,16 @@ const ALLOW = {
   // the standard convention for a video element's own background (no
   // coupled text), documented in-file (MediaVideoView.svelte:116-118).
   'components/notebook/media/MediaVideoView.svelte': ['#000'],
+  // 'blue'/'Blue' here are the Blue theme's id and display label (THEMES'
+  // own data, and normalizeTheme's default), not a CSS colour value — surfaced
+  // by extending COLOUR to catch named colours (final-fix review, Important
+  // 2). Nothing here paints anything; theme.js below documents the same id
+  // string at lines 34-37.
+  'lib/themes.js': ['blue', 'Blue'],
+  // 'blue' is the same Blue-theme id as lib/themes.js above, compared against
+  // to decide whether to remove the data-theme attribute (see the comment at
+  // theme.js:34-37) — not a CSS colour value.
+  'stores/theme.js': ['blue'],
 }
 
 function sourceFiles() {
@@ -167,4 +208,20 @@ test('shadow declarations are exempt in CSS and in JS', () => {
       .map((m) => m[0])
     assert.deepEqual(left, ['#ff0000'], `shadow exemption wrong for: ${src}`)
   }
+})
+
+// The guard used to be blind to named colours and hsl()/hsla() — both slip
+// past a hex/rgb()-only regex undetected (verified against the pre-fix
+// pattern before this test was written). Proves both new forms are caught,
+// AND that the two shapes most likely to false-positive keep passing:
+// `white-space` (a property name containing a colour word, not a colour) and
+// `transparent` (a legitimate theme-invariant value, not a literal colour).
+test('named colours and hsl()/hsla() are caught; white-space and transparent are not', () => {
+  const src = 'color: red; background: white; border-color: hsl(0,100%,50%);' +
+    ' box-shadow: hsla(0,0%,0%,0.5); white-space: nowrap; opacity: transparent;'
+  const shadows = [...src.matchAll(SHADOW)].map((m) => [m.index, m.index + m[0].length])
+  const found = [...src.matchAll(COLOUR)]
+    .filter((m) => !shadows.some(([a, b]) => m.index >= a && m.index < b))
+    .map((m) => m[0])
+  assert.deepEqual(found, ['red', 'white', 'hsl(0,100%,50%)'])
 })

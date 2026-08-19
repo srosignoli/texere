@@ -173,6 +173,26 @@ html {
        4.50:1 there and 5.33:1 against --surface-overlay. */
     --sev-info: #6a9aaa;
 
+    /* Chart-series colours (final-fix review, feature 052 — Important 1).
+       stats-charts.js's `color` param and StatsPanel's six chart call sites
+       were bare literals — chart series ARE data (a bar/line's hue
+       identifies which series it is, same reasoning the file's own comment
+       already gives), but unlike the --explorer-* data palette above they
+       were never run through the "lacks contrast on a light background,
+       gets a light override" step: measured against --surface-study Light
+       (#e9ecf0), the four sat at 1.41-1.88:1, all below WCAG's 3:1 floor for
+       graphical objects. Blue/Dark keep these literals unchanged (already
+       7.7-10.3:1 there). Light re-solved per colour, hue/saturation held
+       constant, lightness binary-searched to the nearest value that still
+       clears 3:1 — landed at 3.02-3.04:1 each, the closest solution to the
+       anchor's own lightness that clears the threshold (same method as
+       --stat-high/--sev-info above). The four hues (199/261/47/145) stay
+       spread apart after darkening, so the series remain tellable apart. */
+    --chart-blue: #7dd3fc;
+    --chart-purple: #b9a3e3;
+    --chart-amber: #e0b000;
+    --chart-green: #7ecfa0;
+
     /* Roles minted migrating the study and source surfaces (Task 4). */
     --surface-study: #131c29;         /* root/body of the Study & Sources full-panel surfaces; 1 unit
                                           darker in the blue channel than --surface-panel — distinct on
@@ -764,6 +784,13 @@ html {
     --stat-high: #e0b000;
     --sev-info: #6a9aaa;
 
+    /* Chart-series colours — see the Blue block's comment for the full
+       rationale. Dark keeps the literals unchanged (already clears 3:1). */
+    --chart-blue: #7dd3fc;
+    --chart-purple: #b9a3e3;
+    --chart-amber: #e0b000;
+    --chart-green: #7ecfa0;
+
     --surface-study: #141516;
     --text-quiet: #81a5a5;
     --text-doc: #c5d0db;
@@ -1023,6 +1050,14 @@ html {
 
     --stat-high: #846700;
     --sev-info: #48717e;
+
+    /* Chart-series colours — see the Blue block's comment for the full
+       rationale. Re-solved for Light: 3.03:1 / 3.02:1 / 3.02:1 / 3.04:1
+       against --surface-study (#e9ecf0), in the same order as declared. */
+    --chart-blue: #058fd1;
+    --chart-purple: #9776d5;
+    --chart-amber: #a68300;
+    --chart-green: #399861;
 
     --surface-study: #e9ecf0;
     --text-quiet: #3c5454;

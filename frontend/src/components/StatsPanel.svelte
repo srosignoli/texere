@@ -6,7 +6,11 @@
   import { GetStatistics } from '../../wailsjs/go/main/App'
   import { humanDuration, fiBand } from '../lib/stats-format.js'
   import Chart from 'chart.js/auto'
-  import { barConfig, lineConfig } from '../lib/stats-charts.js'
+  import {
+    barConfig, lineConfig,
+    CHART_BLUE_FALLBACK, CHART_PURPLE_FALLBACK, CHART_AMBER_FALLBACK, CHART_GREEN_FALLBACK,
+  } from '../lib/stats-charts.js'
+  import { cssVar } from '../lib/css-var.js'
   import { theme } from '../stores/theme.js'
 
   let s = null
@@ -99,7 +103,7 @@
         {/if}
         <div class="sp-chartbox">{#key $theme}<canvas use:chart={barConfig({
           labels: ['Again', 'Hard', 'Good', 'Easy'], values: s.quality.gradeMix,
-          yLabel: 'reviews', unit: 'reviews', color: '#7dd3fc' })}></canvas>{/key}</div>
+          yLabel: 'reviews', unit: 'reviews', color: cssVar('--chart-blue', CHART_BLUE_FALLBACK) })}></canvas>{/key}</div>
         <div class="sp-stat">
           <span class="sp-label">Leeches</span>
           <span class="sp-value">{s.workload.leeches} cards</span>
@@ -107,7 +111,7 @@
         </div>
         <div class="sp-chartbox">{#key $theme}<canvas use:chart={barConfig({
           labels: ['1–3', '3–5', '5–7', '7–9', '9–10'], values: s.workload.difficulty,
-          yLabel: 'cards', unit: 'cards', color: '#b9a3e3' })}></canvas>{/key}</div>
+          yLabel: 'cards', unit: 'cards', color: cssVar('--chart-purple', CHART_PURPLE_FALLBACK) })}></canvas>{/key}</div>
       </section>
 
       <section class="sp-card">
@@ -141,7 +145,7 @@
         <div class="sp-chartbox">{#key $theme}<canvas use:chart={barConfig({
           labels: s.workload.forecast.map((_, i) => (i === 0 ? 'today' : `+${i}d`)),
           values: s.workload.forecast,
-          yLabel: 'cards due', unit: 'cards', color: '#e0b000' })}></canvas>{/key}</div>
+          yLabel: 'cards due', unit: 'cards', color: cssVar('--chart-amber', CHART_AMBER_FALLBACK) })}></canvas>{/key}</div>
         <div class="sp-stat">
           <span class="sp-label">Backlog</span>
           <span class="sp-value">{s.workload.backlog.read} read · {s.workload.backlog.process} process · {s.workload.backlog.recall} recall</span>
@@ -154,7 +158,7 @@
         <div class="sp-chartbox">{#key $theme}<canvas use:chart={lineConfig({
           labels: (s.habit.reviewsPerDay ?? []).map((d) => d.day),
           values: (s.habit.reviewsPerDay ?? []).map((d) => d.count),
-          yLabel: 'reviews', unit: 'reviews', color: '#7ecfa0' })}></canvas>{/key}</div>
+          yLabel: 'reviews', unit: 'reviews', color: cssVar('--chart-green', CHART_GREEN_FALLBACK) })}></canvas>{/key}</div>
         <div class="sp-stat">
           <span class="sp-label">Current streak</span>
           <span class="sp-value">{s.habit.currentStreak} days</span>
@@ -172,11 +176,11 @@
         </div>
         <div class="sp-chartbox">{#key $theme}<canvas use:chart={barConfig({
           labels: weekLabels(s.cardsPerWeek), values: weekValues(s.cardsPerWeek),
-          yLabel: 'cards', unit: 'cards', color: '#7ecfa0' })}></canvas>{/key}</div>
+          yLabel: 'cards', unit: 'cards', color: cssVar('--chart-green', CHART_GREEN_FALLBACK) })}></canvas>{/key}</div>
         {#if settled(s.readSince)}
           <div class="sp-chartbox">{#key $theme}<canvas use:chart={barConfig({
             labels: weekLabels(s.readMinsWeek), values: weekValues(s.readMinsWeek),
-            yLabel: 'minutes', unit: 'minutes', color: '#7dd3fc' })}></canvas>{/key}</div>
+            yLabel: 'minutes', unit: 'minutes', color: cssVar('--chart-blue', CHART_BLUE_FALLBACK) })}></canvas>{/key}</div>
         {:else}
           <p class="sp-sub sp-nodata">
             {s.readSince ? `Collecting reading time since ${sinceDate(s.readSince)}` : 'Collecting reading time since today'}
@@ -222,7 +226,7 @@
         {#if settled(s.procSince)}
           <div class="sp-chartbox">{#key $theme}<canvas use:chart={barConfig({
             labels: weekLabels(s.procPerWeek), values: weekValues(s.procPerWeek),
-            yLabel: 'extracts', unit: 'extracts', color: '#b9a3e3' })}></canvas>{/key}</div>
+            yLabel: 'extracts', unit: 'extracts', color: cssVar('--chart-purple', CHART_PURPLE_FALLBACK) })}></canvas>{/key}</div>
         {:else}
           <p class="sp-sub sp-nodata">
             {s.procSince ? `Collecting processing history since ${sinceDate(s.procSince)}` : 'Collecting processing history since today'}

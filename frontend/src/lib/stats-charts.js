@@ -14,6 +14,16 @@ import { cssVar } from './css-var.js'
 const TICK_FALLBACK = '#8899aa'
 const GRID_FALLBACK = '#2a3a4a'
 
+// Fallbacks for the four chart-series tokens (final-fix review, feature 052
+// — Important 1), same reasoning as TICK_FALLBACK/GRID_FALLBACK above: each
+// is Blue's own literal for that series, and what cssVar() falls back to
+// with no real document. Exported so StatsPanel.svelte's call sites can pass
+// them to cssVar too, rather than duplicating the literal there.
+export const CHART_BLUE_FALLBACK = '#7dd3fc'
+export const CHART_PURPLE_FALLBACK = '#b9a3e3'
+export const CHART_AMBER_FALLBACK = '#e0b000'
+export const CHART_GREEN_FALLBACK = '#7ecfa0'
+
 /**
  * @param {{labels?: string[], values?: number[], yLabel: string, unit: string, color?: string}} o
  */
@@ -26,15 +36,17 @@ export function lineConfig(o) {
   return config('line', o)
 }
 
-function config(type, { labels, values, yLabel, unit, color = '#7ecfa0' }) {
+function config(type, { labels, values, yLabel, unit, color = cssVar('--chart-green', CHART_GREEN_FALLBACK) }) {
   // Read at call-time (not module load), same as Theme.js / css-var.js: a
   // config is built fresh on every mount (see StatsPanel.svelte's chart()
   // action comment), so this always reflects whichever theme is live when the
   // panel opens. TICK/GRID are chrome — axis ticks and gridlines, byte-
   // identical to --text-muted/--border's own Blue values, so reusing those
   // existing tokens is a visual no-op in Blue and a real fix in Light (a
-  // #2a3a4a gridline is nearly black on a light canvas). `color` stays a bare
-  // literal: it identifies which series this is, not a themed surface.
+  // #2a3a4a gridline is nearly black on a light canvas). `color` IS data — it
+  // identifies which series this is — but the literal itself still needed a
+  // Light override (final-fix review, Important 1): see style.css's
+  // --chart-* comment for the contrast numbers and the solve method.
   const tick = cssVar('--text-muted', TICK_FALLBACK)
   const grid = cssVar('--border', GRID_FALLBACK)
   return {
