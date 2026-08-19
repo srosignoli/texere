@@ -406,6 +406,24 @@
   .node-item:hover { color: var(--text); }
   .node-row-wrap.active .node-item { color: var(--text); }
 
+  /* .arrow-children lives inside .node-row-wrap, so when the row is active
+     (background var(--accent)) or cursor-matched (var(--row-cursor-bg)) its
+     arrow-code/arrow-target text sits on that fill instead of the plain
+     list surface --arrow-code-text and var(--n4l-syntax-arrow-target) were
+     solved against (Task 5 review round 1 — Important 2: Light measured
+     3.96:1/4.07:1 there, Dark 4.31:1 where the unconverted literal had been
+     9.83:1, an outright regression). Same fix as .node-item above rather
+     than re-solving the shared tokens themselves — var(--n4l-syntax-arrow-
+     target) in particular is used elsewhere (NodeCard, the editor grammar)
+     and re-tuning it for this one row state would ripple into those.
+     var(--text) clears both backgrounds in every theme (9.64-14.58:1). */
+  .node-row-wrap.active .arrow-code,
+  .node-row-wrap.active .arrow-target,
+  .node-row-wrap.cursor-at:not(.active) .arrow-code,
+  .node-row-wrap.cursor-at:not(.active) .arrow-target {
+    color: var(--text);
+  }
+
   /* Extract: left-pad to align with chevron'd items */
   .node-item.extract-node { padding-left: 4px; }
 

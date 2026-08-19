@@ -78,11 +78,12 @@ const ALLOW = {
   // arbitrary app content beneath it — no text sits on it, so the "scrim over
   // content, stays dark in every theme" reasoning is the same as EditCard's
   // backdrop above, not the explorer's low-alpha family (which had to flip in
-  // Light because it doubles as a background FOR text). arrow-meta is a
-  // self-contained bg+fg pill showing an arrow's MetaType (the arrow's own
-  // category, i.e. data) — 7.31:1 internal contrast, carries its own
-  // legibility into any theme, same carve-out as SourcesSidebar's due tag.
-  'components/OmniBar.svelte': ['rgba(0, 0, 0, 0.35)', '#e4efe9', '#345244'],
+  // Light because it doubles as a background FOR text). (.arrow-meta was
+  // ALLOW-listed here too in round 1 as a self-contained data pill — rejected
+  // on review: its hue doesn't encode MetaType, every type gets the same
+  // colour, so it's chrome, not data. Now var(--arrow-meta-bg)/-text in
+  // style.css, values unchanged.)
+  'components/OmniBar.svelte': ['rgba(0, 0, 0, 0.35)'],
   // .sb-tag.due/.done/.llm: three self-contained bg+fg status-tag pairs
   // (amber/green/purple), documented in-file (SourcesSidebar.svelte:181-187)
   // as the shared-hue "carries its own contrast" case — #e0b000 also drives
@@ -94,11 +95,6 @@ const ALLOW = {
   // .omnibar-backdrop above (identical literal, identical role) — same
   // reasoning.
   'components/ArrowPalette.svelte': ['rgba(0, 0, 0, 0.35)'],
-  // .banner-btn.dismiss: a neutral dark chip sitting on the amber
-  // .ext-mod-banner strip, documented in-file (SourceTab.svelte:568-569) as
-  // a self-contained bg+fg pair kept literal so the two halves cannot drift
-  // apart per theme — same reasoning as SourcesSidebar's status tags.
-  'components/SourceTab.svelte': ['#44403c', '#e8eaf0'],
   // .ov-backdrop is the same click-catcher scrim as OmniBar's/ArrowPalette's
   // above — dims arbitrary app content behind the LLM settings modal, no
   // text sits on it.

@@ -1571,8 +1571,8 @@
     font-size: 0.7rem;
     padding: 1px 6px;
     border-radius: 3px;
-    background: #e4efe9;
-    color: #345244;
+    background: var(--arrow-meta-bg);
+    color: var(--arrow-meta-text);
     flex-shrink: 0;
   }
 

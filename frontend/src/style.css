@@ -513,19 +513,44 @@ html {
     --ha-btn-text: #7ab0d4;      /* 5.97:1 Blue/Dark against var(--control-active), 4.53:1 Light */
     --arrow-code-text: #5a9abd;  /* 4.93:1 Blue, 5.80:1 Dark against var(--surface), 4.51:1 Light */
 
-    /* QueryHelpPanel + QueryAutocomplete (Task 5) — sibling parts of the same
-       query system, so one shared token. --help-code-text is byte-identical
-       to var(--n4l-syntax-arrow-code) but NOT reused from it directly — that
-       token is the editor's syntax highlighter, an unrelated concern from
-       this pair's inline <code>/match-title/label text; minted separately,
-       values carried over from n4l-syntax-arrow-code's own solve since the
-       source literal is identical (ArrowPalette's .arrow-code, below, is the
-       opposite case: it IS an arrow-code role, so it reuses the token
-       directly rather than re-minting). --help-example-text is a near, not
-       exact, match for var(--ok) (#8fd9a8 vs #7ecfa0) — too close to reuse
-       without silently tidying Blue, so minted on its own. */
-    --help-code-text: #67e8f9;     /* 10.65:1 Blue, 5.33:1 Dark, 5.00:1 Light against --surface-overlay */
+    /* QueryHelpPanel's --help-code-text (Task 5, revised in review round 1).
+       Byte-identical to var(--n4l-syntax-arrow-code) but NOT reused from it
+       directly (ArrowPalette's .arrow-code, below, IS that role and reuses
+       it directly; QueryHelpPanel's inline <code>/.match-title is a
+       different concern). Round 1 ALSO copied n4l-syntax-arrow-code's own
+       Dark/Light values here as a "same literal" shortcut — rejected on
+       review: that token is Solarized-derived, which changes saturation as
+       well as lightness (0.92 -> 0.59), so borrowing its Dark/Light is not
+       actually a hue/sat-held derivation of #67e8f9, it is a different
+       colour that happens to start from the same Blue value. Re-solved
+       independently instead, against the one background this token's two
+       consumers (`code`, `.match-title`) actually paint on
+       (--surface-overlay; QueryHelpPanel has no active/hover-highlighted
+       row for either). Dark kept unchanged (11.62:1, comfortably clears —
+       no reason to move it); Light solved holding #67e8f9's own hue/
+       saturation. QueryAutocomplete no longer shares this token — see
+       --qac-label-text below, split out in the same review round because
+       .qac-label's real background is NOT the panel. */
+    --help-code-text: #67e8f9;   /* 10.65:1 Blue, 11.62:1 Dark, 4.54:1 Light against --surface-overlay */
+    /* --help-example-text is a near, not exact, match for var(--ok)
+       (#8fd9a8 vs #7ecfa0) — too close to reuse without silently tidying
+       Blue, so minted on its own. Derived via delta-transfer from --ok
+       itself (an analogous "positive/success" role, not a hue-shifting
+       Solarized donor), which is why this one didn't need a review-round
+       correction. */
     --help-example-text: #8fd9a8;  /* 9.95:1 Blue/Dark against --surface-block, 4.50:1 Light */
+    /* QueryAutocomplete's .qac-label (Task 5 review round 1). One row is
+       always .active/:hover — background var(--accent), not the panel — so
+       this needed its own value rather than sharing --help-code-text's
+       panel-solved one. Non-active rows still show the label on the panel
+       background too, so the value is verified against BOTH: Blue/Dark kept
+       unchanged (8.01:1 / 9.52:1 against --accent, 10.65:1 / 11.62:1 against
+       --surface-overlay — no reason to move either), Light solved holding
+       hue/saturation, picking whichever of the two candidate solves (against
+       --accent's pale #dbeafe, against --surface-overlay's white) was
+       darker, so the single value clears both: 4.55:1 against --accent,
+       5.55:1 against --surface-overlay. */
+    --qac-label-text: #67e8f9;
 
     /* Shared "external modification" amber warning banner (SourceTab's
        .ext-mod-banner, MiddleBand's .reminder-badge — same literal bg/text
@@ -554,18 +579,33 @@ html {
 
     /* The reminder-card highlight (NodeCard.svelte's .node-card.reminder,
        reapplied via :global() in ReadTab.svelte — one shared token, not two
-       copies of the literal). Deliberately theme-invariant, the same
-       "recognisable regardless of which theme it's viewed in" reasoning as
-       the sketch-pen swatches (Task 3): a pale highlighter/sticky-note card
-       distinguishing a reminder from ordinary notes should look the same
-       highlighter-yellow whether the surrounding app is Blue, Dark or
-       Light, and its hue is far enough from all three --surface values that
-       it never blends in. --arrow-dd is NOT part of this family — byte-
-       identical to var(--n4l-syntax-arrow-target) with the same genuine
-       "this is an arrow's target" role, so reused directly. */
+       copies of the literal). Deliberately theme-invariant: a pale
+       highlighter/sticky-note card distinguishing a reminder from ordinary
+       notes should look the same highlighter-yellow whether the surrounding
+       app is Blue, Dark or Light, and its hue is far enough from all three
+       --surface values that it never blends in.
+       Task 5 review round 1, Important 4: this reasoning originally leaned
+       on the sketch-pen swatches (Task 3) as precedent, which was rejected
+       — that precedent is USER-AUTHORED DATA (a saved sketch's ink must
+       look the same when reopened in a different theme), not chrome, and
+       doesn't transfer. The freeze itself is kept (the bg/text pair is
+       still 16.70:1/6.37:1 and the sticky-note argument stands on its own),
+       but the concrete defect the review found — --n4l-syntax-arrow-target
+       measuring 1.26:1 in Blue / 2.88:1 in Dark against this frozen surface,
+       --accent-dim 3.60:1 in Dark, --border 2.28:1 in Light, because none of
+       those THEMED tokens were ever designed against a fixed pale-yellow
+       floor — is fixed in NodeCard.svelte: .node-card.reminder overrides
+       .arrow-dt/.arrow-dd/.arrow-list's border to frozen ink instead
+       (--reminder-card-text-strong/--reminder-card-text/
+       --reminder-card-border), so everything painting on the frozen surface
+       is frozen with it. Outside a reminder card, .arrow-dd still reads
+       var(--n4l-syntax-arrow-target) as before (that byte-identical, same-
+       role reuse is unaffected — only the frozen-surface case needed an
+       override). */
     --reminder-card-bg: #fef3c7;
     --reminder-card-text: #1c1100;         /* 16.70:1 — unchanged in every theme */
     --reminder-card-text-strong: #92400e;  /* 6.37:1 — unchanged in every theme */
+    --reminder-card-border: #d15c14;       /* 3.59:1 against --reminder-card-bg — unchanged in every theme */
 
     /* .resolve-btn:hover (ReminderPanel). Near, not exact, match for
        var(--accent-hover) (#1e4a7a vs #244a72) — too close to reuse without
@@ -612,6 +652,26 @@ html {
        via nearest-neighbour delta transfer from it (decorative, no text
        pairing to verify). */
     --splitter-hover: #4a7aaa;
+
+    /* Task 5 review round 1, Important 3: OmniBar's .arrow-meta and
+       SourceTab's .banner-btn.dismiss were ALLOW-listed on the theory that
+       each is a coupled bg+fg pair carrying its own contrast. Rejected on
+       review — that carve-out's premise is that the HUE encodes state (the
+       due/done/llm tags' amber/green/purple identify which state a tag is
+       in); neither of these does: .arrow-meta paints the identical hue for
+       every MetaType, and .dismiss is a plain button. Both are chrome and
+       now go through real tokens. The VALUES are unchanged (Blue is
+       unchanged as required, and neither had a legibility problem — 7.31:1
+       / 8.54:1 internal contrast) and deliberately frozen across all three
+       themes: each is a small, fully self-contained two-colour unit with no
+       independently-themed children painting on it (unlike the reminder
+       card below, where freezing the surface without also accounting for
+       its children was the actual defect) — freezing the pair here doesn't
+       carry that risk. */
+    --arrow-meta-bg: #e4efe9;
+    --arrow-meta-text: #345244;    /* 7.31:1, unchanged in every theme */
+    --dismiss-chip-bg: #44403c;
+    --dismiss-chip-text: #e8eaf0;  /* 8.54:1, unchanged in every theme */
 }
 
 /* --- Dark: neutral near-black. ---------------------------------------------
@@ -833,8 +893,9 @@ html {
     --ha-btn-text: #7ab0d4;
     --arrow-code-text: #5a9abd;
 
-    --help-code-text: #2aa198;
+    --help-code-text: #67e8f9;
     --help-example-text: #8fd9a8;
+    --qac-label-text: #67e8f9;
 
     --warn-banner-bg: #78350f;
     --warn-banner-text: #fde68a;
@@ -844,6 +905,7 @@ html {
     --reminder-card-bg: #fef3c7;
     --reminder-card-text: #1c1100;
     --reminder-card-text-strong: #92400e;
+    --reminder-card-border: #d15c14;
 
     --resolve-btn-hover: #323c4c;
 
@@ -856,6 +918,11 @@ html {
     --ask-note-code-text: #fbbf24;
     --text-on-accent-primary: #fff;
     --splitter-hover: #6c7f97;
+
+    --arrow-meta-bg: #e4efe9;
+    --arrow-meta-text: #345244;
+    --dismiss-chip-bg: #44403c;
+    --dismiss-chip-text: #e8eaf0;
 }
 
 /* --- Light: white-to-grey with dark text. ----------------------------------
@@ -1089,8 +1156,9 @@ html {
     --ha-btn-text: #377cab;
     --arrow-code-text: #3d7899;
 
-    --help-code-text: #207c75;
+    --help-code-text: #068293;
     --help-example-text: #297844;
+    --qac-label-text: #057382;
 
     --warn-banner-bg: #f9e0d2;
     --warn-banner-text: #7c6402;
@@ -1100,6 +1168,7 @@ html {
     --reminder-card-bg: #fef3c7;
     --reminder-card-text: #1c1100;
     --reminder-card-text-strong: #92400e;
+    --reminder-card-border: #d15c14;
 
     --resolve-btn-hover: #bddaff;
 
@@ -1112,6 +1181,11 @@ html {
     --ask-note-code-text: #8b6503;
     --text-on-accent-primary: #fff;
     --splitter-hover: #45709c;
+
+    --arrow-meta-bg: #e4efe9;
+    --arrow-meta-text: #345244;
+    --dismiss-chip-bg: #44403c;
+    --dismiss-chip-text: #e8eaf0;
 }
 
 /* 2.5D Isometric Graph Explorer (feature 006) — shared semantic palette.
