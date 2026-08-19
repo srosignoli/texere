@@ -149,6 +149,18 @@ export const reminderCount = derived(workbenchStore, ($w) => {
 export const omnibarMode = writable(/** @type {null|'fuzzy'|'graph'} */ (null))
 
 /**
+ * shortcutsOpen — whether the keyboard-shortcuts help panel is visible.
+ *
+ * Same split-ownership problem as omnibarMode above: App.svelte owns the F1
+ * keydown trigger, MiddleBand.svelte owns the "?" button, so the boolean
+ * cannot live in either component. A plain writable (not a subscribe-only
+ * alias) so both `.set()` and `.update()` work — see the omnibarMode comment
+ * above for what happens when a caller assumes `.update()` exists and it
+ * doesn't.
+ */
+export const shortcutsOpen = writable(false)
+
+/**
  * editorAPI — live reference to SourceTab's imperative methods.
  * SourceTab registers itself on mount and clears on destroy.
  * Any component can use $editorAPI?.triggerSave() etc. without prop-drilling.
