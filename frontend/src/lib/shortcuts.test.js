@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { SHORTCUT_GROUPS } from './shortcuts.js'
+import { SHORTCUT_GROUPS, KEYMAPS } from './shortcuts.js'
 
 test('every group has a title and at least one item', () => {
   assert.ok(SHORTCUT_GROUPS.length > 0, 'no groups at all')
@@ -87,10 +87,37 @@ function comboFromCm(spec) {
   return [...parts, canonKey(key)].join('+')
 }
 
-function sourceSites() {
-  const files = readdirSync(SRC, { recursive: true })
+function sourceFiles() {
+  return readdirSync(SRC, { recursive: true })
     .map(String)
     .filter((f) => (f.endsWith('.svelte') || f.endsWith('.js')) && !f.endsWith('.test.js'))
+}
+
+// Spread-imported keymaps: `...searchKeymap`, `...historyKeymap`, etc. These
+// bring in a whole array of bindings from a package in one line — the KEY/CM
+// regexes above look for per-key literals and structurally cannot see inside
+// a spread, which is exactly how Ctrl/Cmd+F (CodeMirror's own search panel,
+// opened via searchKeymap's Mod-f) went undocumented despite being spread
+// right there in SourceTab.svelte. This regex finds the spread itself, not
+// the bindings inside it — those are verified by hand against the installed
+// package version and recorded as data in shortcuts.js, because they don't
+// exist as literals anywhere in this tree to scan.
+const KEYMAP_SPREAD = /\.\.\.([A-Za-z_$][\w$]*[Kk]eymap)\b/g
+
+function keymapSpreadSites() {
+  const sites = []
+  for (const f of sourceFiles()) {
+    readFileSync(new URL(f, SRC), 'utf8').split('\n').forEach((line, i) => {
+      for (const m of line.matchAll(KEYMAP_SPREAD)) {
+        sites.push({ name: m[1], file: f, line: i + 1 })
+      }
+    })
+  }
+  return sites
+}
+
+function sourceSites() {
+  const files = sourceFiles()
   const sites = []
   for (const f of files) {
     readFileSync(new URL(f, SRC), 'utf8').split('\n').forEach((line, i) => {
@@ -143,11 +170,25 @@ test('every documented shortcut exists at a site it names', () => {
   // letter — a bare-key substring check would pass `Build graph` pointed at
   // any file that happens to mention 'g' or 'G' anywhere, modifiers or not.
   const sites = sourceSites()
+  const spreads = keymapSpreadSites()
   for (const g of SHORTCUT_GROUPS) {
     for (const it of g.items) {
       if (it.keys.join('+') === 'F1') continue // added by this feature; Task 3 wires it
       const combo = it.keys.join('+')
       for (const f of it.site) {
+        if (it.viaKeymap) {
+          // Spread-sourced items don't exist as `key: '...', run:` literals
+          // in this tree (the binding lives in the imported package) — what
+          // IS checkable is that the named file actually spreads the keymap
+          // the item claims to come from.
+          const spreadsInFile = spreads.filter((s) => s.file === f).map((s) => s.name)
+          assert.ok(
+            spreadsInFile.includes(it.viaKeymap),
+            `${g.title}/${it.label}: ${f} does not spread ...${it.viaKeymap} ` +
+              `(found: ${spreadsInFile.map((n) => `...${n}`).join(', ') || 'none'})`,
+          )
+          continue
+        }
         const combosInFile = sites.filter((s) => s.file === f).map((s) => s.combo)
         assert.ok(
           combosInFile.includes(combo),
@@ -155,6 +196,44 @@ test('every documented shortcut exists at a site it names', () => {
             `(found: ${combosInFile.join(', ') || 'none'})`,
         )
       }
+    }
+  }
+})
+
+test('every keymap spread found in source is declared in KEYMAPS', () => {
+  // The drift case this guards: someone adds `...lintKeymap` (or any other
+  // `...xKeymap`) to a component. Until it's declared here — documented and
+  // covered below, or explicitly ruled out with a reason, the same as
+  // `extraKeymap` — this fails, naming the spread and where it was found.
+  const undeclared = []
+  for (const s of keymapSpreadSites()) {
+    if (!(s.name in KEYMAPS)) undeclared.push(`...${s.name} at ${s.file}:${s.line}`)
+  }
+  assert.deepEqual(undeclared, [],
+    'keymap spread(s) found in source with no KEYMAPS entry in shortcuts.js — ' +
+      `declare whether each is a source of documented shortcuts and why:\n${undeclared.join('\n')}`)
+})
+
+test('every KEYMAPS entry carries a real reason, not a bare allowlist', () => {
+  for (const [name, info] of Object.entries(KEYMAPS)) {
+    assert.ok(typeof info.documented === 'boolean', `KEYMAPS.${name}: documented must be true or false`)
+    assert.ok(
+      typeof info.reason === 'string' && info.reason.trim().length >= 20,
+      `KEYMAPS.${name}: needs a substantive reason, not just a name`,
+    )
+  }
+})
+
+test('every viaKeymap item points at a KEYMAPS entry declared documented: true', () => {
+  for (const g of SHORTCUT_GROUPS) {
+    for (const it of g.items) {
+      if (!it.viaKeymap) continue
+      const info = KEYMAPS[it.viaKeymap]
+      assert.ok(info, `${g.title}/${it.label}: viaKeymap '${it.viaKeymap}' has no KEYMAPS entry`)
+      assert.ok(
+        info.documented,
+        `${g.title}/${it.label}: viaKeymap '${it.viaKeymap}' is declared documented: false in KEYMAPS`,
+      )
     }
   }
 })

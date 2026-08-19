@@ -220,6 +220,59 @@ panel closed, editor visible again (`t4-41-logpanel-closed.png`). The
 label already says "Toggle" and the behaviour matches; this is the
 reference case the other two should be renamed to match.
 
+## Addendum: Ctrl/Cmd+F and the rest of the CodeMirror editor family (post-review fix)
+
+A user reported, before merge, that `Ctrl+F` (opens the editor's search panel)
+was missing from the panel. Investigation found the gap was structural, not a
+one-off oversight: `SourceTab.svelte` and `lib/n4l-editor.js` wire up
+CodeMirror's `searchKeymap` and `historyKeymap` by **spreading the whole
+array** (`...searchKeymap`), not as `{ key: '...', run: ... }` literals — the
+only shape shortcuts.test.js's CM regex could see. Every binding in those two
+keymaps was invisible to the guard by construction.
+
+Fixed by: adding eight entries to the Editor group (`Ctrl/Cmd+F` open search,
+`F3` find next, `Escape` close search, `Ctrl/Cmd+D` select next occurrence,
+`Ctrl/Cmd+Shift+L` select all occurrences, `Ctrl/Cmd+Alt+G` go to line,
+`Ctrl/Cmd+Z` undo, `Ctrl+Y`/`Cmd+Shift+Z` redo — the last one genuinely
+platform-specific, not a `Ctrl/Cmd` row), each carrying a `viaKeymap` field;
+and teaching shortcuts.test.js to detect any `...xKeymap` spread in the tree
+and require it declared in a new `KEYMAPS` registry in shortcuts.js, with a
+substantive reason per entry (not a bare allowlist). `defaultKeymap`'s
+ordinary editing conventions (Ctrl+A, Home/End, arrow movement) were left
+undocumented deliberately — out of scope per the existing "shortcuts worth
+memorising" rule. `extraKeymap` is not a library keymap at all (a local
+function parameter carrying bindings documented individually elsewhere) and
+is declared as such.
+
+**The `Ctrl/Cmd+G` clash, recorded, not changed:** CodeMirror's own
+`searchKeymap` binds `Mod-g` to find-next, but `App.svelte`'s global keydown
+handler binds `Ctrl/Cmd+G` to Build graph in the **capture phase** with
+`stopPropagation()` (see the comment at `App.svelte:100-105`), so
+`searchKeymap`'s `Mod-g` never reaches the editor — deliberately, per that
+comment, not a bug. The panel therefore documents **F3** as the working
+find-next key, not `Ctrl/Cmd+G`. No key routing was changed by this fix.
+
+**Verified in the running app** (`make build && ./build/bin/texere`, pointed
+at the `keys-b` copy collection via `XDG_CONFIG_HOME`, same setup as the rest
+of this plan — the real collection at
+`…/SStorytimeFork/SStorytime-main/examples/test` was never opened):
+
+- F1 opens the panel; the Editor group now lists all nine rows (Save file
+  plus the eight above), matching `lib/shortcuts.js`.
+- With focus in the editor, `Ctrl+F` was pressed for real (via synthetic
+  X11 input) and the CodeMirror search panel opened at the bottom of the
+  editor — a "Find" field, next/previous/all, match case/regexp/by word
+  toggles, and a replace row — confirming the user's report is now both
+  documented and true. (One input-syntax mistake happened first: `xin.py`'s
+  modifier argument must be a real X keysym name like `Control_L`, not the
+  string `ctrl` — the first attempt silently typed a literal `f` into the
+  document instead of triggering the shortcut, caught immediately from the
+  screenshot and undone with `Ctrl+Z` before retrying correctly.)
+- The `shortcuts.test.js` guard was proven to bite: a fake `...lintKeymap`
+  spread was added to `lib/n4l-editor.js`, `node --test` failed naming
+  `...lintKeymap at lib/n4l-editor.js:72`, and the change was reverted
+  (confirmed clean via `git diff`).
+
 ## What this run does not cover
 
 - **Every shortcut in the panel individually.** Task 4's brief calls for
