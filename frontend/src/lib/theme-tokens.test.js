@@ -120,10 +120,6 @@ const ALLOW = {
   'components/notebook/media/MediaVideoView.svelte': ['#000'],
 }
 
-// Files not yet converted. Shrinks to nothing across Tasks 2-6; when it is
-// empty, Task 6 deletes it and the constant below.
-const PENDING = []
-
 function sourceFiles() {
   return readdirSync(SRC, { recursive: true })
     .map(String)
@@ -140,7 +136,7 @@ function offenders(file) {
     .map((m) => m[0])
 }
 
-test('no literal colours outside the pending list', () => {
+test('no literal colours outside the allowlist', () => {
   const files = sourceFiles()
   // A file-walking test that stops walking passes forever while checking
   // nothing. Feature 050 demonstrated exactly that; this is the guard against it.
@@ -148,20 +144,10 @@ test('no literal colours outside the pending list', () => {
 
   const bad = []
   for (const f of files) {
-    if (PENDING.includes(f)) continue
     const found = offenders(f)
     if (found.length) bad.push(`${f}: ${found.join(', ')}`)
   }
   assert.deepEqual(bad, [], `literal colours must be var(--token):\n${bad.join('\n')}`)
-})
-
-// The pending list is a worklist, not a dumping ground: an entry that no longer
-// has any literal colour is stale and must be removed, or the list stops
-// describing what is left to do.
-test('every pending file still has something pending', () => {
-  for (const f of PENDING) {
-    assert.ok(offenders(f).length > 0, `${f} is clean — remove it from PENDING`)
-  }
 })
 
 // Proves the comment-stripping works, so the #4312 false positive cannot come back.
