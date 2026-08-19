@@ -1,6 +1,7 @@
 <script>
   import { AVAILABLE_THEMES } from '../lib/themes.js'
   import { theme, applyTheme } from '../stores/theme.js'
+  import { llmSettingsOpen } from '../stores/workbench.js'
 
   let open = false
   let root // the wrapper, for the outside-click test
@@ -67,6 +68,15 @@
             <span class="sm-choice-label">{t.label}</span>
           </label>
         {/each}
+      </fieldset>
+
+      <fieldset class="sm-section">
+        <legend class="sm-legend">LLM, Speech &amp; Skills</legend>
+        <button
+          type="button"
+          class="sm-launch"
+          on:click={() => { llmSettingsOpen.set(true); close() }}
+        >Configure…</button>
       </fieldset>
     </div>
   {/if}
@@ -173,5 +183,25 @@
 
   .sm-choice-label {
     line-height: 1.4;
+  }
+
+  /* Matches .sm-choice's padding/font scale so this section doesn't read as
+     bolted on, but it's a button (not a radio row) so it gets its own
+     background/border, matching comparable controls elsewhere in the app. */
+  .sm-launch {
+    width: 100%;
+    padding: 5px 6px;
+    background: var(--control);
+    color: var(--text);
+    border: 1px solid var(--control-border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    text-align: left;
+  }
+
+  .sm-launch:hover {
+    background: var(--control-raised-hover);
   }
 </style>
