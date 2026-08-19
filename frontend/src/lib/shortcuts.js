@@ -117,10 +117,21 @@ export const SHORTCUT_GROUPS = [
         'components/explorer/EditCard.svelte',
       ] },
       // Redo is not a single cross-platform combo like the rest of this
-      // group: historyKeymap binds Mod-y (= Ctrl+Y outside macOS) with a
-      // `mac: 'Mod-Shift-z'` override, so Windows/Linux and macOS genuinely
-      // use different keys — two rows, not one 'Ctrl/Cmd' row.
+      // group: historyKeymap holds two entries that both run redo — `{ key:
+      // 'Mod-y', mac: 'Mod-Shift-z' }` and `{ linux: 'Ctrl-Shift-z' }` — and
+      // CodeMirror's buildKeymap (`name = b[platform] || b.key`) treats each
+      // entry as independent and additive, not as alternatives. Windows only
+      // matches the first entry (no `win` override, falls back to `key`):
+      // Ctrl+Y alone. macOS only matches the first entry's `mac` override:
+      // Cmd+Shift+Z alone. Linux matches BOTH entries — the first falls back
+      // to `key` (Ctrl+Y) and the second has its own `linux` override
+      // (Ctrl+Shift+Z) — so Linux genuinely has two working redo bindings.
+      // Three rows, not two, to say that accurately.
       { keys: ['Ctrl', 'Y'], label: 'Redo (Windows/Linux)', viaKeymap: 'historyKeymap', site: [
+        'lib/n4l-editor.js',
+        'components/explorer/EditCard.svelte',
+      ] },
+      { keys: ['Ctrl', 'Shift', 'Z'], label: 'Redo (Linux)', viaKeymap: 'historyKeymap', site: [
         'lib/n4l-editor.js',
         'components/explorer/EditCard.svelte',
       ] },
