@@ -337,10 +337,9 @@
      from :hover, or hovering an unselected button mimics selection. */
   .ms-btn.ms-on, .ms-btn.ms-on:hover { background: var(--select-toggle-bg); border-color: var(--select-toggle-border); color: var(--select-toggle-text); font-weight: 600; }
   select { background: var(--surface-sunken); color: var(--text-media); border: 1px solid var(--border); border-radius: 4px; padding: 4px; }
-  /* Self-contained coupled alert unit — border, background and text are all
-     literal together, a status colour that means the same in every theme, so
-     the pairing rule's precondition (background stays literal) holds without
-     any risk of the light-on-light bug. */
+  /* Self-contained coupled alert unit — border, background and text all read
+     var(--media-err-border)/-bg/-text below, so the pairing's contrast can
+     never drift out of sync across a theme switch. */
   .ms-err { margin-top: 8px; padding: 6px 8px; border: 1px solid var(--media-err-border); border-radius: 4px; background: var(--media-err-bg); color: var(--media-err-text); font-size: 12px; }
   .ms-note { margin-top: 8px; color: var(--text-quiet); font-size: 12px; }
   .ms-grid { margin-top: 8px; display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; max-height: 320px; overflow-y: auto; }

@@ -183,8 +183,9 @@
      where one half byte-matches a token (.done's #7ecfa0 == --ok), because
      tokenizing only the text while the background stays a fixed literal would
      break the pairing's contrast the moment a theme diverges from Blue. #e0b000
-     also drives StatsPanel's chart series and stat-value colour; #b9a3e3 the
-     same for its purple series — see StatsPanel for the semantic reasoning. */
+     also drives StatsPanel's chart series (its stat-value colour moved to
+     var(--stat-high), style.css:154); #b9a3e3 the same for its purple series
+     — see StatsPanel for the semantic reasoning. */
   .sb-tag.due { background: #4a3a1a; color: #e0b000; }
   .sb-tag.done { background: #1a3a2a; color: #7ecfa0; }
   .sb-tag.llm { background: #2c2340; color: #b9a3e3; }

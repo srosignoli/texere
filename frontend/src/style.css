@@ -321,7 +321,8 @@ html {
        representative backdrop. */
     --explorer-scrim: rgba(0, 0, 0, 0.55);          /* rest-state fill: close button, query-bar buttons,
                                                         sidebar toggle, .overlay.status */
-    --explorer-scrim-strong: rgba(0, 0, 0, 0.6);    /* .overlay.banner (truncated-results notice) */
+    --explorer-scrim-strong: rgba(0, 0, 0, 0.6);    /* .overlay.banner (truncated-results notice),
+                                          .explorer-ask and .explorer-querybar (GraphExplorer.svelte) */
     --explorer-scrim-hover: rgba(0, 0, 0, 0.8);     /* hover fill of --explorer-scrim buttons */
     --explorer-scrim-hover-accent: rgba(74, 123, 208, 0.35); /* query-bar run/help button hover (blue tint) */
     --text-on-scrim: #d8d8d8;         /* .overlay text (Loading…/error/truncated banner) — was
