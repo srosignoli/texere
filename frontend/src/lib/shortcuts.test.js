@@ -109,13 +109,13 @@ function sourceSites() {
   return sites
 }
 
-// Only MODIFIER shortcuts are compared. Unmodified Escape/Enter and
-// unmodified list-navigation arrows are in the spec's Scope table, but a
-// modifier-based scan structurally cannot see them (no modifier survives
-// `comboFromDom`/`comboFromCm`), so they're narrowed out of `documented()`
-// here — see the comment above `SHORTCUT_GROUPS` in shortcuts.js for why
-// they're absent from the data too. This is a scan limitation, not a claim
-// that the spec puts them out of scope.
+// Only MODIFIER shortcuts are compared. Unmodified list-navigation arrows,
+// and unmodified Escape/Space/Enter (close log panel, close Study, reveal
+// answer), are out of the spec's Scope table by design — see the comment
+// above `SHORTCUT_GROUPS` in shortcuts.js for why they're absent from the
+// data too. A modifier-based scan also structurally cannot see them (no
+// modifier survives `comboFromDom`/`comboFromCm`), so they're narrowed out of
+// `documented()` here regardless of the scope decision.
 const documented = () => {
   const set = new Map()
   for (const g of SHORTCUT_GROUPS) {

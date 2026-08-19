@@ -131,17 +131,14 @@ label read from the handler rather than inferred from the key.
 | Global | `Ctrl/Cmd+G` | Build graph | `App.svelte:105` |
 | Global | `Ctrl/Cmd+K` | Search (fuzzy) | `OmniBar.svelte:144` |
 | Global | `Ctrl/Cmd+Shift+K` | Graph query | `OmniBar.svelte:154` |
-| Global | `Ctrl/Cmd+Shift+S` | Open Study | `App.svelte:124` |
+| Global | `Ctrl/Cmd+Shift+S` | Toggle Study | `App.svelte:124` |
 | Global | `Ctrl/Cmd+Shift+E` | Open Read | `App.svelte:132` |
-| Global | `Ctrl/Cmd+Shift+R` | Open Recall overlay | `App.svelte:117` |
+| Global | `Ctrl/Cmd+Shift+R` | Toggle Recall overlay | `App.svelte:117` |
 | Global | `Ctrl/Cmd+Shift+M` | Toggle log panel | `App.svelte:111` |
-| Global | `Escape` | Close log panel | `App.svelte:137` |
-| Global | `F1` / `?` | This panel | *new* |
+| Global | `F1` | This panel | *new* |
 | Editor | `Ctrl/Cmd+S` | Save | `SourceTab.svelte:384`, `ProcessEditor.svelte:174`, `explorer/EditCard.svelte:49` (CodeMirror keymaps) |
 | Study & Read | `Ctrl/Cmd+E` | Extract selection | `ReadingView.svelte:138` |
 | Study & Read | `Ctrl/Cmd+S` | Save notes | `ReadingView.svelte:139` |
-| Study & Read | `Space` / `Enter` | Reveal answer | `RecallCard.svelte:22` |
-| Study & Read | `Escape` | Close Study | `StudySurface.svelte:158` |
 | Explorer | `Ctrl/Cmd+Shift+K` | Focus query bar | `GraphExplorer.svelte:1316` |
 | Explorer | `Alt+←` / `Alt+→` | History back / forward | `GraphExplorer.svelte:1354,1360` |
 | Notebook | `Ctrl/Cmd+Enter` | Run cell / send | `notebook/ShellCell.svelte:119`, `notebook/LLMCell.svelte:151`, `LLMChatPane.svelte:165` |
@@ -151,6 +148,14 @@ label read from the handler rather than inferred from the key.
 (arrows, Tab, Enter, Escape inside pickers), which goes in the `CONTEXTUAL`
 allowlist rather than the panel. Users do not look up how to arrow through a
 list, and listing those would bury the entries that matter.
+
+Also out of scope, narrowed after this table was first drafted: `Escape`
+(close log panel, close Study) and `Space`/`Enter` (reveal answer). These are
+unmodified, contextual keys of the same kind as list navigation — not global
+or mode-defining — and the shipped panel does not list them, on the same
+"don't bury the entries that matter" reasoning as the carve-out above. `F1` is
+the sole binding; `?` was considered (see below) but never wired up, so the
+row above lists `F1` only.
 
 ## Two things this surfaced, recorded rather than fixed
 

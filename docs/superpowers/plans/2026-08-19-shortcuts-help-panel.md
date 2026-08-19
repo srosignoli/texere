@@ -207,7 +207,16 @@ const CM = /\bkey:\s*'([^']+)'\s*,\s*run:/g
 
 // Source writes `(e.key === 'e' || e.key === 'E')` and CodeMirror writes 'Mod-s';
 // one canonical case so the two syntaxes agree that Ctrl/Cmd+S is one shortcut.
-const canonKey = (k) => (k.length === 1 ? k.toUpperCase() : k)
+// Source also writes the DOM literal 'ArrowLeft'/'ArrowRight', while the data
+// in shortcuts.js displays the glyph '←'/'→' — fold the former to the latter
+// here too, so a third representational difference doesn't read as a missing
+// shortcut. (The data is the display form; the source is not — see the KEY
+// regex above, which never sees 'Ctrl/Cmd' either, only ctrlKey/metaKey.)
+const canonKey = (k) => {
+  if (k === 'ArrowLeft') return '←'
+  if (k === 'ArrowRight') return '→'
+  return k.length === 1 ? k.toUpperCase() : k
+}
 
 function comboFromDom(line) {
   const mods = [...line.matchAll(MOD)]
@@ -240,19 +249,27 @@ function sourceSites() {
   for (const f of files) {
     readFileSync(new URL(f, SRC), 'utf8').split('\n').forEach((line, i) => {
       const d = comboFromDom(line)
-      if (d) sites.push({ combo: d, file: f, line: i + 1 })
+      // `kind` records which regex family found this site. It exists so the
+      // vacuity check below can assert on each family separately — a combined
+      // floor can't tell "CM broke entirely" from "DOM alone already clears
+      // it," which is exactly how a `run:` typo silently zeroed CodeMirror
+      // extraction (and 3 of Ctrl/Cmd+S's 4 sites with it) and still passed.
+      if (d) sites.push({ combo: d, file: f, line: i + 1, kind: 'dom' })
       for (const m of line.matchAll(CM)) {
-        sites.push({ combo: comboFromCm(m[1]), file: f, line: i + 1 })
+        sites.push({ combo: comboFromCm(m[1]), file: f, line: i + 1, kind: 'cm' })
       }
     })
   }
   return sites
 }
 
-// Only MODIFIER shortcuts are compared. Unmodified keys — Escape to close,
-// Enter to confirm, arrows to move — are contextual conventions, deliberately
-// out of the panel's scope per the spec, and a modifier-based scan cannot see
-// them anyway. Documenting them would bury the entries that matter.
+// Only MODIFIER shortcuts are compared. Unmodified list-navigation arrows,
+// and unmodified Escape/Space/Enter (close log panel, close Study, reveal
+// answer), are out of the spec's Scope table by design — see the comment
+// above `SHORTCUT_GROUPS` in shortcuts.js for why they're absent from the
+// data too. A modifier-based scan also structurally cannot see them (no
+// modifier survives `comboFromDom`/`comboFromCm`), so they're narrowed out of
+// `documented()` here regardless of the scope decision.
 const documented = () => {
   const set = new Map()
   for (const g of SHORTCUT_GROUPS) {
@@ -263,24 +280,33 @@ const documented = () => {
 
 test('the scan finds the shortcuts known to exist', () => {
   const sites = sourceSites()
-  // Measured on this tree while the plan was written. A materially smaller
-  // number means the extractor broke, not that shortcuts were deleted — and a
-  // silently-empty scan would make both directions below pass vacuously.
-  assert.ok(sites.length >= 15, `found only ${sites.length} shortcut sites; the scan is broken`)
+  // Measured on this tree: 15 DOM-handler sites, 4 CodeMirror keymap sites.
+  // Asserted per family, not as one combined floor of 15 or 19: a combined
+  // floor is exactly the value DOM extraction alone already clears, so it
+  // cannot detect the CM family going to zero — which happened when `run:`
+  // was mistyped in review and all 6 tests stayed green, silently losing
+  // Ctrl/Cmd+S's CodeMirror sites (3 of its 4) along with it.
+  const dom = sites.filter((s) => s.kind === 'dom').length
+  const cm = sites.filter((s) => s.kind === 'cm').length
+  assert.ok(dom >= 15, `found only ${dom} DOM-handler sites; the DOM scan is broken`)
+  assert.ok(cm >= 4, `found only ${cm} CodeMirror keymap sites; the CM scan is broken`)
 })
 
 test('every documented shortcut exists at a site it names', () => {
+  // Compares the FULL combo (modifiers included), not just the trailing key
+  // letter — a bare-key substring check would pass `Build graph` pointed at
+  // any file that happens to mention 'g' or 'G' anywhere, modifiers or not.
+  const sites = sourceSites()
   for (const g of SHORTCUT_GROUPS) {
     for (const it of g.items) {
       if (it.keys.join('+') === 'F1') continue // added by this feature; Task 3 wires it
+      const combo = it.keys.join('+')
       for (const f of it.site) {
-        const src = readFileSync(new URL(f, SRC), 'utf8')
-        const key = it.keys[it.keys.length - 1]
-        const needle = key === '←' ? 'ArrowLeft' : key === '→' ? 'ArrowRight' : key
+        const combosInFile = sites.filter((s) => s.file === f).map((s) => s.combo)
         assert.ok(
-          src.includes(`'${needle}'`) || src.includes(`'${needle.toLowerCase()}'`) ||
-            src.includes(`-${needle.toLowerCase()}'`),
-          `${g.title}/${it.label}: ${f} contains no handler for ${needle}`,
+          combosInFile.includes(combo),
+          `${g.title}/${it.label}: ${f} has no site extracting ${combo} ` +
+            `(found: ${combosInFile.join(', ') || 'none'})`,
         )
       }
     }
@@ -306,7 +332,7 @@ Run: `make test-js`
 This may FAIL, and that is informative rather than a problem. Two outcomes are expected and each has a different response:
 
 - **`every modifier shortcut in source is documented` fails** naming a combo Task 1 omitted → Task 1's data is incomplete. Add the missing entry, using the label read from the handler at that site.
-- **`every documented shortcut exists at a site it names` fails** → either the site path is wrong, or the needle heuristic does not match how that handler is written. Fix whichever is actually wrong; do not weaken the assertion to make it pass.
+- **`every documented shortcut exists at a site it names` fails** → either the site path is wrong, or the combo the scan extracts from that site does not match the documented combo (modifiers included). Fix whichever is actually wrong; do not weaken the assertion to make it pass.
 
 Report which outcome you hit and what you changed.
 

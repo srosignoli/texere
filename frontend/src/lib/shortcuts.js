@@ -9,15 +9,16 @@
 // is three, because the same gesture is wired up per surface.
 //
 // Deliberately absent: Escape (close log panel, close Study/Read), Space/Enter
-// (reveal answer). The spec's Scope table lists all three of these as in
-// scope for the panel — this is not the spec's own out-of-scope carve-out,
-// which excludes only Escape/Enter inside pickers, a different thing. They're
-// left out of THIS data because shortcuts.test.js's guard only ever compares
-// MODIFIER combos: an unmodified entry here would be documented and never
-// checked by either direction of the guard (`F1` is the one exception,
-// exempted by name in the "site exists" test). If that changes, the guard's
-// `documented`/`comboFromDom` would need to widen to unmodified keys before
-// entries for them belong here.
+// (reveal answer). The spec's Scope table originally listed all three of
+// these as in scope; this data narrows that down, and the spec's Scope table
+// was amended to match. The reasoning: these are unmodified, contextual keys
+// of the same kind as list navigation (arrows, Tab, Escape/Enter in pickers),
+// which the spec already puts out of scope — not global or mode-defining, and
+// documenting them would bury the entries that matter. This is not a guard
+// limitation: shortcuts.test.js's exemption mechanism (see `F1`, exempted by
+// name in the "site exists" test) could cover unmodified entries too — it
+// just isn't used here, because these entries were narrowed out rather than
+// added and exempted.
 export const SHORTCUT_GROUPS = [
   {
     title: 'Global',
@@ -25,9 +26,9 @@ export const SHORTCUT_GROUPS = [
       { keys: ['Ctrl/Cmd', 'G'], label: 'Build graph', site: ['App.svelte'] },
       { keys: ['Ctrl/Cmd', 'K'], label: 'Search', site: ['components/OmniBar.svelte'] },
       { keys: ['Ctrl/Cmd', 'Shift', 'K'], label: 'Graph query', site: ['components/OmniBar.svelte'] },
-      { keys: ['Ctrl/Cmd', 'Shift', 'S'], label: 'Open Study', site: ['App.svelte'] },
+      { keys: ['Ctrl/Cmd', 'Shift', 'S'], label: 'Toggle Study', site: ['App.svelte'] },
       { keys: ['Ctrl/Cmd', 'Shift', 'E'], label: 'Open Read', site: ['App.svelte'] },
-      { keys: ['Ctrl/Cmd', 'Shift', 'R'], label: 'Open Recall overlay', site: ['App.svelte'] },
+      { keys: ['Ctrl/Cmd', 'Shift', 'R'], label: 'Toggle Recall overlay', site: ['App.svelte'] },
       { keys: ['Ctrl/Cmd', 'Shift', 'M'], label: 'Toggle log panel', site: ['App.svelte'] },
       { keys: ['F1'], label: 'This panel', site: ['App.svelte'] },
     ],
