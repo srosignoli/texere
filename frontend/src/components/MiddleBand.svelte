@@ -1,7 +1,7 @@
 <script>
   import { createEventDispatcher } from 'svelte'
   import { OpenCollection, PickCollectionDir, CreateNewFile } from '../../wailsjs/go/main/App'
-  import { workbenchStore, reminderCount, omnibarMode, editorAPI } from '../stores/workbench.js'
+  import { workbenchStore, reminderCount, omnibarMode, editorAPI, shortcutsOpen } from '../stores/workbench.js'
   import { explorerOpen, explorerQuery } from '../stores/explorer.js'
   import { studySurfaceOpen, studyFocus } from '../stores/study.js'
   import ReminderPanel from './ReminderPanel.svelte'
@@ -113,6 +113,10 @@
     studyFocus.set('next')
     studySurfaceOpen.set(true)
   }
+
+  function handleOpenShortcuts() {
+    shortcutsOpen.update((v) => !v)
+  }
 </script>
 
 <div class="middle-band">
@@ -161,8 +165,14 @@
     </button>
   {/if}
 
-  <!-- Outside the activeTab guard on purpose: settings are reachable from every
-       tab, not only the note. The planned ? help menu sits next to this. -->
+  <!-- Outside the activeTab guard on purpose: settings and the shortcuts help
+       are reachable from every tab, not only the note. -->
+  <button
+    class="btn"
+    on:click={handleOpenShortcuts}
+    title="Keyboard shortcuts (F1)"
+    aria-label="Keyboard shortcuts"
+  >?</button>
   <SettingsMenu />
 </div>
 

@@ -2,7 +2,7 @@
   import { onMount, onDestroy } from 'svelte'
   import { EventsOn } from '../wailsjs/runtime/runtime'
   import { GetArrowRegistry, GetInitialSummaries, GetInitialCollectionDir, GetStartupError, ConfirmQuit, ParseFileForUI, BuildGraph } from '../wailsjs/go/main/App'
-  import { workbenchStore } from './stores/workbench.js'
+  import { workbenchStore, shortcutsOpen } from './stores/workbench.js'
   import { uiLayout } from './stores/uiLayout.js'
   import { logPanelOpen, appendLog, toggleLogPanel } from './stores/logPanel.js'
   import EmptyState from './components/EmptyState.svelte'
@@ -14,6 +14,7 @@
   import LogPanel from './components/LogPanel.svelte'
   import GraphExplorer from './components/GraphExplorer.svelte'
   import QueryHelpPanel from './components/QueryHelpPanel.svelte'
+  import ShortcutsPanel from './components/ShortcutsPanel.svelte'
   import StudyMode from './components/StudyMode.svelte'
   import StudySurface from './components/StudySurface.svelte'
   import { explorerOpen } from './stores/explorer.js'
@@ -138,6 +139,14 @@
       e.preventDefault()
       e.stopPropagation()
       logPanelOpen.set(false)
+    }
+    // F1 toggles the keyboard-shortcuts help panel. No modifier and no
+    // is-this-a-text-field guard — F1 has a browser default (help) in some
+    // environments, so preventDefault matters here even more than usual.
+    if (e.key === 'F1') {
+      e.preventDefault()
+      e.stopPropagation()
+      shortcutsOpen.update((v) => !v)
     }
   }
 
@@ -406,6 +415,7 @@
       <StudySurface onClose={() => { studySurfaceOpen.set(false); activeReading.set(null) }} />
     {/if}
     <QueryHelpPanel />
+    <ShortcutsPanel />
   {:else}
     <EmptyState errorMessage={startupError} />
   {/if}
