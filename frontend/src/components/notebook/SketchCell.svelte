@@ -240,7 +240,7 @@
   .sw.sel { outline: 2px solid var(--accent-text); }
   .sk-size { width: 80px; }
   .sk-mouse { color: var(--accent-text-alt); font-size: 11px; display: flex; align-items: center; gap: 3px; }
-  .sk-wrap { position: relative; height: 240px; min-height: 80px; resize: vertical; overflow: hidden; background: var(--surface-sunken); }
+  .sk-wrap { position: relative; height: 240px; min-height: 80px; resize: vertical; overflow: hidden; background: var(--sketch-bg); }
   .sk-wrap canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
   .sk-cell.expanded { position: fixed; inset: 0; z-index: 1000; margin: 0; border-radius: 0; display: flex; flex-direction: column; }
   .sk-cell.expanded .sk-wrap { flex: 1; height: auto !important; resize: none; }

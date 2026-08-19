@@ -28,9 +28,9 @@ export async function bakeSketch(cell) {
   out.width = w
   out.height = h
   const ctx = out.getContext('2d')
-  // Resolve the background from the CURRENT theme at bake time, matching
-  // --sketch-bg to --surface-sunken (the same token .sk-wrap's on-screen
-  // canvas already uses) so a sketch baked in the theme it was drawn in
+  // Resolve the background from the CURRENT theme at bake time, via the same
+  // --sketch-bg token .sk-wrap's on-screen canvas paints with (SketchCell.svelte),
+  // so a sketch baked in the theme it was drawn in
   // keeps its strokes visible — strictly better than a background fixed to
   // one theme's literal, which would silently erase the OTHER theme's ink
   // every time. This is NOT a guarantee for every case: each stroke's colour
