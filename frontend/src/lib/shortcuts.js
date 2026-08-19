@@ -7,6 +7,15 @@
 // source, in both directions. It is an array because one user-facing shortcut
 // routinely has several implementations — Ctrl/Cmd+S is four sites, Ctrl/Cmd+Enter
 // is three, because the same gesture is wired up per surface.
+//
+// Deliberately absent: Escape (close log panel, close Study/Read), Space/Enter
+// (reveal answer), and unmodified arrow navigation. These are listed in the
+// spec's Scope table, but the guard only ever compares MODIFIER combos — an
+// unmodified entry here would be documented and never checked, which is worse
+// than not documenting it. They're existing conventions (Escape-to-close,
+// Enter-to-confirm) users already know without a legend. If that changes,
+// the guard's `documented`/`comboFromDom` would need to widen to unmodified
+// keys before entries for them belong here.
 export const SHORTCUT_GROUPS = [
   {
     title: 'Global',
@@ -42,8 +51,11 @@ export const SHORTCUT_GROUPS = [
     title: 'Explorer',
     items: [
       { keys: ['Ctrl/Cmd', 'Shift', 'K'], label: 'Focus query bar', site: ['components/GraphExplorer.svelte'] },
-      { keys: ['Alt', '←'], label: 'History back', site: ['components/GraphExplorer.svelte'] },
-      { keys: ['Alt', '→'], label: 'History forward', site: ['components/GraphExplorer.svelte'] },
+      // Key token is the literal source spelling ('ArrowLeft'/'ArrowRight'), not
+      // the display glyph — shortcuts.test.js's guard matches combo strings
+      // verbatim against the source, and canonKey() does not fold arrow glyphs.
+      { keys: ['Alt', 'ArrowLeft'], label: 'History back', site: ['components/GraphExplorer.svelte'] },
+      { keys: ['Alt', 'ArrowRight'], label: 'History forward', site: ['components/GraphExplorer.svelte'] },
     ],
   },
   {
