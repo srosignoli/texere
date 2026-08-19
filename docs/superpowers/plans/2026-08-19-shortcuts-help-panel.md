@@ -15,7 +15,7 @@
 - **`make test-js` runs `node --test frontend/src/lib/*.test.js`.** A test outside `frontend/src/lib/` ending in `.test.js` is silently never run.
 - **The test runner cannot parse `.svelte`.** Components are checked by reading them as text.
 - **Never introduce a literal colour.** `frontend/src/lib/theme-tokens.test.js` fails the suite on any hex, `rgb()`, `hsl()` or named colour outside its allowlist. The panel must use existing `var(--token)` values from `frontend/src/style.css`; if none fits, add a token to **all three** theme blocks (`:root`, `[data-theme="dark"]`, `[data-theme="light"]`).
-- **The measured inventory is 19 sites across 13 distinct modifier combos**, verified against this tree while writing this plan. If your scan finds a materially different number, the extractor is wrong — investigate before adjusting the expected count.
+- **The measured inventory is 19 sites, 13 distinct combos, 12 of them modified** (the 13th is the unmodified `Escape` in `EditCard.svelte`), verified against this tree while writing this plan. If your scan finds a materially different number, the extractor is wrong — investigate before adjusting the expected count.
 - Do not open or modify the user's real collection at `/home/simone/projects/SStorytimeFork/SStorytime-main/examples/test`. Use a copy.
 
 ---
@@ -456,6 +456,6 @@ git commit -m "docs(test-plan): keyboard shortcuts help panel"
 
 **Type consistency:** `SHORTCUT_GROUPS` is `{ title: string, items: { keys: string[], label: string, site: string[] }[] }[]` in Task 1 and consumed with exactly those field names in Tasks 2 and 3. `shortcutsOpen` is introduced in Task 3 Step 1 and used by both Step 3 and Step 4.
 
-**Verified before writing, not assumed:** the extractor was prototyped against this tree through three iterations, and each found a real bug. A modifier-and-key scan reported 15 DOM sites; adding CodeMirror keymaps naively brought in 6 false positives from `ExplorerLegend.svelte`'s `key: 'contains'` data (fixed by requiring `run:` on the same line); and `Ctrl/Cmd+S` split into two combos until both syntaxes shared one case-normalisation (fixed, now 4 sites under one combo). Final measured inventory: **19 sites, 13 distinct modifier combos.**
+**Verified before writing, not assumed:** the extractor was prototyped against this tree through three iterations, and each found a real bug. A modifier-and-key scan reported 15 DOM sites; adding CodeMirror keymaps naively brought in 6 false positives from `ExplorerLegend.svelte`'s `key: 'contains'` data (fixed by requiring `run:` on the same line); and `Ctrl/Cmd+S` split into two combos until both syntaxes shared one case-normalisation (fixed, now 4 sites under one combo). Final measured inventory: **19 sites, 13 distinct combos, 12 of them modified.**
 
 **Known weakness this plan accepts:** the guard proves a binding exists at a site and that no modifier shortcut is undocumented. It cannot prove a LABEL is true — "Build graph" beside `Ctrl/Cmd+G` passes whatever that handler actually does. Task 3 Step 3 exists solely to catch that, by pressing three of them, and it is the only check on the panel's honesty about meaning rather than existence.
