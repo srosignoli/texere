@@ -34,6 +34,20 @@ breaks without anything catching it.
   `config.json`, which `os.UserConfigDir` honours.
 - No real API key was entered anywhere. The saved profile's key field holds
   the literal placeholder string `sk-test-placeholder`.
+- **Note on the real collection's current state.** This run used a scratch
+  copy and never opened the real collection at
+  `…/SStorytimeFork/SStorytime-main/examples/test`, as stated above — that
+  claim holds. Separately, and unrelated to this run: that real collection is
+  no longer in the pristine state earlier test-plan documents in this repo
+  described. Checked read-only while writing this note: its `learning.db`
+  is now at schema version 8 (`schema_meta`), a `learning.db.bak-v7` sits
+  alongside it, and its files plus `~/.config/texere/config.json` carry
+  mtimes of 13:26–13:29 on 2026-08-19 — roughly ten hours before this
+  document's commits. That was feature 049's schema migration running when
+  the app was opened outside this work, not anything caused by this branch
+  or this task. Recorded here so a reader diffing this document against
+  earlier ones doesn't mistake that inherited state change for a regression
+  this run ignored.
 - The app was driven with synthetic X11 input (XTEST) via `xin.py`/`xcap.py`
   in the job scratch directory (no `xdotool`, no PIL on this box; `xcap.py`
   uses `XGetImage` with a stdlib PNG encoder). Every screenshot named below
@@ -154,10 +168,19 @@ This is Step 3.2 from the brief, run at three levels of increasing strength:
   and section render correctly against the dark surface); overlay
   (`t3-19-dark-overlay.png`) shows the saved profile, fully legible. The
   modal surface color in Dark (`#0d0e0e`) is visually close to Blue's
-  (`#0e1622`) — checked in `frontend/src/style.css` (lines 211–212 vs
-  800–801) and confirmed **intentional**, not a missed token: a comment at
-  `style.css:299` records that Dark was deliberately kept close to Blue for
-  this surface. Not a defect.
+  (`#0e1622`) — checked in `frontend/src/style.css` (`--surface-modal` is
+  declared at line 211 for Blue and line 800 for Dark). That closeness is
+  real, not a mis-read: **no comment documents whether it is deliberate.**
+  Line 211's comment is a bare description (`background of a floating
+  modal/dialog (LLMSettings)`), the line 800 declaration carries no comment
+  at all, and nothing elsewhere in the file gives `--surface-modal` a
+  cross-theme rationale. (An earlier pass of this note cited a comment at
+  `style.css:299` as covering this token; that comment exists and does say
+  Dark was "kept identical to Blue," but it is attached to a different
+  token, `--editor-arrow-popover`, declared at line 296 — it says nothing
+  about `--surface-modal`.) So: an unexplained near-duplicate, not a
+  confirmed-intentional one. Not necessarily a defect, but not verified as
+  intentional either — the visual similarity is the only evidence.
 - **Light**: switched the same way (`t3-20-light-main.png` — popover on a
   light background, section legible); overlay (`t3-21-light-overlay.png`)
   flips to a light modal (`#e8ebee` background, dark text per
