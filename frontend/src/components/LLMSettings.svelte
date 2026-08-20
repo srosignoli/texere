@@ -172,9 +172,12 @@
   /* Must clear SettingsMenu's popover (60) and StudySurface (60) — this can
      now be launched from the settings popover, not just the notebook gear —
      while leaving room below ShortcutsPanel (211), which must stay on top of
-     everything including this. */
-  .ov-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; }
-  .ov-modal { position: fixed; top: 8%; left: 50%; transform: translateX(-50%); width: 560px; max-width: 92vw; max-height: 80vh; overflow: auto; z-index: 201; background: var(--surface-modal); border: 1px solid var(--border); border-radius: 10px; color: var(--text-modal); }
+     everything including this. 200/201 would tie with ReminderPanel's
+     .panel-overlay (also 200, in the same root stacking context) and only
+     win on DOM order, since ReminderPanel mounts inside MiddleBand, earlier
+     than this component — 205/206 clears that ambiguity outright. */
+  .ov-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 205; }
+  .ov-modal { position: fixed; top: 8%; left: 50%; transform: translateX(-50%); width: 560px; max-width: 92vw; max-height: 80vh; overflow: auto; z-index: 206; background: var(--surface-modal); border: 1px solid var(--border); border-radius: 10px; color: var(--text-modal); }
   .ov-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--border-card); color: var(--accent-text); font-weight: 600; }
   .ov-head button { background: none; border: none; color: var(--text-tab-muted); cursor: pointer; }
   .ov-tabs { display: flex; gap: 6px; padding: 8px 14px 0; }

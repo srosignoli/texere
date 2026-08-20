@@ -42,11 +42,21 @@ Hoisting it into a global menu would misrepresent its scope.
 
 ## The constraint that shapes the design
 
-**The settings popover cannot host the overlay.** `SettingsMenu.svelte`
-dismisses on `pointerdown` anywhere outside its `root` element, and on Escape.
-If a launcher mounted `LLMSettings` inside the popover's DOM, the first click
-*within the overlay* would register as "outside" and close the popover — taking
-the overlay with it.
+**The settings popover cannot host the overlay** — not for the reason it might
+look like. `SettingsMenu.svelte` dismisses on `pointerdown` anywhere outside
+its `root` element via `!root.contains(e.target)`. A launcher-mounted
+`LLMSettings` would render as a plain DOM descendant of that root — Svelte's
+`{#if}` renders in place and nothing in this codebase portals out of its
+parent — so a click inside the nested overlay *would* satisfy `contains()`
+and would **not** close the popover. The real blockers are two others:
+
+1. `.sm-popover` is `position: absolute` with `z-index: 60`, which creates a
+   stacking context of its own. A nested overlay's z-index would be clamped
+   inside that context and could never clear `GraphExplorer`'s 70, no matter
+   what number it carried.
+2. The popover's contents live and die with `{#if open}`. A nested overlay
+   would share that lifetime, so any outside click or Escape that dismisses
+   the popover would destroy the overlay mid-edit — the opposite of a modal.
 
 So the overlay is mounted at `App.svelte` level and driven by a store, exactly
 as `ShortcutsPanel` was in feature 053: `App.svelte` owns the mount,
@@ -109,7 +119,7 @@ anyway — `NotebookPane.svelte` no longer references `LLMSettings`, and
 Everything real is manual, in **all three themes** (Blue, Dark, Light — feature
 052 made the latter two real):
 
-1. The **Models** section appears in the settings popover beneath Appearance.
+1. The **LLM, Speech & Skills** section appears in the settings popover beneath Appearance.
 2. Its launcher opens the overlay, and the overlay renders **above** the popover
    — the specific thing the z-index fix is for.
 3. All three tabs still work, and a profile edit still saves and persists.
