@@ -1,6 +1,11 @@
 package content
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
 
 func perr(msg string) ParseError { return ParseError{File: "x.n4l", Line: 3, Msg: msg} }
 
@@ -61,5 +66,102 @@ func TestRemediationExistsForEveryLiveKind(t *testing.T) {
 		if Remediation(perr(k+": detail")) == "" {
 			t.Errorf("no remediation for %q", k)
 		}
+	}
+}
+
+// Three of the six live ParseError kinds never occur in the real collection,
+// so their classification and remediation would otherwise ship untested
+// against any real input. Each fixture must provoke exactly the kind it
+// claims to — a fixture that provokes a different error still makes this
+// test pass while proving nothing.
+func TestLintFixturesProvokeTheirKind(t *testing.T) {
+	reg := &SSTRegistry{Arrows: map[string]ArrowDef{}}
+	for file, wantKind := range map[string]string{
+		"testdata/lint/malformed-marker.n4l": ErrMalformedMarker,
+		"testdata/lint/invalid-priority.n4l": ErrInvalidPriority,
+		"testdata/lint/bad-encoding.n4l":     ErrEncoding,
+	} {
+		pf, perrs := ParseFile(file, reg)
+		all := append([]ParseError{}, perrs...)
+		if pf != nil {
+			all = append(all, pf.Errors...)
+		}
+		found := false
+		for _, e := range all {
+			if strings.HasPrefix(e.Msg, wantKind) {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("%s did not produce %q; got %v", file, wantKind, all)
+		}
+	}
+}
+
+// The aggregation property that makes the feature usable: on the real
+// collection 34,970 occurrences are only 158 causes. Two files using the same
+// undeclared arrow must produce ONE vocabulary row, not two.
+func TestLintAggregatesArrowsByName(t *testing.T) {
+	dir := t.TempDir()
+	// "wibbles" is in neither file's registry, so every use is an unknown arrow.
+	mustWrite(t, filepath.Join(dir, "a.n4l"), "- ch\n\nalpha\n    (wibbles) beta\n")
+	mustWrite(t, filepath.Join(dir, "b.n4l"), "- ch\n\ngamma\n    (wibbles) delta\n    (wibbles) epsilon\n")
+
+	reg := &SSTRegistry{Arrows: map[string]ArrowDef{}}
+	res, err := LintCollection(dir, reg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Vocabulary) != 1 {
+		t.Fatalf("want 1 vocabulary row, got %d: %+v", len(res.Vocabulary), res.Vocabulary)
+	}
+	v := res.Vocabulary[0]
+	if v.Arrow != "wibbles" {
+		t.Errorf("arrow = %q, want %q (is it still quoted?)", v.Arrow, "wibbles")
+	}
+	if v.Uses != 3 {
+		t.Errorf("uses = %d, want 3 — occurrences must be summed across files", v.Uses)
+	}
+	if len(v.Files) != 2 {
+		t.Errorf("files = %v, want both a.n4l and b.n4l", v.Files)
+	}
+}
+
+// The split the whole design rests on. A file with both kinds must yield the
+// quote as a defect and the arrow as vocabulary — never the arrow as a defect,
+// which is what would mark 39 of 53 real files instead of 7.
+func TestLintDefectsAndVocabularyAreSeparate(t *testing.T) {
+	dir := t.TempDir()
+	mustWrite(t, filepath.Join(dir, "mixed.n4l"),
+		"- ch\n\nalpha\n    (wibbles) beta\n\n\"an unterminated quote\n")
+
+	reg := &SSTRegistry{Arrows: map[string]ArrowDef{}}
+	res, err := LintCollection(dir, reg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Vocabulary) != 1 || res.Vocabulary[0].Arrow != "wibbles" {
+		t.Errorf("vocabulary = %+v, want one entry for wibbles", res.Vocabulary)
+	}
+	for _, d := range res.Defects {
+		if strings.HasPrefix(d.Kind, ErrUnknownArrow) {
+			t.Errorf("an undeclared arrow was reported as a defect: %+v", d)
+		}
+	}
+	var quotes int
+	for _, d := range res.Defects {
+		if strings.HasPrefix(d.Kind, ErrUnterminatedQuote) {
+			quotes++
+		}
+	}
+	if quotes != 1 {
+		t.Errorf("want 1 unterminated-quote defect, got %d: %+v", quotes, res.Defects)
+	}
+}
+
+func mustWrite(t *testing.T, path, body string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
 	}
 }

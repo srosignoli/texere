@@ -84,6 +84,7 @@ notes/
 collection/
 # Exception: test fixtures are source code
 !internal/content/testdata/*.n4l
+!internal/content/testdata/lint/*.n4l
 !internal/search/testdata/*.n4l
 !internal/corpustest/corpus/*.n4l
 

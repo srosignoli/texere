@@ -245,6 +245,77 @@ export namespace content {
 	        this.AlreadyHad = source["AlreadyHad"];
 	    }
 	}
+	export class LintDefect {
+	    file: string;
+	    line: number;
+	    kind: string;
+	    message: string;
+	    remediation: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new LintDefect(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.file = source["file"];
+	        this.line = source["line"];
+	        this.kind = source["kind"];
+	        this.message = source["message"];
+	        this.remediation = source["remediation"];
+	    }
+	}
+	export class LintVocabulary {
+	    arrow: string;
+	    uses: number;
+	    files: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new LintVocabulary(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.arrow = source["arrow"];
+	        this.uses = source["uses"];
+	        this.files = source["files"];
+	    }
+	}
+	export class LintResult {
+	    defects: LintDefect[];
+	    vocabulary: LintVocabulary[];
+	    filesLinted: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new LintResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.defects = this.convertValues(source["defects"], LintDefect);
+	        this.vocabulary = this.convertValues(source["vocabulary"], LintVocabulary);
+	        this.filesLinted = source["filesLinted"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
 	
 	export class NodeSpan {
 	    id: string;

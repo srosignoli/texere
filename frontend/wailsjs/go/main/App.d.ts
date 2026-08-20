@@ -103,6 +103,8 @@ export function ImportTextSource():Promise<main.ReadingView>;
 
 export function ImportWebSource(arg1:string):Promise<main.ReadingView>;
 
+export function LintCollection():Promise<content.LintResult>;
+
 export function ListArrowCodes():Promise<Array<string>>;
 
 export function ListChapters():Promise<Array<string>>;
