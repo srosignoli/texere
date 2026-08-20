@@ -161,6 +161,27 @@ export const omnibarMode = writable(/** @type {null|'fuzzy'|'graph'} */ (null))
 export const shortcutsOpen = writable(false)
 
 /**
+ * llmSettingsOpen — the LLM / speech / skills overlay.
+ *
+ * Lives here rather than in either component because neither can own it:
+ * SettingsMenu triggers it, App.svelte mounts it. Mounting it inside the
+ * popover is not an option, for two reasons — neither is the outside-click
+ * dismissal, which would *not* fire: LLMSettings would render as a DOM
+ * descendant of `.sm-root` (no portal anywhere in this codebase), so
+ * SettingsMenu's `!root.contains(e.target)` check would see a click inside
+ * the nested overlay as inside, not outside.
+ *
+ * 1. `.sm-popover` is `position: absolute` with its own `z-index: 60`,
+ *    creating a stacking context that would clamp a nested overlay's z-index
+ *    to that context — it could never clear the graph explorer's 70, no
+ *    matter what number it carried.
+ * 2. The popover's contents live and die with `{#if open}`; a nested overlay
+ *    would share that lifetime, so an outside click or Escape that closes the
+ *    popover would destroy the overlay mid-edit.
+ */
+export const llmSettingsOpen = writable(false)
+
+/**
  * editorAPI — live reference to SourceTab's imperative methods.
  * SourceTab registers itself on mount and clears on destroy.
  * Any component can use $editorAPI?.triggerSave() etc. without prop-drilling.

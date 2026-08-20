@@ -2,7 +2,7 @@
   import { onMount, onDestroy } from 'svelte'
   import { EventsOn } from '../wailsjs/runtime/runtime'
   import { GetArrowRegistry, GetInitialSummaries, GetInitialCollectionDir, GetStartupError, ConfirmQuit, ParseFileForUI, BuildGraph } from '../wailsjs/go/main/App'
-  import { workbenchStore, shortcutsOpen } from './stores/workbench.js'
+  import { workbenchStore, shortcutsOpen, llmSettingsOpen } from './stores/workbench.js'
   import { uiLayout } from './stores/uiLayout.js'
   import { logPanelOpen, appendLog, toggleLogPanel } from './stores/logPanel.js'
   import EmptyState from './components/EmptyState.svelte'
@@ -15,6 +15,7 @@
   import GraphExplorer from './components/GraphExplorer.svelte'
   import QueryHelpPanel from './components/QueryHelpPanel.svelte'
   import ShortcutsPanel from './components/ShortcutsPanel.svelte'
+  import LLMSettings from './components/LLMSettings.svelte'
   import StudyMode from './components/StudyMode.svelte'
   import StudySurface from './components/StudySurface.svelte'
   import { explorerOpen } from './stores/explorer.js'
@@ -416,6 +417,9 @@
     {/if}
     <QueryHelpPanel />
     <ShortcutsPanel />
+    {#if $llmSettingsOpen}
+      <LLMSettings onClose={() => llmSettingsOpen.set(false)} />
+    {/if}
   {:else}
     <EmptyState errorMessage={startupError} />
   {/if}

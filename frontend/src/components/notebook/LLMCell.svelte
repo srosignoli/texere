@@ -206,7 +206,7 @@
 
   {#if !readOnly}
     {#if !hasProvider}
-      <div class="llm-hint">No LLM provider configured — open ⚙ Models to add one.</div>
+      <div class="llm-hint">No LLM provider configured — open ⚙ Settings → LLM, Speech &amp; Skills to add one.</div>
     {:else}
       <div class="composer">
         <textarea bind:value={input} on:keydown={onKey}

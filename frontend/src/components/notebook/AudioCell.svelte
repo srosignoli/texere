@@ -172,7 +172,7 @@
           {#each sttProfiles as p}<option value={p.id}>{p.name}</option>{/each}
         </select>
         <button on:click={transcribe} disabled={transcribing || !sttProfiles.length}>{transcribing ? 'Transcribing…' : 'Transcribe'}</button>
-        {#if !sttProfiles.length}<span class="au-hint">Configure a model in ⚙ Models → Speech-to-text</span>{/if}
+        {#if !sttProfiles.length}<span class="au-hint">Configure a model in ⚙ Settings → LLM, Speech &amp; Skills</span>{/if}
         {#if transErr}<span class="au-err">{transErr}</span>{/if}
       </div>
     {/if}
