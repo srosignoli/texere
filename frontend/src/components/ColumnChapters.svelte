@@ -66,7 +66,7 @@
               <span
                 class="lint-badge"
                 title="{defectCount} {defectCount === 1 ? 'defect' : 'defects'} found by the linter"
-              >✕ {defectCount}</span>
+              >! {defectCount}</span>
             {/if}
           </button>
 
