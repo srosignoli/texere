@@ -135,7 +135,11 @@
     </button>
     <button class="ptab" class:active={panelTab === 'problems'} role="tab" aria-selected={panelTab === 'problems'} on:click={() => switchTab('problems')}>
       Problems
-      {#if problemsTotal}<span class="ptab-count ptab-count-danger">{problemsTotal}</span>{/if}
+      <!-- Defects only, deliberately — same convention as ColumnChapters' per-file
+           !N marker (Task 3): undeclared arrows are not defects, and mixing them
+           in here would both blur that distinction and pin a count that may never
+           reach zero (many arrows are legitimately never declared). -->
+      {#if defects.length}<span class="ptab-count ptab-count-danger">{defects.length}</span>{/if}
     </button>
   </div>
 
@@ -216,7 +220,7 @@
                     <span class="defect-file-name">{group.file}</span>
                     <span class="defect-file-count">{group.items.length}</span>
                   </div>
-                  {#each group.items as d (d.line + ':' + d.kind + ':' + d.message)}
+                  {#each group.items as d}
                     <div class="defect-row">
                       <div class="defect-meta">
                         <span class="defect-loc">{d.line > 0 ? `line ${d.line}` : 'file-level'}</span>
@@ -243,7 +247,7 @@
             <p class="vocab-lead">Not declared in SSTconfig, so these relations don't become graph edges yet. Declare the arrow to fix — every row below shares that one remediation.</p>
             <div class="col-scroll vocab-scroll">
               <VirtualList items={vocabulary} estimatedHeight={22} overscan={8} getKey={(item) => item.arrow} let:item>
-                <div class="vocab-row" title="{item.files.length} {item.files.length === 1 ? 'file' : 'files'}: {item.files.join(', ')}">
+                <div class="vocab-row" title="{item.arrow} — {item.files.length} {item.files.length === 1 ? 'file' : 'files'}: {item.files.join(', ')}">
                   <span class="vocab-arrow">{item.arrow}</span>
                   <span class="vocab-bar-track"><span class="vocab-bar-fill" style="width: {vocabBarPct(item.uses)}%"></span></span>
                   <span class="vocab-uses">{item.uses.toLocaleString()}</span>
@@ -602,25 +606,35 @@
      scale is what actually shows that at a glance. */
   .vocab-row {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 8px;
     padding: 2px 12px;
     font-size: 0.76rem;
   }
+  /* Wraps rather than ellipsizing: this section's entire job is telling the
+     user which arrow to declare, so the name must always be fully readable,
+     not just recoverable via title. Most arrows are short (~120px worth,
+     one line); the ~22% that run longer (e.g. "ctx PoSST,arrow ArrowPtr")
+     wrap to a second line instead of losing characters — VirtualList
+     measures each row's real height via ResizeObserver, so a taller
+     wrapped row doesn't misalign anything around it. Also carried in the
+     row's title (arrow first, then file list) for a copy-pastable form. */
   .vocab-arrow {
-    flex: 0 0 auto;
-    width: 120px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    flex: 0 1 200px;
+    min-width: 90px;
+    max-width: 240px;
+    overflow-wrap: anywhere;
+    white-space: normal;
     color: var(--help-code-text);
     font-family: monospace;
     font-size: 0.74rem;
+    line-height: 1.3;
   }
   .vocab-bar-track {
     flex: 1;
     height: 5px;
     min-width: 24px;
+    margin-top: 5px; /* optical-centers the bar on the arrow's first line now that .vocab-row is flex-start (wrapped arrows need top alignment, not centering) */
     background: var(--border);
     border-radius: 3px;
     overflow: hidden;

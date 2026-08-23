@@ -182,7 +182,9 @@
   onDestroy(() => {
     if (!closed) {
       const cur = notesView?.state.doc.toString()
-      if (cur != null && cur !== savedNotes) SaveFile(reading.notesPath, cur).catch(() => {})
+      // .then/.catch, not await — onDestroy can't be async, and a lint failure
+      // here must not break teardown any more than a save failure already doesn't.
+      if (cur != null && cur !== savedNotes) SaveFile(reading.notesPath, cur).then(() => runLint()).catch(() => {})
       const pos = peekAt ? null : pane?.getProgress?.()
       if (pos) UpdateReadingProgress(reading.id, pos).catch(() => {})
       if (!peekAt) LogReadingSession(reading.id, Math.round((Date.now() - openedAt) / 1000)).catch(() => {})
