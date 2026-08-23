@@ -6,6 +6,7 @@
   import { autocompletion, completionStatus } from '@codemirror/autocomplete'
   import { workbenchStore } from '../../stores/workbench.js'
   import { appendLog } from '../../stores/logPanel.js'
+  import { runLint } from '../../stores/lint.js'
   import { n4lLanguage } from '../../lib/n4l-language.js'
   import { n4lHighlighting } from '../../lib/n4l-highlight.js'
   import { arrowCompletion } from '../../lib/arrow-autocomplete.js'
@@ -90,6 +91,7 @@
       }
       initialContent = finalContent
       savedAChange = true
+      runLint()   // a save can fix (or introduce) a defect; Problems must reflect the new state
     } catch (e) {
       console.error('EditCard SaveFile failed:', e)
       appendLog([{ severity: 'error', source: 'editor',
