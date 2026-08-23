@@ -17,7 +17,7 @@ func TestClassifyDefects(t *testing.T) {
 		ErrUnresolvedRef + ": $PREV.2",
 		ErrMalformedMarker + ": # @card bogus",
 		ErrInvalidPriority + ": 9",
-		ErrEncoding + ": invalid utf-8",
+		ErrEncoding + ": bufio.Scanner: token too long",
 	} {
 		if got := Classify(perr(msg)); got != CategoryDefect {
 			t.Errorf("Classify(%q) = %v, want CategoryDefect", msg, got)
@@ -79,7 +79,7 @@ func TestLintFixturesProvokeTheirKind(t *testing.T) {
 	for file, wantKind := range map[string]string{
 		"testdata/lint/malformed-marker.n4l": ErrMalformedMarker,
 		"testdata/lint/invalid-priority.n4l": ErrInvalidPriority,
-		"testdata/lint/bad-encoding.n4l":     ErrEncoding,
+		"testdata/lint/line-too-long.n4l":    ErrEncoding,
 	} {
 		pf, perrs := ParseFile(file, reg)
 		all := append([]ParseError{}, perrs...)
@@ -163,5 +163,47 @@ func mustWrite(t *testing.T, path, body string) {
 	t.Helper()
 	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// scanChapterTitles (internal/content/scanner.go) uses a default bufio.Scanner
+// too, so the exact condition that makes ParseFile emit ErrEncoding — a line
+// over the 64 KiB scanner limit — also sets ChapterSummary.ScanError for the
+// same file. An earlier version of LintCollection skipped any file with a
+// non-nil ScanError, which silently dropped the file from both FilesLinted
+// and Defects: the encoding fixture proved the parser could produce the
+// finding, but nothing proved LintCollection actually surfaced it. This test
+// drives that fixture through LintCollection, not just ParseFile, so a
+// regression here fails loudly instead of shipping quietly again.
+func TestLintReportsEncodingErrorsInsteadOfDroppingTheFile(t *testing.T) {
+	dir := t.TempDir()
+	// A single line over bufio's 64 KiB scanner limit — the only realistic
+	// trigger for ErrEncoding via scanner.Err() (see parser.go:149 and the
+	// committed testdata/lint/line-too-long.n4l fixture).
+	longLine := strings.Repeat("x", 70000)
+	mustWrite(t, filepath.Join(dir, "a.n4l"), "- ch\n\nalpha\n"+longLine+"\n")
+	mustWrite(t, filepath.Join(dir, "b.n4l"), "- ch\n\nbeta\n")
+
+	reg := &SSTRegistry{Arrows: map[string]ArrowDef{}}
+	res, err := LintCollection(dir, reg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if res.FilesLinted != 2 {
+		t.Errorf("filesLinted = %d, want 2 (the encoding-error file must not be dropped from the count)", res.FilesLinted)
+	}
+
+	var encodingDefects int
+	for _, d := range res.Defects {
+		if d.Kind == ErrEncoding {
+			encodingDefects++
+			if d.File != "a.n4l" {
+				t.Errorf("encoding defect file = %q, want %q", d.File, "a.n4l")
+			}
+		}
+	}
+	if encodingDefects != 1 {
+		t.Fatalf("want 1 encoding defect, got %d: %+v", encodingDefects, res.Defects)
 	}
 }

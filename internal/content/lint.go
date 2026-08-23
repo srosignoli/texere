@@ -56,7 +56,15 @@ func Remediation(e ParseError) string {
 	case strings.HasPrefix(e.Msg, ErrInvalidPriority+":"):
 		return "This priority value is out of range, so it was ignored. Use a priority between the documented bounds."
 	case strings.HasPrefix(e.Msg, ErrEncoding+":"):
-		return "This file could not be read as valid text, so parsing stopped early. Re-save the file as UTF-8."
+		// Every reachable cause is either a line over the 64 KiB scanner
+		// limit (parser.go:149, bufio.ErrTooLong) or the file failing to
+		// open at all (parser.go:25 — permission denied, removed mid-scan).
+		// Neither is an encoding problem, so branch on the detail rather
+		// than giving one piece of advice that is wrong in every case.
+		if strings.Contains(e.Msg, "token too long") {
+			return "A single line in this file is too long for the parser to read (over 64 KB), so parsing stopped there. Break that line up."
+		}
+		return "This file could not be read to the end. Check that it still exists and is readable."
 	case strings.HasPrefix(e.Msg, ErrOrphanDitto+":"):
 		return "This ditto has no preceding line to repeat, so it was ignored. Remove it or add the line it should follow."
 	default:
@@ -136,17 +144,20 @@ func LintCollection(dir string, reg *SSTRegistry) (LintResult, error) {
 		return LintResult{}, err
 	}
 
-	var defects []LintDefect
+	defects := make([]LintDefect, 0)
 	vocab := make(map[string]*LintVocabulary)      // arrow name -> aggregate row
 	vocabFiles := make(map[string]map[string]bool) // arrow name -> set of relpaths seen
 
 	filesLinted := 0
 	for _, s := range summaries {
-		if s.ScanError != nil {
-			// Unreadable file: nothing to lint, and it is already surfaced
-			// elsewhere (Column 1). Skip rather than fabricate a finding.
-			continue
-		}
+		// Do not skip on s.ScanError: scanChapterTitles uses a default
+		// bufio.Scanner too, so the exact condition that makes ParseFile emit
+		// ErrEncoding (a line over 64 KiB, or the file being unreadable) also
+		// sets ScanError here. Skipping would drop the file the user most
+		// needs told about instead of reporting it. ParseFile is the source
+		// of truth for findings; let it speak for itself — an unopenable
+		// file still yields a real ParseError (Line: 0) that flows through
+		// Classify unchanged.
 		filesLinted++
 
 		_, perrs := ParseFile(s.FilePath, reg)
