@@ -1,5 +1,15 @@
 # N4L linter — manual test plan (executed)
 
+> **Note added 2026-08-24.** This document records a test run made *before*
+> the `contentSQStart` apostrophe fix. The counts below (107 defects across 7
+> files, 106/6 after the in-app repair) were correct for the code as it stood
+> that day. 85 of those defects were parser false positives — see the
+> correction in `2026-08-20-n4l-linter-design.md`. Re-running the same steps
+> today yields **22 defects across 5 files**, with `Darwin.n4l` and `NDA.n4l`
+> unmarked. The observations about UI behaviour — marker appearance, grouping,
+> navigation, live re-lint on save — all still hold.
+
+
 **Spec:** `2026-08-20-n4l-linter-design.md`
 **Plan:** `../plans/2026-08-20-n4l-linter.md` (Task 5)
 **Build:** `make build && ./build/bin/texere`, built at commit `d21d12f`

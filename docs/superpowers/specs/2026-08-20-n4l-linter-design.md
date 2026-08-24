@@ -27,7 +27,8 @@ parser, before any of this was designed:
 > occurrence was therefore added twice. This affects only the *occurrence*
 > counts below (total findings, `unknown arrow`, `unterminated quote`,
 > `unresolved reference`). The set-based figures — 53 files linted, 158
-> distinct undeclared arrow names, 107 defects confined to exactly 7 files,
+> distinct undeclared arrow names, 107 defects confined to exactly 7 files
+> (since revised to 22 across 5 — see the correction below the table),
 > 39 of 53 files with some finding, the per-arrow `has-frag`/`extract-fr`
 > counts, and the 145 ms timing — do not sum occurrences across the doubled
 > slice, so they were unaffected and are unchanged here. Independently
@@ -43,8 +44,32 @@ They collapse to far fewer *causes*:
 | Kind | Occurrences | Distinct causes |
 |---|---|---|
 | `unknown arrow` | 17,485 (99.4%) | **158 arrow names** |
-| `unterminated quote` | 87 | 7 files |
+| `unterminated quote` | 87 → **2** (see below) | 7 files → **1** |
 | `unresolved reference` | 20 | `$PREV.n`, `$THIS.n` |
+
+> **Correction, 2026-08-24 — 85 of the 87 `unterminated quote` findings were
+> a parser bug, not file defects.** `contentSQStart`
+> (`internal/content/parser.go`) opened a multi-line single-quoted block on
+> *any* `'` anywhere in an `@label` line, so every possessive and contraction
+> in labelled prose — `Man's`, `five years' work` — opened a block that the
+> next blank line closed as unterminated. `maskSpecial`, in the same file,
+> already encoded the correct rule ("an opening `'` is not preceded by an
+> ASCII letter") and `contentSQStart`'s own doc comment already claimed to
+> exclude "regular node text with embedded apostrophes"; the `@label` branch
+> simply never implemented it. Fixed test-first; the two survivors are
+> genuine unclosed blocks in `json_example_1.n4l`.
+>
+> `Darwin.n4l` produced 74 of the false reports and `NDA.n4l` another 10.
+> Both are output of SSTorytime's `text2N4L`, whose `Sanitize()` replaces
+> only `(` and `)` — N4L's arrow metacharacters — and leaves apostrophes in
+> sentence text verbatim by design. Both files were valid N4L throughout and
+> now carry no marker. Parsed output never differed (`Darwin.n4l`: 3204 nodes
+> before and after): `recoverQuotedBlock` had always reparsed the buffered
+> lines, so only the *report* was wrong, never the content.
+>
+> **Revised defect baseline: 22 defects across 5 files** (was 107 across 7).
+> The vocabulary figures are untouched — still 158 distinct undeclared arrow
+> names across 39 files.
 
 Two arrows account for 16,906 of the occurrences — `has-frag` (8,591) and
 `extract-fr` (8,315) — used systematically across three bulk-imported files.
