@@ -19,17 +19,32 @@ consequences: *what did the parser actually do with what you wrote.*
 Measured against the real collection (53 files, 63 MB) with the existing
 parser, before any of this was designed:
 
+> **Note (2026-08-24):** the figures in this section were originally
+> double-counted. The baseline script summed both return values of
+> `ParseFile(path, reg) (*ParsedFile, []ParseError)`, but
+> `internal/content/parser.go:161` returns `pf, pf.Errors` — the second
+> return value *is* `pf.Errors`, the same slice, not a distinct set. Every
+> occurrence was therefore added twice. This affects only the *occurrence*
+> counts below (total findings, `unknown arrow`, `unterminated quote`,
+> `unresolved reference`). The set-based figures — 53 files linted, 158
+> distinct undeclared arrow names, 107 defects confined to exactly 7 files,
+> 39 of 53 files with some finding, the per-arrow `has-frag`/`extract-fr`
+> counts, and the 145 ms timing — do not sum occurrences across the doubled
+> slice, so they were unaffected and are unchanged here. Independently
+> reproduced three times against a copy of the real collection; see
+> `.superpowers/sdd/2026-08-20-n4l-linter/baseline-correction-report.md`.
+
 - **Full-collection parse: 145 ms.** Cost is not a design constraint.
-- **35,184 problems across 39 of 53 files.** Reported naively that is a marker
+- **17,592 problems across 39 of 53 files.** Reported naively that is a marker
   on 74% of files and a list nobody reads.
 
 They collapse to far fewer *causes*:
 
 | Kind | Occurrences | Distinct causes |
 |---|---|---|
-| `unknown arrow` | 34,970 (99.4%) | **158 arrow names** |
-| `unterminated quote` | 174 | 7 files |
-| `unresolved reference` | 40 | `$PREV.n`, `$THIS.n` |
+| `unknown arrow` | 17,485 (99.4%) | **158 arrow names** |
+| `unterminated quote` | 87 | 7 files |
+| `unresolved reference` | 20 | `$PREV.n`, `$THIS.n` |
 
 Two arrows account for 16,906 of the occurrences — `has-frag` (8,591) and
 `extract-fr` (8,315) — used systematically across three bulk-imported files.
@@ -37,7 +52,7 @@ They are not typos and not prose misread as syntax. The remaining 156 are the
 author's real vocabulary: `contains`, `url`, `then`, `implements`, `leads to`,
 `depends on`, `consists of`, `see also`, `expresses`.
 
-**This measurement is the design.** A linter reporting 34,970 line-level
+**This measurement is the design.** A linter reporting 17,485 line-level
 findings would be worthless; one reporting "158 arrows are undeclared" is a
 finite, fixable list.
 
@@ -48,7 +63,9 @@ exist as `Err*` constants in `internal/content/errors.go`, produced at nine
 sites. A separate ruleset would be a second definition of N4L that can disagree
 with the first — and the first is the one that actually builds the graph.
 
-**Group by cause, not occurrence.** 35,184 occurrences are roughly 370 causes.
+**Group by cause, not occurrence.** 17,592 occurrences reduce to 158 undeclared
+arrow names plus a handful of defect kinds confined to 7 files — that is what
+"cause" means here, and it is what the tool reports.
 
 **Two categories, because they are different problems:**
 
