@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -260,6 +261,17 @@ func (a *App) collectionRoot() string {
 	a.dirMu.RLock()
 	defer a.dirMu.RUnlock()
 	return a.collectionDir
+}
+
+// LintCollection parses every .n4l file in the open collection and returns
+// the aggregated defects and vocabulary for the Problems tab. Returns an
+// error when no collection is open.
+func (a *App) LintCollection() (content.LintResult, error) {
+	root := a.collectionRoot()
+	if root == "" {
+		return content.LintResult{}, errors.New("no collection open")
+	}
+	return content.LintCollection(root, a.registry)
 }
 
 // ImportImage opens the OS file dialog, copies the chosen image into the

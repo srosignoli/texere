@@ -9,6 +9,7 @@
   import { get } from 'svelte/store'
   import { workbenchStore, filteredNodes } from '../stores/workbench.js'
   import { n4lBaseExtensions, pushRecentArrow, notebookDotsGutter, applyDots } from '../lib/n4l-editor.js'
+  import { runLint } from '../stores/lint.js'
   import { SaveFile, GetFileContent, GetRecentArrows, UpdateRecentArrows, NotebookMarks, FileNodeSpans, PeekNotebook } from '../../wailsjs/go/main/App'
   import { EventsOn } from '../../wailsjs/runtime/runtime'
   import { nodeIdAtLine } from '../lib/node-span.js'
@@ -345,6 +346,7 @@
         setContent(result.finalContent)  // setContent also updates savedContent — fine
       }
       await refreshFileState(loadedFilePath)   // a save can shift every line below an edit
+      runLint()   // a save can fix (or introduce) a defect; Problems must reflect the new state, not the last run
       dispatch('saved', { injections: result?.injections ?? [] })
     } catch (e) {
       console.error('SaveFile failed:', e)

@@ -4,6 +4,7 @@
   import { EditorState } from '@codemirror/state'
   import { workbenchStore } from '../stores/workbench.js'
   import { n4lBaseExtensions, pushRecentArrow, notebookDotsGutter, applyDots } from '../lib/n4l-editor.js'
+  import { runLint } from '../stores/lint.js'
   import { GetExtractTarget, PromoteExtract, DeferExtract, DismissExtract, GetFileContent, SaveFile, SyncStudyItems, GetRecentArrows, UpdateRecentArrows, GetNotebookLinks } from '../../wailsjs/go/main/App'
 
   export let extractId
@@ -55,6 +56,7 @@
     if (cur !== savedContent) {
       const res = await SaveFile(target.filePath, cur)
       savedContent = res?.finalContent ?? cur
+      runLint()   // a save can fix (or introduce) a defect; Problems must reflect the new state
       // A save can shift every line below an edit, so any line->node map a
       // consumer holds is now stale. Ctrl+S, Make card and the action bar all
       // reach the file through here, and none of them dispatched anything
@@ -83,6 +85,7 @@
     } else {
       savedContent = final
     }
+    runLint()   // a save can fix (or introduce) a defect; Problems must reflect the new state
     await refreshDots()
     return block
   }

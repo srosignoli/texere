@@ -22,6 +22,7 @@
   import { refreshQueryHints } from './stores/queryHints.js'
   import { studyOpen, studySurfaceOpen, studyFocus } from './stores/study.js'
   import { activeReading } from './stores/reading.js'
+  import { runLint } from './stores/lint.js'
 
   // Track viewport height so the top-band drag handle can clamp to a value
   // that always leaves the editor with at least EDITOR_FLOOR_PX of room.
@@ -289,6 +290,7 @@
           collectionDir: dir || null,
           summaries: summaries,
         }))
+        runLint()
       }
     } catch (e) {
       console.warn('Startup load failed:', e)

@@ -2,6 +2,7 @@
   import { createEventDispatcher } from 'svelte'
   import { OpenCollection, PickCollectionDir, CreateNewFile } from '../../wailsjs/go/main/App'
   import { workbenchStore, reminderCount, omnibarMode, editorAPI, shortcutsOpen } from '../stores/workbench.js'
+  import { runLint } from '../stores/lint.js'
   import { explorerOpen, explorerQuery } from '../stores/explorer.js'
   import { studySurfaceOpen, studyFocus } from '../stores/study.js'
   import ReminderPanel from './ReminderPanel.svelte'
@@ -40,6 +41,7 @@
         selectedNodeLine: null,
         isDirty: false,
       }))
+      runLint()
     } catch (e) {
       console.error('OpenCollection failed:', e)
     }

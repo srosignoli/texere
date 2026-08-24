@@ -1,6 +1,7 @@
 <script>
   import { createEventDispatcher } from 'svelte'
   import { workbenchStore } from '../stores/workbench.js'
+  import { defectCountByFile } from '../stores/lint.js'
 
   const dispatch = createEventDispatcher()
 
@@ -51,6 +52,7 @@
     {:else}
       {#each summaries as summary (summary.FilePath)}
         {@const isCollapsed = collapsed.has(summary.FilePath)}
+        {@const defectCount = $defectCountByFile.get(summary.RelPath) ?? 0}
         <div class="file-group">
           <!-- File root row -->
           <button
@@ -60,6 +62,12 @@
           >
             <span class="chevron">{isCollapsed ? '▶' : '▼'}</span>
             <span class="file-name">{summary.RelPath?.includes('/') ? summary.RelPath : summary.FileName}</span>
+            {#if defectCount > 0}
+              <span
+                class="lint-badge"
+                title="{defectCount} {defectCount === 1 ? 'defect' : 'defects'} found by the linter"
+              >! {defectCount}</span>
+            {/if}
           </button>
 
           <!-- Chapter children -->
@@ -210,6 +218,21 @@
     padding: 2px 8px 2px 20px;
     color: var(--warn);
     font-size: 0.75rem;
+  }
+
+  /* Per-file defect count from the linter (CategoryDefect findings only —
+     never undeclared-arrow/vocabulary findings). Deliberately a different
+     glyph and colour from .scan-error's ⚠/--warn: that one means "this file
+     could not be read at all", this one means "parsed fine, but some of its
+     content was not read as written". */
+  .lint-badge {
+    flex-shrink: 0;
+    margin-left: 4px;
+    padding: 0 4px;
+    border-radius: 3px;
+    color: var(--danger);
+    font-size: 0.68rem;
+    font-weight: 700;
   }
 
   .dirty-dot {

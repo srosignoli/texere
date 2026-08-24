@@ -190,6 +190,10 @@ export function ImportWebSource(arg1) {
   return window['go']['main']['App']['ImportWebSource'](arg1);
 }
 
+export function LintCollection() {
+  return window['go']['main']['App']['LintCollection']();
+}
+
 export function ListArrowCodes() {
   return window['go']['main']['App']['ListArrowCodes']();
 }

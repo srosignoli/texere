@@ -1,6 +1,7 @@
 <script>
   import { OpenCollection, PickCollectionDir } from '../../wailsjs/go/main/App'
   import { workbenchStore } from '../stores/workbench.js'
+  import { runLint } from '../stores/lint.js'
 
   export let errorMessage = ''
 
@@ -10,6 +11,7 @@
     try {
       const summaries = await OpenCollection(dir)
       workbenchStore.update((s) => ({ ...s, collectionDir: dir, summaries: summaries ?? [] }))
+      runLint()
     } catch (e) {
       console.error('OpenCollection failed:', e)
     }

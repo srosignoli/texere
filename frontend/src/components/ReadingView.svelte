@@ -5,6 +5,7 @@
   import { n4lBaseExtensions, pushRecentArrow } from '../lib/n4l-editor.js'
   import { workbenchStore } from '../stores/workbench.js'
   import { CreateExtract, RescheduleReading, GetFileContent, SaveFile, GetRecentArrows, UpdateRecentArrows, UpdateReadingProgress, LogReadingSession } from '../../wailsjs/go/main/App'
+  import { runLint } from '../stores/lint.js'
   import { activeReading } from '../stores/reading.js'
   import TextSourcePane from './TextSourcePane.svelte'
   import PdfSourcePane from './PdfSourcePane.svelte'
@@ -62,6 +63,7 @@
     if (cur !== savedNotes) {
       const res = await SaveFile(reading.notesPath, cur)
       savedNotes = res?.finalContent ?? cur
+      runLint()   // a save can fix (or introduce) a defect; Problems must reflect the new state
       // Only rewrite the buffer when the backend actually normalized/injected
       // something; rewriting on every save reset the caret to the top.
       if (res?.finalContent && res.finalContent !== cur) setNotes(res.finalContent)
@@ -180,7 +182,9 @@
   onDestroy(() => {
     if (!closed) {
       const cur = notesView?.state.doc.toString()
-      if (cur != null && cur !== savedNotes) SaveFile(reading.notesPath, cur).catch(() => {})
+      // .then/.catch, not await — onDestroy can't be async, and a lint failure
+      // here must not break teardown any more than a save failure already doesn't.
+      if (cur != null && cur !== savedNotes) SaveFile(reading.notesPath, cur).then(() => runLint()).catch(() => {})
       const pos = peekAt ? null : pane?.getProgress?.()
       if (pos) UpdateReadingProgress(reading.id, pos).catch(() => {})
       if (!peekAt) LogReadingSession(reading.id, Math.round((Date.now() - openedAt) / 1000)).catch(() => {})
