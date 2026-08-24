@@ -52,9 +52,33 @@ func Remediation(e ParseError) string {
 	case strings.HasPrefix(e.Msg, ErrUnresolvedRef+":"):
 		return "This reference does not point to anything the parser has seen, so it was dropped. Fix the reference or add the note it should point to."
 	case strings.HasPrefix(e.Msg, ErrMalformedMarker+":"):
-		return "This marker could not be parsed, so it was ignored rather than acted on. Check its syntax against the marker's expected form."
+		// # @card's error branch (parser.go:398) still falls through to
+		// `state.pendingStudy = sm` (parser.go:402): the card is created as a
+		// plain basic card, just without the reverse/no-reverse modifier that
+		// was asked for. # @study's error branch (parser.go:422) returns
+		// immediately, so it has no effect at all. The two are not the same
+		// outcome, and the detail after the colon (e.g. "# @card bogus" vs
+		// "# @study bogus") is enough to tell them apart without re-deriving
+		// anything the parser didn't already say.
+		switch {
+		case strings.Contains(e.Msg, "@card"):
+			return "This @card marker's modifier could not be parsed, so the card was created as a plain card instead of the reverse/no-reverse variant asked for. Use exactly \"# @card\", \"# @card reverse\", or \"# @card no-reverse\"."
+		case strings.Contains(e.Msg, "@study"):
+			return "This @study marker could not be parsed, so it had no effect: the block below it was not turned into a study block. Use exactly \"# @study\", \"# @study reverse\", or \"# @study sequence\"."
+		default:
+			return "This marker could not be parsed. Check its syntax against the marker's expected form."
+		}
 	case strings.HasPrefix(e.Msg, ErrInvalidPriority+":"):
-		return "This priority value is out of range, so it was ignored. Use a priority between the documented bounds."
+		// parser.go:434 fires on err != nil (not a whole number) or n < 0 ||
+		// n > 100 (out of range) — two different causes folded into one
+		// error. strconv.Atoi on the same detail the parser already put in
+		// the message tells them apart without re-parsing anything upstream
+		// of the ParseError.
+		detail := strings.TrimSpace(strings.TrimPrefix(e.Msg, ErrInvalidPriority+":"))
+		if _, err := strconv.Atoi(detail); err != nil {
+			return "This priority value is not a whole number, so it was ignored. Use a whole number from 0 to 100."
+		}
+		return "This priority value is outside the allowed range, so it was ignored. Use a whole number from 0 to 100."
 	case strings.HasPrefix(e.Msg, ErrEncoding+":"):
 		// Every reachable cause is either a line over the 64 KiB scanner
 		// limit (parser.go:149, bufio.ErrTooLong) or the file failing to
@@ -115,7 +139,7 @@ type LintDefect struct {
 
 // LintVocabulary aggregates every occurrence of one undeclared arrow across
 // the whole collection. This is the entry point that keeps the Problems tab
-// usable: on the real collection, 34,970 CategoryVocabulary findings reduce
+// usable: on the real collection, 17,485 CategoryVocabulary findings reduce
 // to 158 rows here.
 type LintVocabulary struct {
 	Arrow string   `json:"arrow"`

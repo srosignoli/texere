@@ -62,6 +62,13 @@
     return `${n} ${n === 1 ? 'file' : 'files'}`
   }
 
+  // "unknown arrow: \"\"" is a real parser observation (an empty () arrow
+  // code, e.g. from prose like "unaccent()" (use-for) ...), not a bug to
+  // filter out. Render it as a label instead of an invisible blank cell.
+  function arrowLabel(arrow) {
+    return arrow === '' ? '(empty)' : arrow
+  }
+
   // The Msg the parser emits already leads with "<kind>: <detail>" (kindOf's
   // own prefix). The kind is shown as its own badge, so strip the redundant
   // repeat rather than printing it twice — display formatting only, derives
@@ -247,8 +254,8 @@
             <p class="vocab-lead">Not declared in SSTconfig, so these relations don't become graph edges yet. Declare the arrow to fix — every row below shares that one remediation.</p>
             <div class="col-scroll vocab-scroll">
               <VirtualList items={vocabulary} estimatedHeight={22} overscan={8} getKey={(item) => item.arrow} let:item>
-                <div class="vocab-row" title="{item.arrow} — {item.files.length} {item.files.length === 1 ? 'file' : 'files'}: {item.files.join(', ')}">
-                  <span class="vocab-arrow">{item.arrow}</span>
+                <div class="vocab-row" title="{arrowLabel(item.arrow)} — {item.files.length} {item.files.length === 1 ? 'file' : 'files'}: {item.files.join(', ')}">
+                  <span class="vocab-arrow">{arrowLabel(item.arrow)}</span>
                   <span class="vocab-bar-track"><span class="vocab-bar-fill" style="width: {vocabBarPct(item.uses)}%"></span></span>
                   <span class="vocab-uses">{item.uses.toLocaleString()}</span>
                   <span class="vocab-files">{filesSummary(item.files)}</span>

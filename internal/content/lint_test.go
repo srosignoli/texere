@@ -99,7 +99,7 @@ func TestLintFixturesProvokeTheirKind(t *testing.T) {
 }
 
 // The aggregation property that makes the feature usable: on the real
-// collection 34,970 occurrences are only 158 causes. Two files using the same
+// collection 17,485 occurrences are only 158 causes. Two files using the same
 // undeclared arrow must produce ONE vocabulary row, not two.
 func TestLintAggregatesArrowsByName(t *testing.T) {
 	dir := t.TempDir()
