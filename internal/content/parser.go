@@ -102,10 +102,25 @@ func ParseFile(path string, registry *SSTRegistry) (*ParsedFile, []ParseError) {
 		// Single-quote multi-line: only when the content token itself starts with '.
 		// Eligible: lines trimmed to start with ' or @label '...
 		if contentSQStart(line) {
+			// Same open/close rules as maskSpecial: an opening ' is not
+			// preceded by an ASCII letter, a closing ' is not followed by one.
+			// Counting every ' instead miscounts any line that mixes a quoted
+			// region with a possessive — "'a b' and 'X's c'" reads as odd.
 			openQuote := false
-			for _, ch := range line {
-				if ch == '\'' {
-					openQuote = !openQuote
+			for i := 0; i < len(line); i++ {
+				if line[i] != '\'' {
+					continue
+				}
+				if !openQuote {
+					if i > 0 && isASCIILetter(line[i-1]) {
+						continue
+					}
+					openQuote = true
+				} else {
+					if i+1 < len(line) && isASCIILetter(line[i+1]) {
+						continue
+					}
+					openQuote = false
 				}
 			}
 			if openQuote {
@@ -730,9 +745,17 @@ func contentSQStart(line string) bool {
 		return true
 	}
 	if strings.HasPrefix(trimmed, "@") {
-		// @label followed eventually by '
-		idx := strings.IndexByte(trimmed, '\'')
-		return idx > 0
+		// The label runs to the first whitespace; the block opens only when the
+		// CONTENT after it starts with '. This used to accept any ' anywhere in
+		// the line, which made every possessive and contraction in labelled
+		// prose ("Man's", "five years' work") open a block that the next blank
+		// line closed as unterminated — 84 spurious reports across the sample
+		// collection, 74 of them in a single text2N4L-generated file.
+		sp := strings.IndexAny(trimmed, " \t")
+		if sp < 0 {
+			return false
+		}
+		return strings.HasPrefix(strings.TrimSpace(trimmed[sp:]), "'")
 	}
 	return false
 }
