@@ -63,6 +63,25 @@
   + in which it happened that (event)    - happened while       (while)
   + was attended by           (guest)    - attended event       (attend)
 
+ :: text fractionation ::
+
+ # Emitted by SSTorytime's text2N4L when it fractionates a document into
+ # sentences and n-gram fragments. Codes are that tool's own constants, from
+ # pkg/SSTorytime/globals.go: CONT_FINDS_S / INV_CONT_FOUND_IN_S and
+ # CONT_FRAG_S / INV_CONT_FRAG_IN_S. Both pairs sit above the "// NEAR"
+ # divider there, so both are contains-type.
+ #
+ # text2N4L writes INV_CONT_FOUND_IN_S (extract-fr) and CONT_FRAG_S
+ # (has-frag) into the .n4l file; their partners are declared here so the
+ # reverse direction resolves too. Together these are the two most-used
+ # arrows in a text2N4L collection by a wide margin.
+ #
+ # Upstream spells the has-frag long name "intented"; corrected here, since
+ # LongName is what the explorer displays and matches on.
+
+ + contains extract/quote           (has-extract) - extract/quote from  (extract-fr)
+ + contains intended characteristic (has-frag)    - characteristic of   (charct-in)
+
  :: music collection ::
  
  + genre contains (ghas)  - belongs to category/genre (genre) 
