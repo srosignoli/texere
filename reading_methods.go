@@ -113,6 +113,20 @@ func (a *App) ImportTextSource() (*ReadingView, error) {
 	if picked == "" {
 		return nil, nil // cancelled
 	}
+	return a.importTextFrom(picked)
+}
+
+// importTextFrom is the ingest half of ImportTextSource: everything after a
+// path has been chosen. Kept unexported so Wails generates no JS binding for
+// it — the only exported way in stays the dialog. See demo_seam.go for the
+// build-tagged exception used by scripted demos.
+func (a *App) importTextFrom(picked string) (*ReadingView, error) {
+	if a.learnStore == nil || a.collectionDir == "" {
+		return nil, errors.New("no collection open")
+	}
+	if picked == "" {
+		return nil, errors.New("importTextFrom: empty path")
+	}
 	base := filepath.Base(picked)
 	srcRel, srcAbs := uniqueDest(a.collectionDir, "sources", base)
 	if err := copyFile(picked, srcAbs); err != nil {
@@ -322,6 +336,18 @@ func (a *App) ImportPdfSource() (*ReadingView, error) {
 	})
 	if err != nil || picked == "" {
 		return nil, err
+	}
+	return a.importPdfFrom(picked)
+}
+
+// importPdfFrom is the ingest half of ImportPdfSource: everything after a path
+// has been chosen. Unexported, so Wails generates no JS binding for it.
+func (a *App) importPdfFrom(picked string) (*ReadingView, error) {
+	if a.learnStore == nil || a.collectionDir == "" {
+		return nil, errors.New("no collection open")
+	}
+	if picked == "" {
+		return nil, errors.New("importPdfFrom: empty path")
 	}
 	base := filepath.Base(picked)
 	srcRel, srcAbs := uniqueDest(a.collectionDir, "sources", base)
