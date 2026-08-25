@@ -19,6 +19,11 @@
 // Do not add a runtime flag or environment variable as an alternative gate: a
 // dormant-but-present binding is still a binding that lets any script in the
 // webview read any file the user can read.
+//
+// CAUTION: a demo-tagged `wails dev` regenerates the tracked JS bindings under
+// frontend/wailsjs/ and adds Demo* shims to them. Run
+// `git checkout -- frontend/wailsjs/` afterwards;
+// TestGeneratedBindingsCarryNoDemoShims fails if you forget.
 package main
 
 // DemoImportTextSource ingests the text/HTML file at path, skipping the dialog
