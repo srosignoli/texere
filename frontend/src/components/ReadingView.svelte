@@ -199,11 +199,11 @@
 <div class="reading-root" role="dialog" aria-label="Reading">
   <div class="reading-bar">
     <span class="reading-title">{reading.title}</span>
-    <button class="rb-btn" on:click={triggerExtract} title="Extract selection (Ctrl+E)">✂ Extract</button>
+    <button class="rb-btn" on:click={triggerExtract} title="Extract selection (Ctrl+E)" aria-label="Extract selection">✂ Extract</button>
     <button class="rb-btn" on:click={() => close('later')}>⏳ Later</button>
     <button class="rb-btn" on:click={done}>✓ Done</button>
     <span class="rb-spacer"></span>
-    <button class="rb-close" on:click={() => close('continue')} title="Close (Esc)">×</button>
+    <button class="rb-close" on:click={() => close('continue')} title="Close (Esc)" aria-label="Close reader">×</button>
   </div>
   {#if error}<div class="reading-error">{error}</div>{/if}
   <div class="reading-body">

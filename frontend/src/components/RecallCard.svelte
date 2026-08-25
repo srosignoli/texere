@@ -44,11 +44,11 @@
       {/if}
     </div>
     {#if !revealed}
-      <button class="rc-btn" on:click={() => (revealed = true)}>Show answer (Space)</button>
+      <button class="rc-btn" on:click={() => (revealed = true)} aria-label="Show answer">Show answer (Space)</button>
     {:else}
       <div class="rc-grades">
         {#each GRADES as g}
-          <button class="rc-btn" on:click={() => onGrade?.(g.n)}>{g.label} ({g.n})</button>
+          <button class="rc-btn" on:click={() => onGrade?.(g.n)} aria-label={g.label}>{g.label} ({g.n})</button>
         {/each}
       </div>
     {/if}

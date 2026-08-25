@@ -161,16 +161,17 @@
 
 <svelte:window on:keydown={onKey} />
 
-<div class="ss-root" role="dialog" aria-label="Study">
+<div class="ss-root" role="dialog" aria-label="Study surface">
   <div class="ss-bar">
     <span class="ss-title">Study</span>
     {#each [['next','Next'],['read','Read'],['process','Process'],['recall','Recall'],['stats','Stats']] as [k, label]}
-      <button class="ss-tab" class:active={$studyFocus === k} on:click={() => enter(k)}>
+      <button class="ss-tab" class:active={$studyFocus === k} on:click={() => enter(k)}
+        aria-label={label}>
         {label}{#if k === 'read' && counts.read}<sup>{counts.read}</sup>{:else if k === 'process' && counts.process}<sup>{counts.process}</sup>{:else if k === 'recall' && counts.recall}<sup>{counts.recall}</sup>{/if}
       </button>
     {/each}
     <span class="ss-spacer"></span>
-    <button class="ss-close" on:click={closeStudy} title="Close (Esc)">×</button>
+    <button class="ss-close" on:click={closeStudy} title="Close (Esc)" aria-label="Close study">×</button>
   </div>
   {#if error}<div class="ss-error">{error}</div>{/if}
 
