@@ -304,21 +304,42 @@ func TestWatchCollectionAdded(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	select {
-	case ev := <-watcher.Events:
-		if ev.Kind != EventAdded {
-			t.Errorf("want EventAdded, got %v", ev.Kind)
+	// os.WriteFile is not atomic: it creates the file and then writes it, so
+	// fsnotify reports Create followed by Write. If the Create is processed
+	// before the content lands, the EventAdded carries an empty Chapters — see
+	// the contract note on EventAdded in types.go. Under load that ordering is
+	// common enough to have made this test flaky at roughly 1-in-6.
+	//
+	// So assert what the watcher actually guarantees: the file is announced,
+	// and its chapters converge on the real ones. Asserting the *first* event
+	// carries them is asserting a guarantee no non-atomic writer can honour.
+	var sawAdded bool
+	deadline := time.After(2 * time.Second)
+	for {
+		select {
+		case ev := <-watcher.Events:
+			if !strings.HasSuffix(ev.Path, "new.n4l") {
+				t.Errorf("unexpected path: %s", ev.Path)
+				continue
+			}
+			if ev.Kind == EventAdded {
+				sawAdded = true
+			}
+			if len(ev.Chapters) > 0 && len(ev.Chapters[0].Chapters) > 0 {
+				if got := ev.Chapters[0].Chapters[0]; got != "watched chapter" {
+					t.Fatalf("unexpected chapter title: %q", got)
+				}
+				if !sawAdded {
+					t.Fatalf("chapters arrived on %v without a preceding EventAdded", ev.Kind)
+				}
+				return // announced, and chapters converged
+			}
+		case <-deadline:
+			if !sawAdded {
+				t.Fatal("timeout waiting for EventAdded")
+			}
+			t.Fatal("EventAdded seen, but chapters never converged on the real title")
 		}
-		if !strings.HasSuffix(ev.Path, "new.n4l") {
-			t.Errorf("unexpected path: %s", ev.Path)
-		}
-		if len(ev.Chapters) == 0 {
-			t.Error("want chapters populated for Added event")
-		} else if len(ev.Chapters[0].Chapters) == 0 || ev.Chapters[0].Chapters[0] != "watched chapter" {
-			t.Errorf("unexpected chapters: %v", ev.Chapters)
-		}
-	case <-time.After(500 * time.Millisecond):
-		t.Fatal("timeout waiting for Added event")
 	}
 }
 
