@@ -24,10 +24,10 @@ import "math"
 // separately on the frontend and is unaffected by this function — only
 // the visible centrality encoding changes here.
 func ScaleSizes(rs *ResultSet, minSize, maxSize float32) map[nodeKey]float32 {
-	out := make(map[nodeKey]float32, len(rs.Nodes))
 	if rs == nil || len(rs.Nodes) == 0 {
-		return out
+		return map[nodeKey]float32{}
 	}
+	out := make(map[nodeKey]float32, len(rs.Nodes))
 	if maxSize < minSize {
 		minSize, maxSize = maxSize, minSize
 	}
