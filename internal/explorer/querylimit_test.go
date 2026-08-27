@@ -42,9 +42,9 @@ func TestCollectClusterChapters(t *testing.T) {
 	}
 	a := add("n1", "Cooking")
 	b := add("n2", "Travel")
-	c := add("n3", "Cooking")              // duplicate chapter
-	d := add("n4", "Restaurants, Travel")  // comma-joined multi-chapter node
-	e := add("n5", "")                     // blank chapter ignored
+	c := add("n3", "Cooking")             // duplicate chapter
+	d := add("n4", "Restaurants, Travel") // comma-joined multi-chapter node
+	e := add("n5", "")                    // blank chapter ignored
 
 	got := collectClusterChapters(rs, []nodeKey{a, b, c, d, e})
 	want := []string{"Cooking", "Restaurants", "Travel"}

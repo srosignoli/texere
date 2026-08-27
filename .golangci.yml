@@ -1,3 +1,10 @@
+linters-settings:
+  goimports:
+    # CLAUDE.md mandates stdlib / external / internal grouping. Without this,
+    # goimports sorts texere/... into the external group and reorders the two,
+    # so the tool and the convention disagree and neither wins.
+    local-prefixes: texere
+
 linters:
   enable:
     - govet

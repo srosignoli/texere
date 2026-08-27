@@ -49,9 +49,9 @@ type NoteArrow struct {
 
 // GraphNode is a single Tier 2 graph result card.
 type GraphNode struct {
-	NodeText    string      `json:"NodeText"`
-	Chapter     string      `json:"Chapter"`
-	ContextTags []string    `json:"ContextTags"`
+	NodeText    string       `json:"NodeText"`
+	Chapter     string       `json:"Chapter"`
+	ContextTags []string     `json:"ContextTags"`
 	Orbit       []OrbitEntry `json:"Orbit"`
 }
 
@@ -92,7 +92,7 @@ type ChainNode struct {
 
 // ListingItem is the output of a listing command (\chapter any, \context, \arrow, \notes).
 type ListingItem struct {
-	Kind     string   `json:"Kind"`     // "chapter" | "context" | "arrow" | "note-line" | "hint"
+	Kind     string   `json:"Kind"` // "chapter" | "context" | "arrow" | "note-line" | "hint"
 	Title    string   `json:"Title"`
 	Detail   string   `json:"Detail"`
 	NodeText string   `json:"NodeText"` // non-empty if navigable (first node for navigation)

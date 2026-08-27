@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+
 	"texere/internal/content"
 	"texere/internal/explorer"
 	"texere/internal/graph"

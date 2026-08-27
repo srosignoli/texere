@@ -53,10 +53,10 @@ func TestScaleSizes_LogCurveOrdering(t *testing.T) {
 	rs := buildLogScaleFixture()
 	sizes := ScaleSizes(rs, 0.5, 2.5)
 
-	d0 := makeKey("d0")  // in-degree 0
-	d1 := makeKey("d1")  // 1
-	d5 := makeKey("d5")  // 5
-	d50 := makeKey("d50") // 50
+	d0 := makeKey("d0")     // in-degree 0
+	d1 := makeKey("d1")     // 1
+	d5 := makeKey("d5")     // 5
+	d50 := makeKey("d50")   // 50
 	d100 := makeKey("d100") // 100
 
 	if !(sizes[d0] < sizes[d1] && sizes[d1] < sizes[d5] && sizes[d5] < sizes[d50] && sizes[d50] < sizes[d100]) {

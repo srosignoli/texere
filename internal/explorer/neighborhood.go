@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"texere/internal/content"
 	"texere/internal/search"
 )

@@ -158,11 +158,11 @@ func (k nodeKey) String() string {
 // ResultNode is one materialized node within an active ResultSet.
 // See data-model.md §2.2.
 type ResultNode struct {
-	Key         nodeKey
-	Text        string
-	Chapter     string
-	Contexts    []string // all tags; index 0 is the "primary"
-	InDegree    int      // count of incoming edges within this ResultSet
+	Key      nodeKey
+	Text     string
+	Chapter  string
+	Contexts []string // all tags; index 0 is the "primary"
+	InDegree int      // count of incoming edges within this ResultSet
 }
 
 // ResultEdge is one materialized typed edge.
@@ -184,8 +184,8 @@ type ResultSet struct {
 	Nodes         []ResultNode
 	Edges         []ResultEdge
 	NodeIndex     map[nodeKey]int
-	Contexts      []string          // distinct context tags, sorted
-	SeedKeys      map[nodeKey]bool  // nodes that directly matched the query (vs. orbit neighbors)
+	Contexts      []string         // distinct context tags, sorted
+	SeedKeys      map[nodeKey]bool // nodes that directly matched the query (vs. orbit neighbors)
 	DefaultAnchor nodeKey
 	BuiltAt       time.Time
 	SourceQuery   string

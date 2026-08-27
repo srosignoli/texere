@@ -7,7 +7,7 @@ import "math"
 //
 // Formula (per tasks.md T034 and US3 acceptance criteria):
 //
-//   size(n) = minSize + (maxSize - minSize) * log1p(inDegree(n)) / log1p(maxInDegree)
+//	size(n) = minSize + (maxSize - minSize) * log1p(inDegree(n)) / log1p(maxInDegree)
 //
 // Properties:
 //   - A node with zero incoming edges renders at exactly minSize (FR-014

@@ -16,6 +16,7 @@ import (
 	"golang.org/x/text/runes"
 	"golang.org/x/text/transform"
 	"golang.org/x/text/unicode/norm"
+
 	"texere/internal/content"
 )
 

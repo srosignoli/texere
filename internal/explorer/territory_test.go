@@ -207,4 +207,3 @@ func isCounterClockwise(poly []Vec2) bool {
 	}
 	return area > 0
 }
-

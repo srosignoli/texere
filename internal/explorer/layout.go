@@ -684,10 +684,10 @@ func placeExtended(
 // (the anchor's cluster). Subsequent indices spiral outward through
 // Chebyshev rings:
 //
-//   slot   1 .. 8   → ring 1 (8 cells)
-//   slot   9 .. 24  → ring 2 (16 cells)
-//   slot  25 .. 48  → ring 3 (24 cells)
-//   ...
+//	slot   1 .. 8   → ring 1 (8 cells)
+//	slot   9 .. 24  → ring 2 (16 cells)
+//	slot  25 .. 48  → ring 3 (24 cells)
+//	...
 //
 // Cumulative cells through ring r is `1 + 4*r*(r+1)`, so the smallest
 // r containing slot `i` is the one with `4*r*(r+1) >= i`. Within that
