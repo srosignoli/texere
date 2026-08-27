@@ -149,6 +149,17 @@ type AnnotDef struct {
 type EventKind int
 
 const (
+	// EventAdded reports that a .n4l file appeared.
+	//
+	// Chapters is best-effort here. Writers are commonly not atomic —
+	// os.WriteFile creates the file and then writes it — so fsnotify delivers
+	// Create before the content lands and the scan can legitimately find an
+	// empty file. The Write that follows emits EventModified carrying the real
+	// chapters, and consumers upsert by FilePath, so the view converges.
+	//
+	// Depend on convergence, not on the first event: code (or a test) that
+	// requires populated Chapters on EventAdded is asserting a guarantee no
+	// non-atomic writer can honour.
 	EventAdded EventKind = iota
 	EventRemoved
 	EventRenamed
@@ -157,9 +168,12 @@ const (
 
 // CollectionEvent is emitted by CollectionWatcher when a .n4l file changes.
 type CollectionEvent struct {
-	Kind     EventKind        // Added | Removed | Renamed | Modified
-	Path     string           // Absolute path of affected file
-	Chapters []ChapterSummary // Populated for Added/Renamed; nil for Removed/Modified
+	Kind EventKind // Added | Removed | Renamed | Modified
+	Path string    // Absolute path of affected file
+	// Chapters carries the file's chapter summary for Added, Renamed and
+	// Modified, and is nil for Removed. For Added it may be empty even when the
+	// file has chapters — see the note on EventAdded above.
+	Chapters []ChapterSummary
 }
 
 // CollectionWatcher watches a directory for .n4l file changes.
