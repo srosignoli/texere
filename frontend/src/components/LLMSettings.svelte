@@ -89,8 +89,16 @@
     try { await fn(id); testMsg = { ...testMsg, [id]: '✓ ok' } }
     catch (e) { testMsg = { ...testMsg, [id]: '✕ ' + String(e?.message ?? e) } }
   }
+
+  function onKey(e) { if (e.key === 'Escape') onClose() }
 </script>
 
+<svelte:window on:keydown={onKey} />
+
+<!-- The backdrop click is a convenience for pointer users. Keyboard users close
+     with Escape (above) or the ✕ button, so a keydown handler on this div would
+     be dead code: a bare div is not focusable and would never receive it. -->
+<!-- svelte-ignore a11y-click-events-have-key-events -->
 <div class="ov-backdrop" on:click={onClose}></div>
 <div class="ov-modal">
   <div class="ov-head"><span>LLM, Speech &amp; Skills</span><button on:click={onClose}>✕</button></div>

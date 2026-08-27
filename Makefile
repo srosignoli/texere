@@ -1,6 +1,6 @@
 export PATH := $(PATH):$(shell go env GOPATH)/bin
 
-.PHONY: build build-dev build-windows test test-js bench ci lint dev dev-demo clean deps
+.PHONY: build build-dev build-windows test test-js bench ci lint lint-frontend dev dev-demo clean deps
 
 ## deps: install Linux system dependencies required for Wails builds
 deps:
@@ -35,11 +35,22 @@ bench:
 	scripts/check-bench.sh bench.txt
 
 ## ci: run tests and benchmarks (used in CI pipelines)
-ci: test test-js bench
+ci: test test-js lint-frontend bench
 
 ## lint: run golangci-lint over all Go source files
 lint:
 	golangci-lint run ./...
+
+## lint-frontend: fail if the Svelte build emits any a11y warning. The compiler
+## is the only thing that checks these, so an unread warning is an unenforced
+## rule. Suppress a genuine false positive at the call site with an explained
+## <!-- svelte-ignore ... --> rather than by loosening this gate.
+lint-frontend:
+	@cd frontend && npx vite build 2>&1 | tee /tmp/texere-fe-build.log; \
+	if grep -q "A11y:" /tmp/texere-fe-build.log; then \
+		echo "FAIL: a11y warnings in the Svelte build:"; \
+		grep "A11y:" /tmp/texere-fe-build.log; exit 1; \
+	else echo "OK: no a11y warnings"; fi
 
 ## dev: start Wails development server with hot reload
 dev:

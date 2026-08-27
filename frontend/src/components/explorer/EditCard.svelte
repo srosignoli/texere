@@ -125,6 +125,10 @@
   onDestroy(() => { view?.destroy() })
 </script>
 
+<!-- Backdrop click is a pointer convenience. Keyboard users close with Escape,
+     bound in the editor keymap above; the editor holds focus while this is open.
+     A keydown handler here would never fire — the div is not focusable. -->
+<!-- svelte-ignore a11y-click-events-have-key-events -->
 <div class="editcard-backdrop" on:click|self={requestClose}>
   <div class="editcard" role="dialog" aria-label="Edit node source">
     <header class="editcard-head">

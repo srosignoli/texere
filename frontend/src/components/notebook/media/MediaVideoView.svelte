@@ -81,8 +81,12 @@
   {/if}
 
   {#if isFile}
+    <!-- User-supplied media: we have no caption data for it. An empty captions
+         track states that honestly instead of leaving the element unlabelled. -->
     <video bind:this={videoEl} class="vv-player" src={cell.embedURL} controls preload="metadata"
-      on:loadedmetadata={onLoaded} on:error={onVideoError}></video>
+      on:loadedmetadata={onLoaded} on:error={onVideoError}>
+      <track kind="captions" />
+    </video>
   {:else if canWatch}
     <div class="vv-ext">
       <div class="vv-exttitle">{cell.title || 'YouTube video'}</div>

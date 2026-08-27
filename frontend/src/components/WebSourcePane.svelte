@@ -118,6 +118,11 @@
   </div>
   {#if error}<div class="web-err">{error}</div>{/if}
   <!-- html is pre-sanitized at import (no script/handlers/remote refs); rendered inert. -->
+  <!-- Not an interactive control: this delegates clicks from the <a> elements
+       inside the rendered article so external links open in the browser.
+       Keyboard activation already works — Enter on a focused link fires a
+       native click that bubbles to here. -->
+  <!-- svelte-ignore a11y-click-events-have-key-events -->
   <div class="web-article" bind:this={articleEl} on:click={onArticleClick}>{@html html}</div>
 </div>
 
