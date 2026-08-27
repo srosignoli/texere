@@ -1,42 +1,25 @@
 import { chromium } from 'playwright';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { FIXTURE, PHRASE } from './fixture.mjs';
 
 // A full study session — document -> extract -> card -> review — driven end to
 // end against the real Go backend. See README.md.
 //
-// The scenario seeds its own throwaway collection. It must never be pointed at
-// a real one: it imports documents and materialises cards.
+// Run `npm run seed` and restart the app first: the fixture has to be in the
+// config before the app boots, because App.svelte decides whether a collection
+// is open from a startup snapshot.
 
 const OUT = process.env.TEXERE_DEMO_OUT ?? mkdtempSync(join(tmpdir(), 'texere-demo-'));
 const URL = process.env.TEXERE_DEMO_URL ?? 'http://localhost:34115';
-const PHRASE = 'Active recall means retrieving an answer from memory rather than rereading it';
 
-// ---- fixture collection ----------------------------------------------------
-const FX = mkdtempSync(join(tmpdir(), 'texere-fixture-'));
-mkdirSync(join(FX, 'sources'), { recursive: true });
-mkdirSync(join(FX, 'reading'), { recursive: true });
-writeFileSync(join(FX, 'memory.n4l'), `- Memory research
-
- :: _sequence_ ::
-
-encoding (leads to) storage
-storage (leads to) retrieval
-`);
-writeFileSync(join(FX, 'study-doc.md'), `# The Forgetting Curve
-
-Hermann Ebbinghaus discovered that memory retention declines sharply in the
-hours after learning, then levels off. He called this the forgetting curve.
-
-Spaced repetition counters the curve by scheduling reviews just before the
-point of forgetting, which strengthens the memory trace each time.
-
-${PHRASE},
-and it produces markedly stronger retention than passive review.
-`);
-console.log('fixture collection:', FX);
-console.log('output:', OUT);
+if (!existsSync(join(FIXTURE, 'study-doc.md'))) {
+  console.error(`fixture missing at ${FIXTURE}\nRun: npm run seed   (then restart the app)`);
+  process.exit(1);
+}
+console.log('fixture:', FIXTURE);
+console.log('output :', OUT);
 
 const b = await chromium.launch({
   executablePath:'/home/simone/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome',
@@ -47,8 +30,34 @@ const p = await ctx.newPage();
 p.on('pageerror', e => console.log('  PAGEERROR:', String(e).slice(0,140)));
 
 // cursor + caption overlays
+// Painted at document-start, before any app CSS: recordVideo captures from
+// context creation, so without this the take opens on the browser's white
+// default background.
 await p.addInitScript(() => {
+  // Guarded, and attempted twice: at document-start neither <head> nor
+  // documentElement is guaranteed to exist, and an uncaught throw here aborts
+  // the whole init script — taking the listener below with it and silently
+  // removing every overlay from the take.
+  const paintBackground = () => {
+    if (document.getElementById('__bg')) return;
+    const style = document.createElement('style');
+    style.id = '__bg';
+    style.textContent = 'html,body{background:#0d1520!important}';
+    const host = document.head || document.documentElement;
+    if (host) host.appendChild(style);
+  };
+  try { paintBackground(); } catch (e) { /* retried on DOMContentLoaded */ }
   addEventListener('DOMContentLoaded', () => {
+    paintBackground();
+    const card = document.createElement('div');
+    card.id = '__title';
+    card.style.cssText = 'position:fixed;inset:0;background:#0d1520;z-index:2147483645;'+
+      'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;'+
+      'font-family:Nunito,system-ui,sans-serif;transition:opacity .7s';
+    card.innerHTML = '<div style="font-size:46px;font-weight:800;color:#e8eef8;letter-spacing:-.5px">Texere</div>'+
+      '<div style="font-size:20px;color:#7fa8e8;font-weight:600">A study session, start to finish</div>'+
+      '<div style="font-size:14px;color:#5a6b85;margin-top:6px">every action below is scripted</div>';
+    document.body.appendChild(card);
     const c=document.createElement('div'); c.id='__cur';
     c.style.cssText='position:fixed;width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,.92);box-shadow:0 0 0 3px rgba(60,140,255,.85),0 2px 10px rgba(0,0,0,.5);z-index:2147483647;pointer-events:none;left:-60px;top:-60px;transition:transform .08s';
     document.body.appendChild(c);
@@ -64,25 +73,51 @@ await p.addInitScript(() => {
 const say   = async (t,h=2200) => { await p.evaluate(s=>{const c=document.getElementById('__cap');c.textContent=s;c.style.opacity='1'},t); await p.waitForTimeout(h); };
 const clear = () => p.evaluate(()=>{document.getElementById('__cap').style.opacity='0'});
 const call  = (fn,...a) => p.evaluate(([f,args])=>window.go.main.App[f](...args), [fn,a]);
+// Playwright's {steps} interpolates linearly, which reads as machine motion.
+// Ease in and out, and remember where the pointer is so travel starts there.
+let cursor = { x: 720, y: 450 };
+const easeInOut = (t) => (t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2);
+const glide = async (x, y, steps = 26) => {
+  const from = { ...cursor };
+  for (let i = 1; i <= steps; i++) {
+    const t = easeInOut(i / steps);
+    await p.mouse.move(from.x + (x - from.x)*t, from.y + (y - from.y)*t);
+    await p.waitForTimeout(9);
+  }
+  cursor = { x, y };
+};
 const click = async (loc) => {
   const el=loc.first(); await el.scrollIntoViewIfNeeded().catch(()=>{});
   const bx=await el.boundingBox(); if(!bx) throw new Error('no box for '+loc);
-  await p.mouse.move(bx.x+bx.width/2, bx.y+bx.height/2, {steps:28});
-  await p.waitForTimeout(280);
+  await glide(bx.x+bx.width/2, bx.y+bx.height/2);
+  await p.waitForTimeout(260);
   await p.mouse.down(); await p.waitForTimeout(80); await p.mouse.up();
 };
 
 await p.goto(URL,{waitUntil:'domcontentloaded'});
 await p.waitForFunction(()=>window.go?.main?.App,null,{timeout:25000});
-await p.waitForTimeout(1500);
 
-await say('A study session, start to finish — every action scripted.',2800); await clear();
+// Fail loudly and specifically rather than timing out on a selector: an app
+// that booted without the fixture renders only the "Open collection" button.
+const openDir = await p.evaluate(()=>window.go.main.App.GetInitialCollectionDir());
+if (openDir !== FIXTURE) {
+  console.error(`app is on ${openDir}, not the fixture ${FIXTURE}`);
+  console.error('Run: npm run seed, then restart the app (make dev-demo).');
+  await b.close();
+  process.exit(1);
+}
+await p.waitForSelector('button[title^="Study"]',{timeout:20000});
 
-// ---- BEAT 1: open the fixture collection + import the document -------------
+// Hold on the card while the app finishes painting, then dissolve into it.
+await p.waitForTimeout(2100);
+await p.evaluate(() => { const c=document.getElementById('__title'); if(c) c.style.opacity='0'; });
+await p.waitForTimeout(900);
+await p.evaluate(() => document.getElementById('__title')?.remove());
+await p.waitForTimeout(600);
+
+// ---- BEAT 1: import the document ------------------------------------------
 await say('Opening a document. The file dialog is bypassed by the demo seam.',2400);
-await call('OpenCollection', FX);
-await p.waitForTimeout(1800);
-const rv = await call('DemoImportTextSource', join(FX, 'study-doc.md'));
+const rv = await call('DemoImportTextSource', join(FIXTURE, 'study-doc.md'));
 console.log('imported:', rv.id, rv.refPath);
 await p.waitForFunction(()=>window.go.main.App.GetStudyCounts().then(c=>c.read>0),null,{timeout:15000});
 await say('Imported and queued for reading.',1900); await clear();
@@ -180,4 +215,6 @@ await p.screenshot({path:`${OUT}/study-final.png`});
 await ctx.close(); await b.close();
 console.log('--- study session recorded ---');
 console.log('video:', `${OUT}/study`);
-if (!process.env.TEXERE_KEEP_FIXTURE) rmSync(FX, { recursive: true, force: true });
+// The fixture stays: the app is pointed at it, and deleting it here is what
+// used to leave the app booting into a directory that no longer existed.
+// `npm run restore` removes it and puts the previous collection back.

@@ -20,10 +20,25 @@ Two consequences worth knowing:
 ## Running
 
 ```bash
-npm install                       # in this directory, once
-make dev-demo                     # from the repo root, in another terminal
-npm run study-session             # once :34115 is up
+npm install            # in this directory, once
+npm run seed           # create the fixture and point the app at it
+make dev-demo          # from the repo root, in another terminal
+npm run study-session  # once :34115 is up
+npm run restore        # put your own collection back, remove the fixture
 ```
+
+**`npm run seed` must run before the app starts.** App.svelte decides whether a
+collection is open from `GetInitialSummaries()`, a snapshot taken at `startup()`.
+Calling `OpenCollection` afterwards updates the Go side but leaves the UI on
+whatever it booted with, and reloading the page re-reads the same snapshot — so
+an app started before seeding renders only the "Open collection" button, and
+that button opens a native dialog the browser cannot reach.
+
+`seed` saves your current `collectionDir` inside the fixture and `restore` puts
+it back. Nothing deletes the fixture except `restore`: an earlier version of
+this harness removed it on exit, which left the app booting into a directory
+that no longer existed — a state it cannot recover from without picking a
+collection by hand.
 
 `make dev-demo` compiles with `-tags demo` and reverts the regenerated
 `frontend/wailsjs/` bindings on exit. If you run `wails dev` by hand instead,
@@ -48,4 +63,6 @@ Two rules keep long recordings reliable:
    `frontend/src/lib/study-path-labels.test.js`, so a rename breaks a test
    rather than silently breaking a recording.
 
-Scenarios seed their own fixture collection and never touch a real one.
+3. **Never point the harness at a real collection.** `seed` creates a throwaway
+   one under `$TMPDIR` and the scenario imports documents and materialises
+   cards into it. Run `restore` when you are done.
