@@ -92,15 +92,18 @@ func writeLines(path string, lines []string) error {
 	}
 	tmpPath := tmp.Name()
 
+	// bufio.Writer errors are sticky: the first failure is retained and
+	// returned by Flush below, which is checked. Discarding them here is
+	// deliberate, not an oversight.
 	w := bufio.NewWriter(tmp)
 	for i, line := range lines {
 		if i > 0 {
-			w.WriteByte('\n')
+			_ = w.WriteByte('\n')
 		}
-		w.WriteString(line)
+		_, _ = w.WriteString(line)
 	}
 	// Preserve trailing newline if the original had one
-	w.WriteByte('\n')
+	_ = w.WriteByte('\n')
 
 	if err := w.Flush(); err != nil {
 		tmp.Close()

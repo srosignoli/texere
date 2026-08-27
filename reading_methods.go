@@ -153,7 +153,11 @@ func (a *App) importTextFrom(picked string) (*ReadingView, error) {
 // uniqueDest returns (relPath, absPath) under <collection>/<subdir>/<name>,
 // suffixing the stem with -2, -3, … until the path does not exist.
 func uniqueDest(collectionDir, subdir, name string) (string, string) {
-	os.MkdirAll(filepath.Join(collectionDir, subdir), 0o755)
+	// uniqueDest has nowhere to report a failure, so this stays best-effort:
+	// if the directory cannot be created, the caller's copyFile fails next and
+	// reports it as "<Import...>: copy: ...". Less precise than a dedicated
+	// mkdir error, but never silent.
+	_ = os.MkdirAll(filepath.Join(collectionDir, subdir), 0o755)
 	ext := filepath.Ext(name)
 	stem := strings.TrimSuffix(name, ext)
 	candidate := name

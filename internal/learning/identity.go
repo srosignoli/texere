@@ -117,7 +117,9 @@ func (s *Store) migrateIdentityKeys() error {
 	if err != nil {
 		return fmt.Errorf("begin: %w", err)
 	}
-	defer tx.Rollback() // no-op once committed
+	// A no-op once committed: Rollback then returns ErrTxDone, which is the
+	// expected outcome on the success path and carries nothing to act on.
+	defer func() { _ = tx.Rollback() }()
 
 	for _, u := range updates {
 		stmt := fmt.Sprintf(`UPDATE %s SET %s = ? WHERE rowid = ?`, u.table, u.column)

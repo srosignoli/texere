@@ -20,6 +20,10 @@ func TestNodeIDIsEmptyWithoutAShortID(t *testing.T) {
 // close to tautological — that is the point. It documents the intent rather
 // than exercising a code path that could fail on its own.
 func TestNodeIDDoesNotDependOnLocation(t *testing.T) {
+	// The comment above is the point: with a one-argument signature this is
+	// structurally true, and the assertion stands as executable documentation
+	// of the property. staticcheck is correct that it compares x with x.
+	//nolint:staticcheck // SA4000: deliberate, see above
 	if NodeID("73dhx9t2") != NodeID("73dhx9t2") {
 		t.Fatal("NodeID is not stable")
 	}

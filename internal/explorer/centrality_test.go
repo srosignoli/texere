@@ -53,10 +53,10 @@ func TestScaleSizes_LogCurveOrdering(t *testing.T) {
 	rs := buildLogScaleFixture()
 	sizes := ScaleSizes(rs, 0.5, 2.5)
 
-	d0 := makeKey("d0")  // in-degree 0
-	d1 := makeKey("d1")  // 1
-	d5 := makeKey("d5")  // 5
-	d50 := makeKey("d50") // 50
+	d0 := makeKey("d0")     // in-degree 0
+	d1 := makeKey("d1")     // 1
+	d5 := makeKey("d5")     // 5
+	d50 := makeKey("d50")   // 50
 	d100 := makeKey("d100") // 100
 
 	if !(sizes[d0] < sizes[d1] && sizes[d1] < sizes[d5] && sizes[d5] < sizes[d50] && sizes[d50] < sizes[d100]) {
@@ -236,4 +236,18 @@ func intToStr(n int) string {
 		return "-" + string(digits)
 	}
 	return string(digits)
+}
+
+// ScaleSizes guards against a nil ResultSet, but the guard sat after the
+// make(..., len(rs.Nodes)) that dereferences it — so the nil case panicked
+// instead of returning the empty map the guard intends. staticcheck flagged it
+// as SA5011.
+func TestScaleSizesHandlesANilResultSet(t *testing.T) {
+	sizes := ScaleSizes(nil, 0.5, 2.5)
+	if sizes == nil {
+		t.Fatal("ScaleSizes(nil) returned a nil map, want an empty one")
+	}
+	if len(sizes) != 0 {
+		t.Fatalf("ScaleSizes(nil) returned %d entries, want 0", len(sizes))
+	}
 }

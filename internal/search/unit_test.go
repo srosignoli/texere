@@ -31,13 +31,6 @@ func TestNormalizeForSearch(t *testing.T) {
 
 // ── classifyQuery ─────────────────────────────────────────────────────────────
 
-func boolToPageNr(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
-}
-
 func TestClassifyQuery(t *testing.T) {
 	svc := &SearchService{}
 

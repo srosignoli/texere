@@ -39,6 +39,9 @@ jobs:
       - name: Test (frontend)
         run: node --test frontend/src/lib/*.test.js
 
+      - name: Lint (frontend a11y)
+        run: make lint-frontend
+
       - name: Install golangci-lint
         run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 

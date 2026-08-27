@@ -667,7 +667,9 @@ func TestLoadRegistryDegradedMode(t *testing.T) {
 		t.Error("want error for nonexistent directory, got nil")
 	}
 	if reg == nil {
-		t.Error("want non-nil registry in degraded mode")
+		// Fatal, not Error: the Arrows check below dereferences reg, so
+		// continuing here panics instead of reporting the failure.
+		t.Fatal("want non-nil registry in degraded mode")
 	}
 	if reg.Arrows == nil {
 		t.Error("want non-nil Arrows map")
@@ -754,13 +756,11 @@ func TestStudyMarkerExtraction(t *testing.T) {
 	}
 	ch := pf.Chapters[0]
 
-	// Collect nodes with StudyMeta
-	var studyNodes []*Node
+	// Only the unmarked nodes are asserted on below; the marked ones were
+	// collected into a slice that was never read.
 	var unmarkedNodes []*Node
 	for i := range ch.Nodes {
-		if ch.Nodes[i].StudyMeta != nil {
-			studyNodes = append(studyNodes, &ch.Nodes[i])
-		} else {
+		if ch.Nodes[i].StudyMeta == nil {
 			unmarkedNodes = append(unmarkedNodes, &ch.Nodes[i])
 		}
 	}

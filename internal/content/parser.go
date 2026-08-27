@@ -181,8 +181,7 @@ func ParseFile(path string, registry *SSTRegistry) (*ParsedFile, []ParseError) {
 // ---------------------------------------------------------------------------
 
 type studyBlockState struct {
-	kind         BlockType
-	forceReverse bool
+	kind BlockType
 }
 
 type pendingRef struct {

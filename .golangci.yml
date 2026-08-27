@@ -1,3 +1,10 @@
+linters-settings:
+  goimports:
+    # CLAUDE.md mandates stdlib / external / internal grouping. Without this,
+    # goimports sorts texere/... into the external group and reorders the two,
+    # so the tool and the convention disagree and neither wins.
+    local-prefixes: texere
+
 linters:
   enable:
     - govet
@@ -12,3 +19,20 @@ issues:
     - frontend
     - build
     - wailsjs
+
+  # Report every finding. The defaults (max-issues-per-linter: 50,
+  # max-same-issues: 3) silently truncate, and which findings survive varies
+  # between runs — so `make lint` showed 33 of 81 and two runs of the same tree
+  # disagreed about which. A lint gate you cannot reproduce is not a gate.
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+  exclude-rules:
+    # errcheck on test fixtures is noise: an os.WriteFile that fails in setup
+    # surfaces immediately as the assertion it was preparing for, and wrapping
+    # 49 fixture lines in error checks obscures what each test is actually
+    # asserting. Production code is still checked — those findings were fixed
+    # rather than excluded.
+    - path: _test\.go
+      linters:
+        - errcheck
