@@ -1568,10 +1568,6 @@ func (s *SearchService) buildFullNotes(rows []SST.PageMap) []FullNote {
 		return []FullNote{}
 	}
 
-	type blockKey struct {
-		chap string
-		root SST.NodePtr
-	}
 	type chapterState struct {
 		note   *FullNote
 		blocks map[SST.NodePtr]int // root NodePtr → index into note.Blocks
@@ -1579,7 +1575,6 @@ func (s *SearchService) buildFullNotes(rows []SST.PageMap) []FullNote {
 
 	chapters := make(map[string]*chapterState)
 	order := make([]string, 0)
-	_ = blockKey{}
 
 	for _, ev := range rows {
 		if len(ev.Path) == 0 {
