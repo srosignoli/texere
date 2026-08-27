@@ -40,11 +40,11 @@
 
 <svelte:window on:keydown={onKey} />
 
-<div class="study-root" role="dialog" aria-label="Study">
+<div class="study-root" role="dialog" aria-label="Recall session">
   <div class="study-bar">
     <span class="study-title">Recall</span>
     <span class="study-count">{remaining} due</span>
-    <button class="study-close" on:click={() => onClose?.()} title="Close">×</button>
+    <button class="study-close" on:click={() => onClose?.()} title="Close" aria-label="Close recall session">×</button>
   </div>
   {#if loading}
     <div class="study-center"><p>Loading…</p></div>

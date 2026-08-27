@@ -247,12 +247,12 @@
     <span class="pv-spacer"></span>
     {#if seeding}
       <span class="pv-anchor">Fill in the back after "&gt;&gt;", then:</span>
-      <button class="pv-btn" on:click={createCard}>✓ Create card</button>
+      <button class="pv-btn" on:click={createCard} aria-label="Create card">✓ Create card</button>
     {:else}
-      <button class="pv-btn" on:click={makeCard}>→ Make card</button>
-      <button class="pv-btn" on:click={makeCloze}>{'{ }'} Cloze</button>
+      <button class="pv-btn" on:click={makeCard} aria-label="Make card">→ Make card</button>
+      <button class="pv-btn" on:click={makeCloze} aria-label="Cloze">{'{ }'} Cloze</button>
       <button class="pv-btn" on:click={later}>⏳ Later</button>
-      <button class="pv-btn" on:click={dismiss}>✕ Dismiss</button>
+      <button class="pv-btn" on:click={dismiss} aria-label="Dismiss">✕ Dismiss</button>
     {/if}
   </div>
   {#if error}<div class="pv-error">{error}</div>{/if}

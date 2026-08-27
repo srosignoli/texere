@@ -297,6 +297,21 @@ func (a *App) ImportImage() (map[string]any, error) {
 	if sel == "" {
 		return nil, nil // cancelled
 	}
+	return a.importImageFrom(sel)
+}
+
+// importImageFrom is the ingest half of ImportImage: everything after a path
+// has been chosen. Unexported, so Wails generates no JS binding for it.
+func (a *App) importImageFrom(sel string) (map[string]any, error) {
+	a.dirMu.RLock()
+	dir := a.collectionDir
+	a.dirMu.RUnlock()
+	if dir == "" {
+		return nil, fmt.Errorf("no collection open")
+	}
+	if sel == "" {
+		return nil, fmt.Errorf("importImageFrom: empty path")
+	}
 	asset, err := media.Import(dir, sel)
 	if err != nil {
 		return nil, err
@@ -325,6 +340,21 @@ func (a *App) ImportAudio() (map[string]any, error) {
 	}
 	if sel == "" {
 		return nil, nil
+	}
+	return a.importAudioFrom(sel)
+}
+
+// importAudioFrom is the ingest half of ImportAudio: everything after a path
+// has been chosen. Unexported, so Wails generates no JS binding for it.
+func (a *App) importAudioFrom(sel string) (map[string]any, error) {
+	a.dirMu.RLock()
+	dir := a.collectionDir
+	a.dirMu.RUnlock()
+	if dir == "" {
+		return nil, fmt.Errorf("no collection open")
+	}
+	if sel == "" {
+		return nil, fmt.Errorf("importAudioFrom: empty path")
 	}
 	asset, err := media.ImportAudio(dir, sel)
 	if err != nil {

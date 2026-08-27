@@ -1,0 +1,12 @@
+{
+  "name": "texere-demos",
+  "private": true,
+  "type": "module",
+  "description": "Scripted demo recordings. Kept out of frontend/package.json so Playwright is never pulled into the app build or CI's npm ci.",
+  "scripts": {
+    "study-session": "node study-session.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0"
+  }
+}
