@@ -61,6 +61,7 @@ await t.beat('Extract a passage', async () => {
   t.note(`selected "${sel.text.slice(0, 48)}…"`)
   await t.wait(1600)
 
+  await t.frame() // the highlighted passage, before it is consumed
   await t.say('Extract it.', 1500)
   await t.click(SEL.extract)
   await t.until((c) => c.process > 0, { label: 'extract registered (process queue > 0)' })
@@ -83,6 +84,7 @@ await t.beat('Turn it into a card', async () => {
 
   await t.say('Type the back of the card.', 1500)
   await t.type(' it beats passive rereading')
+  await t.frame() // the seeded front and the typed back, both on screen
   await t.wait(1400)
   await t.clear()
 
@@ -99,6 +101,7 @@ await t.beat('Recall and grade', async () => {
   await t.until(SEL.showAnswer)
   await t.wait(1400)
   await t.click(SEL.showAnswer)
+  await t.frame() // question and answer visible, before grading empties the queue
   await t.wait(1800)
   await t.say('Grade it, and FSRS schedules the next review.', 2100)
   await t.click(SEL.grade('Good'))

@@ -41,7 +41,9 @@ function texereCommit() {
   }
 }
 
-const overlays = (title, subtitle) => {
+// addInitScript passes at most one argument, so title and subtitle arrive as
+// one object rather than two parameters.
+const overlays = ({ title, subtitle }) => {
   // Injected at document-start. Guarded and retried: at that point neither
   // <head> nor documentElement is guaranteed to exist, and an uncaught throw
   // aborts the whole init script — which silently removes every overlay from
@@ -123,7 +125,7 @@ export async function session({
   const pageErrors = []
   page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 160)))
 
-  await page.addInitScript(overlays, title, subtitle)
+  await page.addInitScript(overlays, { title, subtitle })
   await page.goto(url, { waitUntil: 'domcontentloaded' })
   await page.waitForFunction(() => window.go?.main?.App, null, { timeout: 25000 })
 
@@ -141,6 +143,7 @@ export async function session({
 
   const beats = []
   const notes = []
+  let current = null
   let cursor = { x: 720, y: 450 }
   const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
 
@@ -239,16 +242,34 @@ export async function session({
       return got
     },
 
+    // Capture the frame that represents this beat on the contact sheet.
+    //
+    // Call it at the moment the beat is *about*, which is rarely the end: a
+    // beat that creates a card ends with an empty queue, so an end-of-beat
+    // frame shows the aftermath and reads as if nothing happened. Beats that
+    // do not call this fall back to an end-of-beat capture.
+    async frame() {
+      if (!current) return
+      current.framed = true
+      await page
+        .screenshot({ path: join(out, 'frames', `${current.idx}.png`) })
+        .catch(() => {})
+    },
+
     // A named unit of the recording. Timestamps become YouTube chapters and a
-    // frame is captured for the contact sheet, so a take can be reviewed
-    // without watching it.
+    // frame goes to the contact sheet, so a take can be reviewed without
+    // watching it.
     async beat(name, fn) {
       const at = Date.now() - started
       const idx = String(beats.length + 1).padStart(2, '0')
-      beats.push({ name, at })
+      current = { name, at, idx, framed: false }
+      beats.push(current)
       console.log(`  [${mmss(at)}] ${name}`)
       await fn(t)
-      await page.screenshot({ path: join(out, 'frames', `${idx}.png`) }).catch(() => {})
+      if (!current.framed) {
+        await page.screenshot({ path: join(out, 'frames', `${idx}.png`) }).catch(() => {})
+      }
+      current = null
     },
 
     note: (line) => {
