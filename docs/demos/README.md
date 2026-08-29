@@ -51,6 +51,17 @@ Output lands in `$TEXERE_DEMO_OUT` (default: a temp directory). Convert to mp4:
 ffmpeg -i out/study/*.webm -c:v libx264 -pix_fmt yuv420p -crf 24 session.mp4
 ```
 
+## The plots live elsewhere
+
+Tutorial plots are in the private `texere-tutorials` repo, checked out beside
+this one. It depends on `file:../texere/docs/demos`, so it always runs against
+this working tree. `selectors.mjs` is the contract between them:
+`frontend/src/lib/selector-contract.test.js` asserts every selector it publishes
+still resolves here, so a rename fails a test in this repo rather than a
+recording in that one.
+
+`study-session.mjs` stays here as the kit's smoke test.
+
 ## Writing a scenario
 
 Two rules keep long recordings reliable:

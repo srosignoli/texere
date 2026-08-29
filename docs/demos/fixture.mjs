@@ -6,6 +6,8 @@ import { join } from 'node:path';
 
 export const FIXTURE = process.env.TEXERE_DEMO_FIXTURE ?? join(tmpdir(), 'texere-demo-fixture');
 export const CONFIG = process.env.TEXERE_CONFIG ?? join(homedir(), '.config', 'texere', 'config.json');
-export const SAVED = join(FIXTURE, '.previous-collection-dir');
+// Deliberately outside FIXTURE: seeding deletes the fixture directory, so a
+// record kept inside it is destroyed by the very step that needs to read it.
+export const SAVED = FIXTURE + '.previous-collection-dir';
 export const PHRASE =
   'Active recall means retrieving an answer from memory rather than rereading it';
