@@ -1,14 +1,20 @@
 {
-  "name": "texere-demos",
+  "name": "texere-demo-kit",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Scripted demo recordings. Kept out of frontend/package.json so Playwright is never pulled into the app build or CI's npm ci.",
+  "description": "Recording kit for scripted Texere demos. Consumed by the texere-tutorials repo via a sibling file: dependency.",
+  "exports": {
+    ".": "./kit.mjs",
+    "./selectors": "./selectors.mjs",
+    "./fixture": "./fixture.mjs"
+  },
   "scripts": {
     "seed": "node seed.mjs",
-    "study-session": "node study-session.mjs",
-    "restore": "node restore.mjs"
+    "restore": "node restore.mjs",
+    "study-session": "node study-session.mjs"
   },
-  "devDependencies": {
+  "dependencies": {
     "playwright": "^1.49.0"
   }
 }
