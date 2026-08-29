@@ -29,10 +29,6 @@ export function DeleteLLMProfile(arg1:string):Promise<void>;
 
 export function DeleteSTTProfile(arg1:string):Promise<void>;
 
-export function DemoImportPdfSource(arg1:string):Promise<main.ReadingView>;
-
-export function DemoImportTextSource(arg1:string):Promise<main.ReadingView>;
-
 export function DismissExtract(arg1:string):Promise<void>;
 
 export function DuplicateSkill(arg1:string):Promise<void>;
