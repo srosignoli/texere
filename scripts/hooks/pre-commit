@@ -1,0 +1,25 @@
+#!/bin/sh
+# Refuse to commit demo shims into the generated Wails bindings.
+#
+# `wails dev -tags demo` regenerates frontend/wailsjs and adds DemoImport*
+# shims. Staging with `git add -A` while it runs commits them, and they would
+# ship to customers. TestGeneratedBindingsCarryNoDemoShims catches it — but
+# only once someone runs the tests, which is after the commit exists.
+#
+# This has happened twice. A checklist item that keeps being missed belongs in
+# a hook, not in a checklist.
+#
+# Install: git config core.hooksPath scripts/hooks
+
+staged=$(git diff --cached --name-only | grep '^frontend/wailsjs/' || true)
+[ -z "$staged" ] && exit 0
+
+if git diff --cached "$staged" | grep -q '^+.*Demo'; then
+  echo "pre-commit: refusing — demo shims staged in the generated bindings:"
+  git diff --cached "$staged" | grep '^+.*Demo' | sed 's/^/  /'
+  echo
+  echo "A demo-tagged dev server regenerated them. Fix with:"
+  echo "  git checkout -- frontend/wailsjs/"
+  exit 1
+fi
+exit 0

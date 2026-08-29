@@ -42,14 +42,6 @@ export function DeleteSTTProfile(arg1) {
   return window['go']['main']['App']['DeleteSTTProfile'](arg1);
 }
 
-export function DemoImportPdfSource(arg1) {
-  return window['go']['main']['App']['DemoImportPdfSource'](arg1);
-}
-
-export function DemoImportTextSource(arg1) {
-  return window['go']['main']['App']['DemoImportTextSource'](arg1);
-}
-
 export function DismissExtract(arg1) {
   return window['go']['main']['App']['DismissExtract'](arg1);
 }
