@@ -34,8 +34,7 @@ await t.open()
 
 await t.beat('Open a document', async () => {
   await t.say('Opening a document. The file dialog is bypassed by the demo seam.', 2400)
-  const rv = await t.call('DemoImportTextSource', join(t.fixture, 'study-doc.md'))
-  t.note(`imported ${rv.id} → ${rv.refPath}`)
+  await t.importDoc('study-doc.md')
   await t.until((c) => c.read > 0, { label: 'queued for reading' })
   await t.say('Imported and queued for reading.', 1900)
   await t.clear()

@@ -217,6 +217,26 @@ export async function session({
       notes.push(`pressed ${combo} (${label})`)
     },
 
+    // Import the document a beat is about, and refuse to do it quietly twice.
+    //
+    // A second import of the same file lands as "study-doc-2", which shows up
+    // in the sidebar on camera and would otherwise reach a published video
+    // unnoticed. The fixture is stale in that case: re-seed and restart.
+    async importDoc(file) {
+      const rv = await t.call('DemoImportTextSource', join(fixture, file))
+      if (!rv?.id) throw new Error(`importDoc: ${file} did not import`)
+      const wanted = file.replace(/\.[^.]+$/, '')
+      if (rv.title !== wanted) {
+        throw new Error(
+          `"${file}" imported as "${rv.title}" — it is already in this fixture.\n` +
+            'The take would show a duplicate in the sidebar. Re-seed ' +
+            '(npm run seed) and restart the app before recording.',
+        )
+      }
+      notes.push(`imported ${rv.id} → ${rv.refPath}`)
+      return rv
+    },
+
     // Import supporting documents off-camera. Texere opened on a real
     // collection shows a populated library; a workspace holding one file reads
     // as a demo rig. Call this before open(), while the title card still covers
