@@ -21,6 +21,15 @@ const t = await session({
   slug: 'study-session',
 })
 
+// Populate the library behind the title card, so the first sight of Texere is
+// a real workspace rather than an empty rig.
+await t.primeLibrary([
+  'encoding.md',
+  'retrieval-practice.md',
+  'interleaving.md',
+  'sleep-and-memory.md',
+])
+
 await t.open()
 
 await t.beat('Open a document', async () => {
@@ -33,8 +42,8 @@ await t.beat('Open a document', async () => {
 })
 
 await t.beat('The study queue', async () => {
-  await t.say('Study — the Read · Process · Recall queue.', 2000)
-  await t.click(SEL.studyButton)
+  await t.say(`Study — the Read · Process · Recall queue. (${t.keys('Toggle Study')})`, 2400)
+  await t.shortcut('Toggle Study')
   await t.until(SEL.studyDialog)
   await t.wait(900)
   await t.click(SEL.studyTab('Read'))
@@ -62,8 +71,8 @@ await t.beat('Extract a passage', async () => {
   await t.wait(1600)
 
   await t.frame() // the highlighted passage, before it is consumed
-  await t.say('Extract it.', 1500)
-  await t.click(SEL.extract)
+  await t.say(`Extract it — ${t.keys('Extract selection')}.`, 2000)
+  await t.shortcut('Extract selection')
   await t.until((c) => c.process > 0, { label: 'extract registered (process queue > 0)' })
   await t.wait(1200)
   await t.clear()
@@ -99,12 +108,24 @@ await t.beat('Recall and grade', async () => {
   await t.say('Recall — the card comes back on schedule.', 2100)
   await t.click(SEL.studyTab('Recall'))
   await t.until(SEL.showAnswer)
-  await t.wait(1400)
-  await t.click(SEL.showAnswer)
-  await t.frame() // question and answer visible, before grading empties the queue
-  await t.wait(1800)
-  await t.say('Grade it, and FSRS schedules the next review.', 2100)
-  await t.click(SEL.grade('Good'))
+  await t.clear()
+
+  // Let the question stand before revealing. Showing the answer the moment the
+  // card appears skips the only part of a flashcard that matters.
+  await t.say('Try to answer before you look.', 2400)
+  await t.wait(1200)
+  await t.clear()
+
+  await t.say('Space reveals the back.', 1600)
+  await t.press('Space')
+  await t.wait(1500)
+  await t.frame() // question and answer together, before grading empties the queue
+  await t.clear()
+
+  // 1-4 are contextual keys, outside the shortcut registry by design, so this
+  // caption is a literal and can drift. See RecallCard.svelte.
+  await t.say('Grade it one to four — FSRS schedules the next review.', 2200)
+  await t.press('3')
   await t.wait(1800)
   await t.clear()
 })

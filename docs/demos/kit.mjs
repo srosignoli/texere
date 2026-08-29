@@ -16,6 +16,32 @@ import { execFileSync } from 'node:child_process'
 import { mkdirSync, writeFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { FIXTURE } from './fixture.mjs'
+import { SHORTCUT_GROUPS } from '../../frontend/src/lib/shortcuts.js'
+
+// Narration cites keybindings, and a caption that names the wrong key is worse
+// than one that names none. Read them from the app's own registry — the same
+// data the F1 panel renders and shortcuts.test.js guards — so a rebinding
+// changes the caption instead of making it lie.
+//
+// The registry covers modified combos only: shortcuts.test.js treats unmodified
+// keys as "contextual, out of scope", so Space and the 1-4 grades are not in
+// here and cannot be looked up. State those literally in the plot, and know
+// they can drift silently.
+const SHORTCUTS = new Map(
+  SHORTCUT_GROUPS.flatMap((g) => g.items.map((i) => [i.label, i.keys.join('+')])),
+)
+
+export function keysFor(label) {
+  const combo = SHORTCUTS.get(label)
+  if (!combo) {
+    throw new Error(
+      `no documented shortcut labelled "${label}".\n` +
+        'Modified combos live in frontend/src/lib/shortcuts.js; unmodified keys ' +
+        '(Space, 1-4) are contextual and deliberately not in the registry.',
+    )
+  }
+  return combo
+}
 
 const CHROMIUM =
   process.env.TEXERE_CHROMIUM ??
@@ -177,6 +203,42 @@ export async function session({
 
     type: (text, delay = 85) => page.keyboard.type(text, { delay }),
     press: (key) => page.keyboard.press(key),
+
+    // The documented combo for an action, e.g. keys('Extract selection').
+    keys: keysFor,
+
+    // Perform an action the way the shortcut does, rather than by clicking.
+    // A tutorial that only ever clicks teaches the slow path.
+    async shortcut(label) {
+      const combo = keysFor(label)
+      await page.keyboard.press(
+        combo.replace('Ctrl/Cmd', 'Control').replace(/\+/g, '+'),
+      )
+      notes.push(`pressed ${combo} (${label})`)
+    },
+
+    // Import supporting documents off-camera. Texere opened on a real
+    // collection shows a populated library; a workspace holding one file reads
+    // as a demo rig. Call this before open(), while the title card still covers
+    // the window.
+    async primeLibrary(files) {
+      // Idempotent: importing the same file twice yields "encoding-2" beside
+      // "encoding", and a sidebar full of -2 suffixes is visible on camera.
+      // Set dressing should never be the thing a viewer notices.
+      const existing = new Set(
+        ((await t.call('GetReadingList')) ?? []).map((r) => r.title),
+      )
+      let added = 0
+      for (const f of files) {
+        if (existing.has(f.replace(/\.[^.]+$/, ''))) continue
+        const rv = await t.call('DemoImportTextSource', join(fixture, f))
+        if (!rv?.id) throw new Error(`primeLibrary: ${f} did not import`)
+        added++
+      }
+      notes.push(
+        `primed library: ${added} imported, ${files.length - added} already present`,
+      )
+    },
     wait: (ms) => page.waitForTimeout(ms),
     call: (fn, ...args) =>
       page.evaluate(([f, a]) => window.go.main.App[f](...a), [fn, args]),
