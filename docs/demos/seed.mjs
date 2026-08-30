@@ -16,6 +16,129 @@ import { join } from 'node:path';
 import { FIXTURE, CONFIG, SAVED, PHRASE } from './fixture.mjs';
 
 
+// The .n4l side of the fixture.
+//
+// A collection needs more than one file, and a file more than one chapter,
+// before "Files / Chapters" means anything on camera — the columns tutorial is
+// about structure, and structure is invisible in a three-line collection.
+//
+// Every arrow code below resolves in ../../SSTconfig: the nodes column renders
+// an arrow's LongName from the registry, so an unregistered code shows the raw
+// code and reads as a typo rather than as a feature. `(fwd)` displaying as
+// "leads to" is the point, not an accident.
+// Context operators carry their closing `::`. The parser does not require it
+// (parseTags trims a trailing ": " run, so `:: x`, `:: x :` and `:: x ::` all
+// parse identically, and no lint rule reports the difference) — but this file
+// is on camera teaching N4L, and canonical N4L closes the delimiter.
+const N4L = {
+  // Memory research — kept from the original fixture, with (leads to) corrected
+  // to its registry code (fwd). "leads to" is the LongName the column renders;
+  // as a code it was unregistered, and drew the unregistered-arrow styling.
+  'memory.n4l': `- Memory research
+
+ :: _sequence_ ::
+
+encoding (fwd) storage
+storage (fwd) retrieval
+`,
+
+  // The file the columns tutorial is recorded against. Three chapters, so the
+  // tree has something to expand; a context state machine that extends and
+  // reduces, so the chips change as the caret moves; and one named sequence,
+  // so the nodes column has a timeline to draw.
+  'learning.n4l': `- how memory works
+
+:: cognition ::
+
+Encoding turns perception into a durable trace
+"  (means) the first step of remembering
+"  (e.g.) explaining an idea in your own words
+
++:: neuroscience ::
+
+The hippocampus binds a new trace
+"  (fwd) cortical consolidation
+"  (note) most of this happens during sleep
+
+Consolidation moves the trace to the cortex
+"  (bfr) retrieval becomes cheap
+
+-:: neuroscience ::
+
+Retrieval strengthens the path back to a memory
+"  (means) testing is practice, not measurement
+
+:: pedagogy ::
+
+Interleaving mixes topics within one session
+"  (e.g.) alternating problem types
+"  (contain) desirable difficulty
+
+# @id enc-1
+Elaboration produces a more durable trace than rote repetition
+
+# @id enc-2
+A quiz outperforms rereading even when no feedback is given
+
+# @card
+What does retrieval practice change?
+"  (means) the memory itself, not just your estimate of it
+
+- the study loop
+
+:: workflow ::
+
++:: _sequence_, reading loop ::
+
+Read the source and mark what matters
+"  (next) extract the passage
+
+Extract the passage into the collection
+"  (next) turn it into a card
+
+Turn the extract into a card
+"  (next) recall it on schedule
+
+Recall it just before you would forget
+"  (fwd) a stronger trace
+
+-:: _sequence_, reading loop ::
+
+Nothing after the loop belongs to it
+"  (note) the sequence ended with the context
+
+- open questions
+
+:: cognition ::
+
+Does interleaving help motor skills as much as concepts?
+"  (tbd) needs a proper trial
+
+Why does massed practice feel more effective than it is?
+"  (note) fluency is mistaken for learning
+`,
+
+  // A second file, so the first column is a tree of files rather than a list of
+  // chapters wearing a filename.
+  'research-methods.n4l': `- evidence
+
+:: method ::
+
+A within-subject design controls for individual variation
+"  (e.g.) each learner studies both ways
+
+Effect sizes matter more than p-values
+"  (note) significance is not magnitude
+
+- limitations
+
+:: method ::
+
+Laboratory word lists are not coursework
+"  (means) generalisation is the open question
+`,
+}
+
 // Supporting documents, imported off-camera so the reading list is populated
 // before the viewer sees it. Deliberately short: they are set dressing, and
 // every one of them costs a second of import time behind the title card.
@@ -50,13 +173,9 @@ function seedFixture() {
   rmSync(FIXTURE, { recursive: true, force: true });
   mkdirSync(join(FIXTURE, 'sources'), { recursive: true });
   mkdirSync(join(FIXTURE, 'reading'), { recursive: true });
-  writeFileSync(join(FIXTURE, 'memory.n4l'), `- Memory research
-
- :: _sequence_ ::
-
-encoding (leads to) storage
-storage (leads to) retrieval
-`);
+  for (const [name, body] of Object.entries(N4L)) {
+    writeFileSync(join(FIXTURE, name), body);
+  }
   // A collection with one document in it looks like a demo. Texere opened on a
   // real collection shows a populated library, so the fixture carries several
   // documents; the plot imports them behind the title card and features one on

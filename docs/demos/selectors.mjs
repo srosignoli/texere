@@ -17,12 +17,52 @@ export const SEL = {
   saveButton: 'button[aria-label="Save"]',
   explorerButton: 'button[aria-label="Open 2.5D Graph Explorer"]',
 
-  // --- collection tree -----------------------------------------------------
+  // --- the three columns ---------------------------------------------------
+  // Column 1 — files and chapters.
   // NB: .file-row only toggles collapse. .chapter-item is what selects a
   // chapter — clicking the file name looks right and does nothing.
+  fileRow: '.file-row',
+  fileNamed: (name) => `.file-row:has-text("${name}")`,
   chapterItem: '.chapter-item',
   chapterNamed: (title) => `.chapter-item:has-text("${title}")`,
+
+  // Column 2 — context tags and sequences. Chips carry data-tag, so address a
+  // chip by tag rather than by text: a sequence chip renders a ⛓ glyph before
+  // its name and :has-text would still match, but the attribute says what is
+  // meant. .cursor-at is the chip the caret's node is currently inside.
+  contextChip: '.chip',
+  contextChipNamed: (tag) => `.chip[data-tag="${tag}"]`,
+  sequenceChip: '.chip.sequence',
+
+  // Column 3 — nodes.
+  // The filter bar's buttons carry no aria-label (the label is the text), so
+  // they are addressed by text: All, Text, Linked, Extracts, Cards.
   nodeItem: '.node-item',
+  nodeNamed: (text) => `.node-item:has-text("${text}")`,
+  nodeFilterBtn: '.qf-btn',
+  nodeFilter: (label) => `.qf-btn:has-text("${label}")`,
+  nodeRow: '.node-row-wrap',
+  nodeExpand: '.chevron-btn',
+  // The chevron of a named row. `.chevron-btn` alone is the first row's, which
+  // is rarely the row a beat is about.
+  nodeExpandFor: (text) => `.node-row-wrap:has-text("${text}") .chevron-btn`,
+  // An expanded row's arrow lines. .arrow-code holds the registry LongName —
+  // "leads to" for a file that says (fwd) — which is the whole point of
+  // showing an expanded node on camera.
+  arrowChild: '.arrow-child',
+  arrowCode: '.arrow-code',
+  // Sequence nodes render as a numbered timeline instead of a plain row.
+  timelineItem: '.timeline-item',
+  seqNum: '.seq-num',
+
+  // Applied to the chip in column 2 and the row in column 3 that the editor's
+  // caret currently sits inside. This is the editor→columns direction of the
+  // coupling, and the only on-screen evidence that it happened.
+  cursorAt: '.cursor-at',
+
+  // The horizontal drag handle between the columns and the editor. The columns
+  // get 220px by default, which is not enough of them to teach from.
+  bandSplitter: '[role="separator"][aria-orientation="horizontal"]',
 
   // --- study surface -------------------------------------------------------
   studyDialog: '[role="dialog"][aria-label="Study surface"]',
