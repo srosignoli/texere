@@ -332,6 +332,16 @@ export async function session({
     // do not call this fall back to an end-of-beat capture.
     async frame() {
       if (!current) return
+      // One frame per beat: the contact sheet has one tile per beat, so a
+      // second call overwrites the first at the same path. That is silent, and
+      // it costs exactly the frame someone chose deliberately — say so in the
+      // meta rather than letting the review packet quietly lose it.
+      if (current.framed) {
+        notes.push(
+          `WARNING beat "${current.name}" called frame() more than once — ` +
+            'only the last is kept; split the beat or drop a call',
+        )
+      }
       current.framed = true
       await page
         .screenshot({ path: join(out, 'frames', `${current.idx}.png`) })
