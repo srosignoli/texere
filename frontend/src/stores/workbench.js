@@ -12,7 +12,7 @@ export const workbenchStore = writable({
   parsedFile: /** @type {import('../../../wailsjs/go/models').content.ParsedFile|null} */ (null),
   activeContextFilter: new Set(),
   selectedNodeLine: /** @type {number|null} */ (null),
-  activeTab: /** @type {'note'|'read'|'tutor'} */ ('note'),
+  activeTab: /** @type {'note'|'preview'} */ ('note'),
   isDirty: false,
   externalModification: /** @type {string|null} */ (null),
   arrowDefs: /** @type {any[]} */ ([]),

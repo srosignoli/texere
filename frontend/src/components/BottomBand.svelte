@@ -1,9 +1,9 @@
 <script>
   import { workbenchStore } from '../stores/workbench.js'
   import SourceTab from './SourceTab.svelte'
-  import ReadTab from './ReadTab.svelte'
+  import PreviewTab from './PreviewTab.svelte'
 
-  // Tab components: ReadTab added T041
+  // Tab components: PreviewTab (the rendered view of the note) added T041
   $: activeTab = $workbenchStore.activeTab
 
   // Reference to SourceTab for imperative calls from MiddleBand (T035)
@@ -20,8 +20,10 @@
 
 <div class="bottom-band">
   <div class="tab-bar">
-    <button class="tab-btn" class:active={activeTab === 'note'} on:click={() => setTab('note')}>Note</button>
-    <button class="tab-btn" class:active={activeTab === 'read'} on:click={() => setTab('read')}>Read</button>
+    <button class="tab-btn" class:active={activeTab === 'note'} on:click={() => setTab('note')}
+      aria-label="Note">Note</button>
+    <button class="tab-btn" class:active={activeTab === 'preview'} on:click={() => setTab('preview')}
+      aria-label="Preview">Preview</button>
   </div>
 
   <div class="tab-content">
@@ -30,9 +32,9 @@
       <SourceTab bind:this={sourceTabRef} on:content-changed={handleContentChanged} />
     </div>
 
-    {#if activeTab === 'read'}
+    {#if activeTab === 'preview'}
       <div class="tab-pane">
-        <ReadTab />
+        <PreviewTab />
       </div>
     {/if}
   </div>

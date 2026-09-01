@@ -1,5 +1,5 @@
 <script>
-  // Renders one referenced asset in the Read tab, or nothing when the path is
+  // Renders one referenced asset in the Preview tab, or nothing when the path is
   // not media.
   //
   // Shares mediaKind and srcFor with the notes editor's inline media, so the

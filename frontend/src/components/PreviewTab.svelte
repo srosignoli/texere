@@ -35,7 +35,7 @@
   $: nodeGroups = groupNodes(nodes)
 </script>
 
-<div class="read-tab">
+<div class="preview-tab">
   {#if !selectedKey}
     <div class="empty-hint">Select a chapter to read</div>
   {:else if nodes.length === 0}
@@ -60,7 +60,7 @@
 </div>
 
 <style>
-  .read-tab {
+  .preview-tab {
     height: 100%;
     overflow-y: auto;
     padding: 12px 16px;
