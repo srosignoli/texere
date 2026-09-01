@@ -15,6 +15,27 @@ export const SEL = {
   readButton: 'button[title^="Read & import"]',
   searchButton: 'button[aria-label="Search"]',
   saveButton: 'button[aria-label="Save"]',
+  undoButton: 'button[title^="Undo"]',
+
+  // --- note-authoring toolbar --------------------------------------------
+  // Present only while activeTab is 'note'. Titles, not aria-labels: these
+  // carry their label as text (+file, +node, +ctx, +link) and the title is
+  // what says which is which.
+  //
+  // NB: +file asks for the name with window.prompt(). A browser dialog IS
+  // reachable from Playwright (page.on('dialog')) — unlike the GTK dialogs —
+  // but it is drawn by the browser, not the page, so it does NOT appear in the
+  // recording. A plot must both answer it and narrate it.
+  newFile: 'button[title^="New .n4l file"]',
+  // Inserts "\n\n" after the current line. It makes room for a node; it does
+  // not write one.
+  addNode: 'button[title^="Insert node"]',
+  // Inserts "\n:: " and parks the cursor after it — the OPENING delimiter
+  // only. Canonical N4L closes it, so a plot types the closing "::" itself.
+  addContext: 'button[title^="Insert context line"]',
+  // Inserts "(" and opens the arrow autocomplete. The completion writes
+  // "(code) " when one is chosen; nothing is inserted if it is dismissed.
+  addLink: 'button[title^="Insert arrow"]',
   explorerButton: 'button[aria-label="Open 2.5D Graph Explorer"]',
 
   // --- the three columns ---------------------------------------------------
@@ -25,6 +46,9 @@ export const SEL = {
   fileNamed: (name) => `.file-row:has-text("${name}")`,
   chapterItem: '.chapter-item',
   chapterNamed: (title) => `.chapter-item:has-text("${title}")`,
+  // Shown on the SELECTED chapter's row while the buffer is dirty. Nothing
+  // marks an unselected chapter, so a plot must open one before expecting it.
+  dirtyDot: '.dirty-dot',
 
   // Column 2 — context tags and sequences. Chips carry data-tag, so address a
   // chip by tag rather than by text: a sequence chip renders a ⛓ glyph before
@@ -66,6 +90,7 @@ export const SEL = {
 
   // --- study surface -------------------------------------------------------
   studyDialog: '[role="dialog"][aria-label="Study surface"]',
+  shortcutsDialog: '[role="dialog"][aria-label="Keyboard shortcuts"]',
   recallDialog: '[role="dialog"][aria-label="Recall session"]',
   // Tabs render their label plus a due-count <sup>, so text selectors match
   // "Read5" once anything is due. Address them by aria-label.
@@ -93,6 +118,14 @@ export const SEL = {
   // --- editor --------------------------------------------------------------
   // Vendor-owned, see VENDOR below.
   editor: '.cm-content',
+  // Rebuilds the editor, which resets the caret to the top of the document.
+  vimToggle: '.vim-btn',
+  // The arrow autocomplete +link opens. Vendor-owned, see VENDOR below.
+  arrowPicker: '.cm-tooltip-autocomplete',
+  // The Ctrl/Cmd+F panel's query field. An attribute selector rather than
+  // @codemirror/search's .cm-search class, deliberately: the class would need
+  // a VENDOR exemption, and that list is the contract's own warning light.
+  searchField: 'input[main-field]',
 }
 
 // Selectors emitted by a third-party library rather than applied by our own
@@ -102,4 +135,5 @@ export const SEL = {
 // about when it changes.
 export const VENDOR = new Set([
   '.cm-content', // CodeMirror 6 editor content element
+  '.cm-tooltip-autocomplete', // CodeMirror 6 autocomplete popup, opened by +link
 ])
