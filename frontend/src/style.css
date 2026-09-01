@@ -118,7 +118,7 @@ html {
     --help-divider: #22303f;          /* QueryHelpPanel table/list hairline */
     --chapter-file-text: #7a9ab5;     /* ColumnChapters file-name label */
     --chapter-tree-line: #2e4a5a;     /* ColumnChapters monospace tree connector */
-    --sequence-connector: #4b5563;    /* sequence-node connector line (ReadTab + NodeCard) */
+    --sequence-connector: #4b5563;    /* sequence-node connector line (PreviewTab + NodeCard) */
     --text-loc: #7da0c0;              /* monospace file-location text (LogPanel) */
 
     /* Roles minted finishing LogPanel's severity-filter chip (Task 4, feature
@@ -599,7 +599,7 @@ html {
     --text-on-warn: #1c1100;        /* 8.66:1 Blue/Dark against var(--warn), 4.51:1 Light */
 
     /* The reminder-card highlight (NodeCard.svelte's .node-card.reminder,
-       reapplied via :global() in ReadTab.svelte — one shared token, not two
+       reapplied via :global() in PreviewTab.svelte — one shared token, not two
        copies of the literal). Deliberately theme-invariant: a pale
        highlighter/sticky-note card distinguishing a reminder from ordinary
        notes should look the same highlighter-yellow whether the surrounding

@@ -115,6 +115,23 @@ export const SEL = {
   showAnswer: 'button[aria-label="Show answer"]',
   grade: (label) => `button[aria-label="${label}"]`,
 
+  // --- bottom band tabs ----------------------------------------------------
+  // The two tabs over the bottom band: Note holds the CodeMirror editor on the
+  // raw .n4l, Preview renders the selected chapter's parsed nodes as cards.
+  // Switching to Preview is what puts formatted N4L on camera.
+  //
+  // Addressed by aria-label rather than by text. The labels are literal, so the
+  // contract test verifies them — a text selector would sit here unverified,
+  // which is how the tab formerly labelled "Read" was renamed without this file
+  // noticing.
+  //
+  // NB: "Read" belongs to the reading workflow, not to this band — SEL.readButton
+  // opens sources, and SEL.studyTab('Read') is the study surface's own tab. None
+  // of the three is a way to reach the other two.
+  tabBtn: '.tab-btn',
+  noteTab: '.tab-btn[aria-label="Note"]',
+  previewTab: '.tab-btn[aria-label="Preview"]',
+
   // --- editor --------------------------------------------------------------
   // Vendor-owned, see VENDOR below.
   editor: '.cm-content',
