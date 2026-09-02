@@ -31,6 +31,18 @@ const SHORTCUTS = new Map(
   SHORTCUT_GROUPS.flatMap((g) => g.items.map((i) => [i.label, i.keys.join('+')])),
 )
 
+// A registry combo as the keyboard actually sends it. See t.shortcut below for
+// why the case of the final key matters; exported so a plot pressing a combo
+// the registry does not carry can reach the same normalisation.
+export function asPhysicalCombo(combo) {
+  const parts = combo.replace('Ctrl/Cmd', 'Control').split('+')
+  const last = parts[parts.length - 1]
+  if (last.length === 1 && /[a-z]/i.test(last)) {
+    parts[parts.length - 1] = parts.includes('Shift') ? last.toUpperCase() : last.toLowerCase()
+  }
+  return parts.join('+')
+}
+
 export function keysFor(label) {
   const combo = SHORTCUTS.get(label)
   if (!combo) {
@@ -209,11 +221,25 @@ export async function session({
 
     // Perform an action the way the shortcut does, rather than by clicking.
     // A tutorial that only ever clicks teaches the slow path.
+    //
+    // The letter's CASE is not cosmetic. Playwright takes the key name
+    // literally and does not derive case from the modifiers, so 'Control+K'
+    // delivers { key: 'K', shiftKey: false } — an event no physical keyboard
+    // can produce, because K without Shift reports 'k'. The registry spells
+    // its combos with capitals for people to read, so pressing them verbatim
+    // synthesises impossible events.
+    //
+    // That went unnoticed while every target was a CodeMirror keymap, which
+    // matches case-insensitively. It surfaced on the omnibar, whose handler
+    // compares e.key directly and accepts only lowercase 'k' for fuzzy search:
+    // the panel simply never opened, and the beat timed out on a selector with
+    // no hint that the keypress was the problem.
+    //
+    // So: lowercase a single-letter key when Shift is absent, uppercase it
+    // when Shift is present. Both are then exactly what the hardware sends.
     async shortcut(label) {
       const combo = keysFor(label)
-      await page.keyboard.press(
-        combo.replace('Ctrl/Cmd', 'Control').replace(/\+/g, '+'),
-      )
+      await page.keyboard.press(asPhysicalCombo(combo))
       notes.push(`pressed ${combo} (${label})`)
     },
 
