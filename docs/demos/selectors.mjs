@@ -75,6 +75,10 @@ export const SEL = {
   // showing an expanded node on camera.
   arrowChild: '.arrow-child',
   arrowCode: '.arrow-code',
+  // The other half of an expanded arrow line. A media path lives here, as
+  // text, which is what makes the Preview panel's rendering of the same path
+  // a difference a viewer can see rather than take on trust.
+  arrowTarget: '.arrow-target',
   // Sequence nodes render as a numbered timeline instead of a plain row.
   timelineItem: '.timeline-item',
   seqNum: '.seq-num',
@@ -132,6 +136,31 @@ export const SEL = {
   noteTab: '.tab-btn[aria-label="Note"]',
   previewTab: '.tab-btn[aria-label="Preview"]',
 
+  // --- the preview surface -------------------------------------------------
+  // What Preview renders that no other surface does. Column 3 shows node text
+  // through {node.Text} — plain, escaped, literal — so a path stays a path and
+  // `\(R = e^{-t/S}\)` stays backslashes there. These selectors exist to
+  // assert the difference rather than leave it to the eye.
+  previewCard: '.node-card',
+  // A referenced asset, rendered in the card. The element is chosen by
+  // InlineMedia from the path's EXTENSION, not from the arrow's name, so the
+  // tag is what says which kind was detected — hence the tag-qualified pair.
+  // The class half of each is verified by the contract test through
+  // inlineMedia; the tags are img/video as InlineMedia writes them.
+  inlineMedia: '.inline-media',
+  inlineImage: 'img.inline-media',
+  inlineVideo: 'video.inline-media',
+  // One typeset expression. KaTeX-owned, see VENDOR below: MathText marks only
+  // FAILED typesetting with a class of ours (.math-error), so success has no
+  // selector but the library's own.
+  mathRendered: '.katex',
+  mathError: '.math-error',
+  // An all-caps node, which NodeCard renders as an amber reminder. Combine it
+  // with previewCard ('.node-card' + '.reminder') rather than writing the pair
+  // as one string: each half is then verified against the components, which a
+  // compound selector is not.
+  reminderCard: '.reminder',
+
   // --- editor --------------------------------------------------------------
   // Vendor-owned, see VENDOR below.
   editor: '.cm-content',
@@ -153,4 +182,5 @@ export const SEL = {
 export const VENDOR = new Set([
   '.cm-content', // CodeMirror 6 editor content element
   '.cm-tooltip-autocomplete', // CodeMirror 6 autocomplete popup, opened by +link
+  '.katex', // KaTeX's own wrapper: the only evidence math was typeset rather than shown as source
 ])
