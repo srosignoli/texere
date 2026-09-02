@@ -161,6 +161,42 @@ export const SEL = {
   // compound selector is not.
   reminderCard: '.reminder',
 
+  // --- the search bar ------------------------------------------------------
+  // One panel with two modes, and they do not share an engine. Ctrl/Cmd+K is
+  // FUZZY: a subsequence scorer (OmniBar.svelte's fuzzyScore) run in the page
+  // over every .n4l the collection holds, parsed on open. Ctrl/Cmd+Shift+K is
+  // GRAPH: SearchGraph, against the SSTorytime-KV store — which does not exist
+  // until Ctrl/Cmd+G builds it.
+  //
+  // That asymmetry is a fact a plot can assert rather than narrate: on a
+  // collection with no graph, fuzzy returns results and graph returns
+  // omnibarGraphUnavailable. Deliberately NOT named searchPanel — searchButton
+  // (the toolbar) and searchField (the editor's Ctrl/Cmd+F) are already taken,
+  // and none of the three reaches the other two.
+  omnibarPanel: '[role="dialog"][aria-label="Search"]',
+  omnibarInput: '.omnibar-input',
+  // Reads "Fuzzy" or "Graph" — the only on-screen statement of which engine is
+  // about to answer.
+  omnibarBadge: '.mode-badge',
+  // "2 chapters · 1 node". Fuzzy searches three things and counts them
+  // separately, so this is where "across the collection" becomes a number.
+  omnibarSummary: '.omnibar-summary-counts',
+  // The bucket headings above each group: Chapters, Contexts, Nodes.
+  omnibarGroup: '.result-label',
+  omnibarResult: '.result-item',
+  omnibarResultText: '.result-text',
+  // The right-hand column of a result row: the FILE for a chapter hit, the
+  // chapter for a context or node hit. The file names are what show a viewer
+  // that one query reached several files.
+  omnibarResultHint: '.result-hint',
+  // The arrow-key cursor. Combine with omnibarResult ('.result-item' +
+  // '.selected') rather than writing the pair as one string: each half is then
+  // verified against the components, which a compound selector is not.
+  omnibarSelected: '.selected',
+  // Graph mode with no graph: "Build your graph first (Ctrl+G)…". Its presence
+  // is the proof that the fuzzy results came from somewhere else.
+  omnibarGraphUnavailable: '.graph-unavailable',
+
   // --- editor --------------------------------------------------------------
   // Vendor-owned, see VENDOR below.
   editor: '.cm-content',
