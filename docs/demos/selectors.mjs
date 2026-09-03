@@ -198,8 +198,21 @@ export const SEL = {
   omnibarGraphUnavailable: '.graph-unavailable',
 
   // --- editor --------------------------------------------------------------
-  // Vendor-owned, see VENDOR below.
-  editor: '.cm-content',
+  // The editor's VISIBLE PANE, and therefore the thing a plot clicks to put
+  // the caret in the buffer. Vendor-owned, see VENDOR below.
+  //
+  // Deliberately NOT .cm-content, which was here until a beat typed into
+  // nothing. .cm-content is the whole DOCUMENT: on a 72-line file its box was
+  // 1426px tall starting at y=-526, so its centre — where t.click aims — landed
+  // at y=187, inside the columns. The click missed the editor entirely and
+  // BLURRED it, and the beat then typed into no focused element while every
+  // selector still resolved. .cm-scroller is the flex pane, so it is on screen
+  // by construction whatever the document's length or scroll position.
+  //
+  // t.focusEditor() is the safe way to use this: it clicks and then asserts
+  // .cm-focused, which is the only thing that distinguishes a click that took
+  // focus from one that quietly did not.
+  editor: '.cm-scroller',
   // Rebuilds the editor, which resets the caret to the top of the document.
   vimToggle: '.vim-btn',
   // The arrow autocomplete +link opens. Vendor-owned, see VENDOR below.
@@ -216,7 +229,7 @@ export const SEL = {
 // list short: every entry is a selector nothing in this repo will warn you
 // about when it changes.
 export const VENDOR = new Set([
-  '.cm-content', // CodeMirror 6 editor content element
+  '.cm-scroller', // CodeMirror 6 scrollable viewport — the editor's visible pane
   '.cm-tooltip-autocomplete', // CodeMirror 6 autocomplete popup, opened by +link
   '.katex', // KaTeX's own wrapper: the only evidence math was typeset rather than shown as source
 ])

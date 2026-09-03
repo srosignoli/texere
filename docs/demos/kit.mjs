@@ -16,6 +16,7 @@ import { execFileSync } from 'node:child_process'
 import { mkdirSync, writeFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { FIXTURE } from './fixture.mjs'
+import { SEL } from './selectors.mjs'
 import { SHORTCUT_GROUPS } from '../../frontend/src/lib/shortcuts.js'
 
 // Narration cites keybindings, and a caption that names the wrong key is worse
@@ -211,6 +212,26 @@ export async function session({
       await page.mouse.down()
       await page.waitForTimeout(80)
       await page.mouse.up()
+    },
+
+    // Put the caret in the buffer, and PROVE it landed there.
+    //
+    // A click that misses the editor is silent in every way that matters: the
+    // selector resolves, the click reports success, and the keystrokes that
+    // follow go to whatever had focus instead — so a beat types into nothing
+    // and the take records an unchanged file. That is not hypothetical; it is
+    // what .cm-content's off-screen centre did before SEL.editor was repointed
+    // at the scroller.
+    //
+    // .cm-focused is CodeMirror's own marker for "this editor has focus", so
+    // asserting it is the difference between clicking at the editor and being
+    // in it.
+    async focusEditor() {
+      await t.click(SEL.editor)
+      await page.waitForFunction(() => document.querySelector('.cm-focused') !== null, null, {
+        timeout: 5000,
+      })
+      notes.push('editor focused')
     },
 
     type: (text, delay = 85) => page.keyboard.type(text, { delay }),
