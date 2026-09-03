@@ -201,6 +201,34 @@ export const SEL = {
   // and a plot waiting only for the first two hangs on it.
   omnibarEmpty: '.omnibar-empty',
 
+  // --- graph query construction --------------------------------------------
+  // The suggestion dropdown the graph bar opens on '\\'. It offers directives
+  // first, then — after a directive that takes one — the user's REAL chapter,
+  // context and arrow names, fetched from the backend (queryHints) and
+  // refreshed after every build. Addressed by its listbox role rather than the
+  // class, because the label is what the contract test can verify.
+  queryAutocomplete: '[role="listbox"][aria-label="Query suggestions"]',
+  queryAutocompleteRow: '.qac-row',
+  queryAutocompleteSection: '.qac-section',
+
+  // The optional natural-language box above the graph bar. It renders ONLY when
+  // an LLM profile is configured, is provider-agnostic (any cloud or local
+  // model), and never searches: it turns a question into a query and drops it
+  // in the bar, editable, so what was asked of the graph stays visible.
+  askBox: 'input[aria-label="Ask a question in plain language"]',
+  askSubmit: '.ask-go',
+
+  // Result shapes only the GRAPH mode produces. Fuzzy mode has none of these:
+  // a path is a chain of nodes with the arrows between them, a sequence step is
+  // one numbered link of a story, and a note block is the authored note behind
+  // a node.
+  pathChain: '.path-chain',
+  pathNode: '.path-node',
+  sequenceStep: '.sequence-step',
+  noteBlock: '.note-block-header',
+  listingChapter: '.listing-chapter-header',
+  listingContext: '.listing-context-tag',
+
   // --- graph build, and what it reports -------------------------------------
   // Ctrl/Cmd+G rebuilds the store under <collectionDir>/sst_data (BadgerDB)
   // and <collectionDir>/bleve. It is a FULL rebuild — the builder removes both
