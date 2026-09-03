@@ -196,10 +196,69 @@ export const SEL = {
   // Graph mode with no graph: "Build your graph first (Ctrl+G)…". Its presence
   // is the proof that the fuzzy results came from somewhere else.
   omnibarGraphUnavailable: '.graph-unavailable',
+  // "No results", or "Loading collection…" while the file cache fills. A query
+  // that found nothing is a THIRD outcome beside results and unavailability,
+  // and a plot waiting only for the first two hangs on it.
+  omnibarEmpty: '.omnibar-empty',
+
+  // --- graph build, and what it reports -------------------------------------
+  // Ctrl/Cmd+G rebuilds the store under <collectionDir>/sst_data (BadgerDB)
+  // and <collectionDir>/bleve. It is a FULL rebuild — the builder removes both
+  // directories first — which is why an edited file does not reach the graph
+  // until the next build, and why a plot can prove that by querying between
+  // the two.
+  //
+  // The banner reads "Graph ready — N nodes, M links (Xms)" and REMOVES ITSELF
+  // after 5 seconds (App.svelte's setTimeout). A beat that means to frame it
+  // has a five-second window.
+  graphBanner: '.graph-banner',
+
+  // The log panel, Ctrl/Cmd+Shift+M. Where a build says what it could not do:
+  // per-file parse errors carry file:line, and unknown arrow codes arrive as
+  // one aggregated warning naming the code and its occurrence count.
+  //
+  // It is append-only across builds — fixing a file and rebuilding ADDS a
+  // clean result, it does not retract the old warnings. Clearing first is what
+  // makes "the warnings went away" a true statement rather than a hopeful one.
+  logPanel: '.log-panel',
+  logRow: '.log-row',
+  // "! 4", or "empty" when nothing has been logged.
+  logCounts: '.log-counts',
+  logEmpty: '.log-empty',
+  logClear: 'button[title^="Clear all entries"]',
+  // The panel's two tabs. LOG is what the last builds reported and accumulates
+  // until cleared; PROBLEMS is the linter's current answer to a different
+  // question — is this file actually N4L — and is REPLACED on every run
+  // (SourceTab calls runLint on save, so it tracks the file, not the build).
+  panelTab: (name) => `.ptab:has-text("${name}")`,
+  // One linter finding. A DEFECT means the parser produced something other
+  // than what was written — the note still opens and nothing is blocked, but
+  // what was stored is not what the author asked for, and .defect-remediation
+  // says exactly what was lost. Undeclared arrows are deliberately NOT defects
+  // and never mark a file; they live in the Vocabulary column.
+  defectRow: '.defect-row',
+  // A row's severity, location and text live in .sev/.loc/.msg, and a defect's
+  // in .defect-kind/.defect-msg/.defect-remediation — deliberately NOT
+  // declared. `.msg` belongs to four other components and `.filter` to three,
+  // so as contract entries they would name several things at once. A plot
+  // reads them out of a declared row in an evaluate instead.
 
   // --- editor --------------------------------------------------------------
-  // Vendor-owned, see VENDOR below.
-  editor: '.cm-content',
+  // The editor's VISIBLE PANE, and therefore the thing a plot clicks to put
+  // the caret in the buffer. Vendor-owned, see VENDOR below.
+  //
+  // Deliberately NOT .cm-content, which was here until a beat typed into
+  // nothing. .cm-content is the whole DOCUMENT: on a 72-line file its box was
+  // 1426px tall starting at y=-526, so its centre — where t.click aims — landed
+  // at y=187, inside the columns. The click missed the editor entirely and
+  // BLURRED it, and the beat then typed into no focused element while every
+  // selector still resolved. .cm-scroller is the flex pane, so it is on screen
+  // by construction whatever the document's length or scroll position.
+  //
+  // t.focusEditor() is the safe way to use this: it clicks and then asserts
+  // .cm-focused, which is the only thing that distinguishes a click that took
+  // focus from one that quietly did not.
+  editor: '.cm-scroller',
   // Rebuilds the editor, which resets the caret to the top of the document.
   vimToggle: '.vim-btn',
   // The arrow autocomplete +link opens. Vendor-owned, see VENDOR below.
@@ -216,7 +275,7 @@ export const SEL = {
 // list short: every entry is a selector nothing in this repo will warn you
 // about when it changes.
 export const VENDOR = new Set([
-  '.cm-content', // CodeMirror 6 editor content element
+  '.cm-scroller', // CodeMirror 6 scrollable viewport — the editor's visible pane
   '.cm-tooltip-autocomplete', // CodeMirror 6 autocomplete popup, opened by +link
   '.katex', // KaTeX's own wrapper: the only evidence math was typeset rather than shown as source
 ])
