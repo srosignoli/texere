@@ -166,6 +166,82 @@ The useful question a curve like this answers is not how hard to study, but when
 "  (note) which is exactly what the study schedule is for
 `,
 
+  // The file the graph-search tutorial is recorded against.
+  //
+  // Everything here exists to make one query type demonstrable, so the content
+  // is shaped by the query language rather than only by the subject:
+  //
+  //   A CHAIN whose arrow targets EXACTLY equal the next node's text. That is
+  //   what makes \\from Hypothesis \\to Publication a real five-hop path.
+  //   learning.n4l's study loop reads like a chain but is not one — its targets
+  //   ("extract the passage") do not equal the next node's line, so it is
+  //   ordered by the _sequence_ context and nothing else. Path solving needs
+  //   identical strings.
+  //
+  //   Words placed for the MATCHING operators: "effect" and "size" co-occur so
+  //   a phrase query differs from an AND; "significance"/"significant" and
+  //   "Replication"/"replicating" give the stemmer and a :* prefix something to
+  //   do; "sample" appears with and without "small" for a & !b.
+  //
+  //   "naïve" carries a diacritic on purpose — it is the only way to show that
+  //   (naive) folds accents.
+  //
+  // The vocabulary is also constrained by tutorials that came first: 05 asserts
+  // exact fuzzy-search counts for "memory", "curve", "intmix" and "neuro"
+  // across the WHOLE collection, and fuzzy matching is a subsequence, so a
+  // sentence anywhere in this file can silently change those numbers. Every
+  // string below was checked against those four needles — "survives fresh data"
+  // became "holds in fresh data" because Repli(c)ation s(u)(r)(v)iv(e)s spells
+  // "curve".
+  'experiments.n4l': `- the experiment pipeline
+
+:: method ::
+
+Hypothesis
+"  (fwd) Design
+"  (note) a claim that could turn out false, stated before the data
+
+Design
+"  (fwd) Pilot
+
+Pilot
+"  (fwd) Data collection
+"  (note) a small run that finds the flaws while they are still cheap
+
+Data collection
+"  (fwd) Analysis
+
+Analysis
+"  (fwd) Publication
+"  (means) effect size, not merely significance
+
+Publication
+"  (contain) data, code and the analysis plan
+
+- reading the evidence
+
+:: method ::
+
+Effect size says how big, significance says how sure
+"  (e.g.) a tiny effect can be highly significant in a large sample
+
+Statistical power is the chance of finding a real effect
+"  (bfr) the sample size is fixed
+
++:: statistics ::
+
+A na\u00efve comparison across many tests inflates the false positive rate
+"  (means) correct for the family of tests
+
+Replication asks whether a finding holds in fresh data
+"  (note) replicating beats explaining
+
+-:: statistics ::
+
+Read the abstract last, after the tables
+"  (contain) who was excluded, and why
+`,
+
   // A second file, so the first column is a tree of files rather than a list of
   // chapters wearing a filename.
   'research-methods.n4l': `- evidence
