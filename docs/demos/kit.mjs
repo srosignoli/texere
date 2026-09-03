@@ -234,7 +234,12 @@ export async function session({
       notes.push('editor focused')
     },
 
-    type: (text, delay = 85) => page.keyboard.type(text, { delay }),
+    // 110ms, not 85. Review of the first six tutorials found the typing read
+    // as machine-fast — text appearing quicker than a person could produce it
+    // undercuts a screen recording, because the viewer stops believing they are
+    // watching someone use the app. Queries and other short strings a viewer is
+    // meant to READ as they appear should pass an even slower delay explicitly.
+    type: (text, delay = 110) => page.keyboard.type(text, { delay }),
     press: (key) => page.keyboard.press(key),
 
     // The documented combo for an action, e.g. keys('Extract selection').
