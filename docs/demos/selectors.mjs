@@ -201,6 +201,47 @@ export const SEL = {
   // and a plot waiting only for the first two hangs on it.
   omnibarEmpty: '.omnibar-empty',
 
+  // --- the 2.5D graph explorer ---------------------------------------------
+  // A full-surface dialog over the workbench. It is a pure CONSUMER of the
+  // graph the build made: no graph, no explorer. Its launcher is also disabled
+  // until a chapter is selected ("Select a chapter to enable"), so a plot opens
+  // one first.
+  //
+  // It renders through WebGL (three.js). That works in the recording browser
+  // via ANGLE/SwiftShader — software rasterisation, no GPU — which is worth
+  // knowing before a plot is written around it, and worth re-checking if the
+  // canvas ever comes back blank.
+  explorerRoot: '[role="dialog"][aria-label="Graph Explorer"]',
+  explorerCanvas: 'canvas[aria-label="Graph Explorer canvas"]',
+  explorerClose: 'button[aria-label="Close Graph Explorer"]',
+
+  // The explorer has its OWN always-visible query bar, in the same language as
+  // the omnibar — which is why Ctrl/Cmd+Shift+K focuses this bar instead of
+  // opening the omnibar while the explorer is up. It submits on Enter.
+  explorerQueryBar: 'input[aria-label="Graph query"]',
+  explorerRunQuery: 'button[aria-label="Run query"]',
+
+  // Layers & filters. LAYERS are the context territories (checkbox, node count
+  // and a solo button each); ARROWS are the four SSTorytime meta-types;
+  // DISPLAY carries the stacked/extended layout toggle, the spacing and
+  // opacity sliders, and Reset view.
+  explorerControlsToggle: 'button[aria-label="Toggle explorer controls"]',
+  explorerControls: 'aside[aria-label="Explorer controls"]',
+  explorerLayerRow: '.row',
+  explorerSolo: '.solo-btn',
+  explorerLayoutMode: '.mode-btn',
+  explorerResetView: '.reset-btn',
+
+  // Matches / total nodes, and the two editable numbers that re-run the query:
+  // limit is how many matches to anchor on, radius how far each one expands.
+  explorerStats: '[role="status"][aria-label="Graph statistics"]',
+  explorerLimit: 'input[aria-label="Result limit"]',
+  explorerRadius: 'input[aria-label="Orbit radius"]',
+
+  // The four edge meta-types, keyed by style as well as colour so the legend
+  // reads without relying on colour alone.
+  explorerEdgeLegend: '[role="img"][aria-label="Edge color legend"]',
+
   // --- graph query construction --------------------------------------------
   // The suggestion dropdown the graph bar opens on '\\'. It offers directives
   // first, then — after a directive that takes one — the user's REAL chapter,
