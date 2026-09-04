@@ -15,6 +15,7 @@ import { mkdirSync, writeFileSync, rmSync, readFileSync, existsSync } from 'node
 import { join } from 'node:path';
 import { FIXTURE, CONFIG, SAVED, PHRASE } from './fixture.mjs';
 import { writeCurveSvg, writeCurveVideo } from './media.mjs';
+import { writeReadingPdf } from './pdf.mjs';
 
 
 // The .n4l side of the fixture.
@@ -285,6 +286,41 @@ Studying one topic to exhaustion feels productive and performs poorly. Mixing
 related topics within a session — interleaving — slows you down in the moment
 and improves retention weeks later.
 `,
+  // The text source the reading tutorial imports. Longer than the other library
+  // documents on purpose: the tutorial takes three extracts from it and they
+  // should come from different sections, the way a reader picks out what
+  // interests them rather than reading top to bottom.
+  'incremental-reading.md': `# Incremental Reading
+
+Incremental reading is a way of working through more material than you could
+ever finish in one sitting. Instead of reading a document once and hoping it
+sticks, you read a little, take out the parts that matter, and let a schedule
+bring both the document and the extracts back to you later.
+
+## Extracts, not highlights
+
+A highlight is a mark on someone else's text. An extract is a new note of your
+own, carrying a reference back to the exact place it came from.
+
+The difference matters when you return months later: a highlight tells you that
+past-you found something interesting, while an extract tells you what you
+thought it meant.
+
+## Why the queue matters
+
+Material you have extracted but not yet turned into a question is the most
+fragile thing in the system. It has cost you attention and returned nothing.
+
+The queue exists to close that gap: every extract is scheduled to come back so
+you can decide what it should become.
+
+## Reading is not one pass
+
+A document is rarely finished on the first visit. You take what you can use
+today, mark where you stopped, and let the schedule decide when the rest is
+worth your time.
+`,
+
   'sleep-and-memory.md': `# Sleep and Memory
 
 Consolidation happens largely during sleep, when the hippocampus replays the
@@ -303,6 +339,11 @@ async function seedFixture() {
   // see media.mjs. The video needs ffmpeg, which the recording already does.
   writeCurveSvg(join(FIXTURE, 'media', 'forgetting-curve.svg'));
   await writeCurveVideo(join(FIXTURE, 'media', 'forgetting-curve.mp4'));
+  // The reading tutorial imports one source of each kind, and a PDF is the only
+  // one that cannot be written as a string. Chromium renders it, so its text
+  // layer is real — the reader extracts by selecting text, and an image-only
+  // PDF would have nothing to select.
+  await writeReadingPdf(join(FIXTURE, 'spacing-review.pdf'));
   for (const [name, body] of Object.entries(N4L)) {
     writeFileSync(join(FIXTURE, name), body);
   }
