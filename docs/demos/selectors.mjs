@@ -107,6 +107,65 @@ export const SEL = {
   extract: 'button[aria-label="Extract selection"]',
   closeReader: 'button[aria-label="Close reader"]',
 
+  // --- the reading list (incremental reading) ------------------------------
+  // Four ways in, and only two of them a browser can drive unaided: + Text and
+  // + PDF open GTK file dialogs (use DemoImportTextSource / DemoImportPdfSource
+  // instead), + Web asks for a URL with window.prompt, and + LLM opens a chat
+  // whose "Create document" ALSO prompts, for a title. Both prompts are
+  // answerable via page.on('dialog') but the browser draws them, so neither
+  // appears in the recording — narrate what the viewer cannot see.
+  sourceAddText: 'button[title^="Import a text or markdown file"]',
+  sourceAddPdf: 'button[title^="Import a PDF"]',
+  sourceAddWeb: 'button[title^="Import a web article"]',
+  sourceAddLLM: 'button[title^="Ask a model"]',
+  sourceSearch: 'input[aria-label="Search sources"]',
+  // Collapses the sources list. Worth having because the reading pane is a
+  // 50/50 flex with no splitter, so this is the only way to give a document
+  // more width — and the PDF pane renders at a fixed 1.4x with no fit-to-width,
+  // so a wide page is otherwise cut off at the margin.
+  sourcesHide: 'button[title="Hide sources"]',
+  sourcesShow: 'button[title="Show sources"]',
+  // One document in the list. The row carries its percentage read and a due
+  // badge — reading elements are scheduled the same way cards are.
+  sourceRow: '.sb-docrow',
+  sourceDoc: '.sb-doc',
+  // The clickable title of a document row — this is what OPENS it. The row
+  // itself does not: the chevron beside it only unfolds the extracts, so that
+  // you can open a document without expanding it.
+  sourceName: '.sb-name',
+  // The chevron that unfolds a document's extracts beneath it in the tree.
+  // By class, not aria-label: the label is templated ('Hide extracts' when
+  // open), so no literal exists in the source for the contract test to verify —
+  // an entry the test cannot check is worse than a class it can.
+  sourceExtractsToggle: '.sb-tri',
+  // One extract, nested under its document once the chevron is open. A document
+  // with none renders .sb-noextracts instead — which is what a plot expanding
+  // the wrong row frames, under a caption claiming the opposite.
+  sourceExtract: '.sb-extract',
+  sourceNoExtracts: '.sb-noextracts',
+
+  // The reading surface itself, and the three things you can do with what you
+  // are reading. Extract turns a selection into a node; Later reschedules the
+  // document; Done finishes it.
+  readingBody: '.reading-body',
+  // Later and Done carry no title or label of their own — they are addressed by
+  // their text, through the shared .rb-btn class.
+  readingBtn: '.rb-btn',
+  // Per-medium panes: plain text/markdown, the PDF viewer, the fetched article.
+  textPane: '.tsp',
+  pdfPane: '.pdf-root',
+  pdfPageLabel: '.pdf-page',
+  pdfNext: '.pdf-nav',
+  webArticle: '.web-article',
+  openOriginal: '.web-open',
+
+  // The ask-a-model pane: its transcript, its input, and the button that turns
+  // the conversation into a document in the reading list.
+  chatLog: '.lc-log',
+  chatInputBox: '.lc-input',
+  chatSend: '.lc-send',
+  chatCreate: '.lc-create',
+
   // --- process -------------------------------------------------------------
   // makeCard seeds "<passage> >> " and parks the cursor for the back to be
   // typed. Clicking createCard before typing materialises nothing.
