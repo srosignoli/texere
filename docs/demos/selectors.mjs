@@ -196,6 +196,20 @@ export const SEL = {
   notebookContext: '.ctx-cell',
   notebookContextBadge: '.ctx-badge',
 
+  // The N4L draft cell: a small editor built on the SAME n4lBaseExtensions the
+  // note files use, so it has the same highlighting, the same arrow completion
+  // and the same live arrow lint. Push inserts its text at the note editor's
+  // cursor and records a notebook link, which is what puts a provenance dot in
+  // the gutter beside the pushed node.
+  //
+  // Two classes this cell's tutorial needs are deliberately NOT declared:
+  // .cm-arrow-unreg (the lint underline) and .cm-nb-dot (the gutter dot) are
+  // applied from lib/n4l-editor.js rather than from a component, so the
+  // contract test cannot verify them — an entry it cannot check is worse than
+  // reading the class in an evaluate, which is what a plot does instead.
+  draftCell: '.draft-cell',
+  draftPush: 'button[title^="Insert this N4L"]',
+
   // --- process -------------------------------------------------------------
   // makeCard seeds "<passage> >> " and parks the cursor for the back to be
   // typed. Clicking createCard before typing materialises nothing.
