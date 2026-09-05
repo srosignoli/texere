@@ -166,6 +166,26 @@ export const SEL = {
   chatSend: '.lc-send',
   chatCreate: '.lc-create',
 
+  // --- process: the notebook ------------------------------------------------
+  // The Process tab is a split: the note FILE on the left with the scheduled
+  // extract selected in it, and that extract's notebook on the right. The
+  // extract is an ordinary node in the file carrying its own `# @id`, which is
+  // also the key the notebook is stored under — OpenNotebook takes the node id,
+  // and learning.db's notebooks table is indexed by extract_node_id. That is
+  // what "the notebook is linked to the extract" means concretely, and it is
+  // why reopening the extract months later brings back the reasoning that
+  // produced the card.
+  processLeft: '.pv-left',
+  processRight: '.pv-right',
+  processEmpty: '.pv-empty',
+
+  // The notebook's cell stack, and the nine buttons that add to it. A tenth
+  // block — the context — is rendered ABOVE the stack rather than added to it:
+  // the extract's text, its tags, its graph neighbours (empty until Ctrl/Cmd+G
+  // has been run) and the surrounding source text.
+  notebookScroll: '.nb-scroll',
+  notebookAddCell: '.nb-add',
+
   // --- process -------------------------------------------------------------
   // makeCard seeds "<passage> >> " and parks the cursor for the back to be
   // typed. Clicking createCard before typing materialises nothing.
