@@ -185,6 +185,16 @@ export const SEL = {
   // has been run) and the surrounding source text.
   notebookScroll: '.nb-scroll',
   notebookAddCell: '.nb-add',
+  // The context block, pinned above the cell stack — not a cell, and not
+  // addable or deletable. Four sections assembled from three different places:
+  // Extract comes from the note file, Source from the reading list's copy of
+  // the original, and Tags and Neighbors from the GRAPH. That last part is
+  // visible as a before/after: with no graph, Neighbors reads "No graph
+  // neighbors — build the graph (Ctrl+G)" and the Tags section does not render
+  // at all. assembleContext runs on every OpenNotebook, so the block tracks the
+  // graph rather than freezing at the moment the extract was taken.
+  notebookContext: '.ctx-cell',
+  notebookContextBadge: '.ctx-badge',
 
   // --- process -------------------------------------------------------------
   // makeCard seeds "<passage> >> " and parks the cursor for the back to be
