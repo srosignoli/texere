@@ -210,6 +210,26 @@ export const SEL = {
   draftCell: '.draft-cell',
   draftPush: 'button[title^="Insert this N4L"]',
 
+  // The graph cell: the query language of tutorial 07, inside the notebook.
+  // Its input carries the same directive autocomplete as the omnibar (it shares
+  // getSuggestions and the live chapter/context/arrow hints), and it has two
+  // views — Text renders the result as a list, Graph renders the same result as
+  // an isometric scene in the cell. Expand hands the query to the full explorer
+  // by setting explorerQuery and explorerOpen, so the cell and tutorial 08's
+  // surface are the same query seen at two sizes.
+  //
+  // .node — one result row — is deliberately not declared: seven components
+  // apply that class, so as a contract entry it would name all of them. A plot
+  // counts rows inside the declared results root instead.
+  graphCell: '.gq-cell',
+  graphCellQuery: '.gq-input',
+  graphCellRun: '.gq-run',
+  graphCellSuggestions: '.gq-sug',
+  graphCellViews: '.gq-view',
+  graphCellExpand: 'button[title^="Open in full explorer"]',
+  graphCellResults: '.gq-results',
+  graphCellScene: '.gq-graph',
+
   // --- process -------------------------------------------------------------
   // makeCard seeds "<passage> >> " and parks the cursor for the back to be
   // typed. Clicking createCard before typing materialises nothing.
