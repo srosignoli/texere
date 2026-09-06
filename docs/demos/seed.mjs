@@ -16,6 +16,7 @@ import { join } from 'node:path';
 import { FIXTURE, CONFIG, SAVED, PHRASE } from './fixture.mjs';
 import { writeCurveSvg, writeCurveVideo } from './media.mjs';
 import { writeReadingPdf } from './pdf.mjs';
+import { writeScanFixture } from './scan.mjs';
 
 
 // The .n4l side of the fixture.
@@ -344,6 +345,16 @@ async function seedFixture() {
   // layer is real — the reader extracts by selecting text, and an image-only
   // PDF would have nothing to select.
   await writeReadingPdf(join(FIXTURE, 'spacing-review.pdf'));
+  // The scan tutorial needs a page that genuinely looks handmade: printed text
+  // would prove nothing, since OCR of clean type is not what the cell claims.
+  // The PNG is what the cell imports — ImportImage takes only jpg/png/gif/webp
+  // — and it is saved SIDEWAYS on purpose, so the take straightens it with the
+  // cell's own Rotate control before transcribing. The PDF is the same page for
+  // anyone who wants the document rather than the scan.
+  await writeScanFixture(
+    join(FIXTURE, 'card-states-scan.png'),
+    join(FIXTURE, 'card-states-scan.pdf'),
+  );
   for (const [name, body] of Object.entries(N4L)) {
     writeFileSync(join(FIXTURE, name), body);
   }
