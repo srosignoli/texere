@@ -248,6 +248,65 @@ export const SEL = {
   sketchExpand: 'button[title^="Expand to fill the window"]',
   transcribeBar: '.tb',
 
+  // The media cell. Searches openly-licensed providers — Wikimedia Commons,
+  // Openverse, the Internet Archive, PeerTube and Lingua Libre — over the live
+  // network, so a plot must assert that SOME result arrived, never which one.
+  //
+  // Image and audio are DOWNLOADED into the collection's media/ directory
+  // (FetchMediaURL -> media.FetchRemote) and the note line points at
+  // "media/<asset>". Video is never stored: pick() resolves a play URL and the
+  // line carries that URL, so a video reference needs the network again and an
+  // image does not. That asymmetry is the cell's central fact.
+  //
+  // Promote builds the line with buildMediaFact and inserts it as a new N4L
+  // DRAFT CELL below (NotebookPane: onInsert -> insertAfter(i, newDraftCell)),
+  // so this cell hands off to the one tutorial 12 covers — same as the sketch.
+  //
+  // The add button is labelled "+ Media", NOT "+ Media cell" like its
+  // neighbours: matching add-cell buttons on exact text will miss it.
+  mediaCell: '.me-cell',
+  mediaLicense: '.me-lic',
+  mediaSubject: '.me-subj',
+  // Addressed structurally: it is the last button in the tool row. Neither its
+  // text nor its title is a fixed string — both carry the arrow code for the
+  // current kind ("Promote to N4L (pic)" / "(pron)" / "(vid)"), which is the
+  // point of the control and changes as a tutorial switches kinds. A title
+  // prefix would also sit here unverified, since the contract test can only
+  // check titles that are literals in the component.
+  mediaPromote: '.me-tools .me-btn:last-of-type',
+  mediaSourceLink: '.me-src-btn',
+
+  // The search panel, shown while the cell has no asset.
+  mediaSearchPanel: '.ms-panel',
+  // Image / Audio / Video. Scoped to .ms-kinds: `.ms-btn` alone also matches
+  // Search, Import file… and Fetch.
+  mediaKind: '.ms-kinds .ms-btn',
+  mediaKindOn: '.ms-kinds .ms-on',
+  // Only rendered for audio — the pronunciation provider takes "language|word".
+  mediaLanguage: '.ms-kinds select',
+  mediaProvider: '.ms-bar select',
+  mediaQuery: '.ms-bar .ms-q',
+  mediaSearch: '.ms-bar .ms-btn',
+  mediaNote: '.ms-note',
+  mediaError: '.ms-err',
+  // Three result layouts for three kinds: a grid of thumbnails for images, a
+  // grid with durations for video, and rows with a play button for audio.
+  mediaHit: '.ms-hit',
+  mediaVideoHit: '.ms-vhit',
+  mediaRow: '.ms-row',
+  mediaPlay: '.ms-play',
+  mediaPick: '.ms-pick',
+
+  // The three views, once an asset is on the cell. Only the image one is
+  // croppable; only the video one carries a start time, because only video has
+  // a moment worth marking.
+  mediaImage: '.mv-view img',
+  mediaCropHint: '.mv-hint',
+  mediaAudioPlayer: '.av-player',
+  mediaVideoPlayer: '.vv-player',
+  mediaSetStart: 'button[title^="Mark the moment"]',
+  mediaStartTime: '.vv-time',
+
   // --- process -------------------------------------------------------------
   // makeCard seeds "<passage> >> " and parks the cursor for the back to be
   // typed. Clicking createCard before typing materialises nothing.
