@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -59,5 +60,64 @@ func TestProfileCRUD(t *testing.T) {
 	}
 	if cfg.ActiveProfileID != "b" {
 		t.Fatalf("active should fall back to b, got %q", cfg.ActiveProfileID)
+	}
+}
+
+// A key pasted into the "API key env var" field must never come back out in an
+// error. That field sits next to the one for the key itself, the two are easy
+// to confuse, and the message is rendered in the cell — so echoing it puts a
+// live secret on screen and into any screenshot of it.
+func TestEnvKeyErrorNeverEchoesAPastedKey(t *testing.T) {
+	const pasted = "sk-proj-AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH_IJKL"
+
+	for _, fn := range []struct {
+		name string
+		call func(LLMProfile) (string, error)
+	}{
+		{"resolveKey", resolveKey},
+		{"resolveKeyOptional", resolveKeyOptional},
+	} {
+		_, err := fn.call(LLMProfile{APIKeyEnv: pasted})
+		if err == nil {
+			t.Fatalf("%s: expected an error for an unset variable", fn.name)
+		}
+		if strings.Contains(err.Error(), pasted) {
+			t.Fatalf("%s: the error echoed the pasted key: %v", fn.name, err)
+		}
+		// It should also say something the user can act on.
+		if !strings.Contains(err.Error(), "API key") {
+			t.Fatalf("%s: the error does not point at the right field: %v", fn.name, err)
+		}
+	}
+}
+
+// The ordinary case keeps its detail: naming the variable is what tells someone
+// which one to export.
+func TestEnvKeyErrorNamesARealVariable(t *testing.T) {
+	_, err := resolveKey(LLMProfile{APIKeyEnv: "TEXERE_TEST_UNSET_KEY"})
+	if err == nil || !strings.Contains(err.Error(), "TEXERE_TEST_UNSET_KEY") {
+		t.Fatalf("a real variable name should be named: %v", err)
+	}
+}
+
+func TestLooksLikeEnvVarName(t *testing.T) {
+	yes := []string{"OPENAI_API_KEY", "_private", "A", "a1", "MIXED_case_9"}
+	no := []string{
+		"",
+		"sk-proj-abc",                   // hyphens: the shape of a real key
+		"sk_proj abc",                   // spaces
+		"9LEADING_DIGIT",                // must not start with a digit
+		strings.Repeat("A", 65),         // implausibly long for a name
+		"sk-" + strings.Repeat("x", 40), // a key by any other name
+	}
+	for _, s := range yes {
+		if !looksLikeEnvVarName(s) {
+			t.Errorf("%q should look like a variable name", s)
+		}
+	}
+	for _, s := range no {
+		if looksLikeEnvVarName(s) {
+			t.Errorf("%q should NOT look like a variable name", s)
+		}
 	}
 }
