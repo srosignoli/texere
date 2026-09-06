@@ -381,6 +381,31 @@ export const SEL = {
   llmError: '.llm-cell .llm-error',
   llmHint: '.llm-cell .llm-hint',
 
+  // The scan cell — the notebook's route from paper into N4L.
+  //
+  // "+ Scan" is ImageCell: NotebookPane.addImage calls ImportImage(), a native
+  // GTK dialog, so a plot ingests through DemoImportImage(path) and adds the
+  // cell itself. Only jpg/png/gif/webp are accepted; a PDF is not an option.
+  //
+  // Its Transcribe is the SAME TranscribeBar the sketch cell uses (SEL.transcribeBar),
+  // sending the picture under TRANSCRIBE_SYSTEM — which asks for faithful text
+  // and, for any diagram, a fenced ```mermaid block. The result arrives as an
+  // N4L draft cell. NOTHING IN THE APP RENDERS MERMAID: the model produces the
+  // description, and it stays text, so a tutorial must not imply a diagram
+  // appears.
+  //
+  // bakeImage bakes cell.rotation and cell.crop into what it sends, so a scan
+  // straightened with Rotate reaches the model upright.
+  scanCell: '.im-cell',
+  scanBar: '.im-cell .im-bar',
+  scanRotateLeft: 'button[title="Rotate left"]',
+  scanRotateRight: 'button[title="Rotate right"]',
+  scanCrop: 'button[title="Crop"]',
+  scanReset: 'button[title="Reset rotation and crop"]',
+  scanImage: '.im-view img',
+  scanCropHint: '.im-hint',
+  scanMissing: '.im-missing',
+
   // --- process -------------------------------------------------------------
   // makeCard seeds "<passage> >> " and parks the cursor for the back to be
   // typed. Clicking createCard before typing materialises nothing.
