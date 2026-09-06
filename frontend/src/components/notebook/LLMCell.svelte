@@ -121,7 +121,9 @@
       system,
       messages: sendMessages,
       onDelta: (t) => { partial += t },
-      onDone: () => { finish(partial) },
+      // The full reply comes with llm:done; `partial` is only the live
+      // preview, so it is the fallback rather than the source of truth.
+      onDone: (full) => { finish(full || partial) },
       onError: (m) => { error = m; abandonTurn() },
     })
   }

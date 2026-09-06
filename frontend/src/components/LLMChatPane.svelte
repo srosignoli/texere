@@ -80,7 +80,8 @@
       system: SYSTEM,
       messages: chat.messages,
       onDelta: (t) => { partial += t },
-      onDone: () => finish(partial),
+      // llm:done carries the whole reply; partial is the live preview.
+      onDone: (full) => finish(full || partial),
       onError: (m) => { error = m; abandonTurn() },
     })
   }

@@ -32,7 +32,8 @@
       system: TRANSCRIBE_SYSTEM,
       messages: [{ role: 'user', content: 'Transcribe this image.', images: [img] }],
       onDelta: (t) => { acc += t },
-      onDone: () => { busy = false; turn = null; if (acc.trim()) onInsert(acc) },
+      // llm:done carries the whole transcription; acc is the live preview.
+      onDone: (full) => { busy = false; turn = null; const text = full || acc; if (text.trim()) onInsert(text) },
       onError: (m) => { err = m; busy = false; turn = null },
     })
   }
