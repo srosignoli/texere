@@ -230,6 +230,24 @@ export const SEL = {
   graphCellResults: '.gq-results',
   graphCellScene: '.gq-graph',
 
+  // The sketch cell. Strokes are drawn with real pointer events onto a canvas,
+  // so a plot draws by pressing and moving the mouse — and asserts by counting
+  // PAINTED PIXELS in the canvas, which is the one check in this whole contract
+  // that cannot be fooled by an element that exists but renders nothing.
+  //
+  // Transcribe bakes the drawing to an image, sends it to a multimodal model,
+  // and inserts the result as a new N4L DRAFT CELL below the sketch
+  // (NotebookPane: onInsert -> insertAfter(i, newDraftCell(text))). So the
+  // sketch cell hands off to the cell tutorial 12 covers, and a handwritten
+  // note can end up pushed into the note file.
+  sketchCell: '.sk-cell',
+  sketchToolbar: '.sk-bar',
+  sketchSurface: '.sk-wrap',
+  sketchSize: '.sk-size',
+  sketchSwatch: '.sw',
+  sketchExpand: 'button[title^="Expand to fill the window"]',
+  transcribeBar: '.tb',
+
   // --- process -------------------------------------------------------------
   // makeCard seeds "<passage> >> " and parks the cursor for the back to be
   // typed. Clicking createCard before typing materialises nothing.
