@@ -433,6 +433,31 @@ export const SEL = {
   audioSttHint: '.au-hint',
   audioError: '.au-cell .au-err',
 
+  // The compute cell: the user's code, run in a fresh Web Worker per run with
+  // `math` (mathjs), `graph`, `chart`, `print` and a console shim in scope.
+  //
+  // What makes it more than a calculator is `graph.query` / `graph.orbit`,
+  // which the host bridges to SearchGraph over postMessage — so code in a
+  // notebook can compute over the user's OWN notes and chart the answer.
+  //
+  // The worker is terminated after 5s, and a run that hits that reports
+  // "Timed out after 5000ms (terminated)." in .cc-error rather than hanging.
+  //
+  // Under `wails dev` this cell needs frontend/vite.config.js to name mathjs in
+  // optimizeDeps.include AND to allow BigInt in the pre-bundler: mathjs is
+  // imported only from a worker, which the dev scanner does not traverse. Left
+  // out, the dep URL answers 504 and the cell says "compute worker failed" —
+  // which looks like a broken plot and is not one.
+  computeCell: '.cc-cell',
+  computeCode: '.cc-code',
+  computeRun: '.cc-run',
+  computeStop: '.cc-stop',
+  computeOutput: '.cc-out',
+  computeLog: '.cc-log',
+  computeValue: '.cc-value',
+  computeError: '.cc-error',
+  computeChart: '.cc-chart',
+
   // --- process -------------------------------------------------------------
   // makeCard seeds "<passage> >> " and parks the cursor for the back to be
   // typed. Clicking createCard before typing materialises nothing.
