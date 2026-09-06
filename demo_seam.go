@@ -37,3 +37,10 @@ func (a *App) DemoImportTextSource(path string) (*ReadingView, error) {
 func (a *App) DemoImportPdfSource(path string) (*ReadingView, error) {
 	return a.importPdfFrom(path)
 }
+
+// DemoImportImage ingests the image at path, skipping the dialog that
+// ImportImage would open. Returns {asset, mime}, which is what the notebook's
+// "+ Scan" button feeds to newImageCell.
+func (a *App) DemoImportImage(path string) (map[string]any, error) {
+	return a.importImageFrom(path)
+}
