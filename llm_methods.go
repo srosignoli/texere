@@ -5,6 +5,9 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"strings"
+	"sync"
+	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
@@ -12,6 +15,22 @@ import (
 )
 
 const llmMaxTokens = 4096 // per-turn response cap for the chat cell
+
+// llmEmitInterval is how often buffered deltas are flushed to the frontend.
+// Mirrors shellEmitInterval, for the same reason and one more.
+//
+// A token-per-event stream does not only flood the bridge, it can arrive OUT OF
+// ORDER. On Linux, runtime.EventsEmit ends in invokeOnMainThread, which runs a
+// call IMMEDIATELY when the calling goroutine happens to be on the GTK main
+// thread and appends it to a dispatch queue otherwise. A goroutine is not
+// pinned to a thread, so an emit that lands on the main thread overtakes emits
+// already queued — which reached the transcript as transposed words: "Let's
+// work on creating a flash togethercard", "phr theasing question side".
+//
+// Batching makes that rare by cutting the number of emits; the sequence number
+// below makes it harmless, and the full text on llm:done makes the committed
+// message independent of delta delivery altogether.
+const llmEmitInterval = 40 * time.Millisecond
 
 func newStreamID() string {
 	b := make([]byte, 8)
@@ -131,20 +150,74 @@ func (a *App) StartLLMTurn(req StartTurnReq) (string, error) {
 			a.llmMu.Unlock()
 			cancel()
 		}()
+
+		var (
+			mu      sync.Mutex
+			pending strings.Builder // text since the last flush
+			full    strings.Builder // the whole reply, for llm:done
+			seq     int
+		)
+
+		// Each flush carries a sequence number so the frontend can restore the
+		// order regardless of how the events are delivered.
+		flush := func() {
+			mu.Lock()
+			text := pending.String()
+			if text == "" {
+				mu.Unlock()
+				return
+			}
+			pending.Reset()
+			seq++
+			n := seq
+			mu.Unlock()
+			runtime.EventsEmit(a.ctx, "llm:delta", map[string]any{
+				"streamId": streamID, "seq": n, "text": text,
+			})
+		}
+
+		ticker := time.NewTicker(llmEmitInterval)
+		stop := make(chan struct{})
+		go func() {
+			for {
+				select {
+				case <-ticker.C:
+					flush()
+				case <-stop:
+					return
+				}
+			}
+		}()
+
 		err := prov.Stream(ctx, llm.Request{
 			Model:     model,
 			System:    req.System,
 			Messages:  req.Messages,
 			MaxTokens: llmMaxTokens,
 		}, func(text string) error {
-			runtime.EventsEmit(a.ctx, "llm:delta", map[string]string{"streamId": streamID, "text": text})
+			mu.Lock()
+			pending.WriteString(text)
+			full.WriteString(text)
+			mu.Unlock()
 			return nil
 		})
+
+		ticker.Stop()
+		close(stop)
+		flush() // whatever arrived since the last tick
+
 		if err != nil && ctx.Err() == nil {
 			runtime.EventsEmit(a.ctx, "llm:error", map[string]string{"streamId": streamID, "message": err.Error()})
 			return
 		}
-		runtime.EventsEmit(a.ctx, "llm:done", map[string]string{"streamId": streamID})
+		// The whole reply travels with llm:done, so what gets committed to the
+		// transcript never depends on a single delta arriving, or arriving in
+		// order. It also covers the frontend subscribing after StartLLMTurn has
+		// resolved, which can miss the first flush of a very fast turn.
+		mu.Lock()
+		text := full.String()
+		mu.Unlock()
+		runtime.EventsEmit(a.ctx, "llm:done", map[string]any{"streamId": streamID, "text": text})
 	}()
 	return streamID, nil
 }
