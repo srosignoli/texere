@@ -24,13 +24,50 @@ type LLMConfig struct {
 	ActiveProfileID string       `json:"activeProfileId"`
 }
 
+// looksLikeEnvVarName reports whether s is shaped like an environment variable
+// name: a letter or underscore, then letters, digits and underscores.
+//
+// It exists because APIKeyEnv is a field users paste SECRETS into. It is meant
+// to hold the NAME of a variable, sits next to the field for the key itself,
+// and the two are easy to confuse — so anything that echoes its contents back
+// can put a live API key on screen, into a screenshot, and into a bug report.
+// A real key fails this test: "sk-proj-..." has hyphens.
+func looksLikeEnvVarName(s string) bool {
+	if s == "" || len(s) > 64 {
+		return false
+	}
+	for i, r := range s {
+		switch {
+		case r == '_':
+		case r >= 'A' && r <= 'Z', r >= 'a' && r <= 'z':
+		case r >= '0' && r <= '9' && i > 0:
+		default:
+			return false
+		}
+	}
+	return true
+}
+
+// envKeyError explains an unusable APIKeyEnv without ever echoing a value that
+// is not plainly a variable name. Naming the variable is genuinely useful when
+// the field is used as intended — it tells you what to export — so that case
+// keeps its detail.
+func envKeyError(name string) error {
+	if looksLikeEnvVarName(name) {
+		return fmt.Errorf("env var %q is empty", name)
+	}
+	return errors.New(`this profile's "API key env var" is not a variable name — ` +
+		`if you meant to paste the key itself, put it in the "API key" field instead`)
+}
+
 // resolveKey returns the profile's secret: the env var if APIKeyEnv is set,
-// else the literal APIKey. Never logs the value.
+// else the literal APIKey. Never logs or returns the value in an error — see
+// envKeyError for the case where APIKeyEnv is itself a pasted key.
 func resolveKey(p LLMProfile) (string, error) {
 	if p.APIKeyEnv != "" {
 		v := os.Getenv(p.APIKeyEnv)
 		if v == "" {
-			return "", fmt.Errorf("env var %q is empty", p.APIKeyEnv)
+			return "", envKeyError(p.APIKeyEnv)
 		}
 		return v, nil
 	}
@@ -47,7 +84,7 @@ func resolveKeyOptional(p LLMProfile) (string, error) {
 	if p.APIKeyEnv != "" {
 		v := os.Getenv(p.APIKeyEnv)
 		if v == "" {
-			return "", fmt.Errorf("env var %q is empty", p.APIKeyEnv)
+			return "", envKeyError(p.APIKeyEnv)
 		}
 		return v, nil
 	}
