@@ -307,6 +307,41 @@ export const SEL = {
   mediaSetStart: 'button[title^="Mark the moment"]',
   mediaStartTime: '.vv-time',
 
+  // The shell cell. Runs one command in a shell discovered on this machine and
+  // streams its output into a plain-DOM pane — no xterm, so the browser's own
+  // selection is the whole mechanism.
+  //
+  // What it promotes is a SELECTION, not the run: readSelection intersects the
+  // live range with each .sh-line, and buildShellFact pairs those lines with
+  // the command that produced them under the (cmd) and (out) arrows. Editing
+  // the command or re-running CLEARS the selection on purpose — a fact naming
+  // the wrong command is a wrong fact that looks right — so .sh-promote exists
+  // only while a selection stands, which makes it the signal to assert on.
+  //
+  // The scrollback is component-local and NEVER persisted: leave the tab and
+  // the output is gone while the command and subject survive. That is the
+  // reason the cell has a promote button at all.
+  shellCell: '.sh-cell',
+  shellPicker: '.sh-shell',
+  shellCwd: '.sh-cwd',
+  shellCommand: '.sh-cmd',
+  shellRun: '.sh-run',
+  shellStop: '.sh-stop',
+  shellOutput: '.sh-out',
+  shellLine: '.sh-line',
+  // stderr is a modifier on the line, applied with class:err — which is why the
+  // pane can show a failure without the run being treated as one.
+  shellStderr: '.sh-line.err',
+  // "exit 0 · 0.4s", "cancelled", or a spawn error. A non-zero exit is
+  // information, not a failure: it lands here, styled .bad, not in a toast.
+  shellStatus: '.sh-status',
+  shellTruncated: '.sh-trunc',
+  shellPromote: '.sh-promote',
+  shellCount: '.sh-count',
+  shellSubject: '.sh-subj',
+  shellToN4L: '.sh-n4l',
+  shellWarn: '.sh-warn',
+
   // --- process -------------------------------------------------------------
   // makeCard seeds "<passage> >> " and parks the cursor for the back to be
   // typed. Clicking createCard before typing materialises nothing.
