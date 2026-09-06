@@ -342,6 +342,45 @@ export const SEL = {
   shellToN4L: '.sh-n4l',
   shellWarn: '.sh-warn',
 
+  // The LLM cell. Every selector here is SCOPED to .llm-cell on purpose: the
+  // component's own class names are .skill, .prof, .msg, .body, .transcript,
+  // .composer, .send and .stop, which are far too generic to address globally.
+  //
+  // What makes it a notebook cell rather than a chat window is what goes into
+  // the system prompt. buildSystem prepends the chosen SKILL's body (built-in
+  // markdown in internal/skills/builtin) and then a context block assembled
+  // from the notebook: the extract, its tags, its graph neighbours and the
+  // source passage — tutorial 11's context panel, fed to the model — plus the
+  // text of any ATTACHED cells, so a draft, a graph result, a compute cell or a
+  // baked sketch can be handed to it by ticking a checkbox.
+  //
+  // Unlike the shell cell's scrollback, the conversation IS persisted: finish()
+  // appends the reply to cell.messages and saves. A failed turn is rolled back
+  // instead — the dangling user message is removed and its text restored to the
+  // composer, so a transcript never ends on an unanswered question.
+  //
+  // The cell needs a profile: with no active profile in config.json,
+  // providerFor("") resolves nothing and the turn fails, so a plot picks one
+  // from .prof before sending.
+  llmCell: '.llm-cell',
+  llmWarn: '.llm-cell .llm-warn',
+  llmSkillPicker: '.llm-cell .skill',
+  llmProfilePicker: '.llm-cell .prof',
+  llmAttachBar: '.llm-cell .attach',
+  llmAttachLabel: '.llm-cell .attach label',
+  llmTranscript: '.llm-cell .transcript',
+  llmMessage: '.llm-cell .msg',
+  llmUserMessage: '.llm-cell .msg.user',
+  llmAssistantMessage: '.llm-cell .msg.assistant',
+  llmMessageBody: '.llm-cell .msg .body',
+  // Shown while a turn streams, next to the partial reply.
+  llmCaret: '.llm-cell .caret',
+  llmComposer: '.llm-cell .composer textarea',
+  llmSend: '.llm-cell .send',
+  llmStop: '.llm-cell .stop',
+  llmError: '.llm-cell .llm-error',
+  llmHint: '.llm-cell .llm-hint',
+
   // --- process -------------------------------------------------------------
   // makeCard seeds "<passage> >> " and parks the cursor for the back to be
   // typed. Clicking createCard before typing materialises nothing.
