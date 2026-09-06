@@ -406,6 +406,33 @@ export const SEL = {
   scanCropHint: '.im-hint',
   scanMissing: '.im-missing',
 
+  // The audio cell — a spoken thought, and the text it comes back as.
+  //
+  // It has TWO ways in and only one of them can be scripted. Record goes
+  // through MediaRecorder and a real capture device; Import opens a native GTK
+  // dialog, so a plot ingests with DemoImportAudio and appends the cell with
+  // SaveNotebook, exactly as the scan cell does.
+  //
+  // Transcription is a SEPARATE provider from the LLM cell's: TranscribeAudio
+  // resolves against cfg.STT, its own profile list, so an app with a working
+  // LLM profile can still show a disabled Transcribe and the "Configure a
+  // model" hint. Check the STT config before planning a take around it.
+  //
+  // An empty cell offers Record and Import; a filled one replaces them with the
+  // duration, a player, Replace, and the transcribe row. Those are two
+  // different DOM shapes, not one shape with disabled controls.
+  audioCell: '.au-cell',
+  audioEmpty: '.au-empty',
+  audioRecord: '.au-rec',
+  audioDuration: '.au-dur',
+  audioPlayer: '.au-player',
+  audioMissing: '.au-missing',
+  audioTranscribeRow: '.au-trans',
+  audioSttPicker: '.au-trans select',
+  audioTranscribe: '.au-trans button',
+  audioSttHint: '.au-hint',
+  audioError: '.au-cell .au-err',
+
   // --- process -------------------------------------------------------------
   // makeCard seeds "<passage> >> " and parks the cursor for the back to be
   // typed. Clicking createCard before typing materialises nothing.

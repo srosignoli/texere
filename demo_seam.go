@@ -44,3 +44,15 @@ func (a *App) DemoImportPdfSource(path string) (*ReadingView, error) {
 func (a *App) DemoImportImage(path string) (map[string]any, error) {
 	return a.importImageFrom(path)
 }
+
+// DemoImportAudio ingests the audio file at path, skipping the dialog that
+// ImportAudio would open. Returns {asset, mime, durationMs} — what the audio
+// cell's Import button hands to the cell.
+//
+// The recording half of that cell cannot be scripted at all: it goes through
+// MediaRecorder and a real capture device, which this seam deliberately does
+// not fake. Importing a file is the other half of the same feature, and it is
+// the half someone arriving with a memo from their phone actually uses.
+func (a *App) DemoImportAudio(path string) (map[string]any, error) {
+	return a.importAudioFrom(path)
+}
