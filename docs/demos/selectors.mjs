@@ -524,6 +524,23 @@ export const SEL = {
   showAnswer: 'button[aria-label="Show answer"]',
   grade: (label) => `button[aria-label="${label}"]`,
 
+  // The card itself. The back is hidden until Show answer (or Space), so a
+  // plot that frames the answer must reveal it first.
+  //
+  // Cards come from LINES IN A NOTE FILE. A node marked "# @card" splits on the
+  // first ">>" into front and back; "# @card reverse" emits the swapped card
+  // too; "# @cloze" emits one card per {{double-brace}} group, each blanked as
+  // "[…]". A node with no "# @id" is skipped — ids are injected by
+  // learning.Sync, which StudyMode runs on mount, so opening Study is what
+  // materialises a card just written.
+  //
+  // Media works on EITHER SIDE: RecallCard runs mediaTokens() over front and
+  // back independently, and n4l-media.js decides what is media by the file
+  // EXTENSION rather than by the arrow's name.
+  recallCard: '.rc-card',
+  recallFront: '.rc-front',
+  recallBack: '.rc-back',
+
   // --- bottom band tabs ----------------------------------------------------
   // The two tabs over the bottom band: Note holds the CodeMirror editor on the
   // raw .n4l, Preview renders the selected chapter's parsed nodes as cards.
