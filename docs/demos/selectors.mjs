@@ -213,6 +213,32 @@ export const SEL = {
   notebookMoveUp: 'button[title="Move up"]',
   notebookMoveDown: 'button[title="Move down"]',
   notebookDeleteCell: '.nb-del',
+
+  // Reading a notebook from the NOTE EDITOR, without opening the study surface.
+  //
+  // NotebookMarks parses the open file for node ids and returns a line for each
+  // that has a notebook; notebookDotsGutter paints a purple dot there. Beware:
+  // CodeMirror keeps SPARE gutter markers in the DOM, and they are
+  // visibility:hidden — tutorial 12 found `.cm-nb-dot` elements and cut a beat
+  // because every one it found was invisible. Count PAINTED dots
+  // (visibility + a box + elementFromPoint), never elements.
+  //
+  // Clicking one arms an overlay that FOLLOWS THE CARET: it shows whatever
+  // notebook the focused node has and hides when that node has none. Close is
+  // sticky, so it stays dismissed until another dot is clicked.
+  //
+  // It opens READ-ONLY, which NotebookPane shows as a "read-only" badge and by
+  // rendering none of the controls tutorial 21 covers — no add buttons, no
+  // reorder, no delete. "Resume (edit)" is the deliberate escalation, and
+  // moving to another node drops back to read-only.
+  //
+  // The dot itself is NOT declared here: `.cm-nb-dot` is applied by
+  // lib/n4l-editor.js rather than by any component, so the contract test cannot
+  // verify it and it is read in the plot instead — the same treatment
+  // `.cm-arrow-unreg` gets in tutorial 12.
+  notebookOverlay: '.nb-overlay',
+  notebookOverlayBar: '.nb-overlay-bar',
+  notebookReadOnlyBadge: '.nb-ro',
   // The context block, pinned above the cell stack — not a cell, and not
   // addable or deletable. Four sections assembled from three different places:
   // Extract comes from the note file, Source from the reading list's copy of
