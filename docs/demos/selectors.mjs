@@ -185,6 +185,34 @@ export const SEL = {
   // has been run) and the surrounding source text.
   notebookScroll: '.nb-scroll',
   notebookAddCell: '.nb-add',
+
+  // Cell management: the notebook as a document rather than as a stack.
+  //
+  // FOLDING IS SUMMARISING, not hiding. cellPreview renders only while a cell
+  // is folded, and every type previews from an INPUT field — a draft's first
+  // line, a graph cell's query, a compute cell's first line of code, a shell
+  // cell's command — so a folded notebook reads as a table of contents. Folded
+  // cells also stay MOUNTED: components hold non-reactive references into the
+  // cell object, so the pane mutates `folded` in place rather than replacing
+  // the object.
+  //
+  // Fold state, order and deletion all persist through scheduleSave, so leaving
+  // the tab and coming back is a fair test of any of them.
+  //
+  // DELETE IS IMMEDIATE. deleteCell filters and saves — no confirmation, no
+  // undo. The ✕'s title is the only thing between a mis-aimed click and a lost
+  // cell, which is worth saying out loud in anything that demonstrates it.
+  notebookFoldAll: '.nb-foldall',
+  notebookCellWrap: '.nb-cellwrap',
+  notebookCellHead: '.nb-cellhead',
+  notebookFold: '.nb-fold',
+  notebookChevron: '.nb-chev',
+  notebookCellName: '.nb-cellname',
+  notebookCellPreview: '.nb-preview',
+  notebookCellBody: '.nb-cellbody',
+  notebookMoveUp: 'button[title="Move up"]',
+  notebookMoveDown: 'button[title="Move down"]',
+  notebookDeleteCell: '.nb-del',
   // The context block, pinned above the cell stack — not a cell, and not
   // addable or deletable. Four sections assembled from three different places:
   // Extract comes from the note file, Source from the reading list's copy of
