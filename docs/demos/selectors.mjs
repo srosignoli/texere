@@ -530,6 +530,34 @@ export const SEL = {
   cloze: 'button[aria-label="Cloze"]',
   dismiss: 'button[aria-label="Dismiss"]',
 
+  // --- settings --------------------------------------------------------------
+  // The gear opens a popover with the theme choices; a button inside it opens
+  // the LLM / Speech-to-text / Skills modal.
+  //
+  // THE API KEY FIELD IS type="password", so what is typed renders as dots. The
+  // env-var field beside it is NOT, which is how a key pasted into the wrong
+  // box ends up legible on screen — see texere's 082-no-key-echo.
+  //
+  // A take that opens this modal shows whatever profiles the machine has. Point
+  // XDG_CONFIG_HOME at a throwaway directory holding only collectionDir, and
+  // the app starts with no profiles and no user skills: nothing private can
+  // reach the frame, and the tutorial gets the empty state it wants anyway.
+  //
+  // Do NOT click Test. It makes a live request on whatever key is configured.
+  settingsToggle: '.sm-toggle',
+  settingsPopover: '.sm-popover',
+  settingsThemeChoice: '.sm-choice',
+  settingsLaunch: '.sm-launch',
+  settingsModal: '.ov-modal',
+  settingsTabs: '.ov-tabs',
+  settingsProfileList: '.ov-list',
+  settingsForm: '.ov-form',
+  settingsPresets: '.ov-presets',
+  settingsActions: '.ov-actions',
+  settingsTestResult: '.ov-test',
+  skillRow: '.skill-row',
+  skillsPath: '.skills-path-value',
+
   // --- statistics -----------------------------------------------------------
   // The Stats tab is the only place the SCHEDULE becomes visible. CardView
   // carries no due date, so nothing in Recall can show an interval; what the
