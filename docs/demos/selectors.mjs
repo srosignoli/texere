@@ -515,10 +515,37 @@ export const SEL = {
   // --- process -------------------------------------------------------------
   // makeCard seeds "<passage> >> " and parks the cursor for the back to be
   // typed. Clicking createCard before typing materialises nothing.
+  // The bar swaps while a card is being seeded: Make card / Cloze / Later /
+  // Dismiss are replaced by a hint and Create card. .pv-anchor carries the
+  // extract's (from) anchor normally, and that hint while seeding.
+  processBar: '.pv-bar',
+  processAnchor: '.pv-anchor',
+  // Where a refused promotion is reported, e.g. promoting to cloze with no
+  // {{deletion}} marked: "mark a deletion with {{double braces}} before making
+  // a cloze".
+  processError: '.pv-error',
+  processEditor: '.pv-editor',
   makeCard: 'button[aria-label="Make card"]',
   createCard: 'button[aria-label="Create card"]',
   cloze: 'button[aria-label="Cloze"]',
   dismiss: 'button[aria-label="Dismiss"]',
+
+  // --- statistics -----------------------------------------------------------
+  // The Stats tab is the only place the SCHEDULE becomes visible. CardView
+  // carries no due date, so nothing in Recall can show an interval; what the
+  // panel has is a per-day forecast of how many cards fall due, and a bar chart
+  // of which grades were pressed.
+  //
+  // Both are Chart.js CANVASES — their labels and values cannot be read from
+  // the DOM, so assert them through GetStatistics() and use these selectors
+  // only to put the right chart on screen. Section order is: Learning quality
+  // (grade mix, then difficulty), Workload (forecast), Habit, Pipeline health.
+  statsPanel: '.sp-root',
+  statsSection: 'section.sp-card',
+  statsChart: '.sp-chartbox',
+  statsStat: '.sp-stat',
+  statsLabel: '.sp-label',
+  statsValue: '.sp-value',
 
   // --- recall --------------------------------------------------------------
   showAnswer: 'button[aria-label="Show answer"]',
@@ -538,6 +565,8 @@ export const SEL = {
   // back independently, and n4l-media.js decides what is media by the file
   // EXTENSION rather than by the arrow's name.
   recallCard: '.rc-card',
+  // The four grade buttons live here once the back is revealed.
+  recallGrades: '.rc-grades',
   recallFront: '.rc-front',
   recallBack: '.rc-back',
 
