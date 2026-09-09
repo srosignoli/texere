@@ -1,4 +1,5 @@
 <script>
+  import { askConfirm } from './lib/dialog.js'
   import { onMount, onDestroy } from 'svelte'
   import { EventsOn } from '../wailsjs/runtime/runtime'
   import { GetArrowRegistry, GetInitialSummaries, GetInitialCollectionDir, GetStartupError, ConfirmQuit, ParseFileForUI, BuildGraph } from '../wailsjs/go/main/App'
@@ -15,6 +16,7 @@
   import GraphExplorer from './components/GraphExplorer.svelte'
   import QueryHelpPanel from './components/QueryHelpPanel.svelte'
   import ShortcutsPanel from './components/ShortcutsPanel.svelte'
+  import AppDialog from './components/AppDialog.svelte'
   import LLMSettings from './components/LLMSettings.svelte'
   import StudyMode from './components/StudyMode.svelte'
   import StudySurface from './components/StudySurface.svelte'
@@ -161,7 +163,7 @@
 
     // Guard: unsaved changes in current chapter
     if (store.isDirty) {
-      if (!confirm('Unsaved changes — switch anyway?')) return
+      if (!(await askConfirm('Unsaved changes — switch anyway?', { confirmLabel: 'Switch' }))) return
     }
 
     workbenchStore.update((s) => ({
@@ -354,10 +356,10 @@
     })
 
     // App close guard: check isDirty before allowing quit (T038)
-    EventsOn('app:close-requested', () => {
+    EventsOn('app:close-requested', async () => {
       const store = $workbenchStore
       if (store.isDirty) {
-        if (!confirm('You have unsaved changes. Close anyway?')) return
+        if (!(await askConfirm('You have unsaved changes. Close anyway?', { confirmLabel: 'Close' }))) return
       }
       ConfirmQuit()
     })
@@ -426,6 +428,10 @@
     <EmptyState errorMessage={startupError} />
   {/if}
 </div>
+
+<!-- Outside the collection branch on purpose: the close guard fires whether or
+     not a collection is open, so the dialog has to exist in both states. -->
+<AppDialog />
 
 <style>
   :global(body) {

@@ -1,4 +1,5 @@
 <script>
+  import { askText } from '../lib/dialog.js'
   // Ask a model, refine over a few turns, then save the exchange as a markdown
   // reading source. This is a source-acquisition channel in the same role as
   // + PDF and + Web — not a chat tool that happens to save. Asking about a
@@ -117,7 +118,7 @@
 
   async function create() {
     if (!canCreate) return
-    const title = window.prompt('Title for this document:', defaultTitle(chat.messages))
+    const title = await askText('Title for this document', defaultTitle(chat.messages), { confirmLabel: 'Create' })
     if (title === null) return           // cancelled
     if (!title.trim()) { error = 'A title is required.'; return }
     saving = true

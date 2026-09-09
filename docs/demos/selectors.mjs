@@ -92,6 +92,23 @@ export const SEL = {
   // get 220px by default, which is not enough of them to teach from.
   bandSplitter: '[role="separator"][aria-orientation="horizontal"]',
 
+  // --- the app's own prompt / confirm / alert -------------------------------
+  // One surface for all three, driven by lib/dialog.js. It replaced
+  // window.prompt / confirm / alert, which GTK drew rather than the page — so
+  // they took no theme and appeared in no recording, and plots had to answer
+  // them through page.on('dialog') and narrate what the viewer could not see.
+  // This one is in the DOM, in the video, and typed into like anything else.
+  //
+  // Enter confirms and Escape cancels, matching the fingers people already
+  // have. Cancel is absent on an alert, which has nothing to refuse.
+  dialog: '[role="dialog"][aria-label="Dialog"]',
+  // The question it is asking. Worth having declared: a plot that asserts WHICH
+  // dialog opened reads this, and "some dialog appeared" is not the same claim.
+  dialogTitle: '.dlg-title',
+  dialogInput: 'input[aria-label="Dialog input"]',
+  dialogConfirm: 'button[aria-label="Confirm dialog"]',
+  dialogCancel: 'button[aria-label="Cancel dialog"]',
+
   // --- study surface -------------------------------------------------------
   studyDialog: '[role="dialog"][aria-label="Study surface"]',
   shortcutsDialog: '[role="dialog"][aria-label="Keyboard shortcuts"]',

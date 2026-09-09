@@ -1,4 +1,5 @@
 <script>
+  import { askText } from '../lib/dialog.js'
   // The reading library: a collapsible sidebar that stays visible while you
   // read, so switching documents or checking what you have already extracted
   // does not mean closing what you are in.
@@ -66,8 +67,8 @@
   }
   const importText = () => importVia(ImportTextSource)
   const importPdf = () => importVia(ImportPdfSource)
-  function importWeb() {
-    const url = window.prompt('Article URL:')
+  async function importWeb() {
+    const url = await askText('Article URL', '', { placeholder: 'https://…', confirmLabel: 'Import' })
     if (url) importVia(ImportWebSource, url.trim())
   }
 
