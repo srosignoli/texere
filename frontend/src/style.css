@@ -1,6 +1,11 @@
 html {
     background-color: var(--surface);
-    text-align: center;
+    /* LEFT, to match #app below. This rule reaches only what is OUTSIDE the
+       mount point — in practice index.html's pre-mount error screen, whose
+       stack traces read better ranged left. The app's own default lives on
+       #app; changing this one alone is invisible, which a screenshot pass
+       confirmed the hard way. */
+    text-align: left;
     color: var(--text);
 }
 
@@ -1302,5 +1307,16 @@ body {
 
 #app {
     height: 100vh;
-    text-align: center;
+    /* LEFT, not center.
+       This is the Svelte mount point, so this rule — not the one on html —
+       is what every component inherits from. Centring here is why a folded
+       notebook preview with a 16px left indent rendered its text in the middle
+       of the cell: the padding worked, the alignment did not. Sixteen rules
+       across the components exist only to undo it, and 41 of 58 components
+       state no alignment at all, so anything new is centred until someone
+       notices.
+       Flipped against a before/after screenshot pass over 22 surfaces plus a
+       census of which on-screen elements actually inherit; the surfaces that
+       genuinely want centring say so themselves. */
+    text-align: left;
 }

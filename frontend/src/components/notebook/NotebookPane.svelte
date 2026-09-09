@@ -184,11 +184,12 @@
      none of that. It is 11px against the header's 10px and still reads as
      subordinate — lowercase x-height at 11px sits below cap height at 10px —
      while staying legible as prose. Indented to align under the name. */
-  /* text-align is not decoration here: style.css sets `html { text-align:
-     center }`, so every element that says nothing inherits centring and this
-     one's 16px left indent had nothing to indent FROM — the line sat in the
-     middle of the cell. Sixteen rules across the app already carry the same
-     workaround. */
+  /* Kept explicit after style.css's #app default went from center to left.
+     It was #app — the mount point, not html — that centred everything with no
+     opinion of its own, which is why this line's 16px left indent had nothing
+     to indent FROM and sat in the middle of the cell. Redundant with the
+     default now, and left in place deliberately: this rule is what the fix was
+     verified against. */
   .nb-preview { padding: 0 2px 4px 16px; text-align: left; font-size: 11px; color: var(--text-control-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .nb-folded { display: none; }
   .nb-headspacer { flex: 1; }
