@@ -422,6 +422,15 @@ export async function session({
     },
 
     // Dissolve the title card once the app is actually up.
+    //
+    // The backdrop goes with it. It exists only to cover the white flash
+    // between document-start and the app's first paint, and it carries
+    // !important on html,body — which outranks style.css's own
+    // `html { background-color: var(--surface) }`. Left in place it survives
+    // the whole take, so anything TRANSPARENT keeps showing #0d1520 no matter
+    // which theme is selected: the three columns stay dark while the editor
+    // and the popover, which paint their own token backgrounds, turn light.
+    // That is not a Chromium repaint problem, it is this stylesheet.
     async open(hold = 2100) {
       await page.waitForSelector('button[title^="Study"]', { timeout: 20000 })
       await page.waitForTimeout(hold)
@@ -430,7 +439,10 @@ export async function session({
         if (c) c.style.opacity = '0'
       })
       await page.waitForTimeout(900)
-      await page.evaluate(() => document.getElementById('__title')?.remove())
+      await page.evaluate(() => {
+        document.getElementById('__title')?.remove()
+        document.getElementById('__bg')?.remove()
+      })
       await page.waitForTimeout(600)
     },
 
