@@ -241,10 +241,16 @@
   .sp-root { position: absolute; inset: 0; overflow: auto; padding: 12px; background: var(--surface-study); }
   .sp-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
   .sp-card { background: var(--surface-study); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
-  .sp-card h3 { margin: 0 0 8px; color: var(--accent-text); font-size: 13px; }
+  .sp-card h3 { margin: 0 0 8px; color: var(--accent-text); font-size: 13px; text-align: center; }
   .sp-sub { color: var(--text); font-size: 12px; margin: 4px 0; }
   .sp-nodata { color: var(--text-muted); font-weight: normal; font-style: italic; }
-  .sp-stat { margin: 8px 0; }
+  /* Centred ON PURPOSE, and stated rather than inherited. This panel read as
+     centred for its whole life because #app centred everything that said
+     nothing; when that default was corrected to left, this was the one surface
+     in a 22-shot before/after pass whose look the change did not improve — a
+     figure under its own label reads better centred than ranged left. The
+     other stats blocks below follow the same rule for the same reason. */
+  .sp-stat { margin: 8px 0; text-align: center; }
   .sp-label { display: block; color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
   .sp-value { display: block; color: var(--text); font-size: 15px; font-weight: 600; }
   /* .sp-value.ok/.low/.high: one semantic, coupled 3-state unit — each colour
