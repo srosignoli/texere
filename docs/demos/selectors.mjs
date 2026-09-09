@@ -100,6 +100,15 @@ export const SEL = {
   // "Read5" once anything is due. Address them by aria-label.
   studyTab: (name) => `.ss-tab[aria-label="${name}"]`,
   closeStudy: 'button[aria-label="Close study"]',
+  // Which tab the surface is on. Next renders ANOTHER tab's view in its own
+  // body without moving the highlight, so this stays on Next while a reader,
+  // an extract or a card is on screen. That is the whole mechanic of the tab.
+  studyTabActive: '.ss-tab.active',
+  // What a queue shows when it has nothing left. One class, three messages,
+  // told apart only by their text: "Pick a document to read.", "No extracts to
+  // process." and Next's own "Nothing due" with the celebrate icon. Anything
+  // waiting on it must assert the text too.
+  studyEmpty: '.ss-empty',
 
   // --- reader --------------------------------------------------------------
   sourceRow: '.sb-name',
