@@ -128,12 +128,23 @@
   }
 
   // "Next": rotate read → process → recall, picking the first non-empty.
-  function nextKind() {
-    if (counts.read > 0 || $activeReading) return 'read'
-    if (counts.process > 0) return 'process'
-    if (counts.recall > 0) return 'recall'
-    return 'empty'
-  }
+  //
+  // A REACTIVE STATEMENT, not a function the template calls. Svelte derives a
+  // block's dirty mask from the variables an expression names, and
+  // `nextKind` named none of these: the {#if} chain below kept whatever it
+  // answered on mount while `counts` was still all zeroes, so opening Study
+  // showed "Nothing due." over tabs that already read Read 1 · Recall 1. It
+  // corrected itself only when something else invalidated the block, which is
+  // why leaving the tab and coming back appeared to fix it. Naming counts and
+  // $activeReading here is what makes the chain re-run when they arrive.
+  $: nextKind =
+    counts.read > 0 || $activeReading
+      ? 'read'
+      : counts.process > 0
+        ? 'process'
+        : counts.recall > 0
+          ? 'recall'
+          : 'empty'
 
   async function onProcessAdvance() { await refresh(); await loadProcess(); if ($studyFocus === 'next' && !processId) await advanceNext() }
   async function onRecallGrade(n) {
@@ -176,7 +187,7 @@
   {#if error}<div class="ss-error">{error}</div>{/if}
 
   <div class="ss-body">
-    {#if $studyFocus === 'read' || ($studyFocus === 'next' && nextKind() === 'read')}
+    {#if $studyFocus === 'read' || ($studyFocus === 'next' && nextKind === 'read')}
       <div class="ss-read">
         <SourcesSidebar
           bind:this={sidebar}
@@ -198,13 +209,13 @@
           {/if}
         </div>
       </div>
-    {:else if $studyFocus === 'process' || ($studyFocus === 'next' && nextKind() === 'process')}
+    {:else if $studyFocus === 'process' || ($studyFocus === 'next' && nextKind === 'process')}
       {#if processId}
         {#key processId}<ProcessView extractId={processId} onAdvance={onProcessAdvance} />{/key}
       {:else}
         <div class="ss-empty">No extracts to process.</div>
       {/if}
-    {:else if $studyFocus === 'recall' || ($studyFocus === 'next' && nextKind() === 'recall')}
+    {:else if $studyFocus === 'recall' || ($studyFocus === 'next' && nextKind === 'recall')}
       <RecallCard card={recallCard} onGrade={onRecallGrade} />
     {:else if $studyFocus === 'stats'}
       <StatsPanel />
