@@ -84,8 +84,7 @@ Elaboration produces a more durable trace than rote repetition
 A quiz outperforms rereading even when no feedback is given
 
 # @card
-What does retrieval practice change?
-"  (means) the memory itself, not just your estimate of it
+What does retrieval practice change? >> the memory itself, not just your estimate of it
 
 - the study loop
 
