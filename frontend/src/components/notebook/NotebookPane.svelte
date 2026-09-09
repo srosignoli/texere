@@ -184,7 +184,12 @@
      none of that. It is 11px against the header's 10px and still reads as
      subordinate — lowercase x-height at 11px sits below cap height at 10px —
      while staying legible as prose. Indented to align under the name. */
-  .nb-preview { padding: 0 2px 4px 16px; font-size: 11px; color: var(--text-control-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* text-align is not decoration here: style.css sets `html { text-align:
+     center }`, so every element that says nothing inherits centring and this
+     one's 16px left indent had nothing to indent FROM — the line sat in the
+     middle of the cell. Sixteen rules across the app already carry the same
+     workaround. */
+  .nb-preview { padding: 0 2px 4px 16px; text-align: left; font-size: 11px; color: var(--text-control-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .nb-folded { display: none; }
   .nb-headspacer { flex: 1; }
   .nb-reorder { display: flex; gap: 2px; }
