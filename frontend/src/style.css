@@ -209,6 +209,13 @@ html {
        a thematic colour with no byte-identical role means the layer is
        missing a role, not licence to defer. */
     --surface-modal: #0e1622;         /* background of a floating modal/dialog (LLMSettings) */
+    --modal-scrim: rgba(0, 0, 0, 0.45); /* dimming layer behind AppDialog. Deliberately NOT
+                                          inverted for Light the way --explorer-scrim is: those
+                                          scrims are fills UNDER TEXT, so a fixed black at low
+                                          alpha failed AA once Light's canvas went near-white.
+                                          This one carries no text and sits under an opaque
+                                          panel — dimming reads as dimming in every theme, and
+                                          a light scrim over a light page dims nothing. */
     --text-modal: #cdd6e2;            /* body text on a modal surface */
     --text-tab-muted: #6b7a8a;        /* header/tab-bar button rest-state text inside a modal */
     --border-row: #1b2735;            /* hairline divider between rows inside a modal list */
@@ -798,6 +805,7 @@ html {
     --text-doc-dim: #98adc4;
 
     --surface-modal: #0d0e0e;
+    --modal-scrim: rgba(0, 0, 0, 0.45);
     --text-modal: #c5d0de;
     --text-tab-muted: #677685;
     --border-row: #161819;
@@ -1066,6 +1074,7 @@ html {
     --text-doc-dim: #35485c;
 
     --surface-modal: #e8ebee;
+    --modal-scrim: rgba(0, 0, 0, 0.45);
     --text-modal: #1f2835;
     --text-tab-muted: #647281;
     --border-row: #f6f8f8;

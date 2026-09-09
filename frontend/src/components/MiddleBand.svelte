@@ -1,4 +1,5 @@
 <script>
+  import { askText, showAlert } from '../lib/dialog.js'
   import { createEventDispatcher } from 'svelte'
   import { OpenCollection, PickCollectionDir, CreateNewFile } from '../../wailsjs/go/main/App'
   import { workbenchStore, reminderCount, omnibarMode, editorAPI, shortcutsOpen } from '../stores/workbench.js'
@@ -14,7 +15,7 @@
 
   async function handleNewFile() {
     if (!$workbenchStore.collectionDir) return
-    const raw = window.prompt('New file name (e.g. notes.n4l):')
+    const raw = await askText('New file name', '', { placeholder: 'e.g. notes.n4l', confirmLabel: 'Create' })
     if (raw === null) return // cancelled
     try {
       const summary = await CreateNewFile(raw)
@@ -22,7 +23,7 @@
     } catch (e) {
       // Wails surfaces Go errors as plain Error objects with .message; fall
       // back to String coercion just in case.
-      window.alert(`Couldn't create file: ${e?.message ?? String(e)}`)
+      await showAlert(`Couldn't create file: ${e?.message ?? String(e)}`)
     }
   }
 

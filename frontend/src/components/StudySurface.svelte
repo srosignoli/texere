@@ -1,4 +1,5 @@
 <script>
+  import { askConfirm } from '../lib/dialog.js'
   import { onMount } from 'svelte'
   import { GetStudyCounts, GetExtractQueue, GetReadingList, GetDueQueue, GradeItem } from '../../wailsjs/go/main/App'
   import { studyFocus } from '../stores/study.js'
@@ -62,7 +63,7 @@
   }
 
   async function newChat() {
-    if (chat && chat.messages.length && !window.confirm('Discard the chat in progress?')) return
+    if (chat && chat.messages.length && !(await askConfirm('Discard the chat in progress?', { confirmLabel: 'Discard' }))) return
     await readingView?.flush?.()
     peekAt = null
     activeReading.set(null)
@@ -161,8 +162,8 @@
   // A chat is persisted nowhere, so closing Study destroys it. Both exits ask
   // first: this is the only place the conversation can be lost without the user
   // having chosen to lose it.
-  function closeStudy() {
-    if (chat && chat.messages.length && !window.confirm('Discard the chat in progress?')) return
+  async function closeStudy() {
+    if (chat && chat.messages.length && !(await askConfirm('Discard the chat in progress?', { confirmLabel: 'Discard' }))) return
     onClose?.()
   }
 
