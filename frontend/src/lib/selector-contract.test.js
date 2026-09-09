@@ -12,6 +12,14 @@ import { join } from 'node:path'
 const root = new URL('../../../', import.meta.url).pathname
 const srcDir = join(root, 'frontend', 'src')
 
+// Components AND the plain modules beside them. CodeMirror decorations are
+// applied from lib/*.js with el.className or as a theme key, never from a
+// component, so a walk over .svelte alone could not verify them — and a class
+// the contract cannot verify is a class the contract cannot carry, which is
+// why .cm-nb-dot and .cm-arrow-unreg used to be hardcoded inside plots.
+//
+// Test files are excluded on purpose: a class named only in an assertion here
+// would otherwise satisfy the contract while no shipping code applies it.
 function allSource() {
   const out = []
   const walk = (dir) => {
@@ -19,6 +27,7 @@ function allSource() {
       const p = join(dir, name)
       if (statSync(p).isDirectory()) walk(p)
       else if (name.endsWith('.svelte')) out.push(readFileSync(p, 'utf8'))
+      else if (name.endsWith('.js') && !name.endsWith('.test.js')) out.push(readFileSync(p, 'utf8'))
     }
   }
   walk(srcDir)
@@ -72,8 +81,12 @@ test('every class selector exists in a component', () => {
   for (const cls of new Set(classes)) {
     assert.ok(
       new RegExp(`class="[^"]*\\b${cls}\\b`).test(source) ||
-        new RegExp(`class:${cls}\\b`).test(source),
-      `contract references .${cls}, which no component applies`,
+        new RegExp(`class:${cls}\\b`).test(source) ||
+        // Applied from JS: el.className = 'x', classList.add('x'), or a
+        // CodeMirror theme keyed on '.x'. Quoted and whole, so a class name
+        // appearing inside a longer string does not count as applying it.
+        new RegExp(`['"\`]\\.?${cls}['"\`]`).test(source),
+      `contract references .${cls}, which nothing in src applies`,
     )
   }
 })

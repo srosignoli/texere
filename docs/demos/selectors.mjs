@@ -241,10 +241,12 @@ export const SEL = {
   // reorder, no delete. "Resume (edit)" is the deliberate escalation, and
   // moving to another node drops back to read-only.
   //
-  // The dot itself is NOT declared here: `.cm-nb-dot` is applied by
-  // lib/n4l-editor.js rather than by any component, so the contract test cannot
-  // verify it and it is read in the plot instead — the same treatment
-  // `.cm-arrow-unreg` gets in tutorial 12.
+  // The dot itself. Applied from lib/n4l-editor.js rather than by a component,
+  // which is why it went undeclared for a long time — the contract test walked
+  // .svelte only and could not verify it. It walks lib/*.js now, so this entry
+  // is checked like any other and a rename fails a texere test instead of a
+  // recording weeks later.
+  editorNotebookDot: '.cm-nb-dot',
   notebookOverlay: '.nb-overlay',
   notebookOverlayBar: '.nb-overlay-bar',
   notebookReadOnlyBadge: '.nb-ro',
@@ -265,11 +267,10 @@ export const SEL = {
   // cursor and records a notebook link, which is what puts a provenance dot in
   // the gutter beside the pushed node.
   //
-  // Two classes this cell's tutorial needs are deliberately NOT declared:
-  // .cm-arrow-unreg (the lint underline) and .cm-nb-dot (the gutter dot) are
-  // applied from lib/n4l-editor.js rather than from a component, so the
-  // contract test cannot verify them — an entry it cannot check is worse than
-  // reading the class in an evaluate, which is what a plot does instead.
+  // The lint underline on an unregistered arrow. Applied from lib/n4l-editor.js,
+  // and declared here for the same reason editorNotebookDot is: the contract
+  // test now reads that file too.
+  editorArrowUnregistered: '.cm-arrow-unreg',
   draftCell: '.draft-cell',
   draftPush: 'button[title^="Insert this N4L"]',
 
