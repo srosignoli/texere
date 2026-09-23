@@ -53,9 +53,10 @@ func (s *Session) syncLocked() (learning.SyncResult, error) {
 		res, err = learning.Sync(s.learn, s.n4lFiles(), s.registry)
 		return err
 	})
-	if err != nil {
-		return res, err
-	}
+	// IDs may already be written to disk and recorded in res.InjectedPaths
+	// even when Sync then fails later (e.g. in UpsertItem or RetireMissing),
+	// so the editor must still be told to reload — otherwise its buffer goes
+	// stale and the next save strips the IDs the failed sync just injected.
 	if open != "" {
 		for _, p := range res.InjectedPaths {
 			if p == open {
@@ -64,7 +65,7 @@ func (s *Session) syncLocked() (learning.SyncResult, error) {
 			}
 		}
 	}
-	return res, nil
+	return res, err
 }
 
 // n4lFiles lists the Collection's readable .n4l files.

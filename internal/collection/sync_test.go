@@ -57,6 +57,39 @@ func TestSyncAfterCloseReturnsErrNoCollection(t *testing.T) {
 	}
 }
 
+// TestSyncStillNotifiesWhenTheSyncFailsAfterInjection covers the case where
+// learning.Sync writes # @id markers (and records them in InjectedPaths)
+// before failing on a later step, such as UpsertItem or RetireMissing. The
+// editor must still be told to reload the open file, or its buffer goes
+// stale and the next save strips the IDs the failed sync just injected.
+//
+// Closing the learning store after the file is written, but before Sync
+// runs, reproduces this deterministically: InjectMissingIDs succeeds and
+// records the path, and the very next store write (UpsertItem) then fails
+// because the underlying *sql.DB is closed.
+func TestSyncStillNotifiesWhenTheSyncFailsAfterInjection(t *testing.T) {
+	dir := t.TempDir()
+	f := filepath.Join(dir, "f.n4l")
+	writeFile(t, f, clozeNote)
+	s, rec := openT(t, dir)
+	s.SetOpenFile(f)
+
+	if err := s.learn.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := s.Sync()
+	if err == nil {
+		t.Fatal("Sync with a closed learning store = nil error, want an error")
+	}
+	if len(res.InjectedPaths) != 1 || res.InjectedPaths[0] != f {
+		t.Fatalf("InjectedPaths = %v, want [%s] even though the later sync step failed", res.InjectedPaths, f)
+	}
+	if rec.count(EventIDsInjected, f) != 1 {
+		t.Fatalf("file:ids-injected after a sync that failed post-injection: %d events, want 1", rec.count(EventIDsInjected, f))
+	}
+}
+
 // graphFixture writes a one-link collection and opens it with the degraded
 // registry the app would load when SSTconfig is missing.
 func graphFixture(t *testing.T) *Session {
