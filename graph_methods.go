@@ -28,7 +28,6 @@ func (a *App) BuildGraph() *BuildGraphResult {
 	}
 	a.emit("graph:build-started", nil)
 	br, err := s.RebuildGraph()
-	a.mirrorLegacy() // TEMPORARY (Task 9): RebuildGraph installed a new search service
 	if err != nil {
 		result.Error = err.Error()
 	} else {

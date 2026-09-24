@@ -15,9 +15,7 @@ import (
 	"texere/internal/collection"
 	"texere/internal/content"
 	"texere/internal/explorer"
-	"texere/internal/learning"
 	"texere/internal/media"
-	"texere/internal/search"
 )
 
 // AppConfig is the persisted user configuration.
@@ -51,14 +49,9 @@ type App struct {
 	registry      *content.SSTRegistry
 	curMu         sync.Mutex                    // guards cur
 	cur           *collection.Session           // the open Collection; nil when none
-	collectionDir string                        // TEMPORARY mirror of cur (mirrorLegacy); removed in Task 9
-	dirMu         sync.RWMutex                  // TEMPORARY mirror of cur (mirrorLegacy); removed in Task 9
 	initialSums   []content.ChapterSummary      // summaries loaded at startup from saved config
 	startupError  string                        // non-empty when auto-load failed (dir missing)
 	quitConfirmed bool                          // set by ConfirmQuit so beforeClose lets the second Quit() through
-	searchSvc     *search.SearchService         // TEMPORARY mirror of cur (mirrorLegacy); removed in Task 9
-	explorerSvc   *explorer.ExplorerService     // TEMPORARY mirror of cur (mirrorLegacy); removed in Task 9
-	learnStore    *learning.Store               // TEMPORARY mirror of cur (mirrorLegacy); removed in Task 9
 	llmStreams    map[string]context.CancelFunc // active LLM turns, keyed by streamId
 	llmMu         sync.Mutex                    // guards llmStreams
 	shellRuns     map[string]context.CancelFunc // active shell runs, keyed by runId
@@ -165,9 +158,8 @@ func (a *App) OpenCollection(dir string) ([]content.ChapterSummary, error) {
 
 // mediaDir returns <collectionDir>/media, or "" when no collection is open.
 // Unexported so it is not surfaced as a Wails binding; read by the asset
-// handler (main.go) on the HTTP goroutine. It no longer reads under dirMu,
-// but it is still safe from that goroutine because currentDir takes curMu
-// and a Session's directory never changes.
+// handler (main.go) on the HTTP goroutine. It is safe from that goroutine
+// because currentDir takes curMu and a Session's directory never changes.
 func (a *App) mediaDir() string {
 	dir, err := a.currentDir()
 	if err != nil {
@@ -176,10 +168,9 @@ func (a *App) mediaDir() string {
 	return filepath.Join(dir, "media")
 }
 
-// collectionRoot is the collection directory, or "" when none is open. It no
-// longer reads under dirMu, but it is still safe from the HTTP asset handler's
-// goroutine because currentDir takes curMu and a Session's directory never
-// changes.
+// collectionRoot is the collection directory, or "" when none is open. It is
+// safe from the HTTP asset handler's goroutine because currentDir takes
+// curMu and a Session's directory never changes.
 func (a *App) collectionRoot() string {
 	dir, _ := a.currentDir()
 	return dir

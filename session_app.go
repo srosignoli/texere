@@ -87,7 +87,6 @@ func (a *App) switchTo(dir string) ([]content.ChapterSummary, error) {
 	}
 	a.cur = s
 	a.curMu.Unlock()
-	a.mirrorLegacy()
 	return sums, nil
 }
 
@@ -99,22 +98,4 @@ func (a *App) closeSession() {
 		a.cur = nil
 	}
 	a.curMu.Unlock()
-	a.mirrorLegacy()
-}
-
-// mirrorLegacy copies the Session's handles into the App fields that methods
-// not yet migrated still read. TEMPORARY: deleted in Task 9.
-func (a *App) mirrorLegacy() {
-	a.dirMu.Lock()
-	defer a.dirMu.Unlock()
-	a.collectionDir, a.learnStore, a.searchSvc, a.explorerSvc = "", nil, nil, nil
-	s, err := a.session()
-	if err != nil {
-		return
-	}
-	_ = s.Read(func(h collection.Handles) error {
-		a.collectionDir = h.Dir()
-		a.learnStore, a.searchSvc, a.explorerSvc = h.Learning(), h.Search(), h.Explorer()
-		return nil
-	})
 }
