@@ -1,9 +1,9 @@
 package main
 
 import (
-	"errors"
 	"time"
 
+	"texere/internal/collection"
 	"texere/internal/learning"
 )
 
@@ -13,13 +13,12 @@ import (
 // suppressed at the call site alongside the three progress writes, so glancing
 // at an extract never counts as reading.
 func (a *App) LogReadingSession(id string, seconds int) error {
-	if a.learnStore == nil {
-		return errors.New("no collection open")
-	}
-	if seconds <= 0 {
-		return nil // opening and immediately leaving is not a session
-	}
-	return a.learnStore.LogActivity("read", id, "", seconds, time.Now())
+	return a.withCollection(func(h collection.Handles) error {
+		if seconds <= 0 {
+			return nil // opening and immediately leaving is not a session
+		}
+		return h.Learning().LogActivity("read", id, "", seconds, time.Now())
+	})
 }
 
 const statsWeeks = 12
@@ -42,45 +41,44 @@ type StatsView struct {
 }
 
 func (a *App) GetStatistics() (*StatsView, error) {
-	if a.learnStore == nil {
-		return nil, errors.New("no collection open")
-	}
-	now := time.Now()
-	var v StatsView
-	var err error
+	return inCollection(a, func(h collection.Handles) (*StatsView, error) {
+		now := time.Now()
+		var v StatsView
+		var err error
 
-	if v.Quality, err = a.learnStore.QualityStatsFor(now); err != nil {
-		return nil, err
-	}
-	// Latency is passed through rather than re-queried: two queries over the
-	// same window could disagree if a review lands between them.
-	if v.Workload, err = a.learnStore.WorkloadStatsFor(now, v.Quality.AvgLatencyMs); err != nil {
-		return nil, err
-	}
-	if v.Habit, err = a.learnStore.HabitStatsFor(now); err != nil {
-		return nil, err
-	}
-	if v.Pipeline, err = a.learnStore.PipelineStatsFor(now); err != nil {
-		return nil, err
-	}
-	if v.CardsPerWeek, err = a.learnStore.CardsPerWeek(statsWeeks, now); err != nil {
-		return nil, err
-	}
-	if v.ReadMinsWeek, err = a.learnStore.ActivityWeeks("read", statsWeeks, now); err != nil {
-		return nil, err
-	}
-	if v.ProcPerWeek, err = a.learnStore.ActivityWeeks("process", statsWeeks, now); err != nil {
-		return nil, err
-	}
-	if since, ok, err := a.learnStore.ActivitySince("read"); err != nil {
-		return nil, err
-	} else if ok {
-		v.ReadSince = since.Unix()
-	}
-	if since, ok, err := a.learnStore.ActivitySince("process"); err != nil {
-		return nil, err
-	} else if ok {
-		v.ProcSince = since.Unix()
-	}
-	return &v, nil
+		if v.Quality, err = h.Learning().QualityStatsFor(now); err != nil {
+			return nil, err
+		}
+		// Latency is passed through rather than re-queried: two queries over the
+		// same window could disagree if a review lands between them.
+		if v.Workload, err = h.Learning().WorkloadStatsFor(now, v.Quality.AvgLatencyMs); err != nil {
+			return nil, err
+		}
+		if v.Habit, err = h.Learning().HabitStatsFor(now); err != nil {
+			return nil, err
+		}
+		if v.Pipeline, err = h.Learning().PipelineStatsFor(now); err != nil {
+			return nil, err
+		}
+		if v.CardsPerWeek, err = h.Learning().CardsPerWeek(statsWeeks, now); err != nil {
+			return nil, err
+		}
+		if v.ReadMinsWeek, err = h.Learning().ActivityWeeks("read", statsWeeks, now); err != nil {
+			return nil, err
+		}
+		if v.ProcPerWeek, err = h.Learning().ActivityWeeks("process", statsWeeks, now); err != nil {
+			return nil, err
+		}
+		if since, ok, err := h.Learning().ActivitySince("read"); err != nil {
+			return nil, err
+		} else if ok {
+			v.ReadSince = since.Unix()
+		}
+		if since, ok, err := h.Learning().ActivitySince("process"); err != nil {
+			return nil, err
+		} else if ok {
+			v.ProcSince = since.Unix()
+		}
+		return &v, nil
+	})
 }

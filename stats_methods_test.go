@@ -12,12 +12,7 @@ import (
 
 func TestLogReadingSessionRecordsMinutes(t *testing.T) {
 	dir := t.TempDir()
-	st, err := learning.Open(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { st.Close() })
-	a := &App{collectionDir: dir, learnStore: st}
+	a, st := newTestApp(t, dir, nil)
 
 	if err := a.LogReadingSession("r1", 600); err != nil {
 		t.Fatalf("LogReadingSession: %v", err)
@@ -35,9 +30,7 @@ func TestLogReadingSessionRecordsMinutes(t *testing.T) {
 // session count in the pipeline panel while contributing no time.
 func TestLogReadingSessionIgnoresEmptySessions(t *testing.T) {
 	dir := t.TempDir()
-	st, _ := learning.Open(dir)
-	t.Cleanup(func() { st.Close() })
-	a := &App{collectionDir: dir, learnStore: st}
+	a, st := newTestApp(t, dir, nil)
 
 	if err := a.LogReadingSession("r1", 0); err != nil {
 		t.Fatalf("a zero session must be ignored, not an error: %v", err)
@@ -49,17 +42,12 @@ func TestLogReadingSessionIgnoresEmptySessions(t *testing.T) {
 
 func TestRescheduleExtractLogsItsAction(t *testing.T) {
 	dir := t.TempDir()
-	st, err := learning.Open(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { st.Close() })
+	a, st := newTestApp(t, dir, nil)
 	if _, err := st.UpsertExtract(learning.Extract{
 		ID: "e1", FilePath: "/c/n.n4l", Text: "x", Due: time.Now(), Active: true,
 	}); err != nil {
 		t.Fatal(err)
 	}
-	a := &App{collectionDir: dir, learnStore: st}
 
 	if err := a.DismissExtract("e1"); err != nil {
 		t.Fatalf("DismissExtract: %v", err)
@@ -85,13 +73,8 @@ func TestPromoteExtractLogsItsAction(t *testing.T) {
 	// is parsed as a root node with empty text and cannot produce a card.
 	// This matches the format produced by content.AppendExtract.
 	os.WriteFile(p, []byte("- K\n# @id e1\nSystem 1 is fast (from) \"sources/k.txt char=0\"\n"), 0o644)
-	st, err := learning.Open(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { st.Close() })
 	reg := &content.SSTRegistry{Arrows: map[string]content.ArrowDef{"from": {Code: "from", LongName: "from"}}}
-	a := &App{collectionDir: dir, learnStore: st, registry: reg}
+	a, st := newTestApp(t, dir, reg)
 
 	if _, err := learning.Sync(st, []string{p}, reg); err != nil {
 		t.Fatal(err)
@@ -115,12 +98,7 @@ func TestPromoteExtractLogsItsAction(t *testing.T) {
 
 func TestGetStatisticsAssemblesEveryPanel(t *testing.T) {
 	dir := t.TempDir()
-	st, err := learning.Open(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { st.Close() })
-	a := &App{collectionDir: dir, learnStore: st}
+	a, _ := newTestApp(t, dir, nil)
 
 	got, err := a.GetStatistics()
 	if err != nil {
@@ -168,12 +146,7 @@ func TestGetStatisticsWithoutACollection(t *testing.T) {
 // weeks of zero reading. The two kinds must age independently.
 func TestGetStatisticsTracksEachActivityKindSeparately(t *testing.T) {
 	dir := t.TempDir()
-	st, err := learning.Open(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { st.Close() })
-	a := &App{collectionDir: dir, learnStore: st}
+	a, st := newTestApp(t, dir, nil)
 
 	if err := st.LogActivity("process", "e1", "dismiss", 0, time.Now()); err != nil {
 		t.Fatal(err)
@@ -201,13 +174,8 @@ func TestGetStatisticsPassesRealLatencyIntoWorkload(t *testing.T) {
 	if err := os.WriteFile(notes, []byte("- cards\n\n# @card\nSystem 1 is fast >> yes\n\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	st, err := learning.Open(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { st.Close() })
-	a := &App{collectionDir: dir, learnStore: st,
-		registry: &content.SSTRegistry{Arrows: map[string]content.ArrowDef{}}}
+	reg := &content.SSTRegistry{Arrows: map[string]content.ArrowDef{}}
+	a, st := newTestApp(t, dir, reg)
 
 	if _, err := learning.Sync(st, []string{notes}, a.registry); err != nil {
 		t.Fatal(err)
