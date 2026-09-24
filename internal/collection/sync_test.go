@@ -27,6 +27,10 @@ func TestSyncInjectsIDsIntoTheOpenFileAndNotifies(t *testing.T) {
 	if rec.count(EventIDsInjected, f) != 1 {
 		t.Fatalf("file:ids-injected for the open file: %d events, want 1", rec.count(EventIDsInjected, f))
 	}
+	// The watcher delivers collection:change asynchronously; wait for it before
+	// asserting no file:modified-externally, or the assertion passes vacuously
+	// because the watcher simply hasn't had a chance to fire yet.
+	rec.waitFor(t, EventCollectionChange, f)
 	if rec.count(EventFileModifiedExternally, f) != 0 {
 		t.Fatal("the sync's own write was reported as external")
 	}
@@ -34,12 +38,19 @@ func TestSyncInjectsIDsIntoTheOpenFileAndNotifies(t *testing.T) {
 
 func TestSyncDoesNotNotifyForAFileThatIsNotOpen(t *testing.T) {
 	dir := t.TempDir()
-	writeFile(t, filepath.Join(dir, "f.n4l"), clozeNote)
+	f := filepath.Join(dir, "f.n4l")
+	writeFile(t, f, clozeNote)
 	s, rec := openT(t, dir)
 	s.SetOpenFile(filepath.Join(dir, "other.n4l"))
 
-	if _, err := s.Sync(); err != nil {
+	res, err := s.Sync()
+	if err != nil {
 		t.Fatal(err)
+	}
+	// Proves the fixture's file actually got injected (and Sync did real work),
+	// rather than the notification assertion below passing because nothing happened.
+	if len(res.InjectedPaths) != 1 || res.InjectedPaths[0] != f {
+		t.Fatalf("InjectedPaths = %v, want [%s]", res.InjectedPaths, f)
 	}
 	if n := rec.count(EventIDsInjected, ""); n != 0 {
 		t.Fatalf("file:ids-injected sent %d times for a file that is not open", n)
@@ -136,18 +147,22 @@ func TestRebuildGraphSyncsStudyItems(t *testing.T) {
 	if _, err := s.RebuildGraph(); err != nil {
 		t.Fatal(err)
 	}
-	_ = s.Read(func(h Handles) error {
+	if err := s.Read(func(h Handles) error {
 		q, err := h.Learning().DueQueue(time.Now(), 10)
 		if err != nil || len(q) != 1 {
 			t.Fatalf("due queue after rebuild: len=%d err=%v, want 1", len(q), err)
 		}
 		return nil
-	})
+	}); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestRebuildGraphWaitsForInFlightRead(t *testing.T) {
 	s := graphFixture(t)
 	release := make(chan struct{})
+	closeRelease := closeOnce(release)
+	t.Cleanup(closeRelease)
 	inRead := make(chan struct{})
 	go func() {
 		_ = s.Read(func(Handles) error {
@@ -168,7 +183,7 @@ func TestRebuildGraphWaitsForInFlightRead(t *testing.T) {
 		t.Fatal("RebuildGraph finished while a Read was still running")
 	case <-time.After(150 * time.Millisecond):
 	}
-	close(release)
+	closeRelease()
 	select {
 	case <-done:
 	case <-time.After(10 * time.Second):

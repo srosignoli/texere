@@ -81,6 +81,15 @@ func writeFile(t *testing.T, path, body string) {
 	}
 }
 
+// closeOnce returns a function that closes ch exactly once, safe to call from
+// both the test's normal path and a t.Cleanup registered right after ch is
+// created — so a t.Fatal between the two still closes it and a helper
+// goroutine blocked on <-ch is never left holding the Session's lock forever.
+func closeOnce(ch chan struct{}) func() {
+	var once sync.Once
+	return func() { once.Do(func() { close(ch) }) }
+}
+
 func openT(t *testing.T, dir string) (*Session, *recorder) {
 	t.Helper()
 	rec := &recorder{}
@@ -153,7 +162,7 @@ func TestReadAfterCloseReturnsErrNoCollection(t *testing.T) {
 func TestHandlesPathRejectsTraversal(t *testing.T) {
 	dir := t.TempDir()
 	s, _ := openT(t, dir)
-	_ = s.Read(func(h Handles) error {
+	err := s.Read(func(h Handles) error {
 		if _, err := h.Path("../outside.txt"); err == nil {
 			t.Error("Path(\"../outside.txt\") = nil error")
 		}
@@ -166,6 +175,9 @@ func TestHandlesPathRejectsTraversal(t *testing.T) {
 		}
 		return nil
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestWatcherReportsAnExternalChangeToTheOpenFile(t *testing.T) {

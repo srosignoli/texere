@@ -132,6 +132,46 @@ func TestImportWebAndCreateExtractPosition(t *testing.T) {
 	}
 }
 
+// TestImportWebSourceAbortsWhenCollectionChangesDuringFetch covers the case
+// where the user switches to a different collection while ImportWebSource's
+// network fetch is still in flight (it deliberately runs with no lock held —
+// see the comment in ImportWebSource). The article must not be saved into
+// whichever collection happens to be open when the fetch returns; it must be
+// refused instead, and no file must land in either collection's sources/.
+func TestImportWebSourceAbortsWhenCollectionChangesDuringFetch(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	dirB := t.TempDir()
+	dirA := t.TempDir()
+	a, _ := newTestApp(t, dirA, nil)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/a", func(w http.ResponseWriter, r *http.Request) {
+		// Switch collections from inside the fetch, before responding, so
+		// ImportWebSource's post-fetch write races the switch every time.
+		if _, err := a.OpenCollection(dirB); err != nil {
+			t.Errorf("OpenCollection(dirB) during fetch: %v", err)
+		}
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(`<html><head><title>WT</title></head><body><article><h1>WT</h1>
+			<p>A sufficiently long paragraph of article text so readability keeps it as the main content of this page here.</p>
+			</article></body></html>`))
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	rv, err := a.ImportWebSource(srv.URL + "/a")
+	if err == nil {
+		t.Fatalf("ImportWebSource rv=%+v, err=nil; want an error because the collection changed mid-fetch", rv)
+	}
+
+	for _, dir := range []string{dirA, dirB} {
+		entries, _ := os.ReadDir(filepath.Join(dir, "sources"))
+		if len(entries) != 0 {
+			t.Fatalf("sources/ in %s has %d entries, want 0 — the article must not land in either collection", dir, len(entries))
+		}
+	}
+}
+
 // readingTreeFixture builds a real collection: a source, a scaffolded notes
 // file, and a registered reading. The tree is read from the .n4l, so the tests
 // have to write actual N4L rather than seed the extracts table.

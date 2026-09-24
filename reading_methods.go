@@ -383,12 +383,15 @@ func (a *App) importPdfFrom(picked string) (*ReadingView, error) {
 
 // ImportWebSource fetches a URL, saves a sanitized self-contained article, and registers it.
 func (a *App) ImportWebSource(srcURL string) (*ReadingView, error) {
-	if _, err := a.currentDir(); err != nil {
+	dir, err := a.currentDir()
+	if err != nil {
 		return nil, err
 	}
 	// The network fetch runs with no lock held: it must not block a rebuild or
 	// a collection switch, and it must not hold the Session open while it waits
-	// on a remote server.
+	// on a remote server. That means the collection open at the start of the
+	// fetch may not be the one still open when it finishes; dir is compared
+	// against h.Dir() below so the article is never saved into the wrong one.
 	art, err := source.FetchAndExtract(srcURL)
 	if err != nil {
 		return nil, fmt.Errorf("ImportWebSource: %w", err)
@@ -399,6 +402,9 @@ func (a *App) ImportWebSource(srcURL string) (*ReadingView, error) {
 	}
 	slug := slugify(title)
 	return inCollection(a, func(h collection.Handles) (*ReadingView, error) {
+		if h.Dir() != dir {
+			return nil, fmt.Errorf("ImportWebSource: collection changed during import (was %s, now %s)", dir, h.Dir())
+		}
 		srcRel, srcAbs := uniqueDest(h.Dir(), "sources", slug+".html")
 		if err := os.WriteFile(srcAbs, []byte(art.HTML), 0o644); err != nil {
 			os.Remove(srcAbs)

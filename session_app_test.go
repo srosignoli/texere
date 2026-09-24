@@ -4,12 +4,22 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
 	"texere/internal/collection"
 	"texere/internal/explorer"
 )
+
+// closeOnce returns a function that closes ch exactly once, safe to call from
+// both the test's normal path and a t.Cleanup registered right after ch is
+// created — so a t.Fatal between the two still closes it and a helper
+// goroutine blocked on <-ch is never left holding a lock forever.
+func closeOnce(ch chan struct{}) func() {
+	var once sync.Once
+	return func() { once.Do(func() { close(ch) }) }
+}
 
 func corruptCollection(t *testing.T) string {
 	t.Helper()
@@ -22,8 +32,8 @@ func corruptCollection(t *testing.T) string {
 
 func TestOpenCollectionSwitches(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	a, _ := newTestApp(t, t.TempDir(), nil)
 	b := t.TempDir()
+	a, _ := newTestApp(t, t.TempDir(), nil)
 	if _, err := a.OpenCollection(b); err != nil {
 		t.Fatal(err)
 	}
@@ -67,8 +77,11 @@ func TestOpenCollectionTwiceOnSameDir(t *testing.T) {
 
 func TestOpenCollectionWaitsForInFlightCall(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	b := t.TempDir()
 	a, _ := newTestApp(t, t.TempDir(), nil)
 	release := make(chan struct{})
+	closeRelease := closeOnce(release)
+	t.Cleanup(closeRelease)
 	inCall := make(chan struct{})
 	go func() {
 		_ = a.withCollection(func(collection.Handles) error {
@@ -79,7 +92,6 @@ func TestOpenCollectionWaitsForInFlightCall(t *testing.T) {
 	}()
 	<-inCall
 
-	b := t.TempDir()
 	done := make(chan error, 1)
 	go func() { _, err := a.OpenCollection(b); done <- err }()
 	select {
@@ -87,7 +99,7 @@ func TestOpenCollectionWaitsForInFlightCall(t *testing.T) {
 		t.Fatal("OpenCollection finished while a call was still using the old collection")
 	case <-time.After(150 * time.Millisecond):
 	}
-	close(release)
+	closeRelease()
 	select {
 	case err := <-done:
 		if err != nil {
