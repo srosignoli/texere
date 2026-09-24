@@ -6,13 +6,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"path/filepath"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
+	"texere/internal/collection"
 	"texere/internal/content"
 	"texere/internal/learning"
 	"texere/internal/source"
@@ -59,39 +59,38 @@ func newNotebookID() (string, error) {
 // OpenNotebook loads (or creates) the notebook for an extract node and returns
 // it with a freshly-assembled context payload.
 func (a *App) OpenNotebook(nodeID string) (*NotebookView, error) {
-	if a.learnStore == nil {
-		return nil, errors.New("no collection open")
-	}
-	nb, ok, err := a.learnStore.GetNotebookByExtract(nodeID)
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		id, err := newNotebookID()
+	return inCollection(a, func(h collection.Handles) (*NotebookView, error) {
+		nb, ok, err := h.Learning().GetNotebookByExtract(nodeID)
 		if err != nil {
 			return nil, err
 		}
-		now := time.Now()
-		nb = learning.Notebook{
-			NotebookID: id, ExtractNodeID: nodeID,
-			Chapter: a.chapterOfNode(nodeID), ContextTags: "[]", CellsJSON: "[]",
-			CreatedAt: now, UpdatedAt: now,
+		if !ok {
+			id, err := newNotebookID()
+			if err != nil {
+				return nil, err
+			}
+			now := time.Now()
+			nb = learning.Notebook{
+				NotebookID: id, ExtractNodeID: nodeID,
+				Chapter: a.chapterOfNode(h, nodeID), ContextTags: "[]", CellsJSON: "[]",
+				CreatedAt: now, UpdatedAt: now,
+			}
+			if err := h.Learning().UpsertNotebook(nb); err != nil {
+				return nil, err
+			}
+			// A gutter dot means "this node has a notebook", so creating one changes
+			// what every open editor should be drawing. Without this the note editor
+			// keeps its stale marks for as long as it stays mounted — and it stays
+			// mounted while Process mode is open, which is exactly when notebooks get
+			// created. That was the originally reported symptom: process an extract,
+			// switch back, and no dot.
+			a.notebooksChanged()
 		}
-		if err := a.learnStore.UpsertNotebook(nb); err != nil {
-			return nil, err
-		}
-		// A gutter dot means "this node has a notebook", so creating one changes
-		// what every open editor should be drawing. Without this the note editor
-		// keeps its stale marks for as long as it stays mounted — and it stays
-		// mounted while Process mode is open, which is exactly when notebooks get
-		// created. That was the originally reported symptom: process an extract,
-		// switch back, and no dot.
-		a.notebooksChanged()
-	}
-	return &NotebookView{
-		NotebookID: nb.NotebookID, NodeID: nodeID, Chapter: nb.Chapter,
-		Cells: json.RawMessage(nb.CellsJSON), Context: a.assembleContext(nodeID),
-	}, nil
+		return &NotebookView{
+			NotebookID: nb.NotebookID, NodeID: nodeID, Chapter: nb.Chapter,
+			Cells: json.RawMessage(nb.CellsJSON), Context: a.assembleContext(h, nodeID),
+		}, nil
+	})
 }
 
 // PeekNotebook returns the notebook for a node WITHOUT creating one, or nil when
@@ -112,20 +111,19 @@ func (a *App) OpenNotebook(nodeID string) (*NotebookView, error) {
 // extract_node_id with no validation that the node is a registered extract, so
 // it already serves any node id.
 func (a *App) PeekNotebook(nodeID string) (*NotebookView, error) {
-	if a.learnStore == nil {
-		return nil, errors.New("no collection open")
-	}
-	nb, ok, err := a.learnStore.GetNotebookByExtract(nodeID)
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return nil, nil
-	}
-	return &NotebookView{
-		NotebookID: nb.NotebookID, NodeID: nodeID, Chapter: nb.Chapter,
-		Cells: json.RawMessage(nb.CellsJSON), Context: a.assembleContext(nodeID),
-	}, nil
+	return inCollection(a, func(h collection.Handles) (*NotebookView, error) {
+		nb, ok, err := h.Learning().GetNotebookByExtract(nodeID)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			return nil, nil
+		}
+		return &NotebookView{
+			NotebookID: nb.NotebookID, NodeID: nodeID, Chapter: nb.Chapter,
+			Cells: json.RawMessage(nb.CellsJSON), Context: a.assembleContext(h, nodeID),
+		}, nil
+	})
 }
 
 // FileNodeSpans gives the frontend the line range of every id-bearing node in a
@@ -149,32 +147,30 @@ func (a *App) FileNodeSpans(filePath string) ([]content.NodeSpan, error) {
 
 // SaveNotebook persists just the user cells (debounced autosave from the pane).
 func (a *App) SaveNotebook(notebookID, cellsJSON string) error {
-	if a.learnStore == nil {
-		return errors.New("no collection open")
-	}
-	return a.learnStore.UpdateNotebookCells(notebookID, cellsJSON, time.Now())
+	return a.withCollection(func(h collection.Handles) error {
+		return h.Learning().UpdateNotebookCells(notebookID, cellsJSON, time.Now())
+	})
 }
 
 // GetNotebook returns a notebook by ID for read-only reopen; its context is
 // recomputed from the notebook's extract node.
 func (a *App) GetNotebook(notebookID string) (*NotebookView, error) {
-	if a.learnStore == nil {
-		return nil, errors.New("no collection open")
-	}
-	nb, ok, err := a.learnStore.GetNotebook(notebookID)
-	if err != nil || !ok {
-		return nil, errors.New("notebook not found")
-	}
-	return &NotebookView{
-		NotebookID: nb.NotebookID, NodeID: nb.ExtractNodeID, Chapter: nb.Chapter,
-		Cells: json.RawMessage(nb.CellsJSON), Context: a.assembleContext(nb.ExtractNodeID),
-	}, nil
+	return inCollection(a, func(h collection.Handles) (*NotebookView, error) {
+		nb, ok, err := h.Learning().GetNotebook(notebookID)
+		if err != nil || !ok {
+			return nil, errors.New("notebook not found")
+		}
+		return &NotebookView{
+			NotebookID: nb.NotebookID, NodeID: nb.ExtractNodeID, Chapter: nb.Chapter,
+			Cells: json.RawMessage(nb.CellsJSON), Context: a.assembleContext(h, nb.ExtractNodeID),
+		}, nil
+	})
 }
 
 // chapterOfNode returns the chapter title containing the node with id, "" if
 // not resolvable.
-func (a *App) chapterOfNode(id string) string {
-	tgt, err := a.GetExtractTarget(id)
+func (a *App) chapterOfNode(h collection.Handles, id string) string {
+	tgt, err := a.extractTarget(h, id)
 	if err != nil {
 		return ""
 	}
@@ -195,9 +191,9 @@ func (a *App) chapterOfNode(id string) string {
 // assembleContext builds the read-only context payload: extract text, tags,
 // radius-1 orbit, and a text/web source passage. Every input degrades to a
 // safe empty value; PDF sources omit the passage.
-func (a *App) assembleContext(nodeID string) ContextPayload {
+func (a *App) assembleContext(h collection.Handles, nodeID string) ContextPayload {
 	out := ContextPayload{Tags: []string{}, Orbit: []OrbitItem{}, Source: SourceInfo{Kind: "none"}}
-	tgt, err := a.GetExtractTarget(nodeID)
+	tgt, err := a.extractTarget(h, nodeID)
 	if err != nil {
 		return out
 	}
@@ -205,7 +201,7 @@ func (a *App) assembleContext(nodeID string) ContextPayload {
 	out.Source.Anchor = tgt.FromAnchor
 
 	// Orbit + tags from the graph (empty & silent if the graph is unbuilt).
-	if res, err := a.SearchGraph(tgt.Text); err == nil && res != nil {
+	if res, err := h.Search().Search(tgt.Text); err == nil && res != nil {
 		for _, gn := range res.Nodes {
 			if gn.NodeText != tgt.Text {
 				continue
@@ -226,9 +222,9 @@ func (a *App) assembleContext(nodeID string) ContextPayload {
 	// before comparing — otherwise a relative value can never equal an absolute
 	// one and this lookup silently stops matching anything.
 	if tgt.FromAnchor != "" {
-		if elems, err := a.learnStore.ListReading(); err == nil {
+		if elems, err := h.Learning().ListReading(); err == nil {
 			for _, e := range elems {
-				notesPath, rerr := a.learnStore.Resolve(e.NotesPath)
+				notesPath, rerr := h.Learning().Resolve(e.NotesPath)
 				if rerr != nil || notesPath != tgt.FilePath {
 					continue
 				}
@@ -238,8 +234,10 @@ func (a *App) assembleContext(nodeID string) ContextPayload {
 					break
 				}
 				out.Source.Kind = e.Medium
-				if proj, perr := source.Projection(filepath.Join(a.collectionDir, filepath.FromSlash(e.RefPath))); perr == nil {
-					out.Source.Passage = source.Excerpt(proj, tgt.Text)
+				if p, perr := h.Path(e.RefPath); perr == nil {
+					if proj, perr := source.Projection(p); perr == nil {
+						out.Source.Passage = source.Excerpt(proj, tgt.Text)
+					}
 				}
 				break
 			}
@@ -315,29 +313,28 @@ func pushedNodeKeys(pf *content.ParsedFile, insertedText string) [][2]string {
 // then signals the gutter to refresh. filePath must be the file the text was
 // pushed into (already saved to disk by the caller).
 func (a *App) RecordPush(notebookID, filePath, insertedText string) ([]string, error) {
-	if a.learnStore == nil {
-		return nil, errors.New("no collection open")
-	}
-	pf, _ := content.ParseFile(filePath, a.registry)
-	keys := pushedNodeKeys(pf, insertedText)
-	// filePath is absolute (content-layer, as passed in by the frontend); the
-	// notebook_links.file_path column stores the collection-relative form.
-	relPath, err := a.learnStore.Rel(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("RecordPush: %w", err)
-	}
-	links := make([]learning.NotebookLink, 0, len(keys))
-	texts := make([]string, 0, len(keys))
-	for _, k := range keys {
-		links = append(links, learning.NotebookLink{
-			FilePath: relPath, Chapter: k[0], NodeText: k[1], NotebookID: notebookID})
-		texts = append(texts, k[1])
-	}
-	if err := a.learnStore.AddNotebookLinks(links, time.Now()); err != nil {
-		return nil, err
-	}
-	a.notebookLinksChanged(filePath)
-	return texts, nil
+	return inCollection(a, func(h collection.Handles) ([]string, error) {
+		pf, _ := content.ParseFile(filePath, a.registry)
+		keys := pushedNodeKeys(pf, insertedText)
+		// filePath is absolute (content-layer, as passed in by the frontend); the
+		// notebook_links.file_path column stores the collection-relative form.
+		relPath, err := h.Learning().Rel(filePath)
+		if err != nil {
+			return nil, fmt.Errorf("RecordPush: %w", err)
+		}
+		links := make([]learning.NotebookLink, 0, len(keys))
+		texts := make([]string, 0, len(keys))
+		for _, k := range keys {
+			links = append(links, learning.NotebookLink{
+				FilePath: relPath, Chapter: k[0], NodeText: k[1], NotebookID: notebookID})
+			texts = append(texts, k[1])
+		}
+		if err := h.Learning().AddNotebookLinks(links, time.Now()); err != nil {
+			return nil, err
+		}
+		a.notebookLinksChanged(filePath)
+		return texts, nil
+	})
 }
 
 // NotebookLinkMark is one gutter dot: a line and the notebooks linked to the
@@ -363,101 +360,99 @@ type NotebookMark struct {
 // Read-only: it never creates a notebook. One store query for the file, then a
 // single parse to turn node ids into line numbers.
 func (a *App) NotebookMarks(filePath string) ([]NotebookMark, error) {
-	if a.learnStore == nil {
-		return nil, errors.New("no collection open")
-	}
-	out := []NotebookMark{}
-	pf, _ := content.ParseFile(filePath, a.registry)
-	if pf == nil {
-		return out, nil
-	}
-	// Ask for exactly the ids this file contains. A node id is now the node's
-	// bare short id (see internal/content/nodeid.go) with no file path encoded
-	// in it to range over, so an exact-id lookup is the query that makes sense.
-	var ids []string
-	for _, ch := range pf.Chapters {
-		for _, n := range ch.Nodes {
-			if n.ID != "" {
-				ids = append(ids, n.ID)
+	return inCollection(a, func(h collection.Handles) ([]NotebookMark, error) {
+		out := []NotebookMark{}
+		pf, _ := content.ParseFile(filePath, a.registry)
+		if pf == nil {
+			return out, nil
+		}
+		// Ask for exactly the ids this file contains. A node id is now the node's
+		// bare short id (see internal/content/nodeid.go) with no file path encoded
+		// in it to range over, so an exact-id lookup is the query that makes sense.
+		var ids []string
+		for _, ch := range pf.Chapters {
+			for _, n := range ch.Nodes {
+				if n.ID != "" {
+					ids = append(ids, n.ID)
+				}
 			}
 		}
-	}
-	if len(ids) == 0 {
-		return out, nil
-	}
-	byNode, err := a.learnStore.NotebooksForNodes(ids)
-	if err != nil {
-		return nil, err
-	}
-	for _, ch := range pf.Chapters {
-		for _, n := range ch.Nodes {
-			if n.ID == "" {
-				continue
-			}
-			if nbID, ok := byNode[n.ID]; ok {
-				out = append(out, NotebookMark{Line: n.Line, NotebookID: nbID})
+		if len(ids) == 0 {
+			return out, nil
+		}
+		byNode, err := h.Learning().NotebooksForNodes(ids)
+		if err != nil {
+			return nil, err
+		}
+		for _, ch := range pf.Chapters {
+			for _, n := range ch.Nodes {
+				if n.ID == "" {
+					continue
+				}
+				if nbID, ok := byNode[n.ID]; ok {
+					out = append(out, NotebookMark{Line: n.Line, NotebookID: nbID})
+				}
 			}
 		}
-	}
-	return out, nil
+		return out, nil
+	})
 }
 
 // GetNotebookLinks resolves this file's links to line marks by re-parsing and
 // matching each linked (chapter, text) tuple to a current node line.
 func (a *App) GetNotebookLinks(filePath string) ([]NotebookLinkMark, error) {
-	if a.learnStore == nil {
-		return nil, errors.New("no collection open")
-	}
-	// filePath is absolute (content-layer); notebook_links.file_path is stored
-	// collection-relative, so the lookup key must be converted the same way
-	// RecordPush converted it when writing the link.
-	relPath, err := a.learnStore.Rel(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("GetNotebookLinks: %w", err)
-	}
-	links, err := a.learnStore.LinksForFile(relPath)
-	if err != nil {
-		return nil, err
-	}
-	if len(links) == 0 {
-		return []NotebookLinkMark{}, nil
-	}
-	// (chapter, text) -> set of notebook IDs
-	byKey := map[[2]string]map[string]bool{}
-	for _, l := range links {
-		k := [2]string{l.Chapter, l.NodeText}
-		if byKey[k] == nil {
-			byKey[k] = map[string]bool{}
+	return inCollection(a, func(h collection.Handles) ([]NotebookLinkMark, error) {
+		// filePath is absolute (content-layer); notebook_links.file_path is stored
+		// collection-relative, so the lookup key must be converted the same way
+		// RecordPush converted it when writing the link.
+		relPath, err := h.Learning().Rel(filePath)
+		if err != nil {
+			return nil, fmt.Errorf("GetNotebookLinks: %w", err)
 		}
-		byKey[k][l.NotebookID] = true
-	}
-	pf, _ := content.ParseFile(filePath, a.registry)
-	byLine := map[int]map[string]bool{}
-	if pf != nil {
-		for _, ch := range pf.Chapters {
-			for _, n := range ch.Nodes {
-				ids, ok := byKey[[2]string{ch.Title, n.Text}]
-				if !ok {
-					continue
-				}
-				if byLine[n.Line] == nil {
-					byLine[n.Line] = map[string]bool{}
-				}
-				for id := range ids {
-					byLine[n.Line][id] = true
+		links, err := h.Learning().LinksForFile(relPath)
+		if err != nil {
+			return nil, err
+		}
+		if len(links) == 0 {
+			return []NotebookLinkMark{}, nil
+		}
+		// (chapter, text) -> set of notebook IDs
+		byKey := map[[2]string]map[string]bool{}
+		for _, l := range links {
+			k := [2]string{l.Chapter, l.NodeText}
+			if byKey[k] == nil {
+				byKey[k] = map[string]bool{}
+			}
+			byKey[k][l.NotebookID] = true
+		}
+		pf, _ := content.ParseFile(filePath, a.registry)
+		byLine := map[int]map[string]bool{}
+		if pf != nil {
+			for _, ch := range pf.Chapters {
+				for _, n := range ch.Nodes {
+					ids, ok := byKey[[2]string{ch.Title, n.Text}]
+					if !ok {
+						continue
+					}
+					if byLine[n.Line] == nil {
+						byLine[n.Line] = map[string]bool{}
+					}
+					for id := range ids {
+						byLine[n.Line][id] = true
+					}
 				}
 			}
 		}
-	}
-	out := make([]NotebookLinkMark, 0, len(byLine))
-	for line, ids := range byLine {
-		list := make([]string, 0, len(ids))
-		for id := range ids {
-			list = append(list, id)
+		out := make([]NotebookLinkMark, 0, len(byLine))
+		for line, ids := range byLine {
+			list := make([]string, 0, len(ids))
+			for id := range ids {
+				list = append(list, id)
+			}
+			sort.Strings(list)
+			out = append(out, NotebookLinkMark{Line: line, NotebookIDs: list})
 		}
-		sort.Strings(list)
-		out = append(out, NotebookLinkMark{Line: line, NotebookIDs: list})
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Line < out[j].Line })
-	return out, nil
+		sort.Slice(out, func(i, j int) bool { return out[i].Line < out[j].Line })
+		return out, nil
+	})
 }
