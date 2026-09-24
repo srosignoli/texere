@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"texere/internal/content"
 	"texere/internal/learning"
 )
 
@@ -15,12 +14,7 @@ func TestGradeItemAdvancesQueue(t *testing.T) {
 	if err := os.WriteFile(p, []byte("- Ch\n# @cloze\nSystem 1 is {{fast}}\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	store, err := learning.Open(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	a := &App{collectionDir: dir, learnStore: store, registry: &content.SSTRegistry{Arrows: map[string]content.ArrowDef{}}}
-	defer store.Close()
+	a, _ := newTestApp(t, dir, nil)
 
 	if _, err := a.SyncStudyItems(); err != nil {
 		t.Fatalf("SyncStudyItems: %v", err)

@@ -132,19 +132,17 @@ func (a *App) PromoteExtract(id, kind string) error {
 	if kind == "cloze" && !content.HasClozeTargets(nodeText) {
 		return errors.New("mark a deletion with {{double braces}} before making a cloze")
 	}
-	a.beginSelfWrite(filePath)
-	var wErr error
-	if kind == "card" {
-		// Seed a basic card stub "<passage> >> " for the author to complete, and
-		// carry the (from) anchor onto a ditto line beneath it. The anchor also
-		// lives on the retired extracts row, but the file is this app's durable
-		// store — leaving provenance only in the database meant a rebuilt
-		// learning.db lost where the passage came from, permanently.
-		wErr = content.SeedBasicCardNode(filePath, line, e.Text, e.FromAnchor)
-	} else {
-		wErr = content.InsertMarkerAboveNode(filePath, line, "# @cloze")
-	}
-	a.endSelfWrite(filePath)
+	wErr := a.selfWrite(filePath, func() error {
+		if kind == "card" {
+			// Seed a basic card stub "<passage> >> " for the author to complete, and
+			// carry the (from) anchor onto a ditto line beneath it. The anchor also
+			// lives on the retired extracts row, but the file is this app's durable
+			// store — leaving provenance only in the database meant a rebuilt
+			// learning.db lost where the passage came from, permanently.
+			return content.SeedBasicCardNode(filePath, line, e.Text, e.FromAnchor)
+		}
+		return content.InsertMarkerAboveNode(filePath, line, "# @cloze")
+	})
 	if wErr != nil {
 		return wErr
 	}

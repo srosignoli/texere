@@ -4,51 +4,20 @@ import (
 	"errors"
 	"time"
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
-
-	"texere/internal/content"
 	"texere/internal/learning"
 )
 
 var errNoStore = errors.New("no learning store (open a collection first)")
 
-// collectionN4LFiles lists the .n4l files of the open collection.
-func (a *App) collectionN4LFiles() []string {
-	sums, err := content.ScanCollection(a.collectionDir)
-	if err != nil {
-		return nil
-	}
-	files := make([]string, 0, len(sums))
-	for _, s := range sums {
-		if s.FilePath != "" && s.ScanError == nil {
-			files = append(files, s.FilePath)
-		}
-	}
-	return files
-}
-
 // SyncStudyItems discovers study items across the collection into learning.db.
 func (a *App) SyncStudyItems() (*learning.SyncResult, error) {
-	if a.learnStore == nil {
-		return nil, errNoStore
-	}
-	// Suppress spurious file:modified-externally for the open file during
-	// sync writeback (mirrors how SaveFile brackets self-writes).
-	a.beginSelfWrite(a.openFilePath)
-	res, err := learning.Sync(a.learnStore, a.collectionN4LFiles(), a.registry)
-	a.endSelfWrite(a.openFilePath)
+	s, err := a.session()
 	if err != nil {
 		return nil, err
 	}
-	// If the open file had # @id markers injected, notify the frontend so it
-	// can silently reload the buffer and pick up the new IDs.
-	if a.ctx != nil && a.openFilePath != "" {
-		for _, injPath := range res.InjectedPaths {
-			if injPath == a.openFilePath {
-				runtime.EventsEmit(a.ctx, "file:ids-injected", map[string]string{"path": a.openFilePath})
-				break
-			}
-		}
+	res, err := s.Sync()
+	if err != nil {
+		return nil, err
 	}
 	return &res, nil
 }

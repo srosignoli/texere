@@ -306,12 +306,15 @@ func (a *App) CreateExtract(id, text, position string, advanceProgress bool) (*C
 	// The collection watcher is now recursive, so reading/ writes do fire events;
 	// bracket them as self-writes to suppress a false external-mod toast if this
 	// notes file also happens to be open in the main editor.
-	a.beginSelfWrite(notesPath)
-	exID, err := content.AppendExtract(notesPath, text, anchor)
-	if err == nil && advanceProgress {
-		err = content.UpdateProgressMarker(notesPath, position)
-	}
-	a.endSelfWrite(notesPath)
+	var exID string
+	err = a.selfWrite(notesPath, func() error {
+		var err error
+		exID, err = content.AppendExtract(notesPath, text, anchor)
+		if err == nil && advanceProgress {
+			err = content.UpdateProgressMarker(notesPath, position)
+		}
+		return err
+	})
 	if err != nil {
 		return nil, fmt.Errorf("CreateExtract: %w", err)
 	}
@@ -495,9 +498,9 @@ func (a *App) UpdateReadingProgress(id, position string) error {
 	if err != nil {
 		return fmt.Errorf("UpdateReadingProgress: %w", err)
 	}
-	a.beginSelfWrite(notesPath)
-	wErr := content.UpdateProgressMarker(notesPath, position)
-	a.endSelfWrite(notesPath)
+	wErr := a.selfWrite(notesPath, func() error {
+		return content.UpdateProgressMarker(notesPath, position)
+	})
 	if wErr != nil {
 		return wErr
 	}
