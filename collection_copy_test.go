@@ -101,12 +101,7 @@ func TestStudyDoesNotTouchTheOriginalCollection(t *testing.T) {
 	cp := filepath.Join(t.TempDir(), "copy")
 	copyDirRecursive(t, original, cp)
 
-	store2, err := learning.Open(cp)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer store2.Close()
-	a := &App{collectionDir: cp, learnStore: store2, registry: &content.SSTRegistry{Arrows: map[string]content.ArrowDef{}}}
+	a, _ := newTestApp(t, cp, nil)
 
 	// Drive the real Study/Read write path against the COPY. The stored
 	// NotesPath still points at the ORIGINAL's absolute location, which lies
@@ -189,12 +184,7 @@ func TestStudyUpdatesTheCopyWhenStoredPathsAreRelative(t *testing.T) {
 	cp := filepath.Join(t.TempDir(), "copy")
 	copyDirRecursive(t, original, cp)
 
-	store2, err := learning.Open(cp)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer store2.Close()
-	a := &App{collectionDir: cp, learnStore: store2, registry: &content.SSTRegistry{Arrows: map[string]content.ArrowDef{}}}
+	a, _ := newTestApp(t, cp, nil)
 
 	if err := a.UpdateReadingProgress(refID, "char=500"); err != nil {
 		t.Fatalf("UpdateReadingProgress: %v", err)

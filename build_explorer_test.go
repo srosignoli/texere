@@ -6,8 +6,6 @@ import (
 	"testing"
 
 	"texere/internal/content"
-	"texere/internal/explorer"
-	"texere/internal/search"
 )
 
 // TestBuildGraphRewiresExplorer is a regression test for the bug where
@@ -29,14 +27,8 @@ func TestBuildGraphRewiresExplorer(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "c.n4l"), []byte(n4l), 0o644); err != nil {
 		t.Fatalf("write n4l: %v", err)
 	}
-
-	app := NewApp()
 	reg, _ := content.LoadRegistry(filepath.Join(dir, "SSTconfig")) // degraded is fine
-	app.registry = reg
-	app.collectionDir = dir
-	// Wire services exactly as startup/OpenCollection would.
-	app.searchSvc = search.NewSearchService(dir, reg)
-	app.explorerSvc = explorer.NewExplorerService(app.searchSvc, reg)
+	app, _ := newTestApp(t, dir, reg)
 
 	if r := app.BuildGraph(); r.Error != "" {
 		t.Fatalf("BuildGraph: %s", r.Error)

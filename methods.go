@@ -170,49 +170,10 @@ func atomicWriteText(path, text string) error {
 	return nil
 }
 
-// beginSelfWrite marks path as being written by the app so the collection
-// watcher does not surface a false "modified externally" toast. It is
-// reference-counted and mutex-guarded so concurrent or nested self-writes
-// (SaveFile, sync writeback, reading/study operations) don't clobber each
-// other's suppression. Pair every call with endSelfWrite (via defer).
-func (a *App) beginSelfWrite(path string) {
-	a.savingMu.Lock()
-	if a.savingPaths == nil {
-		a.savingPaths = make(map[string]int)
-	}
-	a.savingPaths[path]++
-	a.savingMu.Unlock()
-}
-
-// endSelfWrite releases one self-write hold on path (see beginSelfWrite).
-func (a *App) endSelfWrite(path string) {
-	a.savingMu.Lock()
-	if n := a.savingPaths[path]; n > 1 {
-		a.savingPaths[path] = n - 1
-	} else {
-		delete(a.savingPaths, path)
-	}
-	a.savingMu.Unlock()
-}
-
-// isSelfWriting reports whether the app currently holds a self-write on path.
-func (a *App) isSelfWriting(path string) bool {
-	a.savingMu.Lock()
-	_, ok := a.savingPaths[path]
-	a.savingMu.Unlock()
-	return ok
-}
-
-// SaveFile atomically writes fileContent to path, then injects missing # @id
+// saveFile atomically writes fileContent to path, then injects missing # @id
 // markers for any # @card nodes. Returns the final on-disk content and the
 // list of injections performed.
-//
-// The path is registered as a self-write for the duration to suppress false
-// file:modified-externally events from consumeWatchEvents.
-func (a *App) SaveFile(path, fileContent string) (*SaveFileResult, error) {
-	a.beginSelfWrite(path)
-	defer a.endSelfWrite(path)
-
+func (a *App) saveFile(path, fileContent string) (*SaveFileResult, error) {
 	if err := atomicWriteText(path, fileContent); err != nil {
 		return nil, fmt.Errorf("SaveFile: %w", err)
 	}
@@ -255,44 +216,18 @@ func (a *App) SaveFile(path, fileContent string) (*SaveFileResult, error) {
 	}, nil
 }
 
-// ---------------------------------------------------------------------------
-// consumeWatchEvents (T010) — replaces the stub in app.go
-// ---------------------------------------------------------------------------
-
-// consumeWatchEvents drains the watcher event channel and emits Wails events
-// to the frontend for Column 1 updates and external file modification prompts.
-func (a *App) consumeWatchEvents() {
-	if a.watcher == nil {
-		return
-	}
-	for {
-		select {
-		case ev, ok := <-a.watcher.Events:
-			if !ok {
-				return
-			}
-			switch ev.Kind {
-			case content.EventAdded, content.EventRemoved, content.EventRenamed:
-				runtime.EventsEmit(a.ctx, "collection:change", ev)
-			case content.EventModified:
-				// Always notify the file tree so chapter add/remove/rename
-				// inside a file is reflected, regardless of whether the
-				// change came from us (SaveFile) or an external editor.
-				runtime.EventsEmit(a.ctx, "collection:change", ev)
-				// Only surface the "external mod" toast when *another*
-				// process changed the currently-open file.
-				if ev.Path == a.openFilePath && !a.isSelfWriting(ev.Path) {
-					runtime.EventsEmit(a.ctx, "file:modified-externally", map[string]string{"path": ev.Path})
-				}
-			}
-		case err, ok := <-a.watcher.Errors:
-			if !ok {
-				return
-			}
-			// Log watcher errors but keep running
-			_ = err
-		}
-	}
+// SaveFile atomically writes fileContent to path, then injects missing # @id
+// markers for any # @card nodes. Returns the final on-disk content and the
+// list of injections performed. The whole write is marked as the app's own,
+// so the watcher does not report it as an external change.
+func (a *App) SaveFile(path, fileContent string) (*SaveFileResult, error) {
+	var res *SaveFileResult
+	err := a.selfWrite(path, func() error {
+		var err error
+		res, err = a.saveFile(path, fileContent)
+		return err
+	})
+	return res, err
 }
 
 // ---------------------------------------------------------------------------
@@ -365,7 +300,7 @@ func (a *App) GetInitialSummaries() []content.ChapterSummary {
 // root from a summary's FilePath: ScanCollection is recursive, so the first
 // summary (sorted by collection-relative path) can live in a subdirectory.
 func (a *App) GetInitialCollectionDir() string {
-	return a.collectionDir
+	return a.collectionRoot()
 }
 
 // ---------------------------------------------------------------------------
@@ -387,8 +322,9 @@ func (a *App) GetStartupError() string {
 // Validation: rejects empty / path-separator-bearing names, auto-suffixes
 // `.n4l` when missing, and refuses to overwrite an existing file.
 func (a *App) CreateNewFile(name string) (*content.ChapterSummary, error) {
-	if a.collectionDir == "" {
-		return nil, fmt.Errorf("CreateNewFile: no collection open")
+	dir, err := a.currentDir()
+	if err != nil {
+		return nil, fmt.Errorf("CreateNewFile: %w", err)
 	}
 	name = strings.TrimSpace(name)
 	if name == "" {
@@ -400,7 +336,7 @@ func (a *App) CreateNewFile(name string) (*content.ChapterSummary, error) {
 	if !strings.HasSuffix(strings.ToLower(name), ".n4l") {
 		name += ".n4l"
 	}
-	path := filepath.Join(a.collectionDir, name)
+	path := filepath.Join(dir, name)
 
 	switch _, err := os.Stat(path); {
 	case err == nil:
@@ -409,10 +345,7 @@ func (a *App) CreateNewFile(name string) (*content.ChapterSummary, error) {
 		return nil, fmt.Errorf("CreateNewFile: stat: %w", err)
 	}
 
-	a.beginSelfWrite(path)
-	err := atomicWriteText(path, "")
-	a.endSelfWrite(path)
-	if err != nil {
+	if err := a.selfWrite(path, func() error { return atomicWriteText(path, "") }); err != nil {
 		return nil, fmt.Errorf("CreateNewFile: %w", err)
 	}
 

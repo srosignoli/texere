@@ -69,12 +69,12 @@ func (a *App) TranscribeAudio(profileID, asset string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	dir := a.mediaDir()
-	if dir == "" {
-		return "", errors.New("no collection open")
+	dir, err := a.currentDir()
+	if err != nil {
+		return "", err
 	}
 	name := filepath.Base(asset) // guard against traversal
-	data, err := os.ReadFile(filepath.Join(dir, name))
+	data, err := os.ReadFile(filepath.Join(dir, "media", name))
 	if err != nil {
 		return "", err
 	}

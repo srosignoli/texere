@@ -12,11 +12,10 @@ import (
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
+	"texere/internal/collection"
 	"texere/internal/content"
 	"texere/internal/explorer"
-	"texere/internal/learning"
 	"texere/internal/media"
-	"texere/internal/search"
 )
 
 // AppConfig is the persisted user configuration.
@@ -48,18 +47,11 @@ type SaveFileResult struct {
 type App struct {
 	ctx           context.Context
 	registry      *content.SSTRegistry
-	collectionDir string                   // abs path of the open collection; "" when none
-	dirMu         sync.RWMutex             // guards collectionDir for the /media asset handler (HTTP goroutine)
-	savingMu      sync.Mutex               // guards savingPaths
-	savingPaths   map[string]int           // ref-counted set of paths the app is writing; suppresses false external-mod events
-	openFilePath  string                   // path of the file currently open in the Source tab
-	initialSums   []content.ChapterSummary // summaries loaded at startup from saved config
-	startupError  string                   // non-empty when auto-load failed (dir missing)
-	watcher       *content.CollectionWatcher
+	curMu         sync.Mutex                    // guards cur
+	cur           *collection.Session           // the open Collection; nil when none
+	initialSums   []content.ChapterSummary      // summaries loaded at startup from saved config
+	startupError  string                        // non-empty when auto-load failed (dir missing)
 	quitConfirmed bool                          // set by ConfirmQuit so beforeClose lets the second Quit() through
-	searchSvc     *search.SearchService         // graph search; nil until a collection is loaded
-	explorerSvc   *explorer.ExplorerService     // 2.5D isometric explorer; lifetime mirrors searchSvc
-	learnStore    *learning.Store               // spaced-repetition store; nil until a collection is loaded
 	llmStreams    map[string]context.CancelFunc // active LLM turns, keyed by streamId
 	llmMu         sync.Mutex                    // guards llmStreams
 	shellRuns     map[string]context.CancelFunc // active shell runs, keyed by runId
@@ -102,37 +94,12 @@ func (a *App) startup(ctx context.Context) {
 		a.startupError = "Last collection directory not found: " + cfg.CollectionDir
 		return
 	}
-	summaries, err := content.ScanCollection(cfg.CollectionDir)
+	sums, err := a.switchTo(cfg.CollectionDir)
 	if err != nil {
 		a.startupError = "Could not load collection: " + err.Error()
 		return
 	}
-	a.dirMu.Lock()
-	a.collectionDir = cfg.CollectionDir
-	a.dirMu.Unlock()
-	a.initialSums = summaries
-	a.searchSvc = search.NewSearchService(cfg.CollectionDir, a.registry)
-	a.explorerSvc = explorer.NewExplorerService(a.searchSvc, a.registry)
-
-	if a.learnStore != nil {
-		a.learnStore.Close()
-		a.learnStore = nil
-	}
-	if a.collectionDir != "" {
-		if ls, err := learning.Open(a.collectionDir); err != nil {
-			log.Printf("learning: open store: %v", err)
-		} else {
-			a.learnStore = ls
-		}
-	}
-
-	watcher, err := content.WatchCollection(cfg.CollectionDir)
-	if err != nil {
-		log.Printf("content: WatchCollection at startup: %v", err)
-	} else {
-		a.watcher = watcher
-		go a.consumeWatchEvents()
-	}
+	a.initialSums = sums
 }
 
 // domReady is called after the front-end dom has been loaded.
@@ -170,107 +137,52 @@ func (a *App) ConfirmQuit() {
 
 // shutdown is called at application termination.
 func (a *App) shutdown(_ context.Context) {
-	if a.watcher != nil {
-		if err := a.watcher.Close(); err != nil {
-			log.Printf("content: watcher close: %v", err)
-		}
-	}
-	if a.searchSvc != nil {
-		a.searchSvc.Close()
-	}
-	if a.learnStore != nil {
-		a.learnStore.Close()
-	}
+	a.closeSession()
 }
 
-// OpenCollection scans a directory of .n4l files, starts the filesystem watcher,
-// persists the directory to config, and returns the chapter summaries for Column 1.
+// OpenCollection opens dir as the current Collection and returns its chapter
+// summaries for Column 1. If dir cannot be opened, the current one stays open.
 func (a *App) OpenCollection(dir string) ([]content.ChapterSummary, error) {
-	summaries, err := content.ScanCollection(dir)
+	sums, err := a.switchTo(dir)
 	if err != nil {
 		return nil, err
 	}
-
 	// Persist the chosen directory so startup() can auto-load it next launch.
 	cfg, _ := loadConfig()
 	cfg.CollectionDir = dir
 	if err := saveConfig(cfg); err != nil {
 		log.Printf("content: saveConfig: %v", err)
 	}
-
-	// No file is open after switching collections.
-	a.openFilePath = ""
-	a.dirMu.Lock()
-	a.collectionDir = dir
-	a.dirMu.Unlock()
-
-	// Re-create the search service for the new collection directory.
-	if a.searchSvc != nil {
-		a.searchSvc.Close()
-	}
-	a.searchSvc = search.NewSearchService(dir, a.registry)
-	if a.explorerSvc == nil {
-		a.explorerSvc = explorer.NewExplorerService(a.searchSvc, a.registry)
-	} else {
-		a.explorerSvc.SetSearchService(a.searchSvc)
-	}
-
-	if a.learnStore != nil {
-		a.learnStore.Close()
-		a.learnStore = nil
-	}
-	if dir != "" {
-		if ls, err := learning.Open(dir); err != nil {
-			log.Printf("learning: open store: %v", err)
-		} else {
-			a.learnStore = ls
-		}
-	}
-
-	// Start watcher (replace any existing one)
-	if a.watcher != nil {
-		a.watcher.Close()
-	}
-	watcher, err := content.WatchCollection(dir)
-	if err != nil {
-		log.Printf("content: WatchCollection: %v", err)
-		// Degraded: no live updates, but collection loaded
-	} else {
-		a.watcher = watcher
-		go a.consumeWatchEvents()
-	}
-
-	return summaries, nil
+	return sums, nil
 }
 
 // mediaDir returns <collectionDir>/media, or "" when no collection is open.
-// Unexported so it is not surfaced as a Wails binding; read by the asset handler
-// (main.go) on the HTTP goroutine, hence the mutex.
+// Unexported so it is not surfaced as a Wails binding; read by the asset
+// handler (main.go) on the HTTP goroutine. It is safe from that goroutine
+// because currentDir takes curMu and a Session's directory never changes.
 func (a *App) mediaDir() string {
-	a.dirMu.RLock()
-	defer a.dirMu.RUnlock()
-	if a.collectionDir == "" {
+	dir, err := a.currentDir()
+	if err != nil {
 		return ""
 	}
-	return filepath.Join(a.collectionDir, "media")
+	return filepath.Join(dir, "media")
 }
 
-// collectionRoot is the collection directory, or "" when none is open. Read
-// under dirMu because the HTTP asset handler calls it from its own goroutine,
-// exactly as mediaDir does.
+// collectionRoot is the collection directory, or "" when none is open. It is
+// safe from the HTTP asset handler's goroutine because currentDir takes
+// curMu and a Session's directory never changes.
 func (a *App) collectionRoot() string {
-	a.dirMu.RLock()
-	defer a.dirMu.RUnlock()
-	return a.collectionDir
+	dir, _ := a.currentDir()
+	return dir
 }
 
 // LintCollection parses every .n4l file in the open collection and returns
 // the aggregated defects and vocabulary for the Problems tab. Returns an
 // error when no collection is open.
 func (a *App) LintCollection() (content.LintResult, error) {
-	root := a.collectionRoot()
-	if root == "" {
-		return content.LintResult{}, errors.New("no collection open")
+	root, err := a.currentDir()
+	if err != nil {
+		return content.LintResult{}, err
 	}
 	return content.LintCollection(root, a.registry)
 }
@@ -280,11 +192,9 @@ func (a *App) LintCollection() (content.LintResult, error) {
 // when the user cancels, and an error when no collection is open or the file is
 // not a supported image.
 func (a *App) ImportImage() (map[string]any, error) {
-	a.dirMu.RLock()
-	dir := a.collectionDir
-	a.dirMu.RUnlock()
-	if dir == "" {
-		return nil, fmt.Errorf("no collection open")
+	_, err := a.currentDir()
+	if err != nil {
+		return nil, err
 	}
 	sel, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "Add image",
@@ -304,11 +214,9 @@ func (a *App) ImportImage() (map[string]any, error) {
 // importImageFrom is the ingest half of ImportImage: everything after a path
 // has been chosen. Unexported, so Wails generates no JS binding for it.
 func (a *App) importImageFrom(sel string) (map[string]any, error) {
-	a.dirMu.RLock()
-	dir := a.collectionDir
-	a.dirMu.RUnlock()
-	if dir == "" {
-		return nil, fmt.Errorf("no collection open")
+	dir, err := a.currentDir()
+	if err != nil {
+		return nil, err
 	}
 	if sel == "" {
 		return nil, fmt.Errorf("importImageFrom: empty path")
@@ -324,11 +232,9 @@ func (a *App) importImageFrom(sel string) (map[string]any, error) {
 // into media/, and returns {asset, mime}. (nil, nil) on cancel; error if no
 // collection is open or the type is unsupported.
 func (a *App) ImportAudio() (map[string]any, error) {
-	a.dirMu.RLock()
-	dir := a.collectionDir
-	a.dirMu.RUnlock()
-	if dir == "" {
-		return nil, fmt.Errorf("no collection open")
+	_, err := a.currentDir()
+	if err != nil {
+		return nil, err
 	}
 	sel, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "Add audio",
@@ -348,11 +254,9 @@ func (a *App) ImportAudio() (map[string]any, error) {
 // importAudioFrom is the ingest half of ImportAudio: everything after a path
 // has been chosen. Unexported, so Wails generates no JS binding for it.
 func (a *App) importAudioFrom(sel string) (map[string]any, error) {
-	a.dirMu.RLock()
-	dir := a.collectionDir
-	a.dirMu.RUnlock()
-	if dir == "" {
-		return nil, fmt.Errorf("no collection open")
+	dir, err := a.currentDir()
+	if err != nil {
+		return nil, err
 	}
 	if sel == "" {
 		return nil, fmt.Errorf("importAudioFrom: empty path")
@@ -367,15 +271,13 @@ func (a *App) importAudioFrom(sel string) (map[string]any, error) {
 // SaveRecording decodes base64 audio bytes from an in-app recording and stores
 // them in media/, returning {asset, mime}.
 func (a *App) SaveRecording(dataBase64, mime string) (map[string]any, error) {
-	a.dirMu.RLock()
-	dir := a.collectionDir
-	a.dirMu.RUnlock()
-	if dir == "" {
-		return nil, fmt.Errorf("no collection open")
-	}
-	data, err := base64.StdEncoding.DecodeString(dataBase64)
+	dir, err := a.currentDir()
 	if err != nil {
-		return nil, fmt.Errorf("decode recording: %w", err)
+		return nil, err
+	}
+	data, decErr := base64.StdEncoding.DecodeString(dataBase64)
+	if decErr != nil {
+		return nil, fmt.Errorf("decode recording: %w", decErr)
 	}
 	asset, err := media.SaveAudio(dir, data, mime)
 	if err != nil {
@@ -386,10 +288,12 @@ func (a *App) SaveRecording(dataBase64, mime string) (map[string]any, error) {
 
 // ParseFileForUI is a Wails-bound method that parses a .n4l file and returns
 // the full structured content for display in the editor view.
-// Side-effect: sets a.openFilePath so consumeWatchEvents can emit
-// file:modified-externally for the correct file.
+// Side-effect: records path as the Session's open file, so its watcher can
+// emit file:modified-externally for the correct file.
 func (a *App) ParseFileForUI(path string) (*content.ParsedFile, []content.ParseError) {
-	a.openFilePath = path
+	if s, err := a.session(); err == nil {
+		s.SetOpenFile(path)
+	}
 	return content.ParseFile(path, a.registry)
 }
 
@@ -399,41 +303,43 @@ func (a *App) ParseFileForUI(path string) (*content.ParsedFile, []content.ParseE
 // full contract: error model, lifecycle, and JSON shapes.
 // =============================================================================
 
+// noGraphLayout is the empty layout shown when no collection is open,
+// carrying the same hint as the search overlay's Tier 2.
+func noGraphLayout() explorer.LayoutResult {
+	return explorer.LayoutResult{
+		Nodes:       []explorer.NodeView{},
+		Edges:       []explorer.EdgeView{},
+		Territories: []explorer.TerritoryView{},
+		Diagnostics: explorer.Diagnostics{
+			GraphError: "Build your graph first (Ctrl+G) to enable graph search.",
+		},
+	}
+}
+
 // ExplorerOpen runs a graph query, materializes the result subgraph, and
 // returns the initial layout for the default anchor. User-visible failure
 // modes (graph not built, no results) ride in LayoutResult.Diagnostics
 // rather than the error return.
 func (a *App) ExplorerOpen(query string, mode string) (explorer.LayoutResult, error) {
-	if a.explorerSvc == nil {
-		// No collection loaded yet — surface the same hint the search
-		// overlay's Tier 2 uses so the frontend can render a useful
-		// empty state.
-		return explorer.LayoutResult{
-			Nodes:       []explorer.NodeView{},
-			Edges:       []explorer.EdgeView{},
-			Territories: []explorer.TerritoryView{},
-			Diagnostics: explorer.Diagnostics{
-				GraphError: "Build your graph first (Ctrl+G) to enable graph search.",
-			},
-		}, nil
+	lr, err := inCollection(a, func(h collection.Handles) (explorer.LayoutResult, error) {
+		return h.Explorer().Open(query, mode)
+	})
+	if errors.Is(err, collection.ErrNoCollection) {
+		return noGraphLayout(), nil
 	}
-	return a.explorerSvc.Open(query, mode)
+	return lr, err
 }
 
 // GraphLayout returns an isometric layout for a query WITHOUT starting/replacing
 // the global explorer session — used by the notebook graph cell's graph view.
 func (a *App) GraphLayout(query string, mode string) (explorer.LayoutResult, error) {
-	if a.explorerSvc == nil {
-		return explorer.LayoutResult{
-			Nodes:       []explorer.NodeView{},
-			Edges:       []explorer.EdgeView{},
-			Territories: []explorer.TerritoryView{},
-			Diagnostics: explorer.Diagnostics{
-				GraphError: "Build your graph first (Ctrl+G) to enable graph search.",
-			},
-		}, nil
+	lr, err := inCollection(a, func(h collection.Handles) (explorer.LayoutResult, error) {
+		return h.Explorer().Layout(query, mode)
+	})
+	if errors.Is(err, collection.ErrNoCollection) {
+		return noGraphLayout(), nil
 	}
-	return a.explorerSvc.Layout(query, mode)
+	return lr, err
 }
 
 // ExplorerReanchor runs a new layout pass against the cached ResultSet
@@ -442,16 +348,20 @@ func (a *App) GraphLayout(query string, mode string) (explorer.LayoutResult, err
 // ErrStaleResultID or ErrAnchorNotInResult for programmer errors;
 // never for user-visible states.
 func (a *App) ExplorerReanchor(resultID string, anchorID string, mode string) (explorer.LayoutResult, error) {
-	if a.explorerSvc == nil {
+	lr, err := inCollection(a, func(h collection.Handles) (explorer.LayoutResult, error) {
+		return h.Explorer().Reanchor(resultID, anchorID, mode)
+	})
+	if errors.Is(err, collection.ErrNoCollection) {
 		return explorer.LayoutResult{}, explorer.ErrStaleResultID
 	}
-	return a.explorerSvc.Reanchor(resultID, anchorID, mode)
+	return lr, err
 }
 
 // ExplorerClose evicts the cached ResultSet. Idempotent.
 func (a *App) ExplorerClose() error {
-	if a.explorerSvc == nil {
+	err := a.withCollection(func(h collection.Handles) error { return h.Explorer().Close() })
+	if errors.Is(err, collection.ErrNoCollection) {
 		return nil
 	}
-	return a.explorerSvc.Close()
+	return err
 }

@@ -85,6 +85,10 @@ collection/
 # Exception: test fixtures are source code
 !internal/content/testdata/*.n4l
 !internal/content/testdata/lint/*.n4l
+# Exception: internal/collection/ is the Session package (source code), not a
+# user's N4L collection directory — the collection/ pattern above would
+# otherwise swallow it.
+!internal/collection/
 !internal/search/testdata/*.n4l
 !internal/corpustest/corpus/*.n4l
 

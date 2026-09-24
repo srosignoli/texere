@@ -21,6 +21,7 @@ Auto-generated from all feature plans. Last updated: 2026-05-04
 texere/
 ├── main.go / app.go       # Wails entry point + App struct
 ├── internal/content/      # Layer I: N4L file I/O
+├── internal/collection/   # Session: the open Collection (stores, watcher, self-writes); see CONTEXT.md
 ├── internal/graph/        # Layer II: knowledge graph (BadgerDB)
 ├── internal/learning/     # Layer III: FSRS learning state (SQLite)
 ├── frontend/src/          # Svelte UI
