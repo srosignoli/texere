@@ -75,7 +75,8 @@ func TestFetchMediaURLStoresAsset(t *testing.T) {
 	defer srv.Close()
 
 	dir := t.TempDir()
-	got, err := (&App{collectionDir: dir}).FetchMediaURL(srv.URL+"/a.png", "image")
+	a, _ := newTestApp(t, dir, nil)
+	got, err := a.FetchMediaURL(srv.URL+"/a.png", "image")
 	if err != nil {
 		t.Fatalf("FetchMediaURL: %v", err)
 	}
@@ -98,7 +99,8 @@ func TestFetchMediaURLPassesKindThrough(t *testing.T) {
 	defer srv.Close()
 
 	dir := t.TempDir()
-	got, err := (&App{collectionDir: dir}).FetchMediaURL(srv.URL+"/manzana.wav", "audio")
+	a, _ := newTestApp(t, dir, nil)
+	got, err := a.FetchMediaURL(srv.URL+"/manzana.wav", "audio")
 	if err != nil {
 		t.Fatalf("FetchMediaURL: %v", err)
 	}

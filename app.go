@@ -189,9 +189,9 @@ func (a *App) collectionRoot() string {
 // the aggregated defects and vocabulary for the Problems tab. Returns an
 // error when no collection is open.
 func (a *App) LintCollection() (content.LintResult, error) {
-	root := a.collectionRoot()
-	if root == "" {
-		return content.LintResult{}, errors.New("no collection open")
+	root, err := a.currentDir()
+	if err != nil {
+		return content.LintResult{}, err
 	}
 	return content.LintCollection(root, a.registry)
 }
@@ -201,11 +201,9 @@ func (a *App) LintCollection() (content.LintResult, error) {
 // when the user cancels, and an error when no collection is open or the file is
 // not a supported image.
 func (a *App) ImportImage() (map[string]any, error) {
-	a.dirMu.RLock()
-	dir := a.collectionDir
-	a.dirMu.RUnlock()
-	if dir == "" {
-		return nil, fmt.Errorf("no collection open")
+	_, err := a.currentDir()
+	if err != nil {
+		return nil, err
 	}
 	sel, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "Add image",
@@ -225,11 +223,9 @@ func (a *App) ImportImage() (map[string]any, error) {
 // importImageFrom is the ingest half of ImportImage: everything after a path
 // has been chosen. Unexported, so Wails generates no JS binding for it.
 func (a *App) importImageFrom(sel string) (map[string]any, error) {
-	a.dirMu.RLock()
-	dir := a.collectionDir
-	a.dirMu.RUnlock()
-	if dir == "" {
-		return nil, fmt.Errorf("no collection open")
+	dir, err := a.currentDir()
+	if err != nil {
+		return nil, err
 	}
 	if sel == "" {
 		return nil, fmt.Errorf("importImageFrom: empty path")
@@ -245,11 +241,9 @@ func (a *App) importImageFrom(sel string) (map[string]any, error) {
 // into media/, and returns {asset, mime}. (nil, nil) on cancel; error if no
 // collection is open or the type is unsupported.
 func (a *App) ImportAudio() (map[string]any, error) {
-	a.dirMu.RLock()
-	dir := a.collectionDir
-	a.dirMu.RUnlock()
-	if dir == "" {
-		return nil, fmt.Errorf("no collection open")
+	_, err := a.currentDir()
+	if err != nil {
+		return nil, err
 	}
 	sel, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "Add audio",
@@ -269,11 +263,9 @@ func (a *App) ImportAudio() (map[string]any, error) {
 // importAudioFrom is the ingest half of ImportAudio: everything after a path
 // has been chosen. Unexported, so Wails generates no JS binding for it.
 func (a *App) importAudioFrom(sel string) (map[string]any, error) {
-	a.dirMu.RLock()
-	dir := a.collectionDir
-	a.dirMu.RUnlock()
-	if dir == "" {
-		return nil, fmt.Errorf("no collection open")
+	dir, err := a.currentDir()
+	if err != nil {
+		return nil, err
 	}
 	if sel == "" {
 		return nil, fmt.Errorf("importAudioFrom: empty path")
@@ -288,15 +280,13 @@ func (a *App) importAudioFrom(sel string) (map[string]any, error) {
 // SaveRecording decodes base64 audio bytes from an in-app recording and stores
 // them in media/, returning {asset, mime}.
 func (a *App) SaveRecording(dataBase64, mime string) (map[string]any, error) {
-	a.dirMu.RLock()
-	dir := a.collectionDir
-	a.dirMu.RUnlock()
-	if dir == "" {
-		return nil, fmt.Errorf("no collection open")
-	}
-	data, err := base64.StdEncoding.DecodeString(dataBase64)
+	dir, err := a.currentDir()
 	if err != nil {
-		return nil, fmt.Errorf("decode recording: %w", err)
+		return nil, err
+	}
+	data, decErr := base64.StdEncoding.DecodeString(dataBase64)
+	if decErr != nil {
+		return nil, fmt.Errorf("decode recording: %w", decErr)
 	}
 	asset, err := media.SaveAudio(dir, data, mime)
 	if err != nil {
