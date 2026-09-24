@@ -1,6 +1,11 @@
 package main
 
-import "sort"
+import (
+	"sort"
+
+	"texere/internal/collection"
+	"texere/internal/search"
+)
 
 // Query-hint listing methods: read-only enumerations that power the graph
 // query bars' autocomplete (suggesting the user's real chapters, context
@@ -14,11 +19,13 @@ import "sort"
 // ListChapters returns every chapter title in the open collection, sorted.
 // Backed by the same listing path as `\chapter any`.
 func (a *App) ListChapters() []string {
-	if a.searchSvc == nil {
+	res, err := inCollection(a, func(h collection.Handles) (*search.SearchResult, error) {
+		return h.Search().Search(`\chapter any \limit 10000`)
+	})
+	if err != nil {
 		return []string{}
 	}
-	res, err := a.searchSvc.Search(`\chapter any \limit 10000`)
-	if err != nil || res == nil {
+	if res == nil {
 		return []string{}
 	}
 	out := make([]string, 0, len(res.Listings))
@@ -34,11 +41,13 @@ func (a *App) ListChapters() []string {
 // ListContextTags returns every distinct context tag in the open collection,
 // sorted. Backed by the same listing path as `\context any`.
 func (a *App) ListContextTags() []string {
-	if a.searchSvc == nil {
+	res, err := inCollection(a, func(h collection.Handles) (*search.SearchResult, error) {
+		return h.Search().Search(`\context any \limit 10000`)
+	})
+	if err != nil {
 		return []string{}
 	}
-	res, err := a.searchSvc.Search(`\context any \limit 10000`)
-	if err != nil || res == nil {
+	if res == nil {
 		return []string{}
 	}
 	out := make([]string, 0, len(res.Listings))

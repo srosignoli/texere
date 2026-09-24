@@ -322,41 +322,43 @@ func (a *App) ParseFileForUI(path string) (*content.ParsedFile, []content.ParseE
 // full contract: error model, lifecycle, and JSON shapes.
 // =============================================================================
 
+// noGraphLayout is the empty layout shown when no collection is open,
+// carrying the same hint as the search overlay's Tier 2.
+func noGraphLayout() explorer.LayoutResult {
+	return explorer.LayoutResult{
+		Nodes:       []explorer.NodeView{},
+		Edges:       []explorer.EdgeView{},
+		Territories: []explorer.TerritoryView{},
+		Diagnostics: explorer.Diagnostics{
+			GraphError: "Build your graph first (Ctrl+G) to enable graph search.",
+		},
+	}
+}
+
 // ExplorerOpen runs a graph query, materializes the result subgraph, and
 // returns the initial layout for the default anchor. User-visible failure
 // modes (graph not built, no results) ride in LayoutResult.Diagnostics
 // rather than the error return.
 func (a *App) ExplorerOpen(query string, mode string) (explorer.LayoutResult, error) {
-	if a.explorerSvc == nil {
-		// No collection loaded yet — surface the same hint the search
-		// overlay's Tier 2 uses so the frontend can render a useful
-		// empty state.
-		return explorer.LayoutResult{
-			Nodes:       []explorer.NodeView{},
-			Edges:       []explorer.EdgeView{},
-			Territories: []explorer.TerritoryView{},
-			Diagnostics: explorer.Diagnostics{
-				GraphError: "Build your graph first (Ctrl+G) to enable graph search.",
-			},
-		}, nil
+	lr, err := inCollection(a, func(h collection.Handles) (explorer.LayoutResult, error) {
+		return h.Explorer().Open(query, mode)
+	})
+	if errors.Is(err, collection.ErrNoCollection) {
+		return noGraphLayout(), nil
 	}
-	return a.explorerSvc.Open(query, mode)
+	return lr, err
 }
 
 // GraphLayout returns an isometric layout for a query WITHOUT starting/replacing
 // the global explorer session — used by the notebook graph cell's graph view.
 func (a *App) GraphLayout(query string, mode string) (explorer.LayoutResult, error) {
-	if a.explorerSvc == nil {
-		return explorer.LayoutResult{
-			Nodes:       []explorer.NodeView{},
-			Edges:       []explorer.EdgeView{},
-			Territories: []explorer.TerritoryView{},
-			Diagnostics: explorer.Diagnostics{
-				GraphError: "Build your graph first (Ctrl+G) to enable graph search.",
-			},
-		}, nil
+	lr, err := inCollection(a, func(h collection.Handles) (explorer.LayoutResult, error) {
+		return h.Explorer().Layout(query, mode)
+	})
+	if errors.Is(err, collection.ErrNoCollection) {
+		return noGraphLayout(), nil
 	}
-	return a.explorerSvc.Layout(query, mode)
+	return lr, err
 }
 
 // ExplorerReanchor runs a new layout pass against the cached ResultSet
@@ -365,16 +367,20 @@ func (a *App) GraphLayout(query string, mode string) (explorer.LayoutResult, err
 // ErrStaleResultID or ErrAnchorNotInResult for programmer errors;
 // never for user-visible states.
 func (a *App) ExplorerReanchor(resultID string, anchorID string, mode string) (explorer.LayoutResult, error) {
-	if a.explorerSvc == nil {
+	lr, err := inCollection(a, func(h collection.Handles) (explorer.LayoutResult, error) {
+		return h.Explorer().Reanchor(resultID, anchorID, mode)
+	})
+	if errors.Is(err, collection.ErrNoCollection) {
 		return explorer.LayoutResult{}, explorer.ErrStaleResultID
 	}
-	return a.explorerSvc.Reanchor(resultID, anchorID, mode)
+	return lr, err
 }
 
 // ExplorerClose evicts the cached ResultSet. Idempotent.
 func (a *App) ExplorerClose() error {
-	if a.explorerSvc == nil {
+	err := a.withCollection(func(h collection.Handles) error { return h.Explorer().Close() })
+	if errors.Is(err, collection.ErrNoCollection) {
 		return nil
 	}
-	return a.explorerSvc.Close()
+	return err
 }

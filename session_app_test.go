@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"texere/internal/collection"
+	"texere/internal/explorer"
 )
 
 func corruptCollection(t *testing.T) string {
@@ -110,5 +111,29 @@ func TestNoCollectionMethodsReturnErrNoCollection(t *testing.T) {
 	}
 	if a.GetInitialCollectionDir() != "" || a.mediaDir() != "" || a.collectionRoot() != "" {
 		t.Error("directory accessors non-empty with no collection open")
+	}
+}
+
+func TestGraphBindingsDegradeWithNoCollection(t *testing.T) {
+	a := &App{}
+	sr, err := a.SearchGraph("x")
+	if err != nil || sr == nil || !sr.GraphUnavailable {
+		t.Errorf("SearchGraph: %+v, %v; want GraphUnavailable and nil error", sr, err)
+	}
+	if got := a.ListChapters(); got == nil || len(got) != 0 {
+		t.Errorf("ListChapters = %#v, want empty non-nil", got)
+	}
+	if got := a.ListContextTags(); got == nil || len(got) != 0 {
+		t.Errorf("ListContextTags = %#v, want empty non-nil", got)
+	}
+	lr, err := a.ExplorerOpen("x", "extended")
+	if err != nil || lr.Diagnostics.GraphError == "" || lr.Nodes == nil {
+		t.Errorf("ExplorerOpen: %+v, %v; want the build-first diagnostic", lr, err)
+	}
+	if _, err := a.ExplorerReanchor("r", "n", "extended"); !errors.Is(err, explorer.ErrStaleResultID) {
+		t.Errorf("ExplorerReanchor err = %v, want ErrStaleResultID", err)
+	}
+	if err := a.ExplorerClose(); err != nil {
+		t.Errorf("ExplorerClose err = %v", err)
 	}
 }
