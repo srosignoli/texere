@@ -14,6 +14,33 @@ import (
 	"texere/internal/learning"
 )
 
+// A refPath is collection-relative. One that climbs out of the collection must
+// be refused, not read — before this, GetSourceBytes("../../x") read any file
+// the process could.
+func TestSourceReadsRefuseTraversal(t *testing.T) {
+	outside := filepath.Join(t.TempDir(), "secret.txt")
+	if err := os.WriteFile(outside, []byte("secret"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	a, _ := newTestApp(t, dir, nil)
+	rel, err := filepath.Rel(dir, outside)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rel = filepath.ToSlash(rel) // stored paths are slash-separated
+
+	if got, err := a.GetSourceBytes(rel); err == nil {
+		t.Errorf("GetSourceBytes(%q) = %q, nil; want an error", rel, got)
+	}
+	if got, err := a.GetSourceHTML(rel); err == nil {
+		t.Errorf("GetSourceHTML(%q) = %q, nil; want an error", rel, got)
+	}
+	if got, err := a.GetSourceProjection(rel); err == nil {
+		t.Errorf("GetSourceProjection(%q) = %q, nil; want an error", rel, got)
+	}
+}
+
 func TestCreateExtractAppendsAndAdvances(t *testing.T) {
 	dir := t.TempDir()
 	// Set up a source + reading element by hand (no dialog).
@@ -25,14 +52,8 @@ func TestCreateExtractAppendsAndAdvances(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	store, err := learning.Open(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
+	a, store := newTestApp(t, dir, nil)
 	store.UpsertReading(learning.ReadingElement{ID: refID, RefPath: "sources/k.txt", NotesPath: notes, Title: "k", IntervalDays: 1})
-
-	a := &App{collectionDir: dir, learnStore: store, registry: &content.SSTRegistry{Arrows: map[string]content.ArrowDef{}}}
-	defer store.Close()
 
 	ev, err := a.CreateExtract(refID, "System 1 is fast", "char=0", true)
 	if err != nil || ev == nil || ev.ID == "" {
@@ -73,9 +94,7 @@ func TestImportWebAndCreateExtractPosition(t *testing.T) {
 	defer srv.Close()
 
 	dir := t.TempDir()
-	store, _ := learning.Open(dir)
-	defer store.Close()
-	a := &App{collectionDir: dir, learnStore: store, registry: &content.SSTRegistry{Arrows: map[string]content.ArrowDef{"from": {Code: "from", LongName: "from"}}}}
+	a, _ := newTestApp(t, dir, &content.SSTRegistry{Arrows: map[string]content.ArrowDef{"from": {Code: "from", LongName: "from"}}})
 
 	rv, err := a.ImportWebSource(srv.URL + "/a")
 	if err != nil || rv == nil {
@@ -127,19 +146,13 @@ func readingTreeFixture(t *testing.T) (*App, *learning.Store, string, string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	st, err := learning.Open(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { st.Close() })
+	a, st := newTestApp(t, dir, nil)
 	if err := st.UpsertReading(learning.ReadingElement{
 		ID: refID, RefPath: "sources/k.txt", NotesPath: notes, Title: "k",
 		Position: "char=0", ProjLen: 10000, IntervalDays: 1,
 	}); err != nil {
 		t.Fatal(err)
 	}
-	a := &App{collectionDir: dir, learnStore: st,
-		registry: &content.SSTRegistry{Arrows: map[string]content.ArrowDef{}}}
 	return a, st, refID, notes
 }
 
@@ -273,8 +286,7 @@ func TestGetReadingExtractsFallsBackToTheStoredAnchor(t *testing.T) {
 
 func TestGetReadingExtractsEmptyIsNotNil(t *testing.T) {
 	dir := t.TempDir()
-	st, _ := learning.Open(dir)
-	a := &App{learnStore: st, collectionDir: dir}
+	a, _ := newTestApp(t, dir, nil)
 	got, err := a.GetReadingExtracts()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -299,18 +311,13 @@ func peekExtractFixture(t *testing.T) (*App, *learning.Store, string, string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	store, err := learning.Open(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { store.Close() })
+	a, store := newTestApp(t, dir, nil)
 	if err := store.UpsertReading(learning.ReadingElement{
 		ID: refID, RefPath: "sources/k.txt", NotesPath: notes, Title: "k",
 		Position: "char=5000", ProjLen: 10000, IntervalDays: 1,
 	}); err != nil {
 		t.Fatal(err)
 	}
-	a := &App{collectionDir: dir, learnStore: store, registry: &content.SSTRegistry{Arrows: map[string]content.ArrowDef{}}}
 	return a, store, refID, notes
 }
 
@@ -358,13 +365,7 @@ func TestCreateExtractWhileReadingAdvancesProgress(t *testing.T) {
 
 func TestCreateLLMSourceRegistersAModelGeneratedReading(t *testing.T) {
 	dir := t.TempDir()
-	st, err := learning.Open(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { st.Close() })
-	a := &App{collectionDir: dir, learnStore: st,
-		registry: &content.SSTRegistry{Arrows: map[string]content.ArrowDef{}}}
+	a, st := newTestApp(t, dir, nil)
 
 	md := "# Spaced repetition\n\n## How does SM-2 work?\n\nIt multiplies by an ease factor.\n"
 	v, err := a.CreateLLMSource("Spaced repetition", md)
@@ -408,10 +409,7 @@ func TestCreateLLMSourceRegistersAModelGeneratedReading(t *testing.T) {
 
 func TestCreateLLMSourceSuffixesACollidingTitle(t *testing.T) {
 	dir := t.TempDir()
-	st, _ := learning.Open(dir)
-	t.Cleanup(func() { st.Close() })
-	a := &App{collectionDir: dir, learnStore: st,
-		registry: &content.SSTRegistry{Arrows: map[string]content.ArrowDef{}}}
+	a, _ := newTestApp(t, dir, nil)
 
 	first, err := a.CreateLLMSource("Same title", "# a\n\ntext\n")
 	if err != nil {
@@ -431,10 +429,7 @@ func TestCreateLLMSourceSuffixesACollidingTitle(t *testing.T) {
 
 func TestCreateLLMSourceRefusesEmptyInput(t *testing.T) {
 	dir := t.TempDir()
-	st, _ := learning.Open(dir)
-	t.Cleanup(func() { st.Close() })
-	a := &App{collectionDir: dir, learnStore: st,
-		registry: &content.SSTRegistry{Arrows: map[string]content.ArrowDef{}}}
+	a, _ := newTestApp(t, dir, nil)
 
 	if _, err := a.CreateLLMSource("   ", "# a\n\ntext\n"); err == nil {
 		t.Error("an empty title must be refused")

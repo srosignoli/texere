@@ -11,7 +11,7 @@ import (
 // Under -tags demo the seam exists and ingests a path with no dialog, so a
 // scripted demo can drive an import unattended.
 func TestDemoImportTextSourceIngestsAPath(t *testing.T) {
-	a, dir := seamFixture(t)
+	a, _, dir := seamFixture(t)
 
 	outside := filepath.Join(t.TempDir(), "essay.md")
 	if err := os.WriteFile(outside, []byte("# Essay\n\nBody."), 0o644); err != nil {
@@ -28,7 +28,7 @@ func TestDemoImportTextSourceIngestsAPath(t *testing.T) {
 }
 
 func TestDemoImportPdfSourceIngestsAPath(t *testing.T) {
-	a, dir := seamFixture(t)
+	a, _, dir := seamFixture(t)
 
 	outside := filepath.Join(t.TempDir(), "paper.pdf")
 	if err := os.WriteFile(outside, []byte("%PDF-1.4\n%%EOF\n"), 0o644); err != nil {

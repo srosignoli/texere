@@ -8,29 +8,22 @@ import (
 	"strings"
 	"testing"
 
-	"texere/internal/content"
 	"texere/internal/learning"
 )
 
 // seamFixture builds an empty collection plus an App wired to it, mirroring the
 // setup TestImportWebAndCreateExtractPosition uses for the pathless web import.
-func seamFixture(t *testing.T) (*App, string) {
+func seamFixture(t *testing.T) (*App, *learning.Store, string) {
 	t.Helper()
 	dir := t.TempDir()
-	store, err := learning.Open(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { store.Close() })
-	a := &App{collectionDir: dir, learnStore: store,
-		registry: &content.SSTRegistry{Arrows: map[string]content.ArrowDef{}}}
-	return a, dir
+	a, st := newTestApp(t, dir, nil)
+	return a, st, dir
 }
 
 // The ingest half of ImportTextSource must work from a caller-supplied path, so
 // the dialog is the only thing the exported method adds.
 func TestImportTextFromIngestsAPathWithoutADialog(t *testing.T) {
-	a, dir := seamFixture(t)
+	a, st, dir := seamFixture(t)
 
 	outside := filepath.Join(t.TempDir(), "essay.md")
 	if err := os.WriteFile(outside, []byte("# Essay\n\nSome body text."), 0o644); err != nil {
@@ -57,7 +50,7 @@ func TestImportTextFromIngestsAPathWithoutADialog(t *testing.T) {
 		t.Fatalf("notes do not reference %q:\n%s", rv.RefPath, notes)
 	}
 	// The reading is registered in the store.
-	if _, ok, err := a.learnStore.GetReading(rv.ID); err != nil || !ok {
+	if _, ok, err := st.GetReading(rv.ID); err != nil || !ok {
 		t.Fatalf("reading %q not registered: ok=%v err=%v", rv.ID, ok, err)
 	}
 }
@@ -65,7 +58,7 @@ func TestImportTextFromIngestsAPathWithoutADialog(t *testing.T) {
 // An empty path is a cancelled dialog; the ingest helper must reject it rather
 // than scaffolding an empty-named reading.
 func TestImportTextFromRejectsAnEmptyPath(t *testing.T) {
-	a, _ := seamFixture(t)
+	a, _, _ := seamFixture(t)
 	if _, err := a.importTextFrom(""); err == nil {
 		t.Fatal("importTextFrom(\"\") = nil error, want an error")
 	}
@@ -73,7 +66,7 @@ func TestImportTextFromRejectsAnEmptyPath(t *testing.T) {
 
 // The ingest half of ImportPdfSource must work from a caller-supplied path.
 func TestImportPdfFromIngestsAPathWithoutADialog(t *testing.T) {
-	a, dir := seamFixture(t)
+	a, st, dir := seamFixture(t)
 
 	outside := filepath.Join(t.TempDir(), "paper.pdf")
 	if err := os.WriteFile(outside, []byte("%PDF-1.4\n%%EOF\n"), 0o644); err != nil {
@@ -90,13 +83,13 @@ func TestImportPdfFromIngestsAPathWithoutADialog(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, filepath.FromSlash(rv.RefPath))); err != nil {
 		t.Fatalf("pdf not copied into collection: %v", err)
 	}
-	if _, ok, err := a.learnStore.GetReading(rv.ID); err != nil || !ok {
+	if _, ok, err := st.GetReading(rv.ID); err != nil || !ok {
 		t.Fatalf("reading %q not registered: ok=%v err=%v", rv.ID, ok, err)
 	}
 }
 
 func TestImportPdfFromRejectsAnEmptyPath(t *testing.T) {
-	a, _ := seamFixture(t)
+	a, _, _ := seamFixture(t)
 	if _, err := a.importPdfFrom(""); err == nil {
 		t.Fatal("importPdfFrom(\"\") = nil error, want an error")
 	}
@@ -116,7 +109,7 @@ func writePNG(t *testing.T, path string) {
 }
 
 func TestImportImageFromIngestsAPathWithoutADialog(t *testing.T) {
-	a, dir := seamFixture(t)
+	a, _, dir := seamFixture(t)
 
 	outside := filepath.Join(t.TempDir(), "diagram.png")
 	writePNG(t, outside)
@@ -138,7 +131,7 @@ func TestImportImageFromIngestsAPathWithoutADialog(t *testing.T) {
 }
 
 func TestImportImageFromRejectsANonImage(t *testing.T) {
-	a, _ := seamFixture(t)
+	a, _, _ := seamFixture(t)
 	outside := filepath.Join(t.TempDir(), "notes.txt")
 	if err := os.WriteFile(outside, []byte("plain text, not an image"), 0o644); err != nil {
 		t.Fatal(err)
@@ -149,7 +142,7 @@ func TestImportImageFromRejectsANonImage(t *testing.T) {
 }
 
 func TestImportAudioFromIngestsAPathWithoutADialog(t *testing.T) {
-	a, dir := seamFixture(t)
+	a, _, dir := seamFixture(t)
 
 	outside := filepath.Join(t.TempDir(), "lecture.mp3")
 	if err := os.WriteFile(outside, []byte("ID3 fake audio payload"), 0o644); err != nil {
@@ -170,7 +163,7 @@ func TestImportAudioFromIngestsAPathWithoutADialog(t *testing.T) {
 }
 
 func TestImportAudioFromRejectsAnUnsupportedExtension(t *testing.T) {
-	a, _ := seamFixture(t)
+	a, _, _ := seamFixture(t)
 	outside := filepath.Join(t.TempDir(), "clip.xyz")
 	if err := os.WriteFile(outside, []byte("bytes"), 0o644); err != nil {
 		t.Fatal(err)
