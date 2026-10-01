@@ -154,6 +154,7 @@ export async function session({
   fixture = FIXTURE,
   capture = 'video',
   scale = 1,
+  quality = 85,
   captions = true,
   titleCard = true,
 } = {}) {
@@ -171,9 +172,17 @@ export async function session({
     throw new Error('capture "video" records at scale 1 only — use capture "screencast"')
   }
 
+  // deviceScaleFactor alone is not enough for the screencast: it renders at the
+  // scale, but CDP delivers the frames at CSS size. Forcing the WINDOW's scale
+  // as well makes the delivered frames carry the full resolution (measured,
+  // 2026-10-01: 1440x900 without the flag, 2880x1800 with it at scale 2).
   const browser = await chromium.launch({
     executablePath: CHROMIUM,
-    args: ['--no-sandbox', '--disable-dev-shm-usage'],
+    args: [
+      '--no-sandbox',
+      '--disable-dev-shm-usage',
+      ...(scale !== 1 ? [`--force-device-scale-factor=${scale}`] : []),
+    ],
   })
   const ctx = await browser.newContext({
     viewport: { width: 1440, height: 900 },
@@ -187,6 +196,10 @@ export async function session({
 
   // Screencast capture: JPEG frames at the page's real resolution, each
   // written as it arrives and acknowledged so CDP sends the next.
+  //
+  // The frame RATE is bounded by Chromium encoding every frame as a whole
+  // JPEG, so it falls with pixels and quality. Measured on a dense page with
+  // continuous animation: 2x q92 14 fps, 2x q80 19, 1.5x q85 26, 1x q92 39.
   const shots = []
   let cdp = null
   let clockError = null
@@ -209,7 +222,7 @@ export async function session({
     })
     await cdp.send('Page.startScreencast', {
       format: 'jpeg',
-      quality: 92,
+      quality,
       maxWidth: 1440 * scale,
       maxHeight: 900 * scale,
     })
@@ -558,7 +571,7 @@ export async function session({
           `texere:   ${commit}`,
           `fixture:  ${fixture}`,
           `beats:    ${beats.length}`,
-          `capture:  ${capture}${capture === 'screencast' ? ` @${scale}x, ${shots.length} frames` : ''}`,
+          `capture:  ${capture}${capture === 'screencast' ? ` @${scale}x q${quality}, ${shots.length} frames` : ''}`,
           '',
           'assertions:',
           ...notes.map((n) => `  - ${n}`),
