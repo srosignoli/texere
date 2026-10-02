@@ -1,89 +1,80 @@
 # Texere
 
-A desktop knowledge-management app for N4L plain-text notes: an editor, a
-knowledge graph, incremental reading and spaced repetition, built on
-[SSTorytime-KV](https://github.com/srosignoli/sstorytime-kv) with
+A desktop app for N4L plain-text notes: an editor, a knowledge graph,
+incremental reading and spaced repetition in one window.
+
+Your notes stay plain text on disk. The graph and the scheduling state are
+derived from them and can be rebuilt at any time — nothing you write is locked
+inside a database.
+
+Built on [SSTorytime-KV](https://github.com/srosignoli/sstorytime-kv) with
 [Bleve](https://blevesearch.com) for full-text search, wrapped in
-[Wails](https://wails.io) v2.
+[Wails](https://wails.io) v2. Linux and Windows.
 
-Developer setup, build and test instructions live in
-[`docs/quickstart.md`](docs/quickstart.md).
+## Status
 
----
+0.x, and pre-1.0 deliberately: the on-disk formats — collection layout, the
+BadgerDB graph store, the SQLite learning database — may still change between
+minor releases, and there is no migration path yet. Keep backups of collections
+you care about.
 
-## Asking in plain language
+[ROADMAP.md](ROADMAP.md) is what's next. [CHANGELOG.md](CHANGELOG.md) is what
+has shipped.
 
-Graph mode has an **ask box** above the query bar. Type a question there, press
-Enter, and an LLM turns it into a query which lands in the query bar — editable,
-so you can see exactly what was asked of the graph and adjust it.
+## What you do with it
 
-The ask box appears only when an LLM profile is configured (Settings → LLM), and
-it never searches: nothing typed there runs until it becomes a query.
+**Write.** An N4L editor with arrow autocomplete, a compliance linter, and a
+radius-1 minimap of the node under the caret. Media and LaTeX render inline.
 
-Two things worth knowing before reading the tables:
+**Ask.** Build the graph (Ctrl+G) and query it — by word, chapter, context tag,
+path between two nodes, or sequence. With an LLM profile configured, an ask box
+turns a plain question into a query you can read and edit before it runs. The
+full syntax is in [docs/query-language.md](docs/query-language.md).
 
-- **The query column is exact.** Every query below is verified by
-  `internal/corpustest` against real N4L files — each one returns results, not
-  merely parses.
-- **The question column is illustrative.** What a model actually emits depends on
-  the model and on your collection: the prompt is fed your real chapter, context
-  and arrow names, so it prefers names you actually have. Treat these as the
-  shape to expect, not a guarantee.
+**Explore.** A 2.5D isometric view of the graph, with in-place node editing that
+lands back on the right line of the right file.
 
-A short answer is not a failure. *"what do my notes say about incremental
-reading?"* becoming `incremental reading` is a correct translation — bare words
-are a valid query.
+**Study.** Three loops over one collection — read sources and extract from them,
+process extracts into cards, recall the cards on an FSRS schedule. Statistics
+cover quality, habit, workload and the read/process/recall pipeline.
 
-## One example per query type
+**Process.** A notebook overlay attached to any note, with cells for drafting
+N4L, sketching, running a shell command, computing, querying the graph, and
+importing images, audio, video or scans — including speech-to-text.
 
-| Ask something like | You get a query like | What it does |
-|---|---|---|
-| what do my notes say about pods? | `pod` | Nodes whose text contains the word |
-| pods, but only in my kubernetes chapter | `pod \chapter Kubernetes` | Same, restricted to matching chapters |
-| brain waves in the oscillations context | `waves \context oscillations` | Same, restricted to a context tag |
-| what chapters do I have? | `\chapter any` | Lists chapters — a table of contents, not a graph |
-| which context tags mention oscillations? | `\context oscillations` | Lists matching context tags |
-| what relationships are defined? | `\arrow any` | Lists arrow definitions |
-| show me everything in my neuroscience notes | `\notes \chapter neuroscience` | The full authored notes for a chapter |
-| just the memory parts of my neuroscience notes | `\notes \chapter neuroscience \context memory` | Notes narrowed by context |
-| the second page of my cooking notes | `\notes Cooking \page 2` | One page of a `\notes` view |
-| how do I get from start to target 1? | `\from start \to target 1` | Paths between two nodes |
-| what does door lead to? | `\from door` | Everything downstream of a node |
-| what leads to the port node? | `\to port` | Everything upstream of a node |
-| tell me the story of Mary | `\story Mary` | An ordered sequence by name |
-| what sequences are in my astronomy notes? | `\sequence \chapter astronomy` | Sequences within a chapter |
-| what sequences do I have? | `\story any` | Every sequence |
-| things near pod, one hop out | `pod \radius 1` | Widens each match's neighbourhood in the explorer |
-| fish, but only the first 20 | `fish \limit 20` | Caps how many results come back |
+## Install
 
-`\notes`, `\story`, `\sequence` and `\from` scan the whole database, so they run
-only when you press Enter — they are not fired as you type.
+Download the archive for your platform from
+[Releases](https://github.com/srosignoli/texere/releases) and check it against
+`checksums.txt`.
 
-## Asking for a particular kind of text match
+- **Linux** — `texere_<version>_linux_amd64.tar.gz`. Needs
+  `libwebkit2gtk-4.1-0` and `libgtk-3-0`.
+- **Windows** — `texere_<version>_windows_amd64.zip`. Single executable.
 
-Text matching is handled by **Bleve**, the full-text index built alongside the
-graph. These operators are what the query bar passes through to it, so phrasing
-your question to imply one is how you reach them.
+## Build from source
 
-| Ask something like | You get a query like | Bleve behaviour |
-|---|---|---|
-| notes about running | `run` | Whole words, stemmed — matches *running*, *runs*; case- and accent-insensitive |
-| notes mentioning recipe, fish and soup | `recipe fish soup` | Multiple words are ANDed — all must appear |
-| brain but not waves | `brain&!wave` | `&` is AND, `!` is NOT, `\|` is OR (`!` binds tightest, then `&`, then `\|`) |
-| the exact word pod, not pods | `!pod!` | Exact word, bypassing the stemmer — `\|pod\|` works too |
-| anything starting with neuro | `neuro:*` | Begins-with on the stem — matches *neuroscience*, *neurology* |
-| the phrase "thank you" | `"thank you"` | Adjacent and in order, not merely both present |
-| fángzi, but I can't type the accent | `(fangzi)` | Parentheses fold diacritics; CJK text such as `房子` matches directly |
+```bash
+make deps        # Linux system libraries
+make wails-cli   # Wails CLI, built with the toolchain go.mod asks for
+make build       # → build/bin/texere
+make test        # go test ./...
+```
 
-The node-path shorthand `<a|b>` is equivalent to `\from a \to b`, and
-`<a|context|b>` adds a context. Angle brackets are reserved for that form —
-anything else in `<…>` is refused with an explanation.
+Full setup, cross-compilation and the test matrix are in
+[docs/quickstart.md](docs/quickstart.md).
 
-## Where this is defined
+## Documentation
 
-The query language has one source of truth,
-[`frontend/src/lib/query-grammar.js`](frontend/src/lib/query-grammar.js). The
-autocomplete dropdown, the in-app help panel (`?` beside the query bar) and the
-LLM's prompt are all generated from it, so the three cannot drift apart. The
-tables above are written by hand and are the exception — if they disagree with
-the help panel, the help panel is right.
+| | |
+|---|---|
+| [docs/quickstart.md](docs/quickstart.md) | Developer setup, build, test, project layout |
+| [docs/query-language.md](docs/query-language.md) | Query syntax and the ask box |
+| [docs/demos/README.md](docs/demos/README.md) | Scripted demo recordings |
+| [docs/Texere_Specification_v1.3.md](docs/Texere_Specification_v1.3.md) | The long-form design document. Aspirational — much of it is unbuilt, and ROADMAP.md says which parts are queued |
+| [specs/](specs/) | Per-feature specs, plans and tasks |
+
+## Licence
+
+Not yet chosen. Until one is added, no permissions are granted beyond reading
+the source.

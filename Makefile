@@ -1,10 +1,18 @@
 export PATH := $(PATH):$(shell go env GOPATH)/bin
 
-.PHONY: build build-dev build-windows test test-js bench ci lint lint-frontend dev dev-demo clean deps
+.PHONY: build build-dev build-windows build-macos test test-js bench ci lint lint-frontend dev dev-demo clean deps wails-cli
 
 ## deps: install Linux system dependencies required for Wails builds
 deps:
 	sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev gcc-mingw-w64-x86-64-posix pkg-config build-essential
+
+## wails-cli: (re)install the Wails CLI built with the toolchain go.mod asks for.
+## The CLI type-checks this module in-process (internal/staticanalysis via
+## x/tools), so a CLI built by an older Go than the `go` directive logs
+## "internal error: ... package requires newer Go version" on every build.
+wails-cli:
+	GOTOOLCHAIN=go$(shell go list -m -f '{{.GoVersion}}') \
+		go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
 
 ## build: compile a RELEASE Linux amd64 binary → build/bin/texere
 ## No -devtools (that ships the WebKit inspector) and no demo tag.
@@ -20,6 +28,15 @@ build-dev:
 ## build-windows: cross-compile Windows amd64 binary → build/bin/texere.exe
 build-windows:
 	CC=x86_64-w64-mingw32-gcc CGO_ENABLED=1 wails build -platform windows/amd64
+
+## build-macos: build a RELEASE universal macOS .app -> build/bin/texere.app
+## Must run ON a Mac: the darwin webview is CGo/Objective-C, so cross-compiling
+## from Linux silently drops it (CGO_ENABLED=0) and yields a binary that links
+## but opens no window. No -tags webkit2_41 either: that selects the GTK WebKit
+## version and means nothing here — macOS uses WKWebView.
+## Produces an unsigned bundle; CI ad-hoc signs it so Gatekeeper will run it.
+build-macos:
+	wails build -platform darwin/universal
 
 ## test: run all Go tests
 test:

@@ -7,12 +7,14 @@
   "exports": {
     ".": "./kit.mjs",
     "./selectors": "./selectors.mjs",
-    "./fixture": "./fixture.mjs"
+    "./fixture": "./fixture.mjs",
+    "./screencast": "./screencast.mjs"
   },
   "scripts": {
     "seed": "node seed.mjs",
     "restore": "node restore.mjs",
-    "study-session": "node study-session.mjs"
+    "study-session": "node study-session.mjs",
+    "test": "node --test"
   },
   "dependencies": {
     "playwright": "^1.49.0"

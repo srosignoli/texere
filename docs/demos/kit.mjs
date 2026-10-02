@@ -13,10 +13,11 @@
 
 import { chromium } from 'playwright'
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, writeFileSync, existsSync } from 'node:fs'
+import { mkdirSync, writeFileSync, existsSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { FIXTURE } from './fixture.mjs'
 import { SEL } from './selectors.mjs'
+import { concatScript, clipTime, maxGap, assertEpochSeconds } from './screencast.mjs'
 import { SHORTCUT_GROUPS } from '../../frontend/src/lib/shortcuts.js'
 
 // Narration cites keybindings, and a caption that names the wrong key is worse
@@ -59,6 +60,10 @@ export function keysFor(label) {
 const CHROMIUM =
   process.env.TEXERE_CHROMIUM ??
   '/home/simone/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome'
+
+// The overview's edit script renders its cards with the same browser the takes
+// use, and the tutorials repo cannot resolve playwright on its own.
+export { chromium, CHROMIUM }
 const TEXERE_ROOT = new URL('../../', import.meta.url).pathname
 
 const mmss = (ms) => {
@@ -82,7 +87,7 @@ function texereCommit() {
 
 // addInitScript passes at most one argument, so title and subtitle arrive as
 // one object rather than two parameters.
-const overlays = ({ title, subtitle }) => {
+const overlays = ({ title, subtitle, captions, titleCard }) => {
   // Injected at document-start. Guarded and retried: at that point neither
   // <head> nor documentElement is guaranteed to exist, and an uncaught throw
   // aborts the whole init script — which silently removes every overlay from
@@ -99,16 +104,18 @@ const overlays = ({ title, subtitle }) => {
 
   addEventListener('DOMContentLoaded', () => {
     paint()
-    const card = document.createElement('div')
-    card.id = '__title'
-    card.style.cssText =
-      'position:fixed;inset:0;background:#0d1520;z-index:2147483645;display:flex;' +
-      'flex-direction:column;align-items:center;justify-content:center;gap:14px;' +
-      'font-family:Nunito,system-ui,sans-serif;transition:opacity .7s'
-    card.innerHTML =
-      `<div style="font-size:46px;font-weight:800;color:#e8eef8;letter-spacing:-.5px">${title}</div>` +
-      `<div style="font-size:20px;color:#7fa8e8;font-weight:600">${subtitle}</div>`
-    document.body.appendChild(card)
+    if (titleCard) {
+      const card = document.createElement('div')
+      card.id = '__title'
+      card.style.cssText =
+        'position:fixed;inset:0;background:#0d1520;z-index:2147483645;display:flex;' +
+        'flex-direction:column;align-items:center;justify-content:center;gap:14px;' +
+        'font-family:Nunito,system-ui,sans-serif;transition:opacity .7s'
+      card.innerHTML =
+        `<div style="font-size:46px;font-weight:800;color:#e8eef8;letter-spacing:-.5px">${title}</div>` +
+        `<div style="font-size:20px;color:#7fa8e8;font-weight:600">${subtitle}</div>`
+      document.body.appendChild(card)
+    }
 
     const cur = document.createElement('div')
     cur.id = '__cur'
@@ -118,14 +125,16 @@ const overlays = ({ title, subtitle }) => {
       'pointer-events:none;left:-60px;top:-60px;transition:transform .08s'
     document.body.appendChild(cur)
 
-    const cap = document.createElement('div')
-    cap.id = '__cap'
-    cap.style.cssText =
-      'position:fixed;left:50%;transform:translateX(-50%);bottom:34px;' +
-      'font:600 21px/1.45 Nunito,system-ui,sans-serif;color:#fff;background:rgba(12,18,30,.94);' +
-      'padding:13px 26px;border-radius:10px;z-index:2147483646;pointer-events:none;opacity:0;' +
-      'transition:opacity .3s;border:1px solid rgba(90,150,255,.45);max-width:82vw;text-align:center'
-    document.body.appendChild(cap)
+    if (captions) {
+      const cap = document.createElement('div')
+      cap.id = '__cap'
+      cap.style.cssText =
+        'position:fixed;left:50%;transform:translateX(-50%);bottom:34px;' +
+        'font:600 21px/1.45 Nunito,system-ui,sans-serif;color:#fff;background:rgba(12,18,30,.94);' +
+        'padding:13px 26px;border-radius:10px;z-index:2147483646;pointer-events:none;opacity:0;' +
+        'transition:opacity .3s;border:1px solid rgba(90,150,255,.45);max-width:82vw;text-align:center'
+      document.body.appendChild(cap)
+    }
 
     addEventListener('mousemove', (e) => {
       cur.style.left = e.clientX - 11 + 'px'
@@ -143,6 +152,11 @@ export async function session({
   out = process.env.TEXERE_DEMO_OUT,
   url = process.env.TEXERE_DEMO_URL ?? 'http://localhost:34115',
   fixture = FIXTURE,
+  capture = 'video',
+  scale = 1,
+  quality = 85,
+  captions = true,
+  titleCard = true,
 } = {}) {
   if (!out) throw new Error('set TEXERE_DEMO_OUT to the directory recordings should land in')
   if (!existsSync(join(fixture, 'study-doc.md'))) {
@@ -150,21 +164,74 @@ export async function session({
   }
   mkdirSync(join(out, 'frames'), { recursive: true })
 
+  if (!['video', 'screencast'].includes(capture)) throw new Error(`unknown capture "${capture}"`)
+  // Playwright's recorder ignores deviceScaleFactor: it captures at 1x and pads
+  // the larger frame with grey (measured, 2026-10-01). Only the screencast can
+  // record a scaled page.
+  if (capture === 'video' && scale !== 1) {
+    throw new Error('capture "video" records at scale 1 only — use capture "screencast"')
+  }
+
+  // deviceScaleFactor alone is not enough for the screencast: it renders at the
+  // scale, but CDP delivers the frames at CSS size. Forcing the WINDOW's scale
+  // as well makes the delivered frames carry the full resolution (measured,
+  // 2026-10-01: 1440x900 without the flag, 2880x1800 with it at scale 2).
   const browser = await chromium.launch({
     executablePath: CHROMIUM,
-    args: ['--no-sandbox', '--disable-dev-shm-usage'],
+    args: [
+      '--no-sandbox',
+      '--disable-dev-shm-usage',
+      ...(scale !== 1 ? [`--force-device-scale-factor=${scale}`] : []),
+    ],
   })
   const ctx = await browser.newContext({
     viewport: { width: 1440, height: 900 },
-    recordVideo: { dir: join(out, slug), size: { width: 1440, height: 900 } },
+    deviceScaleFactor: scale,
+    ...(capture === 'video'
+      ? { recordVideo: { dir: join(out, slug), size: { width: 1440, height: 900 } } }
+      : {}),
   })
   const started = Date.now()
   const page = await ctx.newPage()
 
+  // Screencast capture: JPEG frames at the page's real resolution, each
+  // written as it arrives and acknowledged so CDP sends the next.
+  //
+  // The frame RATE is bounded by Chromium encoding every frame as a whole
+  // JPEG, so it falls with pixels and quality. Measured on a dense page with
+  // continuous animation: 2x q92 14 fps, 2x q80 19, 1.5x q85 26, 1x q92 39.
+  const shots = []
+  let cdp = null
+  let clockError = null
+  const shotDir = join(out, slug, 'screencast')
+  if (capture === 'screencast') {
+    rmSync(shotDir, { recursive: true, force: true }) // a previous take's frames must not join this one
+    mkdirSync(shotDir, { recursive: true })
+    cdp = await ctx.newCDPSession(page)
+    cdp.on('Page.screencastFrame', (f) => {
+      // Not thrown here: an exception inside a CDP event listener escapes the
+      // plot's control flow. Held, and thrown by finish() before anything is
+      // built from these timestamps.
+      if (!shots.length) {
+        try { assertEpochSeconds(f.metadata.timestamp, Date.now()) } catch (e) { clockError = e }
+      }
+      const file = join(shotDir, `${String(shots.length + 1).padStart(6, '0')}.jpg`)
+      writeFileSync(file, Buffer.from(f.data, 'base64'))
+      shots.push({ file, ts: f.metadata.timestamp })
+      cdp.send('Page.screencastFrameAck', { sessionId: f.sessionId }).catch(() => {})
+    })
+    await cdp.send('Page.startScreencast', {
+      format: 'jpeg',
+      quality,
+      maxWidth: 1440 * scale,
+      maxHeight: 900 * scale,
+    })
+  }
+
   const pageErrors = []
   page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 160)))
 
-  await page.addInitScript(overlays, { title, subtitle })
+  await page.addInitScript(overlays, { title, subtitle, captions, titleCard })
   await page.goto(url, { waitUntil: 'domcontentloaded' })
   await page.waitForFunction(() => window.go?.main?.App, null, { timeout: 25000 })
 
@@ -185,6 +252,34 @@ export async function session({
   let current = null
   let cursor = { x: 720, y: 450 }
   const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
+
+  function writeClip(endWall) {
+    if (clockError) throw clockError
+    const list = join(out, slug, 'frames.ffconcat')
+    writeFileSync(list, concatScript(shots, endWall / 1000))
+    const mp4 = join(out, `${slug}.mp4`)
+    execFileSync('ffmpeg', [
+      '-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', list,
+      '-vf', 'fps=60,format=yuv420p', '-c:v', 'libx264', '-preset', 'slow', '-crf', '12',
+      '-movflags', '+faststart', mp4,
+    ])
+    const first = shots[0].ts
+    const timeline = beats.map((b, i) => {
+      const fromWall = started + b.at
+      const toWall = i + 1 < beats.length ? started + beats[i + 1].at : endWall
+      return {
+        name: b.name,
+        start: +clipTime(fromWall, first).toFixed(3),
+        end: +clipTime(toWall, first).toFixed(3),
+        maxGap: +maxGap(shots, fromWall / 1000, toWall / 1000).toFixed(3),
+      }
+    })
+    writeFileSync(
+      join(out, `${slug}.beats.json`),
+      JSON.stringify({ fps: 60, scale, frames: shots.length, beats: timeline }, null, 2) + '\n',
+    )
+    console.log(`  clip     ${mp4}  (${shots.length} frames)`)
+  }
 
   const t = {
     page,
@@ -316,6 +411,13 @@ export async function session({
       page.evaluate(([f, a]) => window.go.main.App[f](...a), [fn, args]),
 
     async say(text, hold = 2200) {
+      // Captions off: the line is the plot's script, not on-screen text. Keep
+      // the hold so the take keeps its pacing for the edit to trim.
+      if (!captions) {
+        console.log(`    “${text}”`)
+        await page.waitForTimeout(hold)
+        return
+      }
       await page.evaluate((s) => {
         const c = document.getElementById('__cap')
         c.textContent = s
@@ -449,8 +551,11 @@ export async function session({
     async finish() {
       await t.clear()
       await page.waitForTimeout(800)
+      const endWall = Date.now()
+      if (cdp) await cdp.send('Page.stopScreencast').catch(() => {})
       await ctx.close()
       await browser.close()
+      if (capture === 'screencast') writeClip(endWall)
 
       const commit = texereCommit()
       writeFileSync(
@@ -466,6 +571,7 @@ export async function session({
           `texere:   ${commit}`,
           `fixture:  ${fixture}`,
           `beats:    ${beats.length}`,
+          `capture:  ${capture}${capture === 'screencast' ? ` @${scale}x q${quality}, ${shots.length} frames` : ''}`,
           '',
           'assertions:',
           ...notes.map((n) => `  - ${n}`),

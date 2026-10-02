@@ -1,0 +1,233 @@
+name: Release
+
+# Cutting a release is one push:  git tag -a v0.2.0 -m "..."  &&  git push origin v0.2.0
+# A release candidate is the same thing with a semver pre-release identifier:
+# v0.2.0-rc.1 sorts before v0.2.0 and is marked pre-release automatically.
+on:
+  push:
+    tags:
+      - "v*"
+
+# gh release create needs write access to the repo's Releases.
+permissions:
+  contents: write
+
+jobs:
+  # One place decides the version and whether this is a pre-release, so the
+  # three jobs below cannot disagree about either.
+  prepare:
+    name: Read the tag
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      prerelease: ${{ steps.v.outputs.prerelease }}
+    steps:
+      - id: v
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          # 0.x promises no compatibility, and a hyphen is semver's pre-release
+          # marker (v1.0.0-rc.1). Either one means: not a stable release.
+          case "$TAG" in
+            v0.*|*-*) echo "prerelease=true"  >> "$GITHUB_OUTPUT" ;;
+            *)        echo "prerelease=false" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+  linux-windows:
+    name: Build Linux + Windows
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev libgtk-3-dev pkg-config build-essential \
+            gcc-mingw-w64-x86-64 jq zip
+
+      # Pinned, not @latest: a release must be reproducible, and the CLI
+      # type-checks this module in-process — a mismatched CLI is exactly the
+      # "package requires newer Go version" noise `make wails-cli` guards against.
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      # Stamps the Windows binary's file-properties version. Without this every
+      # build reports Wails' default, and users can't tell releases apart.
+      - name: Stamp product version
+        run: |
+          jq --arg v "${{ needs.prepare.outputs.version }}" \
+             '.info.productVersion = $v | .info.productName = "Texere"' \
+             wails.json > wails.json.tmp && mv wails.json.tmp wails.json
+
+      # Both go through the Makefile so the release path is the one the
+      # TestReleaseBuildTargetsCarryNoDevtools / ...NoDemoTag guards cover.
+      - name: Build (Linux amd64)
+        run: make build
+
+      - name: Build (Windows amd64)
+        run: make build-windows
+
+      - name: Package
+        run: |
+          set -euo pipefail
+          V="${{ needs.prepare.outputs.version }}"
+          mkdir -p dist
+          tar -czf "dist/texere_${V}_linux_amd64.tar.gz" -C build/bin texere
+          zip -j  "dist/texere_${V}_windows_amd64.zip"      build/bin/texere.exe
+          ls -lh dist
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: assets-linux-windows
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 1
+
+  macos:
+    name: Build macOS
+    needs: prepare
+    runs-on: macos-latest # Apple Silicon; darwin/universal covers Intel too
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Stamp product version
+        run: |
+          jq --arg v "${{ needs.prepare.outputs.version }}" \
+             '.info.productVersion = $v | .info.productName = "Texere"' \
+             wails.json > wails.json.tmp && mv wails.json.tmp wails.json
+
+      - name: Build (macOS universal)
+        run: make build-macos
+
+      # Assert rather than assume: if this prints one architecture, the release
+      # would silently fail for half the people who download it.
+      - name: Verify the binary is universal
+        run: |
+          set -euo pipefail
+          BIN=build/bin/texere.app/Contents/MacOS/texere
+          lipo -archs "$BIN"
+          lipo -archs "$BIN" | grep -q x86_64
+          lipo -archs "$BIN" | grep -q arm64
+
+      # An Apple Silicon binary must carry a signature to execute at all, and
+      # the universal merge invalidates the one the Go linker applies. Ad-hoc
+      # (-s -) is not notarization — it only makes the app runnable once the
+      # tester clears the quarantine flag. The release notes say how.
+      - name: Ad-hoc sign
+        run: |
+          set -euo pipefail
+          codesign --force --deep --sign - build/bin/texere.app
+          codesign --verify --verbose build/bin/texere.app
+
+      # ditto, not zip: texere.app is a bundle directory with symlinks, and
+      # plain zip flattens it into something that will not launch.
+      - name: Package
+        run: |
+          set -euo pipefail
+          V="${{ needs.prepare.outputs.version }}"
+          mkdir -p dist
+          ditto -c -k --keepParent build/bin/texere.app \
+            "dist/texere_${V}_macos_universal.zip"
+          ls -lh dist
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: assets-macos
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: Publish release
+    needs: [prepare, linux-windows, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Collect assets
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: assets-*
+          merge-multiple: true
+
+      # One checksums.txt covering every platform, written after all three
+      # builds have landed.
+      - name: Checksums
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum ./* > checksums.txt
+          cat checksums.txt
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          FLAGS=()
+          [ "$PRERELEASE" = "true" ] && FLAGS+=(--prerelease)
+          # --notes is the documented way to prepend text to --generate-notes;
+          # --notes-file alongside it is not, so don't rely on it.
+          NOTES=$(cat <<'NOTES'
+          ## macOS
+
+          The macOS build is **unsigned and not notarized**. Gatekeeper will
+          refuse it with "texere is damaged and can't be opened" — that is the
+          quarantine flag, not a broken download:
+
+          ```bash
+          unzip texere_*_macos_universal.zip
+          xattr -cr texere.app && open texere.app
+          ```
+
+          ## Linux
+
+          Needs `libwebkit2gtk-4.1-0` and `libgtk-3-0`.
+
+          ---
+          NOTES
+          )
+          gh release create "$TAG" dist/* \
+            --title "Texere ${TAG}" \
+            --generate-notes \
+            --notes "$NOTES" "${FLAGS[@]}"
