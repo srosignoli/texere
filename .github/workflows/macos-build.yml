@@ -1,0 +1,78 @@
+# Does Texere build on macOS at all? Nobody here has a Mac to answer that, so
+# this job is the answer: press Run workflow, get a .app back as an artifact.
+#
+# Deliberately manual and deliberately not a release. It creates no tag, touches
+# no version, and publishes nothing — if the build fails, only you saw it.
+name: macOS build (manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Universal .app
+    runs-on: macos-latest # Apple Silicon; darwin/universal covers Intel too
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # Pinned to match the other workflows. Built here by Go 1.25, so its
+      # in-process type-check of this module agrees with go.mod.
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build
+        run: make build-macos
+
+      # Assert rather than assume: if this prints one architecture, the artifact
+      # would silently fail for half the testers.
+      - name: Verify the binary is universal
+        run: |
+          set -euo pipefail
+          BIN=build/bin/texere.app/Contents/MacOS/texere
+          lipo -archs "$BIN"
+          lipo -archs "$BIN" | grep -q x86_64
+          lipo -archs "$BIN" | grep -q arm64
+
+      # An Apple Silicon binary must carry a signature to execute at all, and
+      # the universal merge invalidates the one the Go linker applies. Ad-hoc
+      # (-s -) is not notarization — it just makes the app runnable after the
+      # tester clears the quarantine flag.
+      - name: Ad-hoc sign
+        run: |
+          set -euo pipefail
+          codesign --force --deep --sign - build/bin/texere.app
+          codesign --verify --verbose build/bin/texere.app
+
+      # ditto, not zip: texere.app is a bundle directory with symlinks, and
+      # plain zip flattens it into something that will not launch.
+      - name: Package
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          ditto -c -k --keepParent build/bin/texere.app \
+            "dist/texere_${GITHUB_SHA::7}_macos_universal.zip"
+          ls -lh dist
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: texere-macos-universal
+          path: dist/*.zip
+          if-no-files-found: error
+          retention-days: 90

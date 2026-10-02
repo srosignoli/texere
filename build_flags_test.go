@@ -35,7 +35,7 @@ func makeRecipe(t *testing.T, target string) []string {
 // lets anyone right-click into devtools on the shipped app. The release targets
 // must not carry it; build-dev exists for local debugging instead.
 func TestReleaseBuildTargetsCarryNoDevtools(t *testing.T) {
-	for _, target := range []string{"build", "build-windows"} {
+	for _, target := range []string{"build", "build-windows", "build-macos"} {
 		for _, line := range makeRecipe(t, target) {
 			if strings.Contains(line, "-devtools") {
 				t.Errorf("release target %q carries -devtools:\n  %s", target, line)
@@ -46,7 +46,7 @@ func TestReleaseBuildTargetsCarryNoDevtools(t *testing.T) {
 
 // The demo seam must never be compiled into a release binary.
 func TestReleaseBuildTargetsCarryNoDemoTag(t *testing.T) {
-	for _, target := range []string{"build", "build-windows"} {
+	for _, target := range []string{"build", "build-windows", "build-macos"} {
 		for _, line := range makeRecipe(t, target) {
 			if regexp.MustCompile(`-tags[= ][^ ]*\bdemo\b`).MatchString(line) {
 				t.Errorf("release target %q builds with the demo tag:\n  %s", target, line)
