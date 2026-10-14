@@ -67,7 +67,7 @@ For more details on the foundational concepts combined in Texere, here are the p
 
 For a visual tour of Texere and its core features, watch the overview video:
 
-{{< youtube JWcg9q0KCpw >}}
+[![Watch the video](https://img.youtube.com/vi/JWcg9q0KCpw/maxresdefault.jpg)](https://www.youtube.com/watch?v=JWcg9q0KCpw)
 
 
 ## Install
