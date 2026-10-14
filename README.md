@@ -1,46 +1,74 @@
-# Texere
+Texere is a personal knowledge management and learning platform based on Mark Burgess's [SSTorytime](https://github.com/markburgess/SSTorytime/) and [N4L](https://github.com/markburgess/SSTorytime/blob/main/docs/N4L.md), combined with Piotr Woźniak's concepts of [incremental reading](https://help.supermemo.org/wiki/Incremental_learning) and [spaced repetition](https://supermemo.guru/wiki/Spaced_repetition).
 
-A desktop app for N4L plain-text notes: an editor, a knowledge graph,
-incremental reading and spaced repetition in one window.
+## Local and Portable
 
-Your notes stay plain text on disk. The graph and the scheduling state are
-derived from them and can be rebuilt at any time — nothing you write is locked
-inside a database.
+The tool is designed to run locally on your computer, supporting Windows, Linux, and macOS. 
 
-Built on [SSTorytime-KV](https://github.com/srosignoli/sstorytime-kv) with
-[Bleve](https://blevesearch.com) for full-text search, wrapped in
-[Wails](https://wails.io) v2. Linux and Windows.
+SSTorytime has been ported to Go([SSTorytime-KV](https://github.com/srosignoli/sstorytime-kv)) so it runs directly within Texere. All your notes and knowledge stay in plain text files inside a collection folder. Scheduling data for spaced repetition and incremental reading is stored in a local SQLite database within that same collection. 
 
-## Status
+To move your notes to a different computer, simply zip the collection folder. Everything works immediately with the Texere instance installed there—no database servers, cloud lock-in, or external setup required.
 
-0.x, and pre-1.0 deliberately: the on-disk formats — collection layout, the
-BadgerDB graph store, the SQLite learning database — may still change between
-minor releases, and there is no migration path yet. Keep backups of collections
-you care about.
+You can download example N4L collections from the original [SSTorytime](https://github.com/markburgess/SSTorytime/tree/main/examples) repository or from my [SSTorytime-KV](https://github.com/srosignoli/sstorytime-kv/tree/main/examples) port.
 
-[ROADMAP.md](ROADMAP.md) is what's next. [CHANGELOG.md](CHANGELOG.md) is what
-has shipped.
+## AI Disclaimer: How Texere Was Built
 
-## What you do with it
+This project was developed through [automated | augmented | agentinc] programming (select whichever term is currently trending on LinkedIn today). One of my goals was to gain practical experience with agents: define the core ideas, specify the features, and let AI agents handle the implementation.
 
-**Write.** An N4L editor with arrow autocomplete, a compliance linter, and a
-radius-1 minimap of the node under the caret. Media and LaTeX render inline.
+This is not the result of a single prompt. It is a months long journey exploring different approaches, all documented in the repository's `docs` folder. 
 
-**Ask.** Build the graph (Ctrl+G) and query it — by word, chapter, context tag,
-path between two nodes, or sequence. With an LLM profile configured, an ask box
-turns a plain question into a query you can read and edit before it runs. The
-full syntax is in [docs/query-language.md](docs/query-language.md).
+I started with spec-driven development. Later, I moved to the Superpowers skill workflow:
 
-**Explore.** A 2.5D isometric view of the graph, with in-place node editing that
-lands back on the right line of the right file.
+1. **Planning phase:** Explore and plan features using the most capable model available on my subscription.
+2. **Implementation phase:** Hand over tasks to agents running lighter, faster models.
+3. **Review phase:** Perform code and spec reviews using the top-tier model.
 
-**Study.** Three loops over one collection — read sources and extract from them,
-process extracts into cards, recall the cards on an FSRS schedule. Statistics
-cover quality, habit, workload and the read/process/recall pipeline.
+This strategy is currently my preferred approach, though it continues to evolve. The workflow depends on the model: newer models need less steering and prompting. It also depends on token limits. Token budgets are limited for me, I use entry level flat subscription, so I cannot afford to develop exclusively with the most expensive model at all times.
 
-**Process.** A notebook overlay attached to any note, with cells for drafting
-N4L, sketching, running a shell command, computing, querying the graph, and
-importing images, audio, video or scans — including speech-to-text.
+I wrote the README, documentation, and blog articles myself, editing and polishing them with [my voice skill](https://github.com/srosignoli/agent-skills/tree/main/skills/voice-editor).
+
+## References and Further Reading
+
+For more details on the foundational concepts combined in Texere, here are the primary starting points from the original authors:
+
+- **[Mark Burgess](https://markburgess.org/):** *[SSTorytime](https://github.com/markburgess/SSTorytime/)* and *[Notes for Learning (N4L)](https://github.com/markburgess/SSTorytime/blob/main/docs/N4L.md)* — exploring associative knowledge graphs, narrative structures, and semantic arrows.
+- **[Piotr Woźniak](https://supermemo.guru/wiki/SuperMemo_Guru):** *[Incremental Reading](https://help.supermemo.org/wiki/Incremental_learning)* and *[Spaced Repetition](https://supermemo.guru/wiki/Spaced_repetition)* (SuperMemo) — the workflow of reading in small bites, extracting key points, and scheduling reviews with spaced repetition.
+
+## Texere Tutorials
+
+- **[Texere Tutorials](https://www.simonerosignoli.eu/texere/):** 
+    - [Texere Introduction: Weaving Knowledge Instead of Collecting Notes](https://www.simonerosignoli.eu/texere/texere-introduction/) 
+    - [Texere: Writing a Note](https://www.simonerosignoli.eu/texere/texere-writing-a-note/) 
+    - [Texere: Three-Column Navigation Layout](https://www.simonerosignoli.eu/texere/texere-3-columns/) 
+    - [Texere: The Preview Panel](https://www.simonerosignoli.eu/texere/texere-the-preview-panel/) 
+    - [Texere: Building the Graph](https://www.simonerosignoli.eu/texere/texere-build-graph/) 
+    - [Texere: Fuzzy Search](https://www.simonerosignoli.eu/texere/texere-fuzzy-search/) 
+    - [Texere: The Graph Query Language](https://www.simonerosignoli.eu/texere/texere-graph-query-language/) 
+    - [Texere: Incremental Reading](https://www.simonerosignoli.eu/texere/texere-reading/) 
+    - [Texere: Processing Extracts into Knowledge](https://www.simonerosignoli.eu/texere/texere-processing/) 
+    - [Texere: The Context Cell](https://www.simonerosignoli.eu/texere/texere-context-cell/) 
+    - [Texere: The N4L Draft Cell](https://www.simonerosignoli.eu/texere/texere-n4l-draft-cell/) 
+    - [Texere: The Graph Cell](https://www.simonerosignoli.eu/texere/texere-graph-cell/) 
+    - [Texere: The Sketch Cell](https://www.simonerosignoli.eu/texere/texere-sketch-cell/) 
+    - [Texere: The Media Cell](https://www.simonerosignoli.eu/texere/texere-media-cell/) 
+    - [Texere: The Shell Cell](https://www.simonerosignoli.eu/texere/texere-shell-cell/) 
+    - [Texere: The LLM Cell](https://www.simonerosignoli.eu/texere/texere-llm-cell/) 
+    - [Texere: The Scan Cell](https://www.simonerosignoli.eu/texere/texere-scan-cell/) 
+    - [Texere: The Audio Cell](https://www.simonerosignoli.eu/texere/texere-audio-cell/) 
+    - [Texere: The Compute Cell](https://www.simonerosignoli.eu/texere/texere-compute-cell/) 
+    - [Texere: Organizing the Notebook](https://www.simonerosignoli.eu/texere/texere-organizing-the-notebook/) 
+    - [Texere: Notebooks as Margin Notes](https://www.simonerosignoli.eu/texere/texere-notebooks-as-margin-notes/) 
+    - [Texere: Writing Flashcards: Cards and Clozes](https://www.simonerosignoli.eu/texere/texere-flashcards-and-clozes/) 
+    - [Texere: Grading Cards and Review Scheduling](https://www.simonerosignoli.eu/texere/texere-grading-and-scheduling/) 
+    - [Texere: The Stats Panel](https://www.simonerosignoli.eu/texere/texere-stats-panel/) 
+    - [Texere: The Settings Menu](https://www.simonerosignoli.eu/texere/texere-settings-menu/) 
+    - [Texere: Next: Just Keep Going](https://www.simonerosignoli.eu/texere/texere-next-workflow/) 
+
+## Video Tutorial
+
+For a visual tour of Texere and its core features, watch the overview video:
+
+{{< youtube JWcg9q0KCpw >}}
+
 
 ## Install
 
@@ -70,11 +98,9 @@ Full setup, cross-compilation and the test matrix are in
 |---|---|
 | [docs/quickstart.md](docs/quickstart.md) | Developer setup, build, test, project layout |
 | [docs/query-language.md](docs/query-language.md) | Query syntax and the ask box |
-| [docs/demos/README.md](docs/demos/README.md) | Scripted demo recordings |
 | [docs/Texere_Specification_v1.3.md](docs/Texere_Specification_v1.3.md) | The long-form design document. Aspirational — much of it is unbuilt, and ROADMAP.md says which parts are queued |
 | [specs/](specs/) | Per-feature specs, plans and tasks |
 
 ## Licence
 
-Not yet chosen. Until one is added, no permissions are granted beyond reading
-the source.
+Apache License 2.0
