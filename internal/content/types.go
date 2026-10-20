@@ -41,6 +41,11 @@ type Arrow struct {
 	IsRegistered bool   // false if code not found in SSTRegistry
 	Line         int    // 1-indexed line number
 	IsDitto      bool   // true if this arrow belongs to a DittoLine, not the root Node
+	// Source is the item this arrow starts from. An N4L line is a chain:
+	// "A (r1) B (r2) C" links A→B and B→C, so the first arrow on a line (or on
+	// a ditto line) starts at the node, and each later one at the previous
+	// arrow's target. Set by ParseFile, after references are resolved.
+	Source string
 }
 
 // DittoLine is a continuation of the immediately preceding Node.
@@ -48,6 +53,7 @@ type DittoLine struct {
 	Line   int     // 1-indexed
 	Text   string  // Display text of the ditto line (empty when the line is purely an arrow)
 	Arrows []Arrow // All arrows declared on this ditto line
+	Label  string  // The @label written on this ditto line, if any: $label.N refers to this line's items
 }
 
 // NodeSpan is the line range a node occupies, for mapping a caret position back

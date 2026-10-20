@@ -193,3 +193,41 @@ func captureTokenHitCounts(t *testing.T, dir string, tokens []string) map[string
 	}
 	return out
 }
+
+// TestBuildFromCollection_ChainLinks: "A (next) B (next) C" builds A→B and
+// B→C, never A→C (upstream N4L reads a line as a chain).
+func TestBuildFromCollection_ChainLinks(t *testing.T) {
+	dir := t.TempDir()
+	writeN4L(t, dir, "chain.n4l", "- Chain\n\nstep one (next) step two (next) step three\n")
+
+	resetSSTGlobals()
+	if _, err := graph.BuildFromCollection(dir, minimalRegistry()); err != nil {
+		t.Fatalf("BuildFromCollection: %v", err)
+	}
+	out := map[string][]string{} // node -> outgoing link targets (forward arrows only)
+	for _, mem := range SST.NODE_CACHE {
+		n := SST.GetMemoryNodeFromPtr(mem)
+		for st, links := range n.I {
+			if st <= SST.ST_ZERO {
+				continue // inverse readings
+			}
+			for _, l := range links {
+				out[n.S] = append(out[n.S], SST.GetNodeTxtFromPtr(l.Dst))
+			}
+		}
+	}
+	has := func(from, to string) bool {
+		for _, x := range out[from] {
+			if x == to {
+				return true
+			}
+		}
+		return false
+	}
+	if !has("step one", "step two") || !has("step two", "step three") {
+		t.Errorf("chain links missing: %v", out)
+	}
+	if has("step one", "step three") {
+		t.Errorf("step one links to step three: a line is a chain, not a star (%v)", out)
+	}
+}

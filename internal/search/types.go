@@ -45,6 +45,9 @@ type NoteArrow struct {
 	ArrowLong string `json:"ArrowLong"`
 	ArrowCode string `json:"ArrowCode"`
 	Target    string `json:"Target"`
+	// Source is where the arrow starts: the block's node for the first arrow of
+	// a line, the previous arrow's target after that (an N4L line is a chain).
+	Source string `json:"Source"`
 }
 
 // GraphNode is a single Tier 2 graph result card.

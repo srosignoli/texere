@@ -216,11 +216,12 @@ func BuildFromCollection(collectionDir string, registry *content.SSTRegistry) (*
 						result.UnknownArrows[arrow.Code]++
 					}
 					toNode := ensureNode(sst, bleveBatch, arrow.Target, ch.Title, sourceFile, nodeIndex, result)
-					if fromNode.NPtr == toNode.NPtr {
+					srcNode := arrowSource(sst, bleveBatch, arrow, fromNode, ch.Title, sourceFile, nodeIndex, result)
+					if srcNode.NPtr == toNode.NPtr {
 						continue
 					}
-					arrowPtr, _ := SST.Edge(sst, fromNode, arrow.Code, toNode, node.EffectiveCtx, 1.0)
-					appendMemoryLink(arrowPtr, fromNode.NPtr, toNode.NPtr, ctxPtrForNode)
+					arrowPtr, _ := SST.Edge(sst, srcNode, arrow.Code, toNode, node.EffectiveCtx, 1.0)
+					appendMemoryLink(arrowPtr, srcNode.NPtr, toNode.NPtr, ctxPtrForNode)
 					appendArrowLeg(arrow, toNode, arrowPtr)
 					result.LinksIngested++
 				}
@@ -238,11 +239,12 @@ func BuildFromCollection(collectionDir string, registry *content.SSTRegistry) (*
 							result.UnknownArrows[arrow.Code]++
 						}
 						toNode := ensureNode(sst, bleveBatch, arrow.Target, ch.Title, sourceFile, nodeIndex, result)
-						if fromNode.NPtr == toNode.NPtr {
+						srcNode := arrowSource(sst, bleveBatch, arrow, fromNode, ch.Title, sourceFile, nodeIndex, result)
+						if srcNode.NPtr == toNode.NPtr {
 							continue
 						}
-						arrowPtr, _ := SST.Edge(sst, fromNode, arrow.Code, toNode, node.EffectiveCtx, 1.0)
-						appendMemoryLink(arrowPtr, fromNode.NPtr, toNode.NPtr, ctxPtrForNode)
+						arrowPtr, _ := SST.Edge(sst, srcNode, arrow.Code, toNode, node.EffectiveCtx, 1.0)
+						appendMemoryLink(arrowPtr, srcNode.NPtr, toNode.NPtr, ctxPtrForNode)
 						appendArrowLeg(arrow, toNode, arrowPtr)
 						result.LinksIngested++
 					}
@@ -323,6 +325,16 @@ func appendMemoryLink(arrowPtr SST.ArrowPtr, fromDB, toDB SST.NodePtr, ctx SST.C
 // once after Pass 2 completes) rather than indexed individually — per-node
 // commits were the dominant build cost. These are typically arrow targets that
 // weren't chapter roots.
+// arrowSource is the node an arrow starts from: the line's node for the first
+// arrow, the previous arrow's target for the next ones ("A (r1) B (r2) C" is
+// A→B and B→C, as upstream N4L reads it).
+func arrowSource(sst SST.PoSST, bleveBatch *SST.IndexBatch, arrow content.Arrow, lineNode SST.Node, chap, sourceFile string, index map[string]SST.Node, result *BuildResult) SST.Node {
+	if arrow.Source == "" || normalizeText(arrow.Source) == normalizeText(lineNode.S) {
+		return lineNode
+	}
+	return ensureNode(sst, bleveBatch, arrow.Source, chap, sourceFile, index, result)
+}
+
 func ensureNode(sst SST.PoSST, bleveBatch *SST.IndexBatch, text, chap, sourceFile string, index map[string]SST.Node, result *BuildResult) SST.Node {
 	key := normalizeText(text)
 	if n, ok := index[key]; ok {

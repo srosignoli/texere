@@ -168,10 +168,13 @@ func BuildResultSet(sr *search.SearchResult, registry *content.SSTRegistry, sour
 	}
 	for _, fn := range sr.Notes {
 		for _, blk := range fn.Blocks {
-			src := nodeKey{Text: blk.NodeText, Chapter: fn.Chapter}
 			for _, na := range blk.Arrows {
 				if na.Target == "" {
 					continue
+				}
+				src := nodeKey{Text: blk.NodeText, Chapter: fn.Chapter}
+				if na.Source != "" {
+					src = nodeKey{Text: na.Source, Chapter: fn.Chapter} // chained arrows start at the previous target
 				}
 				dst := nodeKey{Text: na.Target, Chapter: fn.Chapter}
 				meta := classifyArrowByCode(registry, na.ArrowCode, na.ArrowLong)

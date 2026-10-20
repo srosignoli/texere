@@ -39,6 +39,13 @@ along with themes, an LLM integration and the first packaged binaries.
 - A race in the file watcher when a file was added.
 - Dialogs are drawn by the app, so the theme reaches them. Prose is no longer
   centred by default.
+- A line with several arrows is a chain, as in upstream N4L: `A (r1) B (r2) C`
+  now builds A→B and B→C. It used to build A→B and A→C, in the graph, in
+  search and in the explorer.
+- References (`$label.N`, `$PREV.N`, `$THIS.N`) are replaced by the items they
+  name, as upstream N4L does. They used to stay in the graph as literal
+  `$PREV.2` nodes. A label on a ditto line (`@rule " (rule) …`) now names that
+  line, not its parent node.
 
 ### Internal
 
