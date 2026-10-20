@@ -170,8 +170,11 @@ func ParseFile(path string, registry *SSTRegistry) (*ParsedFile, []ParseError) {
 		pf.Chapters = append(pf.Chapters, *state.currentChapter)
 	}
 
-	// Second pass: resolve pending label references
+	// Second pass: check pending label references, then replace every
+	// reference with the item it names, and record where each arrow starts.
 	resolvePendingRefs(pf, state, path)
+	resolveReferences(pf)
+	setArrowSources(pf)
 
 	return pf, pf.Errors
 }
@@ -267,6 +270,12 @@ func processLine(pf *ParsedFile, state *parserState, path, line string, lineNum 
 				state.labelMap[m[1]] = &ch.Nodes[len(ch.Nodes)-1]
 			}
 			parseDitto(pf, state, path, rest, lineNum, reg)
+			if ch != nil && len(ch.Nodes) > 0 { // the label names this ditto line
+				n := &ch.Nodes[len(ch.Nodes)-1]
+				if k := len(n.Dittos); k > 0 && n.Dittos[k-1].Line == lineNum {
+					n.Dittos[k-1].Label = m[1]
+				}
+			}
 			return
 		}
 	}

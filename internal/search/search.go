@@ -1610,6 +1610,7 @@ func (s *SearchService) buildFullNotes(rows []SST.PageMap) []FullNote {
 		}
 
 		block := &state.note.Blocks[idx]
+		source := SST.GetDBNodeByNodePtr(s.pst, ev.Path[0].Dst).S
 		for _, link := range ev.Path[1:] {
 			arr := SST.GetDBArrowByPtr(s.pst, link.Arr)
 			target := SST.GetDBNodeByNodePtr(s.pst, link.Dst)
@@ -1617,7 +1618,9 @@ func (s *SearchService) buildFullNotes(rows []SST.PageMap) []FullNote {
 				ArrowLong: arr.Long,
 				ArrowCode: arr.Short,
 				Target:    target.S,
+				Source:    source,
 			})
+			source = target.S
 		}
 	}
 
@@ -1715,11 +1718,18 @@ func (s *SearchService) rebuildMemoryLinks(textToDBPtr map[string]SST.NodePtr) {
 						if !okT {
 							continue
 						}
-						if fromDBPtr == toDBPtr {
+						// Chained arrows start at the previous target (mirrors the builder).
+						srcDBPtr := fromDBPtr
+						if arrow.Source != "" {
+							if p, ok := textToDBPtr[strings.ToLower(strings.TrimSpace(arrow.Source))]; ok {
+								srcDBPtr = p
+							}
+						}
+						if srcDBPtr == toDBPtr {
 							continue
 						}
 						arrowPtr, _ := SST.GetDBArrowsWithArrowName(s.pst, arrow.Code)
-						appendMemLink(arrowPtr, fromDBPtr, toDBPtr, ctx)
+						appendMemLink(arrowPtr, srcDBPtr, toDBPtr, ctx)
 					}
 				}
 				processArrows(node.Arrows)

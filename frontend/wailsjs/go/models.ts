@@ -1483,6 +1483,7 @@ export namespace search {
 	    ArrowLong: string;
 	    ArrowCode: string;
 	    Target: string;
+	    Source: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new NoteArrow(source);
@@ -1493,6 +1494,7 @@ export namespace search {
 	        this.ArrowLong = source["ArrowLong"];
 	        this.ArrowCode = source["ArrowCode"];
 	        this.Target = source["Target"];
+	        this.Source = source["Source"];
 	    }
 	}
 	export class NoteBlock {
