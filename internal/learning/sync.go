@@ -31,12 +31,10 @@ func Sync(store *Store, files []string, reg *content.SSTRegistry) (SyncResult, e
 			skipped = append(skipped, path)
 			continue
 		}
-		// relPath is the collection-relative form stored in items.file_path and
-		// extracts.file_path. pf.Path (== path, absolute) must stay absolute below:
-		// InjectMissingIDs/InjectMissingExtractIDs read and write the real file
-		// through it. Only the values that end up in the DB are relativized.
-		relPath, err := store.Rel(path)
-		if err != nil {
+		// Refuse a file outside the Collection before injecting ids into it. The
+		// Store stores paths relative itself; everything below passes it the
+		// absolute path.
+		if _, err := store.rel(path); err != nil {
 			return res, fmt.Errorf("learning: sync: %w", err)
 		}
 		// Assign # @id to study-marked nodes missing one (mutates pf in place).
@@ -57,7 +55,7 @@ func Sync(store *Store, files []string, reg *content.SSTRegistry) (SyncResult, e
 		cards := GenerateCards(pf)
 		keep := make(map[string]bool, len(cards))
 		for _, c := range cards {
-			c.FilePath = relPath
+			c.FilePath = path
 			added, err := store.UpsertItem(c)
 			if err != nil {
 				return res, err
@@ -67,7 +65,7 @@ func Sync(store *Store, files []string, reg *content.SSTRegistry) (SyncResult, e
 			}
 			keep[c.ItemID()] = true
 		}
-		retired, err := store.RetireMissing(relPath, keep)
+		retired, err := store.RetireMissing(path, keep)
 		if err != nil {
 			return res, err
 		}
@@ -101,7 +99,7 @@ func Sync(store *Store, files []string, reg *content.SSTRegistry) (SyncResult, e
 		exs := GenerateExtracts(pf)
 		keepEx := make(map[string]bool, len(exs))
 		for _, e := range exs {
-			e.FilePath = relPath
+			e.FilePath = path
 			added, err := store.UpsertExtract(e)
 			if err != nil {
 				return res, err
@@ -111,7 +109,7 @@ func Sync(store *Store, files []string, reg *content.SSTRegistry) (SyncResult, e
 			}
 			keepEx[e.ID] = true
 		}
-		retiredEx, err := store.RetireMissingExtracts(relPath, keepEx)
+		retiredEx, err := store.RetireMissingExtracts(path, keepEx)
 		if err != nil {
 			return res, err
 		}

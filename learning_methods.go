@@ -21,22 +21,6 @@ func (a *App) SyncStudyItems() (*learning.SyncResult, error) {
 	return &res, nil
 }
 
-// resolveCardViewPaths turns each card's stored (collection-relative)
-// FilePath into an absolute one, matching the contract every other *View
-// exposed at the Wails boundary follows (ExtractTarget.FilePath,
-// ReadingView.NotesPath). No frontend code reads CardView.FilePath today, but
-// leaving it in its raw stored form would be exactly the kind of silent trap
-// this feature exists to close — best-effort: a card whose path cannot be
-// resolved keeps its stored value rather than disappearing from the queue.
-func resolveCardViewPaths(store *learning.Store, cards []learning.CardView) []learning.CardView {
-	for i, c := range cards {
-		if abs, err := store.Resolve(c.FilePath); err == nil {
-			cards[i].FilePath = abs
-		}
-	}
-	return cards
-}
-
 // GetDueQueue returns up to limit due/new cards.
 func (a *App) GetDueQueue(limit int) ([]learning.CardView, error) {
 	return inCollection(a, func(h collection.Handles) ([]learning.CardView, error) {
@@ -47,7 +31,7 @@ func (a *App) GetDueQueue(limit int) ([]learning.CardView, error) {
 		if err != nil {
 			return nil, err
 		}
-		return resolveCardViewPaths(h.Learning(), q), nil
+		return q, nil
 	})
 }
 
@@ -77,7 +61,6 @@ func (a *App) GradeItem(itemID string, grade int, elapsedMs int) (*learning.Card
 		if len(q) == 0 {
 			return nil, nil
 		}
-		q = resolveCardViewPaths(h.Learning(), q)
 		return &q[0], nil
 	})
 }

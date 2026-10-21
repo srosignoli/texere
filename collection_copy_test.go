@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"os"
 	"path/filepath"
 	"strings"
@@ -72,17 +73,23 @@ func TestStudyDoesNotTouchTheOriginalCollection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Seed the row the way an unconverted call site would: with the caller's
-	// raw, absolute NotesPath. The schema is already at v7 by the time Open()
-	// returns, so no migration will ever touch a row inserted afterward — this
-	// is exactly what a missed call-site conversion leaves behind on disk.
-	if err := store.UpsertReading(learning.ReadingElement{
-		ID: refID, RefPath: "sources/k.txt", NotesPath: notesOriginal, Title: "k",
-		Position: "char=0", ProjLen: 10000, IntervalDays: 1,
-	}); err != nil {
+	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Close(); err != nil {
+	// Seed the row the way a missed call-site conversion once left it on disk:
+	// the raw, absolute NotesPath. The Store itself now refuses to write that
+	// shape, so it goes in by SQL, after the migrations have already run, so
+	// none will touch it.
+	raw, err := sql.Open("sqlite", filepath.Join(original, "learning.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := raw.Exec(`INSERT INTO reading_elements
+		(id, ref_path, notes_path, title, position, proj_len, interval_days, done, created_at)
+		VALUES (?, 'sources/k.txt', ?, 'k', 'char=0', 10000, 1, 0, 0)`, refID, notesOriginal); err != nil {
+		t.Fatal(err)
+	}
+	if err := raw.Close(); err != nil {
 		t.Fatal(err)
 	}
 

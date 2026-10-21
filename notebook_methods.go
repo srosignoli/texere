@@ -214,15 +214,11 @@ func (a *App) assembleContext(h collection.Handles, nodeID string) ContextPayloa
 	}
 
 	// Source passage: find the reading element whose notes file is this file.
-	// tgt.FilePath is already absolute (GetExtractTarget resolves it); e.NotesPath
-	// is still the stored, collection-relative value, so it must be resolved
-	// before comparing — otherwise a relative value can never equal an absolute
-	// one and this lookup silently stops matching anything.
+	// Both paths are absolute: the Store returns them that way.
 	if tgt.FromAnchor != "" {
 		if elems, err := h.Learning().ListReading(); err == nil {
 			for _, e := range elems {
-				notesPath, rerr := h.Learning().Resolve(e.NotesPath)
-				if rerr != nil || notesPath != tgt.FilePath {
+				if e.NotesPath != tgt.FilePath {
 					continue
 				}
 				out.Source.RefPath = e.RefPath

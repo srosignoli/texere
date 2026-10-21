@@ -2,6 +2,9 @@ package learning
 
 import (
 	"database/sql"
+	"errors"
+	"fmt"
+	"log"
 	"math"
 	"time"
 )
@@ -52,7 +55,14 @@ func ScheduleReading(prev ReadingElement, action string, now time.Time) ReadingE
 	return out
 }
 
+// UpsertReading stores r. Its NotesPath may be absolute (under the
+// Collection) or already relative; it is stored relative.
 func (s *Store) UpsertReading(r ReadingElement) error {
+	notes, err := s.rel(r.NotesPath)
+	if err != nil {
+		return fmt.Errorf("learning: Source %q: %w", r.ID, err)
+	}
+	r.NotesPath = notes
 	var exists int
 	if err := s.db.QueryRow(`SELECT COUNT(*) FROM reading_elements WHERE id=?`, r.ID).Scan(&exists); err != nil {
 		return err
@@ -64,7 +74,7 @@ func (s *Store) UpsertReading(r ReadingElement) error {
 			r.RefPath, r.NotesPath, r.Title, r.ID)
 		return err
 	}
-	_, err := s.db.Exec(`INSERT INTO reading_elements
+	_, err = s.db.Exec(`INSERT INTO reading_elements
 		(id, ref_path, notes_path, title, position, proj_len, due, interval_days, last_read, done, created_at, medium, source_url)
 		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 		r.ID, r.RefPath, r.NotesPath, r.Title, r.Position, r.ProjLen,
@@ -87,7 +97,7 @@ func (s *Store) ApplyReadingSchedule(id string, r ReadingElement) error {
 func (s *Store) GetReading(id string) (ReadingElement, bool, error) {
 	row := s.db.QueryRow(`SELECT id, ref_path, notes_path, title, position, proj_len, due, interval_days, last_read, done, medium, source_url
 		FROM reading_elements WHERE id=?`, id)
-	r, err := scanReading(row)
+	r, err := s.scanReading(row)
 	if err == sql.ErrNoRows {
 		return ReadingElement{}, false, nil
 	}
@@ -103,7 +113,11 @@ func (s *Store) ListReading() ([]ReadingElement, error) {
 	defer rows.Close()
 	var out []ReadingElement
 	for rows.Next() {
-		r, err := scanReading(rows)
+		r, err := s.scanReading(rows)
+		if errors.Is(err, errUnresolvable) {
+			log.Printf("%v (skipped)", err)
+			continue
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -116,7 +130,8 @@ type scanner interface {
 	Scan(dest ...any) error
 }
 
-func scanReading(sc scanner) (ReadingElement, error) {
+// scanReading reads one reading_elements row, NotesPath made absolute.
+func (s *Store) scanReading(sc scanner) (ReadingElement, error) {
 	var (
 		r         ReadingElement
 		pos       sql.NullString
@@ -136,6 +151,11 @@ func scanReading(sc scanner) (ReadingElement, error) {
 	r.Done = done != 0
 	r.Medium = medium.String
 	r.SourceURL = srcURL.String
+	abs, err := s.resolve(r.NotesPath)
+	if err != nil {
+		return ReadingElement{}, fmt.Errorf("learning: Source %q: %w: %w", r.ID, errUnresolvable, err)
+	}
+	r.NotesPath = abs
 	return r, nil
 }
 

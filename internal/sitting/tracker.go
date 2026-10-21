@@ -65,10 +65,7 @@ func (t *Tracker) Begin(sourceID, peekAnchor string) (string, learning.ReadingEl
 	if !ok {
 		return "", learning.ReadingElement{}, fmt.Errorf("sitting: begin: Source %q not found", sourceID)
 	}
-	notesPath, err := t.d.Store.Resolve(r.NotesPath)
-	if err != nil {
-		return "", learning.ReadingElement{}, fmt.Errorf("sitting: begin: %w", err)
-	}
+	notesPath := r.NotesPath // absolute: the Store resolves it
 	id, err := content.GenerateShortID()
 	if err != nil {
 		return "", learning.ReadingElement{}, err

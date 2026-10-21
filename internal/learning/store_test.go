@@ -6,7 +6,7 @@ import (
 )
 
 func newCard(id string) GeneratedCard {
-	return GeneratedCard{NodeID: id, FilePath: "/x.n4l", CardType: CardTypeCloze,
+	return GeneratedCard{NodeID: id, FilePath: "x.n4l", CardType: CardTypeCloze,
 		Front: "f-" + id, Back: "b-" + id, Discriminator: "0"}
 }
 
@@ -40,7 +40,7 @@ func TestUpsertRetireQueueReview(t *testing.T) {
 
 	// Retire "b" (no longer generated for /x.n4l).
 	keep := map[string]bool{newCard("a").ItemID(): true}
-	retired, err := s.RetireMissing("/x.n4l", keep)
+	retired, err := s.RetireMissing("x.n4l", keep)
 	if err != nil || retired != 1 {
 		t.Fatalf("RetireMissing retired=%d err=%v want 1", retired, err)
 	}

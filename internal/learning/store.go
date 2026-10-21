@@ -2,7 +2,9 @@ package learning
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
+	"log"
 	"time"
 )
 
@@ -24,8 +26,13 @@ func unixToTime(v sql.NullInt64) time.Time {
 // one, preserving its scheduling columns.
 func (s *Store) UpsertItem(g GeneratedCard) (bool, error) {
 	id := g.ItemID()
+	rel, err := s.rel(g.FilePath)
+	if err != nil {
+		return false, fmt.Errorf("learning: Card %q: %w", id, err)
+	}
+	g.FilePath = rel
 	var exists int
-	err := s.db.QueryRow(`SELECT COUNT(*) FROM items WHERE id = ?`, id).Scan(&exists)
+	err = s.db.QueryRow(`SELECT COUNT(*) FROM items WHERE id = ?`, id).Scan(&exists)
 	if err != nil {
 		return false, fmt.Errorf("learning: upsert lookup: %w", err)
 	}
@@ -46,6 +53,10 @@ func (s *Store) UpsertItem(g GeneratedCard) (bool, error) {
 
 // RetireMissing deactivates active items of filePath whose id is not in keep.
 func (s *Store) RetireMissing(filePath string, keep map[string]bool) (int, error) {
+	filePath, err := s.rel(filePath)
+	if err != nil {
+		return 0, fmt.Errorf("learning: retire: %w", err)
+	}
 	rows, err := s.db.Query(`SELECT id FROM items WHERE file_path=? AND active=1`, filePath)
 	if err != nil {
 		return 0, err
@@ -76,21 +87,43 @@ func (s *Store) DueQueue(now time.Time, limit int) ([]CardView, error) {
 	rows, err := s.db.Query(`SELECT id, front, back, card_type, file_path, node_id
 		FROM items
 		WHERE active=1 AND (due IS NULL OR due <= ?)
-		ORDER BY (due IS NULL), due ASC
-		LIMIT ?`, now.Unix(), limit)
+		ORDER BY (due IS NULL), due ASC`, now.Unix())
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	var out []CardView
 	for rows.Next() {
-		var c CardView
-		if err := rows.Scan(&c.ID, &c.Front, &c.Back, &c.CardType, &c.FilePath, &c.NodeID); err != nil {
+		c, err := s.scanCard(rows)
+		if errors.Is(err, errUnresolvable) {
+			log.Printf("%v (skipped)", err)
+			continue
+		}
+		if err != nil {
 			return nil, err
 		}
 		out = append(out, c)
+		// The limit counts rows that resolve, so a skipped row cannot leave
+		// the answer short.
+		if len(out) == limit {
+			break
+		}
 	}
 	return out, rows.Err()
+}
+
+// scanCard reads one items row as a CardView, FilePath made absolute.
+func (s *Store) scanCard(sc scanner) (CardView, error) {
+	var c CardView
+	if err := sc.Scan(&c.ID, &c.Front, &c.Back, &c.CardType, &c.FilePath, &c.NodeID); err != nil {
+		return CardView{}, err
+	}
+	abs, err := s.resolve(c.FilePath)
+	if err != nil {
+		return CardView{}, fmt.Errorf("learning: Card %q: %w: %w", c.ID, errUnresolvable, err)
+	}
+	c.FilePath = abs
+	return c, nil
 }
 
 // LoadSched returns the scheduling state for an item.
@@ -138,10 +171,8 @@ func (s *Store) ApplyReview(itemID string, st SchedState, grade Grade, elapsedMs
 
 // GetCardView fetches one item's view by id.
 func (s *Store) GetCardView(itemID string) (CardView, bool, error) {
-	var c CardView
-	err := s.db.QueryRow(`SELECT id, front, back, card_type, file_path, node_id
-		FROM items WHERE id=?`, itemID).
-		Scan(&c.ID, &c.Front, &c.Back, &c.CardType, &c.FilePath, &c.NodeID)
+	c, err := s.scanCard(s.db.QueryRow(`SELECT id, front, back, card_type, file_path, node_id
+		FROM items WHERE id=?`, itemID))
 	if err == sql.ErrNoRows {
 		return CardView{}, false, nil
 	}

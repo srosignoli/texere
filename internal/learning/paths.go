@@ -1,6 +1,7 @@
 package learning
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,10 +10,11 @@ import (
 	"texere/internal/collectionpath"
 )
 
-// Rel converts an absolute path under the collection to its stored,
-// collection-relative form. It refuses (via collectionpath.Resolve) any path
-// that does not lie under the collection root.
-func (s *Store) Rel(abs string) (string, error) {
+// rel converts a path under the collection (absolute, or already relative) to
+// its stored, collection-relative form. Every Store write stores paths through
+// it. It refuses (via collectionpath.Resolve) any path that does not lie under
+// the collection root.
+func (s *Store) rel(abs string) (string, error) {
 	full, err := collectionpath.Resolve(s.dir, abs)
 	if err != nil {
 		return "", err
@@ -24,9 +26,14 @@ func (s *Store) Rel(abs string) (string, error) {
 	return filepath.ToSlash(rel), nil
 }
 
-// Resolve converts a stored (collection-relative, or legacy absolute) value
-// back to an absolute path, guarded to remain under the collection root.
-func (s *Store) Resolve(stored string) (string, error) {
+// errUnresolvable marks a row whose stored path does not resolve under the
+// Collection. A single-row read returns it; a many-row read skips the row.
+var errUnresolvable = errors.New("stored path outside the collection")
+
+// resolve converts a stored (collection-relative, or legacy absolute) value
+// back to an absolute path, guarded to remain under the collection root. Every
+// Store read returns paths through it.
+func (s *Store) resolve(stored string) (string, error) {
 	return collectionpath.Resolve(s.dir, stored)
 }
 

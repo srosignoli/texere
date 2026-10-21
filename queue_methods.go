@@ -23,25 +23,15 @@ func (a *App) NextTurn() (*TurnView, error) {
 			return nil, err
 		}
 		v := &TurnView{Kind: string(t.Kind)}
-		st := h.Learning()
 		switch t.Kind {
 		case learning.KindSource:
-			r := *t.Source
-			if abs, err := st.Resolve(r.NotesPath); err == nil {
-				r.NotesPath = abs
-			}
-			rv := toReadingView(r)
+			rv := toReadingView(*t.Source)
 			v.Source = &rv
 		case learning.KindExtract:
 			e := t.Extract
-			filePath := e.FilePath
-			if abs, err := st.Resolve(e.FilePath); err == nil {
-				filePath = abs
-			}
-			v.Extract = &ExtractView{ID: e.ID, Text: e.Text, FromAnchor: e.FromAnchor, FilePath: filePath}
+			v.Extract = &ExtractView{ID: e.ID, Text: e.Text, FromAnchor: e.FromAnchor, FilePath: e.FilePath}
 		case learning.KindCard:
-			c := resolveCardViewPaths(st, []learning.CardView{*t.Card})[0]
-			v.Card = &c
+			v.Card = t.Card
 		}
 		return v, nil
 	})

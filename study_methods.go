@@ -48,16 +48,7 @@ func (a *App) GetExtractQueue(limit int) ([]ExtractView, error) {
 		}
 		out := make([]ExtractView, 0, len(exs))
 		for _, e := range exs {
-			// Best-effort: a row whose stored path can no longer be resolved under
-			// the open collection must not hide the rest of the queue. FilePath is
-			// not read for file I/O anywhere the frontend uses this view today, but
-			// it is exposed at the Wails boundary alongside ExtractTarget.FilePath
-			// (which is), so it is kept in the same absolute form for consistency.
-			filePath := e.FilePath
-			if abs, rerr := h.Learning().Resolve(e.FilePath); rerr == nil {
-				filePath = abs
-			}
-			out = append(out, ExtractView{ID: e.ID, Text: e.Text, FromAnchor: e.FromAnchor, FilePath: filePath})
+			out = append(out, ExtractView{ID: e.ID, Text: e.Text, FromAnchor: e.FromAnchor, FilePath: e.FilePath})
 		}
 		return out, nil
 	})
@@ -92,13 +83,7 @@ func (a *App) extractTarget(h collection.Handles, id string) (*ExtractTarget, er
 	if err != nil || !ok {
 		return nil, fmt.Errorf("GetExtractTarget: %q not found", id)
 	}
-	// e.FilePath is collection-relative as stored; the frontend hands this
-	// FilePath straight to GetFileContent/SaveFile, which need an absolute
-	// path — this is the exact site the reported incident came through.
-	filePath, err := h.Learning().Resolve(e.FilePath)
-	if err != nil {
-		return nil, fmt.Errorf("GetExtractTarget: %w", err)
-	}
+	filePath := e.FilePath
 	line, _, err := a.nodeByID(filePath, id)
 	if err != nil {
 		return nil, err
@@ -115,12 +100,7 @@ func (a *App) PromoteExtract(id, kind string) error {
 		if err != nil || !ok {
 			return fmt.Errorf("PromoteExtract: %q not found", id)
 		}
-		// e.FilePath is collection-relative as stored; resolve once and reuse the
-		// absolute form for every file operation and frontend-facing event below.
-		filePath, err := h.Learning().Resolve(e.FilePath)
-		if err != nil {
-			return fmt.Errorf("PromoteExtract: %w", err)
-		}
+		filePath := e.FilePath
 		line, nodeText, err := a.nodeByID(filePath, id)
 		if err != nil {
 			return err

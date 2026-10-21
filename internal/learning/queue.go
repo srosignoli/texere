@@ -1,6 +1,8 @@
 package learning
 
 import (
+	"errors"
+	"log"
 	"sync"
 	"time"
 )
@@ -34,19 +36,27 @@ func (s *Store) DueReading(now time.Time, limit int) ([]ReadingElement, error) {
 	rows, err := s.db.Query(`SELECT id, ref_path, notes_path, title, position, proj_len, due, interval_days, last_read, done, medium, source_url
 		FROM reading_elements
 		WHERE done=0 AND (due IS NULL OR due <= ?)
-		ORDER BY (due IS NULL), due ASC
-		LIMIT ?`, now.Unix(), limit)
+		ORDER BY (due IS NULL), due ASC`, now.Unix())
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	var out []ReadingElement
 	for rows.Next() {
-		r, err := scanReading(rows)
+		r, err := s.scanReading(rows)
+		if errors.Is(err, errUnresolvable) {
+			log.Printf("%v (skipped)", err)
+			continue
+		}
 		if err != nil {
 			return nil, err
 		}
 		out = append(out, r)
+		// The limit counts rows that resolve, so a skipped row cannot leave
+		// the answer short.
+		if len(out) == limit {
+			break
+		}
 	}
 	return out, rows.Err()
 }

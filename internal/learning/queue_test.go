@@ -11,9 +11,9 @@ func TestStudyCountsAndDueReading(t *testing.T) {
 	now := time.Unix(2_000_000, 0)
 
 	// One due reading element, one due extract, one new item.
-	s.UpsertReading(ReadingElement{ID: "r1", RefPath: "sources/x.txt", NotesPath: "/c/r/x.n4l", Title: "X", IntervalDays: 1})
-	s.UpsertExtract(Extract{ID: "x1", FilePath: "/c/r/x.n4l", Text: "t", Active: true})
-	s.UpsertItem(GeneratedCard{NodeID: "n1", FilePath: "/f", CardType: CardTypeCloze, Front: "f", Back: "b", Discriminator: "0"})
+	s.UpsertReading(ReadingElement{ID: "r1", RefPath: "sources/x.txt", NotesPath: "reading/x.n4l", Title: "X", IntervalDays: 1})
+	s.UpsertExtract(Extract{ID: "x1", FilePath: "reading/x.n4l", Text: "t", Active: true})
+	s.UpsertItem(GeneratedCard{NodeID: "n1", FilePath: "f.n4l", CardType: CardTypeCloze, Front: "f", Back: "b", Discriminator: "0"})
 
 	c, err := s.StudyCounts(now)
 	if err != nil {
