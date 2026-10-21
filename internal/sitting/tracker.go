@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"sync"
 	"time"
 
@@ -158,6 +159,12 @@ func (t *Tracker) end(s *sitting, position, action string, notes *string) (strin
 		})
 		if err != nil {
 			log.Printf("sitting: progress marker: %v", err)
+		} else if notes != nil {
+			// Hand back the notes with the new marker: the view puts them in
+			// its buffer, and a stale marker there would be saved back later.
+			if b, err := os.ReadFile(s.notesPath); err == nil {
+				final = string(b)
+			}
 		}
 		if err := t.setProgress(s.sourceID, s.lastPos); err != nil {
 			log.Printf("sitting: progress: %v", err)

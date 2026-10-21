@@ -462,3 +462,19 @@ func TestConcurrentEndsLogOnce(t *testing.T) {
 		t.Errorf("logged %d minutes, want 10", got)
 	}
 }
+
+// The view puts the returned notes back into its buffer. If they held the old
+// marker, the next save of that buffer would write it back over the new one.
+func TestEndReturnsTheNotesAsTheyAreOnDisk(t *testing.T) {
+	f := newFixture(t)
+	id := f.begin(t, "")
+	edited := f.file(t) + "\nan edit\n"
+
+	final, err := f.tr.End(id, "char=500", "continue", &edited)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if final != f.file(t) {
+		t.Errorf("returned notes differ from the file:\n--- returned ---\n%s\n--- disk ---\n%s", final, f.file(t))
+	}
+}

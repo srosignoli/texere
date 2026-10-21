@@ -6,6 +6,7 @@
   import { workbenchStore } from '../stores/workbench.js'
   import { CreateExtract, BeginSitting, SittingProgress, EndSitting, GetFileContent, SaveFile, GetRecentArrows, UpdateRecentArrows } from '../../wailsjs/go/main/App'
   import { askConfirm } from '../lib/dialog.js'
+  import { createSittingEnd } from '../lib/sitting-end.js'
   import { runLint } from '../stores/lint.js'
   import { activeReading } from '../stores/reading.js'
   import TextSourcePane from './TextSourcePane.svelte'
@@ -40,6 +41,14 @@
   let sittingId = null
   let source = null
   let destroyed = false
+  let closing = false
+
+  const endOnce = createSittingEnd({
+    endSitting: (action, notes) => sittingId
+      ? EndSitting(sittingId, { position: pane?.getProgress?.() ?? '', action, notes })
+      : Promise.resolve(''),
+    saveNotes: async (notes) => (await SaveFile(reading.notesPath, notes))?.finalContent ?? notes,
+  })
 
   async function onPaneExtract(e) {
     const { text, position } = e.detail
@@ -101,37 +110,39 @@
 
   // End this Sitting. The backend owns the order and the peek rule; it keeps
   // the Sitting open when the notes cannot be saved, and then so do we.
+  // Overlapping ends share one call (lib/sitting-end.js).
   async function end(action, notes = unsavedNotes()) {
-    if (!sittingId) return true
-    try {
-      let final = await EndSitting(sittingId, { position: pane?.getProgress?.() ?? '', action, notes })
-      // "" means the Sitting had already ended (a flush, or another Sitting
-      // began) and these notes were not saved. Save them on their own: notes
-      // typed after the end must not be lost.
-      if (notes != null && !final) final = (await SaveFile(reading.notesPath, notes))?.finalContent ?? notes
-      if (notes != null) {
-        savedNotes = final
-        runLint()   // a save can fix (or introduce) a defect; Problems must reflect the new state
-        if (final !== notes) setNotes(final)
-      }
-      endFailed = false
-      return true
-    } catch (e) {
-      error = String(e?.message ?? e)
+    const r = await endOnce(action, notes)
+    if (!r.ok) {
+      error = r.error
       endFailed = true
       return false
     }
+    if (notes != null && r.final) {
+      savedNotes = r.final
+      runLint()   // a save can fix (or introduce) a defect; Problems must reflect the new state
+      if (r.final !== notes) setNotes(r.final)
+    }
+    endFailed = false
+    return true
   }
 
-  // End the Sitting but leave the surface alone. StudySurface awaits this
-  // before switching documents; the next Sitting cannot begin before it ends.
-  export async function flush() { await end('continue') }
+  // End the Sitting but leave the surface alone, resolving to whether it
+  // ended. StudySurface awaits this before switching documents and stays put
+  // when it fails; the next Sitting cannot begin before it ends.
+  export function flush() { return end('continue') }
 
   async function close(action) {
-    // After a failed save, a notes file that keeps refusing must not trap the
-    // reader: closing again offers to give the notes up.
-    const discard = endFailed && (await askConfirm('Close without saving notes?', { confirmLabel: 'Close' }))
-    if (!(await end(action, discard ? null : unsavedNotes()))) return
+    if (closing) return
+    closing = true
+    try {
+      // After a failed save, a notes file that keeps refusing must not trap the
+      // reader: closing again offers to give the notes up.
+      const discard = endFailed && (await askConfirm('Close without saving notes?', { confirmLabel: 'Close' }))
+      if (!(await end(action, discard ? null : unsavedNotes()))) return
+    } finally {
+      closing = false
+    }
     activeReading.set(null)
     onClose?.()
   }
@@ -199,9 +210,7 @@
     destroyed = true
     if (sittingId) {
       const notes = unsavedNotes()
-      EndSitting(sittingId, { position: pane?.getProgress?.() ?? '', action: 'continue', notes })
-        .then((final) => { if (notes != null && !final) return SaveFile(reading.notesPath, notes) })
-        .then(() => { if (notes != null) runLint() }).catch(() => {})
+      endOnce('continue', notes).then((r) => { if (r.ok && notes != null) runLint() })
     }
     notesView?.destroy()
   })
