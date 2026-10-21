@@ -14,7 +14,7 @@ func TestRescheduleExtractLogsItsAction(t *testing.T) {
 	dir := t.TempDir()
 	a, st := newTestApp(t, dir, nil)
 	if _, err := st.UpsertExtract(learning.Extract{
-		ID: "e1", FilePath: "/c/n.n4l", Text: "x", Due: time.Now(), Active: true,
+		ID: "e1", FilePath: "n.n4l", Text: "x", Due: time.Now(), Active: true,
 	}); err != nil {
 		t.Fatal(err)
 	}

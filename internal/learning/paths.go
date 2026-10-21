@@ -1,6 +1,7 @@
 package learning
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,6 +14,10 @@ import (
 // collection-relative form. It refuses (via collectionpath.Resolve) any path
 // that does not lie under the collection root.
 func (s *Store) Rel(abs string) (string, error) {
+	return s.rel(abs)
+}
+
+func (s *Store) rel(abs string) (string, error) {
 	full, err := collectionpath.Resolve(s.dir, abs)
 	if err != nil {
 		return "", err
@@ -27,6 +32,14 @@ func (s *Store) Rel(abs string) (string, error) {
 // Resolve converts a stored (collection-relative, or legacy absolute) value
 // back to an absolute path, guarded to remain under the collection root.
 func (s *Store) Resolve(stored string) (string, error) {
+	return s.resolve(stored)
+}
+
+// errUnresolvable marks a row whose stored path does not resolve under the
+// Collection. A single-row read returns it; a many-row read skips the row.
+var errUnresolvable = errors.New("stored path outside the collection")
+
+func (s *Store) resolve(stored string) (string, error) {
 	return collectionpath.Resolve(s.dir, stored)
 }
 

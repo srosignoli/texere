@@ -2,7 +2,9 @@ package learning
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
+	"log"
 	"math"
 	"time"
 )
@@ -41,6 +43,11 @@ func ScheduleExtract(prev Extract, action string, now time.Time) Extract {
 }
 
 func (s *Store) UpsertExtract(e Extract) (bool, error) {
+	rel, err := s.rel(e.FilePath)
+	if err != nil {
+		return false, fmt.Errorf("learning: Extract %q: %w", e.ID, err)
+	}
+	e.FilePath = rel
 	var exists int
 	if err := s.db.QueryRow(`SELECT COUNT(*) FROM extracts WHERE id=?`, e.ID).Scan(&exists); err != nil {
 		return false, err
@@ -53,7 +60,7 @@ func (s *Store) UpsertExtract(e Extract) (bool, error) {
 			e.FilePath, e.Text, e.FromAnchor, e.ID)
 		return false, err
 	}
-	_, err := s.db.Exec(`INSERT INTO extracts
+	_, err = s.db.Exec(`INSERT INTO extracts
 		(id, file_path, text, from_anchor, due, deferral_count, active, created_at)
 		VALUES (?,?,?,?,NULL,0,1,?)`,
 		e.ID, e.FilePath, e.Text, e.FromAnchor, time.Now().Unix())
@@ -70,6 +77,10 @@ func (s *Store) ApplyExtractSchedule(id string, e Extract) error {
 }
 
 func (s *Store) RetireMissingExtracts(filePath string, keep map[string]bool) (int, error) {
+	filePath, err := s.rel(filePath)
+	if err != nil {
+		return 0, fmt.Errorf("learning: retire: %w", err)
+	}
 	rows, err := s.db.Query(`SELECT id FROM extracts WHERE file_path=? AND active=1`, filePath)
 	if err != nil {
 		return 0, err
@@ -97,7 +108,7 @@ func (s *Store) RetireMissingExtracts(filePath string, keep map[string]bool) (in
 func (s *Store) GetExtract(id string) (Extract, bool, error) {
 	row := s.db.QueryRow(`SELECT id, file_path, text, from_anchor, due, deferral_count, active
 		FROM extracts WHERE id=?`, id)
-	e, err := scanExtract(row)
+	e, err := s.scanExtract(row)
 	if err == sql.ErrNoRows {
 		return Extract{}, false, nil
 	}
@@ -108,19 +119,27 @@ func (s *Store) DueExtracts(now time.Time, limit int) ([]Extract, error) {
 	rows, err := s.db.Query(`SELECT id, file_path, text, from_anchor, due, deferral_count, active
 		FROM extracts
 		WHERE active=1 AND (due IS NULL OR due <= ?)
-		ORDER BY (due IS NULL), due ASC
-		LIMIT ?`, now.Unix(), limit)
+		ORDER BY (due IS NULL), due ASC`, now.Unix())
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	var out []Extract
 	for rows.Next() {
-		e, err := scanExtract(rows)
+		e, err := s.scanExtract(rows)
+		if errors.Is(err, errUnresolvable) {
+			log.Printf("%v (skipped)", err)
+			continue
+		}
 		if err != nil {
 			return nil, err
 		}
 		out = append(out, e)
+		// The limit counts rows that resolve, so a skipped row cannot leave
+		// the answer short.
+		if len(out) == limit {
+			break
+		}
 	}
 	return out, rows.Err()
 }
@@ -159,7 +178,8 @@ func (s *Store) ExtractAnchors() (map[string]string, error) {
 	return out, rows.Err()
 }
 
-func scanExtract(sc scanner) (Extract, error) {
+// scanExtract reads one extracts row, FilePath made absolute.
+func (s *Store) scanExtract(sc scanner) (Extract, error) {
 	var (
 		e   Extract
 		anc sql.NullString
@@ -172,5 +192,10 @@ func scanExtract(sc scanner) (Extract, error) {
 	e.FromAnchor = anc.String
 	e.Due = unixToTime(due)
 	e.Active = act != 0
+	abs, err := s.resolve(e.FilePath)
+	if err != nil {
+		return Extract{}, fmt.Errorf("learning: Extract %q: %w: %w", e.ID, errUnresolvable, err)
+	}
+	e.FilePath = abs
 	return e, nil
 }

@@ -13,7 +13,7 @@ func TestReadingCRUDAndSchedule(t *testing.T) {
 	defer s.Close()
 	now := time.Unix(1_000_000, 0)
 
-	r := ReadingElement{ID: "r1", RefPath: "sources/k.txt", NotesPath: "/c/reading/k.n4l",
+	r := ReadingElement{ID: "r1", RefPath: "sources/k.txt", NotesPath: "reading/k.n4l",
 		Title: "K", Position: "char=0", ProjLen: 10000, IntervalDays: 1, Done: false}
 	if err := s.UpsertReading(r); err != nil {
 		t.Fatalf("UpsertReading: %v", err)
@@ -62,7 +62,7 @@ func TestReadingMediumAndSourceURLRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer s.Close()
-	r := ReadingElement{ID: "w1", RefPath: "sources/a.html", NotesPath: "/c/reading/a.n4l",
+	r := ReadingElement{ID: "w1", RefPath: "sources/a.html", NotesPath: "reading/a.n4l",
 		Title: "A", IntervalDays: 1, Medium: "web", SourceURL: "https://example.com/a"}
 	if err := s.UpsertReading(r); err != nil {
 		t.Fatalf("UpsertReading: %v", err)
@@ -75,7 +75,7 @@ func TestReadingMediumAndSourceURLRoundTrip(t *testing.T) {
 		t.Fatalf("got Medium=%q SourceURL=%q", got.Medium, got.SourceURL)
 	}
 	// A row inserted without a medium defaults to 'text'.
-	r2 := ReadingElement{ID: "t1", RefPath: "sources/b.txt", NotesPath: "/c/reading/b.n4l", Title: "B", IntervalDays: 1}
+	r2 := ReadingElement{ID: "t1", RefPath: "sources/b.txt", NotesPath: "reading/b.n4l", Title: "B", IntervalDays: 1}
 	s.UpsertReading(r2)
 	g2, _, _ := s.GetReading("t1")
 	if g2.Medium != "text" {

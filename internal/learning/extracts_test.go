@@ -13,7 +13,7 @@ func TestExtractScheduleAndCRUD(t *testing.T) {
 	defer s.Close()
 	now := time.Unix(1_000_000, 0)
 
-	e := Extract{ID: "f.n4l:Ch:id:a", FilePath: "/c/reading/f.n4l", Text: "System 1 is fast",
+	e := Extract{ID: "f.n4l:Ch:id:a", FilePath: "reading/f.n4l", Text: "System 1 is fast",
 		FromAnchor: "sources/f.txt char=10", Active: true}
 	added, err := s.UpsertExtract(e)
 	if err != nil || !added {
@@ -82,7 +82,7 @@ func TestUpsertExtractDoesNotResurrectDismissed(t *testing.T) {
 	defer s.Close()
 	now := time.Unix(1_000_000, 0)
 
-	e := Extract{ID: "f.n4l:Ch:id:z", FilePath: "/c/reading/f.n4l", Text: "passage",
+	e := Extract{ID: "f.n4l:Ch:id:z", FilePath: "reading/f.n4l", Text: "passage",
 		FromAnchor: "sources/f.txt char=0", Active: true}
 	if _, err := s.UpsertExtract(e); err != nil {
 		t.Fatal(err)
@@ -112,8 +112,8 @@ func TestExtractAnchorsIncludesRetiredRows(t *testing.T) {
 	}
 	now := time.Now()
 	for _, e := range []Extract{
-		{ID: "/c/n.n4l:C:id:a", FilePath: "/c/n.n4l", Text: "kept", FromAnchor: "sources/x.txt char=10", Due: now, Active: true},
-		{ID: "/c/o.n4l:C:id:c", FilePath: "/c/o.n4l", Text: "promoted away", FromAnchor: "sources/y.txt char=5", Due: now, Active: true},
+		{ID: "/c/n.n4l:C:id:a", FilePath: "n.n4l", Text: "kept", FromAnchor: "sources/x.txt char=10", Due: now, Active: true},
+		{ID: "/c/o.n4l:C:id:c", FilePath: "o.n4l", Text: "promoted away", FromAnchor: "sources/y.txt char=5", Due: now, Active: true},
 	} {
 		if _, err := st.UpsertExtract(e); err != nil {
 			t.Fatal(err)
@@ -122,7 +122,7 @@ func TestExtractAnchorsIncludesRetiredRows(t *testing.T) {
 	// Retiring must NOT drop it from this map. A promotion made before card
 	// provenance was preserved stripped the (from) line from the .n4l, leaving
 	// this row as the only record of where the passage came from.
-	if _, err := st.RetireMissingExtracts("/c/o.n4l", map[string]bool{}); err != nil {
+	if _, err := st.RetireMissingExtracts("o.n4l", map[string]bool{}); err != nil {
 		t.Fatal(err)
 	}
 
