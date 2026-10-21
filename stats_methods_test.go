@@ -10,36 +10,6 @@ import (
 	"texere/internal/learning"
 )
 
-func TestLogReadingSessionRecordsMinutes(t *testing.T) {
-	dir := t.TempDir()
-	a, st := newTestApp(t, dir, nil)
-
-	if err := a.LogReadingSession("r1", 600); err != nil {
-		t.Fatalf("LogReadingSession: %v", err)
-	}
-	got, err := st.ActivityWeeks("read", 1, time.Now())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got[0].Count != 10 {
-		t.Errorf("logged %d minutes, want 10", got[0].Count)
-	}
-}
-
-// A zero- or negative-length session is noise, not data: it would inflate the
-// session count in the pipeline panel while contributing no time.
-func TestLogReadingSessionIgnoresEmptySessions(t *testing.T) {
-	dir := t.TempDir()
-	a, st := newTestApp(t, dir, nil)
-
-	if err := a.LogReadingSession("r1", 0); err != nil {
-		t.Fatalf("a zero session must be ignored, not an error: %v", err)
-	}
-	if _, ok, _ := st.ActivitySince(""); ok {
-		t.Error("a zero-second session was written to the log")
-	}
-}
-
 func TestRescheduleExtractLogsItsAction(t *testing.T) {
 	dir := t.TempDir()
 	a, st := newTestApp(t, dir, nil)

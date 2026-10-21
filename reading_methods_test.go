@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"texere/internal/collection"
 	"texere/internal/content"
 	"texere/internal/learning"
 )
@@ -55,7 +57,11 @@ func TestCreateExtractAppendsAndAdvances(t *testing.T) {
 	a, store := newTestApp(t, dir, nil)
 	store.UpsertReading(learning.ReadingElement{ID: refID, RefPath: "sources/k.txt", NotesPath: notes, Title: "k", IntervalDays: 1})
 
-	ev, err := a.CreateExtract(refID, "System 1 is fast", "char=0", true)
+	sv, err := a.BeginSitting(refID, "")
+	if err != nil {
+		t.Fatalf("BeginSitting: %v", err)
+	}
+	ev, err := a.CreateExtract(sv.ID, "System 1 is fast", "char=0")
 	if err != nil || ev == nil || ev.ID == "" {
 		t.Fatalf("CreateExtract ev=%+v err=%v", ev, err)
 	}
@@ -63,9 +69,9 @@ func TestCreateExtractAppendsAndAdvances(t *testing.T) {
 	if !strings.Contains(string(body), `(from) "sources/k.txt char=0"`) {
 		t.Fatalf("extract anchor missing:\n%s", body)
 	}
-	// Reschedule "done" then list reflects it.
-	if _, err := a.RescheduleReading(refID, "done"); err != nil {
-		t.Fatalf("RescheduleReading: %v", err)
+	// Ending the Sitting as done, then the list reflects it.
+	if _, err := a.EndSitting(sv.ID, SittingEnd{Action: "done"}); err != nil {
+		t.Fatalf("EndSitting: %v", err)
 	}
 	list, _ := a.GetReadingList()
 	if len(list) != 1 || !list[0].Done {
@@ -112,7 +118,11 @@ func TestImportWebAndCreateExtractPosition(t *testing.T) {
 		t.Fatalf("saved web html not sanitized")
 	}
 	// CreateExtract with a position string writes that exact anchor.
-	if _, err := a.CreateExtract(rv.ID, "A long paragraph", "char=5", true); err != nil {
+	sv, err := a.BeginSitting(rv.ID, "")
+	if err != nil {
+		t.Fatalf("BeginSitting: %v", err)
+	}
+	if _, err := a.CreateExtract(sv.ID, "A long paragraph", "char=5"); err != nil {
 		t.Fatalf("CreateExtract: %v", err)
 	}
 	notes, _ := os.ReadFile(rv.NotesPath)
@@ -364,7 +374,11 @@ func peekExtractFixture(t *testing.T) (*App, *learning.Store, string, string) {
 func TestCreateExtractDuringAPeekDoesNotAdvanceProgress(t *testing.T) {
 	a, store, refID, notes := peekExtractFixture(t)
 
-	v, err := a.CreateExtract(refID, "an early passage", "char=200", false)
+	sv, err := a.BeginSitting(refID, "char=200")
+	if err != nil {
+		t.Fatalf("BeginSitting: %v", err)
+	}
+	v, err := a.CreateExtract(sv.ID, "an early passage", "char=200")
 	if err != nil {
 		t.Fatalf("CreateExtract during a peek failed: %v", err)
 	}
@@ -391,7 +405,11 @@ func TestCreateExtractDuringAPeekDoesNotAdvanceProgress(t *testing.T) {
 func TestCreateExtractWhileReadingAdvancesProgress(t *testing.T) {
 	a, store, refID, _ := peekExtractFixture(t)
 
-	if _, err := a.CreateExtract(refID, "a later passage", "char=7200", true); err != nil {
+	sv, err := a.BeginSitting(refID, "")
+	if err != nil {
+		t.Fatalf("BeginSitting: %v", err)
+	}
+	if _, err := a.CreateExtract(sv.ID, "a later passage", "char=7200"); err != nil {
 		t.Fatalf("CreateExtract: %v", err)
 	}
 	got, _, err := store.GetReading(refID)
@@ -481,5 +499,21 @@ func TestCreateLLMSourceRefusesEmptyInput(t *testing.T) {
 	entries, _ := os.ReadDir(filepath.Join(dir, "sources"))
 	if len(entries) != 0 {
 		t.Errorf("refused calls left %d file(s) in sources/", len(entries))
+	}
+}
+
+// A destroyed ReadingView's fire-and-forget EndSitting can land after the
+// Collection has closed (a switch, or quit). It must be harmless, not a panic
+// on a closed store.
+func TestEndSittingAfterCloseIsHarmless(t *testing.T) {
+	a, _, refID, _ := peekExtractFixture(t)
+	sv, err := a.BeginSitting(refID, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.closeSession()
+
+	if _, err := a.EndSitting(sv.ID, SittingEnd{Position: "char=1", Action: "continue"}); err != nil && !errors.Is(err, collection.ErrNoCollection) {
+		t.Errorf("EndSitting after close: %v, want nil or ErrNoCollection", err)
 	}
 }

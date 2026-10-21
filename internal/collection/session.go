@@ -20,6 +20,7 @@ import (
 	"texere/internal/explorer"
 	"texere/internal/learning"
 	"texere/internal/search"
+	"texere/internal/sitting"
 )
 
 // ErrNoCollection is returned when no Session is open, or the one asked for has closed.
@@ -52,6 +53,7 @@ type Session struct {
 	learn    *learning.Store
 	search   *search.SearchService
 	explorer *explorer.ExplorerService
+	sittings *sitting.Tracker
 
 	watcher   *content.CollectionWatcher
 	watchDone chan struct{} // closed when consumeWatchEvents returns
@@ -96,6 +98,14 @@ func Open(dir string, reg *content.SSTRegistry, notify Notify) (*Session, []cont
 	}
 	s.search = search.NewSearchService(dir, reg)
 	s.explorer = explorer.NewExplorerService(s.search, reg)
+	s.sittings = sitting.New(sitting.Deps{
+		Store:     ls,
+		SelfWrite: s.SelfWrite,
+		SaveNotes: func(path, text string) (string, error) {
+			res, err := content.Save(path, text, reg, dir)
+			return res.FinalContent, err
+		},
+	})
 
 	w, err := content.WatchCollection(dir)
 	if err != nil {
@@ -126,6 +136,8 @@ func (s *Session) Close() {
 		}
 		<-s.watchDone
 	}
+	// Before the learning store closes: ending a Sitting writes to it.
+	s.sittings.EndAll()
 	s.search.Close()
 	_ = s.explorer.Close()
 	s.learn.Close()
@@ -237,6 +249,9 @@ func (h Handles) Explorer() *explorer.ExplorerService { return h.s.explorer }
 func (h Handles) Path(rel string) (string, error) {
 	return collectionpath.Resolve(h.s.dir, filepath.FromSlash(rel))
 }
+
+// Sittings holds the open Sitting. Never nil.
+func (h Handles) Sittings() *sitting.Tracker { return h.s.sittings }
 
 // SelfWrite is Session.SelfWrite, usable inside a Read.
 func (h Handles) SelfWrite(path string, fn func() error) error { return h.s.SelfWrite(path, fn) }

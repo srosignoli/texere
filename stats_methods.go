@@ -7,20 +7,6 @@ import (
 	"texere/internal/learning"
 )
 
-// LogReadingSession records time spent reading one document.
-//
-// Called by ReadingView when it leaves a document, and only then: a peek is
-// suppressed at the call site alongside the three progress writes, so glancing
-// at an extract never counts as reading.
-func (a *App) LogReadingSession(id string, seconds int) error {
-	return a.withCollection(func(h collection.Handles) error {
-		if seconds <= 0 {
-			return nil // opening and immediately leaving is not a session
-		}
-		return h.Learning().LogActivity("read", id, "", seconds, time.Now())
-	})
-}
-
 const statsWeeks = 12
 
 // StatsView is the whole Stats focus in one payload. Assembled in a single call

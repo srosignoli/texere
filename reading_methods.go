@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"time"
 	"unicode/utf8"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -289,14 +288,18 @@ func (a *App) CreateLLMSource(title, markdown string) (*ReadingView, error) {
 // CreateExtract appends a verbatim extract and signals the notes editor to
 // reload (clean buffer only).
 //
-// advanceProgress moves # @progress and the DB position to where the extract
-// was taken. The sidebar's extract peek passes false: a peek is a glance at one
-// passage, not a reading position, and extracting during one would otherwise
-// rewind a half-read document to wherever the peeked passage happens to be.
-// This is the same safety property the three UpdateReadingProgress call sites
-// in ReadingView.svelte guard, reached by a different route.
-func (a *App) CreateExtract(id, text, position string, advanceProgress bool) (*CreateExtractView, error) {
+// The extract is taken during the Sitting sittingID, whose Source it belongs to.
+// It advances the Source's progress to where it was taken, unless the Sitting is
+// a peek.
+func (a *App) CreateExtract(sittingID, text, position string) (*CreateExtractView, error) {
 	return inCollection(a, func(h collection.Handles) (*CreateExtractView, error) {
+		// Progress advances the Source to the extract's position, except during
+		// a peek, where it records nothing: extracting while peeking must not
+		// rewind a half-read document.
+		id, err := h.Sittings().Progress(sittingID, position)
+		if err != nil {
+			return nil, fmt.Errorf("CreateExtract: %w", err)
+		}
 		r, ok, err := h.Learning().GetReading(id)
 		if err != nil || !ok {
 			return nil, fmt.Errorf("CreateExtract: reading element %q not found", id)
@@ -310,21 +313,16 @@ func (a *App) CreateExtract(id, text, position string, advanceProgress bool) (*C
 		anchor := fmt.Sprintf("%s %s", r.RefPath, position)
 		// The collection watcher is now recursive, so reading/ writes do fire events;
 		// bracket them as self-writes to suppress a false external-mod toast if this
-		// notes file also happens to be open in the main editor.
+		// notes file also happens to be open in the main editor. The # @progress
+		// marker is written once, when the Sitting ends.
 		var exID string
 		err = h.SelfWrite(notesPath, func() error {
 			var err error
 			exID, err = content.AppendExtract(notesPath, text, anchor)
-			if err == nil && advanceProgress {
-				err = content.UpdateProgressMarker(notesPath, position)
-			}
 			return err
 		})
 		if err != nil {
 			return nil, fmt.Errorf("CreateExtract: %w", err)
-		}
-		if advanceProgress {
-			_ = h.Learning().SetReadingProgress(id, position, r.ProjLen)
 		}
 		// Register the new extract in the queue immediately (reuses the classify pass).
 		if _, err := learning.Sync(h.Learning(), []string{notesPath}, a.registry); err != nil {
@@ -503,29 +501,6 @@ func (a *App) SetReadingProjLen(id string, n int) error {
 	})
 }
 
-func (a *App) UpdateReadingProgress(id, position string) error {
-	return a.withCollection(func(h collection.Handles) error {
-		r, ok, err := h.Learning().GetReading(id)
-		if err != nil || !ok {
-			return fmt.Errorf("UpdateReadingProgress: %q not found", id)
-		}
-		// r.NotesPath is stored collection-relative; this is the exact incident
-		// site — an unresolved stored path here silently rewrites the # @progress
-		// marker of whatever file the (possibly stale) value points to.
-		notesPath, err := h.Learning().Resolve(r.NotesPath)
-		if err != nil {
-			return fmt.Errorf("UpdateReadingProgress: %w", err)
-		}
-		wErr := h.SelfWrite(notesPath, func() error {
-			return content.UpdateProgressMarker(notesPath, position)
-		})
-		if wErr != nil {
-			return wErr
-		}
-		return h.Learning().SetReadingProgress(id, position, r.ProjLen)
-	})
-}
-
 // ReadingExtractView is one row in a document's extract tree.
 //
 // Anchor is the extract's from_anchor VERBATIM — "sources/x.txt char=1173" or
@@ -639,27 +614,4 @@ func nodeFromAnchor(n content.Node) (string, bool) {
 		}
 	}
 	return "", false
-}
-
-func (a *App) RescheduleReading(id, action string) (*ReadingView, error) {
-	return inCollection(a, func(h collection.Handles) (*ReadingView, error) {
-		r, ok, err := h.Learning().GetReading(id)
-		if err != nil || !ok {
-			return nil, fmt.Errorf("RescheduleReading: %q not found", id)
-		}
-		sched := learning.ScheduleReading(r, action, time.Now())
-		if err := h.Learning().ApplyReadingSchedule(id, sched); err != nil {
-			return nil, err
-		}
-		// sched.NotesPath is carried through unchanged from r (ApplyReadingSchedule
-		// does not touch notes_path), so it is still the stored, collection-relative
-		// value; resolve it before handing the view back to the frontend.
-		notesPath, err := h.Learning().Resolve(sched.NotesPath)
-		if err != nil {
-			return nil, fmt.Errorf("RescheduleReading: %w", err)
-		}
-		sched.NotesPath = notesPath
-		v := toReadingView(sched)
-		return &v, nil
-	})
 }
