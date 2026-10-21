@@ -43,6 +43,7 @@
   let cancelFileModified = () => {}
   let cancelIdsInjected = () => {}
   let startupError = ''
+  let studySurface = null  // the open StudySurface, so Ctrl+Shift+S closes it the way its × does
   let bottomBandRef = null   // bind:this on BottomBand
 
   // Graph build state
@@ -128,10 +129,11 @@
     // Ctrl/Cmd+Shift+S toggles the unified Study surface (Next queue).
     if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 's' || e.key === 'S')) {
       e.preventDefault(); e.stopPropagation()
-      // Toggling the surface closed must drop the active reading too (mirrors the
-      // × onClose); otherwise reopening remounts on a stale reading object.
-      if ($studySurfaceOpen) activeReading.set(null)
-      studyFocus.set('next'); studySurfaceOpen.update((v) => !v); return
+      // Closing goes through the surface's own close, like its ×: it asks about
+      // a chat in progress and ends the open Sitting, staying up if the notes
+      // cannot be saved. Its onClose drops the active reading.
+      if ($studySurfaceOpen) { studySurface?.closeStudy(); return }
+      studyFocus.set('next'); studySurfaceOpen.set(true); return
     }
     // Ctrl/Cmd+Shift+E opens the Study surface on the Read focus.
     if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'e' || e.key === 'E')) {
@@ -417,7 +419,7 @@
       <StudyMode onClose={() => studyOpen.set(false)} />
     {/if}
     {#if $studySurfaceOpen}
-      <StudySurface onClose={() => { studySurfaceOpen.set(false); activeReading.set(null) }} />
+      <StudySurface bind:this={studySurface} onClose={() => { studySurfaceOpen.set(false); activeReading.set(null) }} />
     {/if}
     <QueryHelpPanel />
     <ShortcutsPanel />

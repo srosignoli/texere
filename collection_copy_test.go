@@ -108,18 +108,18 @@ func TestStudyDoesNotTouchTheOriginalCollection(t *testing.T) {
 	// outside the copy's root — Store.Resolve (via collectionpath.Resolve) must
 	// refuse it rather than silently follow it, so this call is expected to
 	// fail. What matters is *where nothing gets written*, not the error itself.
-	updateErr := a.UpdateReadingProgress(refID, "char=500")
+	_, updateErr := a.BeginSitting(refID, "")
 
 	// The ORIGINAL file must be untouched: same bytes, same mtime. This is the
 	// incident's actual shape — a function that can "succeed" while writing to
-	// the wrong file — so a check on UpdateReadingProgress's return value alone
+	// the wrong file — so a check on BeginSitting's return value alone
 	// would not have caught it.
 	afterContent, err := os.ReadFile(notesOriginal)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if string(afterContent) != string(beforeContent) {
-		t.Fatalf("the ORIGINAL collection's note was rewritten (UpdateReadingProgress err=%v):\n--- before ---\n%s\n--- after ---\n%s",
+		t.Fatalf("the ORIGINAL collection's note was rewritten (BeginSitting err=%v):\n--- before ---\n%s\n--- after ---\n%s",
 			updateErr, beforeContent, afterContent)
 	}
 	afterInfo, err := os.Stat(notesOriginal)
@@ -127,14 +127,14 @@ func TestStudyDoesNotTouchTheOriginalCollection(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !afterInfo.ModTime().Equal(beforeMtime) {
-		t.Fatalf("the ORIGINAL collection's note mtime changed (UpdateReadingProgress err=%v): before=%v after=%v",
+		t.Fatalf("the ORIGINAL collection's note mtime changed (BeginSitting err=%v): before=%v after=%v",
 			updateErr, beforeMtime, afterInfo.ModTime())
 	}
 
 	// A stored path that escapes the currently-open collection must be refused
 	// loudly, not silently swallowed into a no-op that looks like success.
 	if updateErr == nil {
-		t.Fatal("UpdateReadingProgress against a row whose stored path escapes the copy's root returned nil error; " +
+		t.Fatal("BeginSitting against a row whose stored path escapes the copy's root returned nil error; " +
 			"it must refuse rather than silently succeed without writing anywhere resolvable")
 	}
 }
@@ -186,8 +186,12 @@ func TestStudyUpdatesTheCopyWhenStoredPathsAreRelative(t *testing.T) {
 
 	a, _ := newTestApp(t, cp, nil)
 
-	if err := a.UpdateReadingProgress(refID, "char=500"); err != nil {
-		t.Fatalf("UpdateReadingProgress: %v", err)
+	sv, err := a.BeginSitting(refID, "")
+	if err != nil {
+		t.Fatalf("BeginSitting: %v", err)
+	}
+	if _, err := a.EndSitting(sv.ID, SittingEnd{Position: "char=500", Action: "continue"}); err != nil {
+		t.Fatalf("EndSitting: %v", err)
 	}
 
 	// Original untouched.

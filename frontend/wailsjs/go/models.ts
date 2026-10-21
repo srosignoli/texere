@@ -6,6 +6,7 @@ export namespace content {
 	    IsRegistered: boolean;
 	    Line: number;
 	    IsDitto: boolean;
+	    Source: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Arrow(source);
@@ -18,6 +19,7 @@ export namespace content {
 	        this.IsRegistered = source["IsRegistered"];
 	        this.Line = source["Line"];
 	        this.IsDitto = source["IsDitto"];
+	        this.Source = source["Source"];
 	    }
 	}
 	export class ArrowDef {
@@ -86,6 +88,7 @@ export namespace content {
 	    Line: number;
 	    Text: string;
 	    Arrows: Arrow[];
+	    Label: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new DittoLine(source);
@@ -96,6 +99,7 @@ export namespace content {
 	        this.Line = source["Line"];
 	        this.Text = source["Text"];
 	        this.Arrows = this.convertValues(source["Arrows"], Arrow);
+	        this.Label = source["Label"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -1292,6 +1296,54 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.injections = this.convertValues(source["injections"], content.IDInjection);
 	        this.finalContent = source["finalContent"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class SittingEnd {
+	    position: string;
+	    action: string;
+	    notes?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SittingEnd(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.position = source["position"];
+	        this.action = source["action"];
+	        this.notes = source["notes"];
+	    }
+	}
+	export class SittingView {
+	    id: string;
+	    source: ReadingView;
+	
+	    static createFrom(source: any = {}) {
+	        return new SittingView(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.source = this.convertValues(source["source"], ReadingView);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

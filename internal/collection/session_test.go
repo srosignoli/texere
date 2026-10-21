@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"texere/internal/content"
+	"texere/internal/learning"
 )
 
 // recorder is the test adapter for Notify: it keeps every event in order.
@@ -245,5 +246,51 @@ func TestNoEventsAfterClose(t *testing.T) {
 	rec.mu.Unlock()
 	if after != before {
 		t.Fatalf("%d events delivered after Close", after-before)
+	}
+}
+
+// Closing the Session (and so switching Collections, or quitting) must end the
+// open Sitting: today's onDestroy does not reliably run on quit, and a Sitting
+// left open would log no reading time and leave the Source unscheduled.
+func TestCloseEndsTheOpenSitting(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "reading"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	notes := filepath.Join(dir, "reading", "k.n4l")
+	id, err := content.CreateReadingNotes(notes, "sources/k.txt", "k")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, _, err := Open(dir, emptyRegistry(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = s.Read(func(h Handles) error {
+		if err := h.Learning().UpsertReading(learning.ReadingElement{
+			ID: id, RefPath: "sources/k.txt", NotesPath: "reading/k.n4l", Title: "k", IntervalDays: 1,
+		}); err != nil {
+			return err
+		}
+		_, _, err := h.Sittings().Begin(id, "")
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	s.Close()
+
+	st, err := learning.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	r, _, err := st.GetReading(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.LastRead.IsZero() {
+		t.Error("Close left the Sitting open: the Source was never rescheduled")
 	}
 }

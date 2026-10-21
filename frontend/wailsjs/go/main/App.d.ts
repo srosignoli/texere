@@ -9,6 +9,8 @@ import {shell} from '../models';
 import {skills} from '../models';
 import {search} from '../models';
 
+export function BeginSitting(arg1:string,arg2:string):Promise<main.SittingView>;
+
 export function BuildGraph():Promise<main.BuildGraphResult>;
 
 export function CancelLLMTurn(arg1:string):Promise<void>;
@@ -17,7 +19,7 @@ export function CancelShellRun(arg1:string):Promise<void>;
 
 export function ConfirmQuit():Promise<void>;
 
-export function CreateExtract(arg1:string,arg2:string,arg3:string,arg4:boolean):Promise<main.CreateExtractView>;
+export function CreateExtract(arg1:string,arg2:string,arg3:string):Promise<main.CreateExtractView>;
 
 export function CreateLLMSource(arg1:string,arg2:string):Promise<main.ReadingView>;
 
@@ -32,6 +34,8 @@ export function DeleteSTTProfile(arg1:string):Promise<void>;
 export function DismissExtract(arg1:string):Promise<void>;
 
 export function DuplicateSkill(arg1:string):Promise<void>;
+
+export function EndSitting(arg1:string,arg2:main.SittingEnd):Promise<string>;
 
 export function ExplorerClose():Promise<void>;
 
@@ -121,8 +125,6 @@ export function ListShells():Promise<Array<shell.Shell>>;
 
 export function ListSkills():Promise<Array<skills.Skill>>;
 
-export function LogReadingSession(arg1:string,arg2:number):Promise<void>;
-
 export function NotebookMarks(arg1:string):Promise<Array<main.NotebookMark>>;
 
 export function OpenCollection(arg1:string):Promise<Array<content.ChapterSummary>>;
@@ -140,8 +142,6 @@ export function PickCollectionDir():Promise<string>;
 export function PromoteExtract(arg1:string,arg2:string):Promise<void>;
 
 export function RecordPush(arg1:string,arg2:string,arg3:string):Promise<Array<string>>;
-
-export function RescheduleReading(arg1:string,arg2:string):Promise<main.ReadingView>;
 
 export function ResolveReminder(arg1:string,arg2:number):Promise<content.WriteBackResult>;
 
@@ -173,6 +173,8 @@ export function SetReadingProjLen(arg1:string,arg2:number):Promise<void>;
 
 export function SetTheme(arg1:string):Promise<void>;
 
+export function SittingProgress(arg1:string,arg2:string):Promise<void>;
+
 export function SkillsDir():Promise<string>;
 
 export function StartLLMTurn(arg1:main.StartTurnReq):Promise<string>;
@@ -186,7 +188,5 @@ export function TestLLMProfile(arg1:string):Promise<void>;
 export function TranscribeAudio(arg1:string,arg2:string):Promise<string>;
 
 export function TranslateQuery(arg1:string,arg2:string,arg3:string):Promise<string>;
-
-export function UpdateReadingProgress(arg1:string,arg2:string):Promise<void>;
 
 export function UpdateRecentArrows(arg1:Array<string>):Promise<void>;

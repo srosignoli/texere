@@ -4,18 +4,20 @@
   import { EditorState } from '@codemirror/state'
   import { n4lBaseExtensions, pushRecentArrow } from '../lib/n4l-editor.js'
   import { workbenchStore } from '../stores/workbench.js'
-  import { CreateExtract, RescheduleReading, GetFileContent, SaveFile, GetRecentArrows, UpdateRecentArrows, UpdateReadingProgress, LogReadingSession } from '../../wailsjs/go/main/App'
+  import { CreateExtract, BeginSitting, SittingProgress, EndSitting, GetFileContent, SaveFile, GetRecentArrows, UpdateRecentArrows } from '../../wailsjs/go/main/App'
+  import { askConfirm } from '../lib/dialog.js'
+  import { createSittingEnd } from '../lib/sitting-end.js'
   import { runLint } from '../stores/lint.js'
   import { activeReading } from '../stores/reading.js'
   import TextSourcePane from './TextSourcePane.svelte'
   import PdfSourcePane from './PdfSourcePane.svelte'
   import WebSourcePane from './WebSourcePane.svelte'
 
-  export let reading            // ReadingView object
+  export let reading            // ReadingView object; the Sitting's Source replaces it once begun
   export let onClose = null
   // An anchor to open at instead of saved progress, or null for a normal read.
-  // While peeking, progress is NOT persisted: you came to look at one passage,
-  // and closing must leave you where you had actually read up to.
+  // A peek is a Sitting that records nothing; the backend knows, so nothing
+  // here has to guard for it.
   export let peekAt = null
 
   let arrowDefsRef = []
@@ -33,26 +35,33 @@
   let notesView
   let savedNotes = ''
   let error = ''
-  let closed = false   // set once close()/onDestroy has persisted, to avoid double-saving
+  let endFailed = false  // the last end failed to save the notes; the next close may discard them
+  // The Sitting this view is. The Source comes back from BeginSitting as it
+  // is now, so the panes open at the saved position, not a cached one.
+  let sittingId = null
+  let source = null
+  let destroyed = false
+  let closing = false
 
-  // Session start, for the activity log. Wall-clock rather than a timer: the
-  // number only needs to be right to the second.
-  const openedAt = Date.now()
+  const endOnce = createSittingEnd({
+    endSitting: (action, notes) => sittingId
+      ? EndSitting(sittingId, { position: pane?.getProgress?.() ?? '', action, notes })
+      : Promise.resolve(''),
+    saveNotes: async (notes) => (await SaveFile(reading.notesPath, notes))?.finalContent ?? notes,
+  })
 
   async function onPaneExtract(e) {
     const { text, position } = e.detail
     try {
       await flushNotes()
-      // A peek must not advance progress — extracting during one would rewind
-      // the document to the peeked passage. The extract itself is still made.
-      await CreateExtract(reading.id, text, position, !peekAt)
+      await CreateExtract(sittingId, text, position)
       await reloadNotes()
     } catch (err) { error = String(err?.message ?? err) }
   }
 
   async function onPaneProgress(e) {
-    if (peekAt) return   // PDF/web push as the user navigates; a peek must not record
-    try { await UpdateReadingProgress(reading.id, e.detail.position) } catch { /* best-effort */ }
+    if (!sittingId) return
+    try { await SittingProgress(sittingId, e.detail.position) } catch { /* best-effort */ }
   }
 
   function triggerExtract() { pane?.requestExtract?.() }
@@ -93,47 +102,52 @@
     notesView.dispatch({ changes: { from: 0, to: notesView.state.doc.length, insert: text }, selection: { anchor: head } })
   }
 
-  async function done() {
-    await RescheduleReading(reading.id, 'done')
-    close('done')
+  // The unsaved notes buffer, or null when it matches what was last saved.
+  function unsavedNotes() {
+    const cur = notesView?.state.doc.toString()
+    return cur != null && cur !== savedNotes ? cur : null
   }
 
-  // Persist the way close() does, but leave the surface alone. StudySurface
-  // awaits this before switching documents: onDestroy's write is
-  // fire-and-forget, so a re-read of this reading would otherwise race it and
-  // see the stale position. Sets `closed` so onDestroy does not write again.
-  export async function flush() {
-    if (closed) return
-    closed = true
-    try {
-      const pos = peekAt ? null : pane?.getProgress?.()
-      if (pos) await UpdateReadingProgress(reading.id, pos)
-      if (!peekAt) LogReadingSession(reading.id, Math.round((Date.now() - openedAt) / 1000)).catch(() => {})
-      await flushNotes()
-      await RescheduleReading(reading.id, 'continue')
-    } catch (e) { /* best-effort */ }
+  // End this Sitting. The backend owns the order and the peek rule; it keeps
+  // the Sitting open when the notes cannot be saved, and then so do we.
+  // Overlapping ends share one call (lib/sitting-end.js).
+  async function end(action, notes = unsavedNotes()) {
+    const r = await endOnce(action, notes)
+    if (!r.ok) {
+      error = r.error
+      endFailed = true
+      return false
+    }
+    if (notes != null && r.final) {
+      savedNotes = r.final
+      runLint()   // a save can fix (or introduce) a defect; Problems must reflect the new state
+      if (r.final !== notes) setNotes(r.final)
+    }
+    endFailed = false
+    return true
   }
+
+  // End the Sitting but leave the surface alone, resolving to whether it
+  // ended. StudySurface awaits this before switching documents and stays put
+  // when it fails; the next Sitting cannot begin before it ends.
+  export function flush() { return end('continue') }
 
   async function close(action) {
-    // flush() may already have persisted this session (StudySurface awaits it
-    // before switching documents, leaving this instance mounted and clickable
-    // meanwhile). Re-persisting would log the same reading time twice.
-    const alreadyPersisted = closed
-    closed = true
+    if (closing) return
+    closing = true
     try {
-      if (!alreadyPersisted) {
-        // Persist reading progress on leave for panes that report it on demand
-        // (text/markdown). PDF/web push progress as the user navigates.
-        const pos = peekAt ? null : pane?.getProgress?.()
-        if (pos) await UpdateReadingProgress(reading.id, pos)
-        if (!peekAt) LogReadingSession(reading.id, Math.round((Date.now() - openedAt) / 1000)).catch(() => {})
-        await flushNotes()
-      }
-      if (action !== 'done') await RescheduleReading(reading.id, action || 'continue')
-    } catch (e) { /* best-effort on close */ }
+      // After a failed save, a notes file that keeps refusing must not trap the
+      // reader: closing again offers to give the notes up.
+      const discard = endFailed && (await askConfirm('Close without saving notes?', { confirmLabel: 'Close' }))
+      if (!(await end(action, discard ? null : unsavedNotes()))) return
+    } finally {
+      closing = false
+    }
     activeReading.set(null)
     onClose?.()
   }
+
+  const done = () => close('done')
 
   function onKey(e) {
     if (e.key === 'Escape') { close('continue'); return }
@@ -142,6 +156,19 @@
   }
 
   onMount(async () => {
+    try {
+      const v = await BeginSitting(reading.id, peekAt ?? '')
+      if (destroyed) {
+        // Torn down before the Sitting began: end it, or it stays open.
+        EndSitting(v.id, { position: '', action: 'continue', notes: null }).catch(() => {})
+        return
+      }
+      sittingId = v.id
+      source = v.source
+    } catch (err) {
+      error = String(err?.message ?? err)
+      return
+    }
     try {
       const saved = await GetRecentArrows()
       if (saved?.length) recentCodesRef = saved
@@ -176,19 +203,14 @@
 
   // If the component is torn down without close() running — e.g. the Study
   // surface is dismissed via its own × or the Ctrl+Shift+S toggle, which unmount
-  // ReadingView directly — persist notes + progress before the editor is gone.
-  // Capture the doc synchronously and fire the writes best-effort (no writeback
-  // dispatch, since notesView is about to be destroyed).
+  // ReadingView directly — end the Sitting with the notes buffer before the
+  // editor is gone. Fire-and-forget: onDestroy can't be async. Ending a Sitting
+  // that already ended does nothing.
   onDestroy(() => {
-    if (!closed) {
-      const cur = notesView?.state.doc.toString()
-      // .then/.catch, not await — onDestroy can't be async, and a lint failure
-      // here must not break teardown any more than a save failure already doesn't.
-      if (cur != null && cur !== savedNotes) SaveFile(reading.notesPath, cur).then(() => runLint()).catch(() => {})
-      const pos = peekAt ? null : pane?.getProgress?.()
-      if (pos) UpdateReadingProgress(reading.id, pos).catch(() => {})
-      if (!peekAt) LogReadingSession(reading.id, Math.round((Date.now() - openedAt) / 1000)).catch(() => {})
-      RescheduleReading(reading.id, 'continue').catch(() => {})
+    destroyed = true
+    if (sittingId) {
+      const notes = unsavedNotes()
+      endOnce('continue', notes).then((r) => { if (r.ok && notes != null) runLint() })
     }
     notesView?.destroy()
   })
@@ -198,7 +220,7 @@
 
 <div class="reading-root" role="dialog" aria-label="Reading">
   <div class="reading-bar">
-    <span class="reading-title">{reading.title}</span>
+    <span class="reading-title">{source?.title ?? reading.title}</span>
     <button class="rb-btn" on:click={triggerExtract} title="Extract selection (Ctrl+E)" aria-label="Extract selection">✂ Extract</button>
     <button class="rb-btn" on:click={() => close('later')}>⏳ Later</button>
     <button class="rb-btn" on:click={done}>✓ Done</button>
@@ -208,12 +230,14 @@
   {#if error}<div class="reading-error">{error}</div>{/if}
   <div class="reading-body">
     <div class="reading-source">
-      {#if reading.medium === 'pdf'}
-        <PdfSourcePane bind:this={pane} {reading} startAt={peekAt} on:extract={onPaneExtract} on:progress={onPaneProgress} />
-      {:else if reading.medium === 'web'}
-        <WebSourcePane bind:this={pane} {reading} startAt={peekAt} on:extract={onPaneExtract} on:progress={onPaneProgress} />
+      {#if !source}
+        <!-- the Sitting has not begun yet -->
+      {:else if source.medium === 'pdf'}
+        <PdfSourcePane bind:this={pane} reading={source} startAt={peekAt} on:extract={onPaneExtract} on:progress={onPaneProgress} />
+      {:else if source.medium === 'web'}
+        <WebSourcePane bind:this={pane} reading={source} startAt={peekAt} on:extract={onPaneExtract} on:progress={onPaneProgress} />
       {:else}
-        <TextSourcePane bind:this={pane} {reading} startAt={peekAt} on:extract={onPaneExtract} on:progress={onPaneProgress} />
+        <TextSourcePane bind:this={pane} reading={source} startAt={peekAt} on:extract={onPaneExtract} on:progress={onPaneProgress} />
       {/if}
     </div>
     <div class="reading-notes" bind:this={notesContainer}></div>

@@ -1,5 +1,6 @@
 <script>
   import { askConfirm } from '../lib/dialog.js'
+  import { createSwitcher } from '../lib/study-switch.js'
   import { onMount } from 'svelte'
   import { GetStudyCounts, GetExtractQueue, GetReadingList, GetDueQueue, GradeItem } from '../../wailsjs/go/main/App'
   import { studyFocus } from '../stores/study.js'
@@ -36,35 +37,34 @@
   const readingKey = (r, anchor) => (r?.id ?? '') + '|' + (anchor ?? '')
 
   // Open (anchor null) or peek a document from the sidebar. The sidebar's rows
-  // come from a cache filled on mount, so re-read the reading first: switching
-  // away from a document and back would otherwise reopen it at a stale position
-  // and then write that stale value back over the good one on close.
-  // Two clicks inside one flush's IPC round trip would otherwise let the slower
-  // call finish last and display the document the user did NOT click last, so
-  // each call takes a ticket and drops out once a newer one has started.
-  let switchSeq = 0
-  let pendingFlush = null
+  // come from a cache, but that is harmless: the new ReadingView begins its
+  // Sitting and gets the Source as it is now. The ordering rules (flush first,
+  // last click wins, a failed flush stays put, no view outlives its Sitting)
+  // live in lib/study-switch.js.
+  let remountSeq = 0   // part of the {#key}: bumped to remount a view whose Sitting ended
+  const switcher = createSwitcher({
+    currentKey: () => readingKey($activeReading, peekAt),
+    flush: () => readingView?.flush?.() ?? true,
+    show: (_key, remount, { r, anchor }) => {
+      if (remount) remountSeq++
+      peekAt = anchor
+      activeReading.set(r)
+    },
+  })
 
   async function switchTo(r, anchor) {
-    const seq = ++switchSeq
-    if (readingKey(r, anchor) !== readingKey($activeReading, peekAt)) {
-      pendingFlush = readingView?.flush?.() ?? null
-    }
-    // Await whatever flush is outstanding, not just one this call started: a
-    // click that skips the flush can still race an earlier one still in flight,
-    // and reading back a position before its write lands is the whole bug.
-    if (pendingFlush) await pendingFlush
-    if (seq !== switchSeq) return
-    const fresh = await freshReading(r)
-    if (seq !== switchSeq) return
-    peekAt = anchor
-    activeReading.set(fresh)
-    await sidebar?.refresh()
+    if (await switcher(readingKey(r, anchor), { r, anchor })) await sidebar?.refresh()
+  }
+
+  // End the open Sitting before the reading area goes away. False when the
+  // notes could not be saved: the reader stays up with its error.
+  async function endReading() {
+    return (await readingView?.flush?.()) ?? true
   }
 
   async function newChat() {
     if (chat && chat.messages.length && !(await askConfirm('Discard the chat in progress?', { confirmLabel: 'Discard' }))) return
-    await readingView?.flush?.()
+    if (!(await endReading())) return
     peekAt = null
     activeReading.set(null)
     chat = { messages: [], profileId: null, models: [] }
@@ -73,7 +73,7 @@
   // $activeReading wins over a parked chat in the markup, so clearing it is
   // what brings the chat back into view.
   async function openChat() {
-    await readingView?.flush?.()
+    if (!(await endReading())) return
     peekAt = null
     activeReading.set(null)
   }
@@ -83,13 +83,6 @@
     chat = null
     await sidebar?.refresh()
     if (v) await switchTo(v, null)
-  }
-
-  async function freshReading(r) {
-    try {
-      const list = await GetReadingList()
-      return (list ?? []).find((x) => x.id === r.id) ?? r
-    } catch { return r }
   }
 
   async function refresh() {
@@ -162,8 +155,9 @@
   // A chat is persisted nowhere, so closing Study destroys it. Both exits ask
   // first: this is the only place the conversation can be lost without the user
   // having chosen to lose it.
-  async function closeStudy() {
+  export async function closeStudy() {
     if (chat && chat.messages.length && !(await askConfirm('Discard the chat in progress?', { confirmLabel: 'Discard' }))) return
+    if (!(await endReading())) return
     onClose?.()
   }
 
@@ -199,7 +193,7 @@
           on:peek={(e) => switchTo(e.detail.reading, e.detail.anchor)} />
         <div class="ss-reading">
           {#if $activeReading}
-            {#key ($activeReading.id ?? '') + '|' + (peekAt ?? '')}
+            {#key ($activeReading.id ?? '') + '|' + (peekAt ?? '') + '|' + remountSeq}
               <ReadingView bind:this={readingView} reading={$activeReading} {peekAt}
                 onClose={() => { peekAt = null; activeReading.set(null); sidebar?.refresh(); enter('next') }} />
             {/key}

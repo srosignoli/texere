@@ -1,10 +1,8 @@
 package main
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -134,86 +132,15 @@ func (a *App) ResolveReminder(path string, lineNumber int) (*content.WriteBackRe
 // SaveFile (T009)
 // ---------------------------------------------------------------------------
 
-// atomicWriteText writes text to path via temp-file-then-rename.
-func atomicWriteText(path, text string) error {
-	dir := filepath.Dir(path)
-	tmp, err := os.CreateTemp(dir, ".texere-save-*")
-	if err != nil {
-		return fmt.Errorf("atomicWriteText: create temp: %w", err)
-	}
-	tmpPath := tmp.Name()
-
-	w := bufio.NewWriter(tmp)
-	// Normalise CRLF → LF and ensure trailing newline
-	normalised := strings.ReplaceAll(text, "\r\n", "\n")
-	if !strings.HasSuffix(normalised, "\n") {
-		normalised += "\n"
-	}
-	if _, err := w.WriteString(normalised); err != nil {
-		tmp.Close()
-		os.Remove(tmpPath)
-		return fmt.Errorf("atomicWriteText: write: %w", err)
-	}
-	if err := w.Flush(); err != nil {
-		tmp.Close()
-		os.Remove(tmpPath)
-		return fmt.Errorf("atomicWriteText: flush: %w", err)
-	}
-	if err := tmp.Close(); err != nil {
-		os.Remove(tmpPath)
-		return fmt.Errorf("atomicWriteText: close: %w", err)
-	}
-	if err := os.Rename(tmpPath, path); err != nil {
-		os.Remove(tmpPath)
-		return fmt.Errorf("atomicWriteText: rename: %w", err)
-	}
-	return nil
-}
-
 // saveFile atomically writes fileContent to path, then injects missing # @id
 // markers for any # @card nodes. Returns the final on-disk content and the
 // list of injections performed.
 func (a *App) saveFile(path, fileContent string) (*SaveFileResult, error) {
-	if err := atomicWriteText(path, fileContent); err != nil {
-		return nil, fmt.Errorf("SaveFile: %w", err)
-	}
-
-	// Parse the saved file to find study-marked nodes needing # @id injection
-	parsed, _ := content.ParseFile(path, a.registry)
-	var injections []content.IDInjection
-	if parsed != nil {
-		// Short IDs are the whole identity key, so uniqueness is collection-wide;
-		// the set of IDs already in use has to come from the whole collection, not
-		// from this file. When no collection is open (a bare file opened directly)
-		// there is no collection to be unique against and taken stays nil, which
-		// falls back to file-scoped uniqueness. A scan error is not fatal for the
-		// same reason a save must not be: it degrades to file-scoped uniqueness
-		// and is logged.
-		var taken map[string]bool
-		if root := a.collectionRoot(); root != "" {
-			var scanErr error
-			taken, scanErr = content.CollectionShortIDs(root)
-			if scanErr != nil {
-				log.Printf("SaveFile: collection id scan: %v", scanErr)
-			}
-		}
-		var err error
-		injections, err = content.InjectMissingIDs(parsed, taken)
-		if err != nil {
-			return nil, fmt.Errorf("SaveFile: inject IDs: %w", err)
-		}
-	}
-
-	// Read final on-disk content (may differ if IDs were injected)
-	finalData, err := os.ReadFile(path)
+	res, err := content.Save(path, fileContent, a.registry, a.collectionRoot())
 	if err != nil {
-		return nil, fmt.Errorf("SaveFile: read final: %w", err)
+		return nil, err
 	}
-
-	return &SaveFileResult{
-		Injections:   injections,
-		FinalContent: string(finalData),
-	}, nil
+	return &SaveFileResult{Injections: res.Injections, FinalContent: res.FinalContent}, nil
 }
 
 // SaveFile atomically writes fileContent to path, then injects missing # @id
@@ -345,7 +272,7 @@ func (a *App) CreateNewFile(name string) (*content.ChapterSummary, error) {
 		return nil, fmt.Errorf("CreateNewFile: stat: %w", err)
 	}
 
-	if err := a.selfWrite(path, func() error { return atomicWriteText(path, "") }); err != nil {
+	if err := a.selfWrite(path, func() error { return content.WriteFileAtomic(path, "") }); err != nil {
 		return nil, fmt.Errorf("CreateNewFile: %w", err)
 	}
 
