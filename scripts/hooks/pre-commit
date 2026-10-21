@@ -14,9 +14,11 @@
 staged=$(git diff --cached --name-only | grep '^frontend/wailsjs/' || true)
 [ -z "$staged" ] && exit 0
 
-if git diff --cached "$staged" | grep -q '^+.*Demo'; then
+# Diff the directory, not "$staged": quoted, a list of two or more files is one
+# bogus path, git diff fails, and the check silently passes.
+if git diff --cached -- frontend/wailsjs/ | grep -q '^+.*Demo'; then
   echo "pre-commit: refusing — demo shims staged in the generated bindings:"
-  git diff --cached "$staged" | grep '^+.*Demo' | sed 's/^/  /'
+  git diff --cached -- frontend/wailsjs/ | grep '^+.*Demo' | sed 's/^/  /'
   echo
   echo "A demo-tagged dev server regenerated them. Fix with:"
   echo "  git checkout -- frontend/wailsjs/"
