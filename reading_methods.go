@@ -42,20 +42,6 @@ type CreateExtractView struct {
 	ID string `json:"id"`
 }
 
-// upsertReadingRelative persists r with NotesPath rewritten to its
-// collection-relative form (what the four stored-path columns must hold).
-// r itself is left untouched — its absolute NotesPath is what the caller
-// still needs to build the *ReadingView returned to the frontend.
-func upsertReadingRelative(st *learning.Store, r learning.ReadingElement) error {
-	rel, err := st.Rel(r.NotesPath)
-	if err != nil {
-		return fmt.Errorf("notes path: %w", err)
-	}
-	stored := r
-	stored.NotesPath = rel
-	return st.UpsertReading(stored)
-}
-
 func toReadingView(r learning.ReadingElement) ReadingView {
 	pct := 0
 	if r.ProjLen > 0 {
@@ -142,7 +128,7 @@ func (a *App) importTextFrom(picked string) (*ReadingView, error) {
 		proj, _ := source.Projection(srcAbs)
 		r := learning.ReadingElement{ID: refID, RefPath: srcRel, NotesPath: notesAbs, Title: title,
 			Position: "char=0", ProjLen: utf8.RuneCountInString(proj), IntervalDays: 1}
-		if err := upsertReadingRelative(h.Learning(), r); err != nil {
+		if err := h.Learning().UpsertReading(r); err != nil {
 			os.Remove(srcAbs) // best-effort: don't litter sources/ on a failed import
 			return nil, fmt.Errorf("ImportTextSource: register: %w", err)
 		}
@@ -196,17 +182,6 @@ func (a *App) GetReadingList() ([]ReadingView, error) {
 		}
 		out := make([]ReadingView, 0, len(rs))
 		for _, r := range rs {
-			// r.NotesPath is stored collection-relative; the frontend passes
-			// ReadingView.NotesPath straight to GetFileContent/SaveFile, which need
-			// an absolute path. A row that cannot be resolved under the open
-			// collection is dropped from the list rather than risk file I/O outside
-			// it — the rest of the library must stay usable.
-			abs, rerr := h.Learning().Resolve(r.NotesPath)
-			if rerr != nil {
-				log.Printf("GetReadingList: %q: %v", r.ID, rerr)
-				continue
-			}
-			r.NotesPath = abs
 			out = append(out, toReadingView(r))
 		}
 		return out, nil
@@ -278,7 +253,7 @@ func (a *App) CreateLLMSource(title, markdown string) (*ReadingView, error) {
 		}
 		r := learning.ReadingElement{ID: refID, RefPath: srcRel, NotesPath: notesAbs, Title: title,
 			Position: "char=0", ProjLen: utf8.RuneCountInString(markdown), IntervalDays: 1, Medium: "llm"}
-		if err := upsertReadingRelative(h.Learning(), r); err != nil {
+		if err := h.Learning().UpsertReading(r); err != nil {
 			os.Remove(srcAbs)
 			return nil, fmt.Errorf("CreateLLMSource: register: %w", err)
 		}
@@ -306,12 +281,7 @@ func (a *App) CreateExtract(sittingID, text, position string) (*CreateExtractVie
 		if err != nil || !ok {
 			return nil, fmt.Errorf("CreateExtract: reading element %q not found", id)
 		}
-		// r.NotesPath is stored collection-relative; resolve once and reuse the
-		// absolute form for every file operation below.
-		notesPath, err := h.Learning().Resolve(r.NotesPath)
-		if err != nil {
-			return nil, fmt.Errorf("CreateExtract: %w", err)
-		}
+		notesPath := r.NotesPath
 		anchor := fmt.Sprintf("%s %s", r.RefPath, position)
 		// The collection watcher is now recursive, so reading/ writes do fire events;
 		// bracket them as self-writes to suppress a false external-mod toast if this
@@ -372,7 +342,7 @@ func (a *App) importPdfFrom(picked string) (*ReadingView, error) {
 		}
 		r := learning.ReadingElement{ID: refID, RefPath: srcRel, NotesPath: notesAbs, Title: title,
 			Position: "page=1", IntervalDays: 1, Medium: "pdf"}
-		if err := upsertReadingRelative(h.Learning(), r); err != nil {
+		if err := h.Learning().UpsertReading(r); err != nil {
 			os.Remove(srcAbs)
 			return nil, fmt.Errorf("ImportPdfSource: register: %w", err)
 		}
@@ -421,7 +391,7 @@ func (a *App) ImportWebSource(srcURL string) (*ReadingView, error) {
 		proj := source.TextFromHTML(art.HTML)
 		r := learning.ReadingElement{ID: refID, RefPath: srcRel, NotesPath: notesAbs, Title: title,
 			Position: "char=0", ProjLen: utf8.RuneCountInString(proj), IntervalDays: 1, Medium: "web", SourceURL: art.URL}
-		if err := upsertReadingRelative(h.Learning(), r); err != nil {
+		if err := h.Learning().UpsertReading(r); err != nil {
 			os.Remove(srcAbs)
 			return nil, fmt.Errorf("ImportWebSource: register: %w", err)
 		}
@@ -551,14 +521,7 @@ func (a *App) GetReadingExtracts() (map[string][]ReadingExtractView, error) {
 
 		out := make(map[string][]ReadingExtractView, len(rs))
 		for _, r := range rs {
-			// r.NotesPath is stored collection-relative; a row that cannot be
-			// resolved under the open collection is skipped the same way a parse
-			// error is — one bad file must not empty the whole library's trees.
-			notesPath, rerr := h.Learning().Resolve(r.NotesPath)
-			if rerr != nil {
-				log.Printf("GetReadingExtracts: %q: %v", r.ID, rerr)
-				continue
-			}
+			notesPath := r.NotesPath
 			// Parse errors are not fatal here: a notes file with an unknown arrow
 			// still yields the nodes that did parse, and one bad file must not empty
 			// the whole library's trees.

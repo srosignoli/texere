@@ -99,14 +99,14 @@ func TestStoreRelAndResolveRoundTrip(t *testing.T) {
 	defer s.Close()
 
 	abs := filepath.Join(dir, "reading", "x.n4l")
-	rel, err := s.Rel(abs)
+	rel, err := s.rel(abs)
 	if err != nil {
 		t.Fatalf("Rel: %v", err)
 	}
 	if rel != "reading/x.n4l" {
 		t.Fatalf("Rel(%q) = %q, want %q", abs, rel, "reading/x.n4l")
 	}
-	got, err := s.Resolve(rel)
+	got, err := s.resolve(rel)
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
@@ -122,7 +122,7 @@ func TestStoreResolveRefusesEscape(t *testing.T) {
 		t.Fatalf("Open: %v", err)
 	}
 	defer s.Close()
-	if _, err := s.Resolve("../escape.n4l"); err == nil {
+	if _, err := s.resolve("../escape.n4l"); err == nil {
 		t.Fatal("Resolve accepted a path escaping the collection")
 	}
 }
