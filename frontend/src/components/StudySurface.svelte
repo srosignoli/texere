@@ -36,29 +36,22 @@
   const readingKey = (r, anchor) => (r?.id ?? '') + '|' + (anchor ?? '')
 
   // Open (anchor null) or peek a document from the sidebar. The sidebar's rows
-  // come from a cache filled on mount, so re-read the reading first: switching
-  // away from a document and back would otherwise reopen it at a stale position
-  // and then write that stale value back over the good one on close.
+  // come from a cache, but that is harmless: the new ReadingView begins its
+  // Sitting and gets the Source as it is now, and the backend cannot begin it
+  // before the Sitting ended here has been written.
   // Two clicks inside one flush's IPC round trip would otherwise let the slower
   // call finish last and display the document the user did NOT click last, so
   // each call takes a ticket and drops out once a newer one has started.
   let switchSeq = 0
-  let pendingFlush = null
 
   async function switchTo(r, anchor) {
     const seq = ++switchSeq
     if (readingKey(r, anchor) !== readingKey($activeReading, peekAt)) {
-      pendingFlush = readingView?.flush?.() ?? null
+      await readingView?.flush?.()
     }
-    // Await whatever flush is outstanding, not just one this call started: a
-    // click that skips the flush can still race an earlier one still in flight,
-    // and reading back a position before its write lands is the whole bug.
-    if (pendingFlush) await pendingFlush
-    if (seq !== switchSeq) return
-    const fresh = await freshReading(r)
     if (seq !== switchSeq) return
     peekAt = anchor
-    activeReading.set(fresh)
+    activeReading.set(r)
     await sidebar?.refresh()
   }
 
@@ -83,13 +76,6 @@
     chat = null
     await sidebar?.refresh()
     if (v) await switchTo(v, null)
-  }
-
-  async function freshReading(r) {
-    try {
-      const list = await GetReadingList()
-      return (list ?? []).find((x) => x.id === r.id) ?? r
-    } catch { return r }
   }
 
   async function refresh() {

@@ -32,6 +32,11 @@ along with themes, an LLM integration and the first packaged binaries.
 
 ### Fixed
 
+- Peeking at an extract's passage pushed its source's next reading out, as if
+  you had read it. A peek now records nothing; Done during a peek still counts.
+- Editing a source's notes while reading reset its `# @progress` marker to where
+  the sitting began. A failed notes save no longer closes the reader silently:
+  it stays open with the error, and closing again offers to give the notes up.
 - A malformed `<...>` token, a plain `(then)` arrow, and the Search button each
   crashed or blanked the app. They no longer do.
 - Study wrote outside the open collection; identity keys did not survive a moved
