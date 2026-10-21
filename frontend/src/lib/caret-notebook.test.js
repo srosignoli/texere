@@ -143,3 +143,17 @@ test('reset forgets the file', async () => {
   s.cn.refresh()
   assert.equal(s.p.calls.length, 0)
 })
+
+// A save or Push in Process mode: the caret moved (a report is waiting on the
+// debounce) and the reloaded spans arrive before the timer fires. The pane
+// must land on the caret's line, not the last line it resolved.
+test('setSpans without a line resolves at the latest reported caret line', async () => {
+  const s = setup()
+  s.cn.setSpans(SPANS)
+  s.cn.caret(2)
+  s.t.fire()
+  assert.equal(s.last().id, 'a')
+  s.cn.caret(6)                 // still pending
+  s.cn.setSpans(SPANS)          // the reload lands first
+  assert.equal(s.last().id, 'b')
+})

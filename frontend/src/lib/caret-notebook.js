@@ -70,11 +70,13 @@ export function createCaretNotebook({
       timer = timers.set(() => { timer = null; resolve(at) }, delayMs)
     },
     resolve,
-    setSpans(next, at = line) {
+    // at is the caret's current line when the caller knows it. Without one, the
+    // latest caret report is the best guess (it may still be waiting on the
+    // debounce), and only then the last line resolved.
+    setSpans(next, at = reported || line) {
       spans = Array.isArray(next) ? next : []
       if (!at) return
-      // Resolve now from the line the caller knows is current: a report still
-      // waiting on the debounce is about the caret before the reload.
+      // Resolve now from that line; a pending report is superseded by it.
       cancelTimer()
       reported = at
       resolve(at)
