@@ -213,3 +213,14 @@ func (t *Tracker) endOpen() {
 		_, _ = t.end(t.open, "", "continue", nil)
 	}
 }
+
+// OpenSource reports the Source whose Sitting is open. A peek does not count:
+// it is a glance at one passage, not reading the Source.
+func (t *Tracker) OpenSource() (string, bool) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.open == nil || t.open.peek {
+		return "", false
+	}
+	return t.open.sourceID, true
+}

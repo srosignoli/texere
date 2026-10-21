@@ -478,3 +478,31 @@ func TestEndReturnsTheNotesAsTheyAreOnDisk(t *testing.T) {
 		t.Errorf("returned notes differ from the file:\n--- returned ---\n%s\n--- disk ---\n%s", final, f.file(t))
 	}
 }
+
+// The Study Queue resumes the Source whose Sitting is open.
+func TestOpenSourceReportsTheOpenSitting(t *testing.T) {
+	f := newFixture(t)
+	if _, ok := f.tr.OpenSource(); ok {
+		t.Fatal("OpenSource reported a Sitting before any began")
+	}
+	id := f.begin(t, "")
+	if src, ok := f.tr.OpenSource(); !ok || src != f.sourceID {
+		t.Errorf("OpenSource() = %q, %v; want %q, true", src, ok, f.sourceID)
+	}
+	if _, err := f.tr.End(id, "", "continue", nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := f.tr.OpenSource(); ok {
+		t.Error("OpenSource still reports a Sitting after it ended")
+	}
+}
+
+// A peek is a glance at one passage, not reading the Source: the Study Queue
+// must not resume it as a Turn.
+func TestOpenSourceIgnoresPeeks(t *testing.T) {
+	f := newFixture(t)
+	f.begin(t, "char=200")
+	if src, ok := f.tr.OpenSource(); ok {
+		t.Errorf("OpenSource() = %q, true during a peek; want false", src)
+	}
+}

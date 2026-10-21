@@ -724,6 +724,22 @@ export namespace learning {
 		    return a;
 		}
 	}
+	export class Mix {
+	    source: number;
+	    extract: number;
+	    card: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Mix(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.source = source["source"];
+	        this.extract = source["extract"];
+	        this.card = source["card"];
+	    }
+	}
 	export class PipelineStats {
 	    sources: number;
 	    sourcesDone: number;
@@ -1429,6 +1445,42 @@ export namespace main {
 	        this.procPerWeek = this.convertValues(source["procPerWeek"], learning.WeekCount);
 	        this.readSince = source["readSince"];
 	        this.procSince = source["procSince"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class TurnView {
+	    kind: string;
+	    source?: ReadingView;
+	    extract?: ExtractView;
+	    card?: learning.CardView;
+	
+	    static createFrom(source: any = {}) {
+	        return new TurnView(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.source = this.convertValues(source["source"], ReadingView);
+	        this.extract = this.convertValues(source["extract"], ExtractView);
+	        this.card = this.convertValues(source["card"], learning.CardView);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

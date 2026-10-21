@@ -87,6 +87,8 @@ export function GetStatistics():Promise<main.StatsView>;
 
 export function GetStudyCounts():Promise<learning.StudyStats3>;
 
+export function GetStudyMix():Promise<learning.Mix>;
+
 export function GetStudyStats():Promise<learning.Stats>;
 
 export function GetTheme():Promise<string>;
@@ -122,6 +124,8 @@ export function ListQueryExamples():Promise<Array<main.QueryExample>>;
 export function ListShells():Promise<Array<shell.Shell>>;
 
 export function ListSkills():Promise<Array<skills.Skill>>;
+
+export function NextTurn():Promise<main.TurnView>;
 
 export function NotebookMarks(arg1:string):Promise<Array<main.NotebookMark>>;
 
@@ -166,6 +170,8 @@ export function SetActiveSTTProfile(arg1:string):Promise<void>;
 export function SetQueryLLMProfile(arg1:string):Promise<void>;
 
 export function SetReadingProjLen(arg1:string,arg2:number):Promise<void>;
+
+export function SetStudyMix(arg1:learning.Mix):Promise<void>;
 
 export function SetTheme(arg1:string):Promise<void>;
 
