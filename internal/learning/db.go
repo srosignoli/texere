@@ -14,7 +14,7 @@ type Store struct {
 	dir string // collection root; file_path-like columns are stored relative to this
 }
 
-const schemaVersion = 9
+const schemaVersion = 10
 
 // Open opens (creating if needed) <collectionDir>/learning.db and migrates it
 // to the current schema version.
@@ -103,6 +103,10 @@ func (s *Store) migrate() error {
 			// the Process-mode gutter, now shows NotebookMarks. Dropped with its rows.
 			if _, err := s.db.Exec(`DROP INDEX IF EXISTS idx_nblinks_file; DROP TABLE IF EXISTS notebook_links;`); err != nil {
 				return fmt.Errorf("learning: apply v9: %w", err)
+			}
+		case 9:
+			if _, err := s.db.Exec(ddlV10); err != nil {
+				return fmt.Errorf("learning: apply v10: %w", err)
 			}
 		}
 		v++
@@ -205,6 +209,15 @@ CREATE TABLE IF NOT EXISTS notebook_links (
   PRIMARY KEY (file_path, chapter, node_text, notebook_id)
 );
 CREATE INDEX IF NOT EXISTS idx_nblinks_file ON notebook_links(file_path);
+`
+
+// ddlV10 holds per-Collection study settings, one row per key. The first is
+// the Mix ("next_mix").
+const ddlV10 = `
+CREATE TABLE IF NOT EXISTS study_settings (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
 `
 
 const ddlV6 = `

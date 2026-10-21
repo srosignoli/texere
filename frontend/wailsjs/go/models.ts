@@ -1249,6 +1249,7 @@ export namespace main {
 	    percent: number;
 	    due: number;
 	    done: boolean;
+	    isDue: boolean;
 	    medium: string;
 	    sourceUrl: string;
 	
@@ -1266,6 +1267,7 @@ export namespace main {
 	        this.percent = source["percent"];
 	        this.due = source["due"];
 	        this.done = source["done"];
+	        this.isDue = source["isDue"];
 	        this.medium = source["medium"];
 	        this.sourceUrl = source["sourceUrl"];
 	    }

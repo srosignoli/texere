@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -31,6 +32,7 @@ type ReadingView struct {
 	Percent   int    `json:"percent"`
 	Due       int64  `json:"due"`
 	Done      bool   `json:"done"`
+	IsDue     bool   `json:"isDue"` // due to be read now; the frontend never re-derives this from Due
 	Medium    string `json:"medium"`
 	SourceURL string `json:"sourceUrl"`
 }
@@ -69,7 +71,7 @@ func toReadingView(r learning.ReadingElement) ReadingView {
 		due = r.Due.Unix()
 	}
 	return ReadingView{ID: r.ID, RefPath: r.RefPath, NotesPath: r.NotesPath, Title: r.Title,
-		Position: r.Position, Percent: pct, Due: due, Done: r.Done,
+		Position: r.Position, Percent: pct, Due: due, Done: r.Done, IsDue: learning.ReadingDue(r, time.Now()),
 		Medium: r.Medium, SourceURL: r.SourceURL}
 }
 

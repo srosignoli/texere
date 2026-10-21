@@ -102,3 +102,25 @@ func TestMigrationV1toV2Additive(t *testing.T) {
 	}
 	s.Close()
 }
+
+// The same rule the due-reading SQL applies: not done, and never scheduled or
+// due by now.
+func TestReadingDue(t *testing.T) {
+	now := time.Date(2026, 10, 21, 12, 0, 0, 0, time.UTC)
+	cases := []struct {
+		name string
+		r    ReadingElement
+		want bool
+	}{
+		{"never scheduled", ReadingElement{}, true},
+		{"due yesterday", ReadingElement{Due: now.Add(-24 * time.Hour)}, true},
+		{"due right now", ReadingElement{Due: now}, true},
+		{"due tomorrow", ReadingElement{Due: now.Add(24 * time.Hour)}, false},
+		{"done, though overdue", ReadingElement{Due: now.Add(-24 * time.Hour), Done: true}, false},
+	}
+	for _, c := range cases {
+		if got := ReadingDue(c.r, now); got != c.want {
+			t.Errorf("%s: ReadingDue = %v, want %v", c.name, got, c.want)
+		}
+	}
+}

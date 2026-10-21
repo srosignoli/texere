@@ -24,6 +24,13 @@ type ReadingElement struct {
 
 const readingIntervalCap = 30
 
+// ReadingDue reports whether a Source is due to be read at now: not done, and
+// never scheduled or due by now. The due-reading SQL (StudyCounts, DueReading)
+// applies the same rule.
+func ReadingDue(r ReadingElement, now time.Time) bool {
+	return !r.Done && (r.Due.IsZero() || !r.Due.After(now))
+}
+
 // ScheduleReading is the pure resurface rule. action ∈ {"continue","later","done"}.
 func ScheduleReading(prev ReadingElement, action string, now time.Time) ReadingElement {
 	out := prev
