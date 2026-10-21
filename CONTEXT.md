@@ -12,6 +12,16 @@ _Avoid_: Workspace, vault, project
 One Collection while it is open in Texere, from opening to closing. At most one Session exists at a time, and switching Collections ends one Session and starts another.
 _Avoid_: Open collection, workspace
 
+### Notebooks
+
+**Notebook**:
+The cell-based workspace attached to one node, where that node is worked into N4L. A node has at most one Notebook.
+_Avoid_: Notebook link, scratchpad
+
+**Push**:
+Inserting a Notebook's draft into the note's `.n4l` file.
+_Avoid_: Export, publish
+
 ### Study
 
 **Study Element**:
