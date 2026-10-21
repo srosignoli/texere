@@ -24,18 +24,15 @@
   let recentCodesRef = []
   $: arrowDefsRef = $workbenchStore.arrowDefs ?? []
 
-  // Caret reporting is debounced because it fires on every keystroke and arrow
-  // key, and the consumer does a backend peek. Resting on a line should report
-  // once; scrolling through fifty should report once at the end.
-  let caretTimer = null
+  // Every caret move to a new line is reported; the consumer debounces
+  // (lib/caret-notebook.js), since it is the one doing a backend peek.
   let lastCaretLine = 0
 
   function reportCaret(view) {
     const line = view.state.doc.lineAt(view.state.selection.main.head).number
     if (line === lastCaretLine) return
     lastCaretLine = line
-    clearTimeout(caretTimer)
-    caretTimer = setTimeout(() => dispatch('caret', { line }), 150)
+    dispatch('caret', { line })
   }
 
   function handleArrowSelected(code) {
@@ -250,7 +247,6 @@
   onDestroy(() => {
     flush().catch(() => {})
     cancelNotebooksChanged?.()
-    clearTimeout(caretTimer)
     view?.destroy()
   })
 </script>

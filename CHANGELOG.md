@@ -32,6 +32,9 @@ along with themes, an LLM integration and the first packaged binaries.
 
 ### Fixed
 
+- Process mode's notebook dots vanished on any edit and did nothing when
+  clicked. Every editor's dot now means the node has a notebook, and clicking it
+  moves to that node.
 - Peeking at an extract's passage pushed its source's next reading out, as if
   you had read it. A peek now records nothing; Done during a peek still counts.
 - Editing a source's notes while reading reset its `# @progress` marker to where
