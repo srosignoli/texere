@@ -293,3 +293,172 @@ func TestEndUnknownActionKeepsTheSittingOpen(t *testing.T) {
 		t.Errorf("the Sitting was not left open: Position = %q", p)
 	}
 }
+
+// addSource registers a second Source in f's Collection and returns its id.
+func (f *fixture) addSource(t *testing.T, name string) string {
+	t.Helper()
+	notes := filepath.Join(f.dir, "reading", name+".n4l")
+	id, err := content.CreateReadingNotes(notes, "sources/k.txt", name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.store.UpsertReading(learning.ReadingElement{
+		ID: id, RefPath: "sources/k.txt", NotesPath: "reading/" + name + ".n4l", Title: name,
+		Position: "char=0", IntervalDays: 1,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	return id
+}
+
+func TestPeekRecordsNothing(t *testing.T) {
+	f := newFixture(t)
+	before, file := f.row(t), f.file(t)
+	id := f.begin(t, "char=200")
+
+	src, err := f.tr.Progress(id, "char=210")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if src != f.sourceID {
+		t.Errorf("Progress during a peek returned %q, want %q", src, f.sourceID)
+	}
+	f.now = f.now.Add(600 * time.Second)
+	if _, err := f.tr.End(id, "char=220", "continue", nil); err != nil {
+		t.Fatal(err)
+	}
+
+	after := f.row(t)
+	if after.Position != before.Position || after.IntervalDays != before.IntervalDays ||
+		!after.Due.Equal(before.Due) || !after.LastRead.Equal(before.LastRead) {
+		t.Errorf("a peek changed the Source:\nbefore %+v\nafter  %+v", before, after)
+	}
+	if f.file(t) != file {
+		t.Error("a peek wrote the notes file")
+	}
+	if _, ok, _ := f.store.ActivitySince(""); ok {
+		t.Error("a peek logged reading time")
+	}
+}
+
+func TestPeekStillSavesNotes(t *testing.T) {
+	f := newFixture(t)
+	id := f.begin(t, "char=200")
+	edited := f.file(t) + "\nnoted while peeking\n"
+
+	if _, err := f.tr.End(id, "", "continue", &edited); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(f.file(t), "noted while peeking") {
+		t.Error("notes edited during a peek were not saved")
+	}
+}
+
+func TestDoneDuringAPeekMarksDone(t *testing.T) {
+	f := newFixture(t)
+	id := f.begin(t, "char=200")
+	f.now = f.now.Add(600 * time.Second)
+
+	if _, err := f.tr.End(id, "char=220", "done", nil); err != nil {
+		t.Fatal(err)
+	}
+	r := f.row(t)
+	if !r.Done {
+		t.Error("Done during a peek did not mark the Source done")
+	}
+	if r.Position != "char=0" {
+		t.Errorf("Done during a peek moved progress to %q", r.Position)
+	}
+	if _, ok, _ := f.store.ActivitySince(""); ok {
+		t.Error("Done during a peek logged reading time")
+	}
+}
+
+func TestBeginEndsTheOpenSitting(t *testing.T) {
+	f := newFixture(t)
+	a := f.begin(t, "")
+	f.now = f.now.Add(60 * time.Second)
+	other := f.addSource(t, "other")
+
+	if _, _, err := f.tr.Begin(other, ""); err != nil {
+		t.Fatal(err)
+	}
+	if iv := f.row(t).IntervalDays; iv != 2 {
+		t.Errorf("the first Sitting was not ended: IntervalDays = %d", iv)
+	}
+	if got := f.readMinutes(t); got != 1 {
+		t.Errorf("logged %d minutes for the first Sitting, want 1", got)
+	}
+	if _, err := f.tr.End(a, "", "continue", nil); err != nil {
+		t.Errorf("End on the replaced Sitting: %v, want a no-op", err)
+	}
+	if iv := f.row(t).IntervalDays; iv != 2 {
+		t.Errorf("the replaced Sitting ended twice: IntervalDays = %d", iv)
+	}
+	if _, err := f.tr.Progress(a, "char=1"); !errors.Is(err, ErrNoSitting) {
+		t.Errorf("Progress on the replaced Sitting: err=%v, want ErrNoSitting", err)
+	}
+}
+
+func TestFailedNotesSaveKeepsTheSittingOpen(t *testing.T) {
+	f := newFixture(t)
+	id := f.begin(t, "")
+	f.now = f.now.Add(600 * time.Second)
+	f.saveErr = errors.New("disk full")
+	notes := "anything"
+
+	if _, err := f.tr.End(id, "char=500", "continue", &notes); err == nil {
+		t.Fatal("End reported success although the notes save failed")
+	}
+	if r := f.row(t); r.Position != "char=0" || r.IntervalDays != 1 {
+		t.Errorf("a failed End changed the Source: %+v", r)
+	}
+	if _, ok, _ := f.store.ActivitySince(""); ok {
+		t.Error("a failed End logged reading time")
+	}
+
+	f.saveErr = nil
+	if _, err := f.tr.End(id, "", "continue", nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.readMinutes(t); got != 10 {
+		t.Errorf("logged %d minutes after the retry, want 10", got)
+	}
+}
+
+func TestEndAllEndsTheOpenSitting(t *testing.T) {
+	f := newFixture(t)
+	f.tr.EndAll() // nothing open: nothing happens
+	f.begin(t, "")
+	f.now = f.now.Add(600 * time.Second)
+
+	f.tr.EndAll()
+	if iv := f.row(t).IntervalDays; iv != 2 {
+		t.Errorf("EndAll did not reschedule: IntervalDays = %d", iv)
+	}
+	if got := f.readMinutes(t); got != 10 {
+		t.Errorf("EndAll logged %d minutes, want 10", got)
+	}
+}
+
+func TestConcurrentEndsLogOnce(t *testing.T) {
+	f := newFixture(t)
+	id := f.begin(t, "")
+	f.now = f.now.Add(600 * time.Second)
+
+	done := make(chan error)
+	for i := 0; i < 10; i++ {
+		go func() {
+			_, err := f.tr.End(id, "char=5", "continue", nil)
+			done <- err
+		}()
+	}
+	for i := 0; i < 10; i++ {
+		if err := <-done; err != nil {
+			t.Error(err)
+		}
+	}
+	if got := f.readMinutes(t); got != 10 {
+		t.Errorf("logged %d minutes, want 10", got)
+	}
+}

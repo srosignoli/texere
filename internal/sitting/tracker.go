@@ -36,6 +36,7 @@ type sitting struct {
 	id        string
 	sourceID  string
 	notesPath string // absolute
+	peek      bool   // a peek records nothing but Done
 	started   time.Time
 	lastPos   string // last position reported, "" if none
 }
@@ -71,7 +72,8 @@ func (t *Tracker) Begin(sourceID, peekAnchor string) (string, learning.ReadingEl
 	if err != nil {
 		return "", learning.ReadingElement{}, err
 	}
-	t.open = &sitting{id: id, sourceID: sourceID, notesPath: notesPath, started: t.d.Now()}
+	t.endOpen()
+	t.open = &sitting{id: id, sourceID: sourceID, notesPath: notesPath, peek: peekAnchor != "", started: t.d.Now()}
 	r.NotesPath = notesPath
 	return id, r, nil
 }
@@ -85,7 +87,7 @@ func (t *Tracker) Progress(sittingID, position string) (string, error) {
 	if s == nil {
 		return "", ErrNoSitting
 	}
-	if position != "" {
+	if position != "" && !s.peek {
 		s.lastPos = position
 		if err := t.setProgress(s.sourceID, position); err != nil {
 			return s.sourceID, err
@@ -137,6 +139,14 @@ func (t *Tracker) end(s *sitting, position, action string, notes *string) (strin
 	}
 	t.open = nil
 	now := t.d.Now()
+	if s.peek {
+		// You came to look at one passage: nothing about the Source moves,
+		// except a Done, which is an explicit statement about the Source.
+		if action == "done" {
+			t.reschedule(s.sourceID, action, now)
+		}
+		return final, nil
+	}
 
 	if position != "" {
 		s.lastPos = position
@@ -178,5 +188,21 @@ func (t *Tracker) reschedule(sourceID, action string, now time.Time) {
 	}
 	if err := t.d.Store.ApplyReadingSchedule(sourceID, learning.ScheduleReading(r, action, now)); err != nil {
 		log.Printf("sitting: reschedule: %v", err)
+	}
+}
+
+// EndAll ends the open Sitting, if any, as "continue" with no notes. Called
+// when the Session closes.
+func (t *Tracker) EndAll() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.endOpen()
+}
+
+// endOpen ends the open Sitting as "continue" with no notes, with t.mu held.
+// With no notes to save it cannot fail.
+func (t *Tracker) endOpen() {
+	if t.open != nil {
+		_, _ = t.end(t.open, "", "continue", nil)
 	}
 }
