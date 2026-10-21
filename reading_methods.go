@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"math"
 	"os"
@@ -12,7 +11,6 @@ import (
 	"sort"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
@@ -113,65 +111,14 @@ func (a *App) importTextFrom(picked string) (*ReadingView, error) {
 		return nil, errors.New("importTextFrom: empty path")
 	}
 	return inCollection(a, func(h collection.Handles) (*ReadingView, error) {
-		base := filepath.Base(picked)
-		srcRel, srcAbs := uniqueDest(h.Dir(), "sources", base)
-		if err := copyFile(picked, srcAbs); err != nil {
-			return nil, fmt.Errorf("ImportTextSource: copy: %w", err)
-		}
-		title := strings.TrimSuffix(filepath.Base(srcRel), filepath.Ext(srcRel))
-		_, notesAbs := uniqueDest(h.Dir(), "reading", title+".n4l")
-		refID, err := content.CreateReadingNotes(notesAbs, srcRel, title)
+		r, err := source.Register(h.Dir(), h.Learning(), source.Import{
+			Medium: "text", FileName: filepath.Base(picked), CopyFrom: picked})
 		if err != nil {
-			os.Remove(srcAbs) // best-effort: don't litter sources/ on a failed import
-			return nil, fmt.Errorf("ImportTextSource: notes: %w", err)
-		}
-		proj, _ := source.Projection(srcAbs)
-		r := learning.ReadingElement{ID: refID, RefPath: srcRel, NotesPath: notesAbs, Title: title,
-			Position: "char=0", ProjLen: utf8.RuneCountInString(proj), IntervalDays: 1}
-		if err := h.Learning().UpsertReading(r); err != nil {
-			os.Remove(srcAbs) // best-effort: don't litter sources/ on a failed import
-			return nil, fmt.Errorf("ImportTextSource: register: %w", err)
+			return nil, fmt.Errorf("ImportTextSource: %w", err)
 		}
 		v := toReadingView(r)
 		return &v, nil
 	})
-}
-
-// uniqueDest returns (relPath, absPath) under <collection>/<subdir>/<name>,
-// suffixing the stem with -2, -3, … until the path does not exist.
-func uniqueDest(collectionDir, subdir, name string) (string, string) {
-	// uniqueDest has nowhere to report a failure, so this stays best-effort:
-	// if the directory cannot be created, the caller's copyFile fails next and
-	// reports it as "<Import...>: copy: ...". Less precise than a dedicated
-	// mkdir error, but never silent.
-	_ = os.MkdirAll(filepath.Join(collectionDir, subdir), 0o755)
-	ext := filepath.Ext(name)
-	stem := strings.TrimSuffix(name, ext)
-	candidate := name
-	for i := 2; ; i++ {
-		abs := filepath.Join(collectionDir, subdir, candidate)
-		if _, err := os.Stat(abs); os.IsNotExist(err) {
-			return filepath.ToSlash(filepath.Join(subdir, candidate)), abs
-		}
-		candidate = fmt.Sprintf("%s-%d%s", stem, i, ext)
-	}
-}
-
-func copyFile(src, dst string) error {
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-	out, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	if _, err := io.Copy(out, in); err != nil {
-		out.Close()
-		return err
-	}
-	return out.Close()
 }
 
 func (a *App) GetReadingList() ([]ReadingView, error) {
@@ -241,21 +188,10 @@ func (a *App) CreateLLMSource(title, markdown string) (*ReadingView, error) {
 	}
 	return inCollection(a, func(h collection.Handles) (*ReadingView, error) {
 		slug := slugify(title)
-		srcRel, srcAbs := uniqueDest(h.Dir(), "sources", slug+".md")
-		if err := os.WriteFile(srcAbs, []byte(markdown), 0o644); err != nil {
-			return nil, fmt.Errorf("CreateLLMSource: save: %w", err)
-		}
-		_, notesAbs := uniqueDest(h.Dir(), "reading", slug+".n4l")
-		refID, err := content.CreateReadingNotes(notesAbs, srcRel, title)
+		r, err := source.Register(h.Dir(), h.Learning(), source.Import{
+			Medium: "llm", Title: title, FileName: slug + ".md", NotesName: slug + ".n4l", Data: []byte(markdown)})
 		if err != nil {
-			os.Remove(srcAbs) // best-effort: don't litter sources/ on a failed create
-			return nil, fmt.Errorf("CreateLLMSource: notes: %w", err)
-		}
-		r := learning.ReadingElement{ID: refID, RefPath: srcRel, NotesPath: notesAbs, Title: title,
-			Position: "char=0", ProjLen: utf8.RuneCountInString(markdown), IntervalDays: 1, Medium: "llm"}
-		if err := h.Learning().UpsertReading(r); err != nil {
-			os.Remove(srcAbs)
-			return nil, fmt.Errorf("CreateLLMSource: register: %w", err)
+			return nil, fmt.Errorf("CreateLLMSource: %w", err)
 		}
 		v := toReadingView(r)
 		return &v, nil
@@ -328,23 +264,10 @@ func (a *App) importPdfFrom(picked string) (*ReadingView, error) {
 		return nil, errors.New("importPdfFrom: empty path")
 	}
 	return inCollection(a, func(h collection.Handles) (*ReadingView, error) {
-		base := filepath.Base(picked)
-		srcRel, srcAbs := uniqueDest(h.Dir(), "sources", base)
-		if err := copyFile(picked, srcAbs); err != nil {
-			return nil, fmt.Errorf("ImportPdfSource: copy: %w", err)
-		}
-		title := strings.TrimSuffix(filepath.Base(srcRel), filepath.Ext(srcRel))
-		_, notesAbs := uniqueDest(h.Dir(), "reading", title+".n4l")
-		refID, err := content.CreateReadingNotes(notesAbs, srcRel, title)
+		r, err := source.Register(h.Dir(), h.Learning(), source.Import{
+			Medium: "pdf", FileName: filepath.Base(picked), CopyFrom: picked})
 		if err != nil {
-			os.Remove(srcAbs)
-			return nil, fmt.Errorf("ImportPdfSource: notes: %w", err)
-		}
-		r := learning.ReadingElement{ID: refID, RefPath: srcRel, NotesPath: notesAbs, Title: title,
-			Position: "page=1", IntervalDays: 1, Medium: "pdf"}
-		if err := h.Learning().UpsertReading(r); err != nil {
-			os.Remove(srcAbs)
-			return nil, fmt.Errorf("ImportPdfSource: register: %w", err)
+			return nil, fmt.Errorf("ImportPdfSource: %w", err)
 		}
 		v := toReadingView(r)
 		return &v, nil
@@ -375,25 +298,11 @@ func (a *App) ImportWebSource(srcURL string) (*ReadingView, error) {
 		if h.Dir() != dir {
 			return nil, fmt.Errorf("ImportWebSource: collection changed during import (was %s, now %s)", dir, h.Dir())
 		}
-		srcRel, srcAbs := uniqueDest(h.Dir(), "sources", slug+".html")
-		if err := os.WriteFile(srcAbs, []byte(art.HTML), 0o644); err != nil {
-			os.Remove(srcAbs)
-			return nil, fmt.Errorf("ImportWebSource: save: %w", err)
-		}
-		_, notesAbs := uniqueDest(h.Dir(), "reading", slug+".n4l")
-		refID, err := content.CreateReadingNotes(notesAbs, srcRel, title)
+		r, err := source.Register(h.Dir(), h.Learning(), source.Import{
+			Medium: "web", Title: title, FileName: slug + ".html", NotesName: slug + ".n4l",
+			Data: []byte(art.HTML), SourceURL: art.URL})
 		if err != nil {
-			os.Remove(srcAbs)
-			return nil, fmt.Errorf("ImportWebSource: notes: %w", err)
-		}
-		// article text length for % progress — derived from the in-memory HTML we just
-		// saved, avoiding a redundant read+tokenize of srcAbs.
-		proj := source.TextFromHTML(art.HTML)
-		r := learning.ReadingElement{ID: refID, RefPath: srcRel, NotesPath: notesAbs, Title: title,
-			Position: "char=0", ProjLen: utf8.RuneCountInString(proj), IntervalDays: 1, Medium: "web", SourceURL: art.URL}
-		if err := h.Learning().UpsertReading(r); err != nil {
-			os.Remove(srcAbs)
-			return nil, fmt.Errorf("ImportWebSource: register: %w", err)
+			return nil, fmt.Errorf("ImportWebSource: %w", err)
 		}
 		v := toReadingView(r)
 		return &v, nil
