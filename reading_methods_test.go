@@ -517,3 +517,42 @@ func TestEndSittingAfterCloseIsHarmless(t *testing.T) {
 		t.Errorf("EndSitting after close: %v, want nil or ErrNoCollection", err)
 	}
 }
+
+// The frontend reads isDue instead of re-deriving the rule from a unix number,
+// so a never-scheduled Source (a NULL due, sent as 0) must come out due.
+func TestGetReadingListMarksDueSources(t *testing.T) {
+	dir := t.TempDir()
+	os.MkdirAll(filepath.Join(dir, "reading"), 0o755)
+	a, store := newTestApp(t, dir, nil)
+	for _, r := range []learning.ReadingElement{
+		{ID: "fresh", Title: "fresh", IntervalDays: 1},
+		{ID: "later", Title: "later", IntervalDays: 1, Due: time.Now().Add(24 * time.Hour)},
+	} {
+		notes := filepath.Join(dir, "reading", r.ID+".n4l")
+		if err := os.WriteFile(notes, []byte("- "+r.ID+"\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		r.RefPath, r.NotesPath = "sources/"+r.ID+".txt", "reading/"+r.ID+".n4l"
+		if err := store.UpsertReading(r); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	list, err := a.GetReadingList()
+	if err != nil {
+		t.Fatal(err)
+	}
+	due := map[string]bool{}
+	for _, v := range list {
+		due[v.ID] = v.IsDue
+	}
+	if len(due) != 2 {
+		t.Fatalf("GetReadingList returned %d rows, want 2: %+v", len(list), list)
+	}
+	if !due["fresh"] {
+		t.Error("a never-scheduled Source is not marked due")
+	}
+	if due["later"] {
+		t.Error("a Source due tomorrow is marked due")
+	}
+}

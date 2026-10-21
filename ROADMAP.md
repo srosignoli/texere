@@ -11,13 +11,6 @@ more than is built. Section numbers below point into it.
 
 ## Next
 
-**Unified study queue (§6.4).** `Next` currently walks a fixed cascade —
-read, then process, then recall — decided in a reactive statement in
-`StudySurface.svelte`. Reading and extract backlogs therefore starve recall,
-which is the one queue with a real deadline: FSRS cards lose retention if they
-are reviewed late. Replace it with a scored queue in `internal/learning/queue.go`
-holding a configurable mix, so scheduling policy stops living in the view layer.
-
 **FSRS parameter optimisation (§6.1).** `internal/learning/fsrs.go` hardcodes
 `fsrs.DefaultParam()`. Every review is already written to `review_logs` with
 grade, elapsed time and prior state — the optimiser's input, collected and never
@@ -37,7 +30,7 @@ note and opening the editor at the relevant section.
 
 **Full automatic priority management (§7).** Prerequisite boosting, stability
 demotion, deferral decay, and a `priority_history` that records every adjustment
-with a readable reason. Depends on the queue above.
+with a readable reason. Builds on the Study Queue, which already orders each kind by due date.
 
 ## Not scheduled
 

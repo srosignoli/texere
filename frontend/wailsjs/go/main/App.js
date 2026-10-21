@@ -158,6 +158,10 @@ export function GetStudyCounts() {
   return window['go']['main']['App']['GetStudyCounts']();
 }
 
+export function GetStudyMix() {
+  return window['go']['main']['App']['GetStudyMix']();
+}
+
 export function GetStudyStats() {
   return window['go']['main']['App']['GetStudyStats']();
 }
@@ -228,6 +232,10 @@ export function ListShells() {
 
 export function ListSkills() {
   return window['go']['main']['App']['ListSkills']();
+}
+
+export function NextTurn() {
+  return window['go']['main']['App']['NextTurn']();
 }
 
 export function NotebookMarks(arg1) {
@@ -316,6 +324,10 @@ export function SetQueryLLMProfile(arg1) {
 
 export function SetReadingProjLen(arg1, arg2) {
   return window['go']['main']['App']['SetReadingProjLen'](arg1, arg2);
+}
+
+export function SetStudyMix(arg1) {
+  return window['go']['main']['App']['SetStudyMix'](arg1);
 }
 
 export function SetTheme(arg1) {

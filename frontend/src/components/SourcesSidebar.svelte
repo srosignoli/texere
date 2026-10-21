@@ -37,10 +37,6 @@
     }
   }
 
-  // A never-scheduled source has due===0 (NULL); StudyCounts and StudySurface
-  // both count that as due, so the badge must too.
-  const dueNow = (v) => !v.done && (v.due === 0 || v.due * 1000 <= Date.now())
-
   // `expanded` is read from the markup below, not only from here. Svelte
   // instruments an assignment only when the template references the variable,
   // so while this state lived purely inside helper functions, clicking a
@@ -124,7 +120,7 @@
               </button>
               <span class="sb-pct">{row.reading.percent}%</span>
               {#if row.reading.done}<span class="sb-tag done">done</span>
-              {:else if dueNow(row.reading)}<span class="sb-tag due">due</span>{/if}
+              {:else if row.reading.isDue}<span class="sb-tag due">due</span>{/if}
               {#if row.reading.medium === 'llm'}<span class="sb-tag llm">llm</span>{/if}
             </div>
 

@@ -54,6 +54,7 @@ type Session struct {
 	search   *search.SearchService
 	explorer *explorer.ExplorerService
 	sittings *sitting.Tracker
+	queue    *learning.Queue
 
 	watcher   *content.CollectionWatcher
 	watchDone chan struct{} // closed when consumeWatchEvents returns
@@ -106,6 +107,7 @@ func Open(dir string, reg *content.SSTRegistry, notify Notify) (*Session, []cont
 			return res.FinalContent, err
 		},
 	})
+	s.queue = learning.NewQueue(learning.QueueDeps{Store: ls, OpenSitting: s.sittings.OpenSource})
 
 	w, err := content.WatchCollection(dir)
 	if err != nil {
@@ -252,6 +254,9 @@ func (h Handles) Path(rel string) (string, error) {
 
 // Sittings holds the open Sitting. Never nil.
 func (h Handles) Sittings() *sitting.Tracker { return h.s.sittings }
+
+// Queue is the Study Queue, with this Session's tally of Turns. Never nil.
+func (h Handles) Queue() *learning.Queue { return h.s.queue }
 
 // SelfWrite is Session.SelfWrite, usable inside a Read.
 func (h Handles) SelfWrite(path string, fn func() error) error { return h.s.SelfWrite(path, fn) }

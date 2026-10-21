@@ -46,6 +46,12 @@ make clean           # Remove build artifacts
 - No CGo except via Wails framework (webview bridge only)
 - All new dependencies MUST be pure Go (no CGo) — exceptions require Complexity Tracking entry in the relevant plan
 
+## Workflow
+
+- Skills come from the **mattpocock-skills** plugin only (`grilling`, `domain-modeling`, `codebase-design`, `tdd`, `writing-for-agents`, …): use them for design, refactoring and implementation work.
+- The domain glossary is `CONTEXT.md`; when `domain-modeling` says `GLOSSARY.md`, it means this file.
+- Specs go in `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`, plans in `docs/superpowers/plans/YYYY-MM-DD-<topic>.md`.
+
 ## Recent Changes
 - 006-isometric-graph-explorer: Added Go 1.22 (backend, layout engine + Wails bindings); JavaScript/Svelte 3.49 (frontend); pinned via existing `go.mod` and `frontend/package.json`.
 - 005-bleve-fulltext-search: Added Go 1.22 (backend only — this feature ships no frontend changes beyond an error-toast string update)

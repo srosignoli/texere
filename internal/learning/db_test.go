@@ -109,7 +109,44 @@ func TestMigrateV9DropsNotebookLinks(t *testing.T) {
 	if err := s.db.QueryRow(`SELECT version FROM schema_meta`).Scan(&v); err != nil {
 		t.Fatal(err)
 	}
-	if v != 9 {
-		t.Errorf("schema version = %d, want 9", v)
+	if v != schemaVersion {
+		t.Errorf("schema version = %d, want %d", v, schemaVersion)
+	}
+}
+
+// An existing Collection at schema 9 gains study_settings on its next open.
+func TestMigrateV10CreatesStudySettings(t *testing.T) {
+	dir := t.TempDir()
+	raw, err := sql.Open("sqlite", filepath.Join(dir, "learning.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, ddl := range []string{ddlV1, ddlV2, ddlV3, ddlV4, ddlV5, ddlV6,
+		`DROP TABLE notebook_links`,
+		`CREATE TABLE schema_meta (version INTEGER NOT NULL)`,
+		`INSERT INTO schema_meta(version) VALUES (9)`,
+	} {
+		if _, err := raw.Exec(ddl); err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+	}
+	if err := raw.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	s, err := Open(dir)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer s.Close()
+	if !tableExists(t, s, "study_settings") {
+		t.Error("study_settings missing after the v10 migration")
+	}
+	var v int
+	if err := s.db.QueryRow(`SELECT version FROM schema_meta`).Scan(&v); err != nil {
+		t.Fatal(err)
+	}
+	if v != 10 {
+		t.Errorf("schema version = %d, want 10", v)
 	}
 }
