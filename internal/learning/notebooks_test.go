@@ -95,29 +95,6 @@ func TestGetNotebookMissing(t *testing.T) {
 	}
 }
 
-func TestNotebookLinks(t *testing.T) {
-	s, _ := Open(t.TempDir())
-	defer s.Close()
-
-	links := []NotebookLink{
-		{FilePath: "a.n4l", Chapter: "C", NodeText: "Newton", NotebookID: "nb-1"},
-		{FilePath: "a.n4l", Chapter: "C", NodeText: "Newton", NotebookID: "nb-1"}, // dup, idempotent
-		{FilePath: "a.n4l", Chapter: "C", NodeText: "calculus", NotebookID: "nb-1"},
-		{FilePath: "b.n4l", Chapter: "C", NodeText: "gravity", NotebookID: "nb-2"},
-	}
-	if err := s.AddNotebookLinks(links, time.Unix(1, 0)); err != nil {
-		t.Fatalf("AddNotebookLinks: %v", err)
-	}
-
-	got, err := s.LinksForFile("a.n4l")
-	if err != nil {
-		t.Fatalf("LinksForFile: %v", err)
-	}
-	if len(got) != 2 {
-		t.Fatalf("want 2 links for a.n4l, got %d: %+v", len(got), got)
-	}
-}
-
 func TestNotebooksForNodesReturnsOnlyRequestedNodes(t *testing.T) {
 	st, err := Open(t.TempDir())
 	if err != nil {

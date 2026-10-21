@@ -101,6 +101,15 @@ func (s *Store) migrateRelativePaths() error {
 // table's declared primary key (notebook_links has no single-column key, and
 // the value being rewritten is itself part of its composite key).
 func (s *Store) migrateColumnToRelative(table, column string) error {
+	// A table a later version dropped (notebook_links, at v9) is absent when
+	// this step runs again over an already-migrated database.
+	var n int
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?`, table).Scan(&n); err != nil {
+		return fmt.Errorf("lookup: %w", err)
+	}
+	if n == 0 {
+		return nil
+	}
 	rows, err := s.db.Query(fmt.Sprintf(`SELECT rowid, %s FROM %s`, column, table))
 	if err != nil {
 		return fmt.Errorf("select: %w", err)

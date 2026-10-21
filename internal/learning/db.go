@@ -14,7 +14,7 @@ type Store struct {
 	dir string // collection root; file_path-like columns are stored relative to this
 }
 
-const schemaVersion = 8
+const schemaVersion = 9
 
 // Open opens (creating if needed) <collectionDir>/learning.db and migrates it
 // to the current schema version.
@@ -97,6 +97,12 @@ func (s *Store) migrate() error {
 			// copied. See migrateIdentityKeys.
 			if err := s.migrateIdentityKeys(); err != nil {
 				return fmt.Errorf("learning: apply v8: %w", err)
+			}
+		case 8:
+			// notebook_links held text-keyed push provenance whose only reader,
+			// the Process-mode gutter, now shows NotebookMarks. Dropped with its rows.
+			if _, err := s.db.Exec(`DROP INDEX IF EXISTS idx_nblinks_file; DROP TABLE IF EXISTS notebook_links;`); err != nil {
+				return fmt.Errorf("learning: apply v9: %w", err)
 			}
 		}
 		v++

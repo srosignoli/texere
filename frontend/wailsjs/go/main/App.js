@@ -114,10 +114,6 @@ export function GetNotebook(arg1) {
   return window['go']['main']['App']['GetNotebook'](arg1);
 }
 
-export function GetNotebookLinks(arg1) {
-  return window['go']['main']['App']['GetNotebookLinks'](arg1);
-}
-
 export function GetQueryLLMProfile() {
   return window['go']['main']['App']['GetQueryLLMProfile']();
 }
@@ -264,10 +260,6 @@ export function PickCollectionDir() {
 
 export function PromoteExtract(arg1, arg2) {
   return window['go']['main']['App']['PromoteExtract'](arg1, arg2);
-}
-
-export function RecordPush(arg1, arg2, arg3) {
-  return window['go']['main']['App']['RecordPush'](arg1, arg2, arg3);
 }
 
 export function ResolveReminder(arg1, arg2) {

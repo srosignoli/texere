@@ -4,8 +4,9 @@
   import { EditorState } from '@codemirror/state'
   import { workbenchStore } from '../stores/workbench.js'
   import { n4lBaseExtensions, pushRecentArrow, notebookDotsGutter, applyDots } from '../lib/n4l-editor.js'
+  import { EventsOn } from '../../wailsjs/runtime/runtime'
   import { runLint } from '../stores/lint.js'
-  import { GetExtractTarget, PromoteExtract, DeferExtract, DismissExtract, GetFileContent, SaveFile, SyncStudyItems, GetRecentArrows, UpdateRecentArrows, GetNotebookLinks } from '../../wailsjs/go/main/App'
+  import { GetExtractTarget, PromoteExtract, DeferExtract, DismissExtract, GetFileContent, SaveFile, SyncStudyItems, GetRecentArrows, UpdateRecentArrows, NotebookMarks } from '../../wailsjs/go/main/App'
 
   export let extractId
   export let onAdvance = null
@@ -23,18 +24,15 @@
   let recentCodesRef = []
   $: arrowDefsRef = $workbenchStore.arrowDefs ?? []
 
-  // Caret reporting is debounced because it fires on every keystroke and arrow
-  // key, and the consumer does a backend peek. Resting on a line should report
-  // once; scrolling through fifty should report once at the end.
-  let caretTimer = null
+  // Every caret move to a new line is reported; the consumer debounces
+  // (lib/caret-notebook.js), since it is the one doing a backend peek.
   let lastCaretLine = 0
 
   function reportCaret(view) {
     const line = view.state.doc.lineAt(view.state.selection.main.head).number
     if (line === lastCaretLine) return
     lastCaretLine = line
-    clearTimeout(caretTimer)
-    caretTimer = setTimeout(() => dispatch('caret', { line }), 150)
+    dispatch('caret', { line })
   }
 
   function handleArrowSelected(code) {
@@ -42,13 +40,25 @@
     UpdateRecentArrows(recentCodesRef).catch(() => {})
   }
 
+  // Gutter dots: lines whose node has a Notebook, the same marks the note
+  // editor shows. Refreshed on load, after every save (a save shifts lines) and
+  // when a Notebook is created anywhere.
   async function refreshDots() {
     if (!view || !target) return
     try {
-      const marks = await GetNotebookLinks(target.filePath)
+      const marks = await NotebookMarks(target.filePath)
       applyDots(view, (marks ?? []).map((m) => m.line))
     } catch { /* best-effort */ }
   }
+
+  // A dot moves the caret to its line; the Notebook pane follows the caret.
+  function onDotClick(line) {
+    if (!view || line < 1 || line > view.state.doc.lines) return
+    view.dispatch({ selection: { anchor: view.state.doc.line(line).from } })
+    view.focus()
+  }
+
+  let cancelNotebooksChanged = null
 
   async function flush() {
     if (!view || !target) return
@@ -63,11 +73,12 @@
       // before, so a caret->notebook map had no way to learn a save had
       // happened and stayed wrong for the rest of the session.
       dispatch('saved')
+      await refreshDots()
     }
   }
 
   // Insert text as its own block at the cursor, persist, and return the inserted
-  // text so the caller can record provenance. Handles SaveFile's # @id injection
+  // text. Handles SaveFile's # @id injection
   // by reloading the editor to the final on-disk content.
   export async function insertAndSave(text) {
     if (!view || !target) return ''
@@ -176,7 +187,7 @@
       vim: vimMode,
       keymap: [{ key: 'Mod-s', run: () => { flush().catch(() => {}); return true }, preventDefault: true }],
       extra: [
-        notebookDotsGutter(() => {}),
+        notebookDotsGutter(onDotClick),
         EditorView.updateListener.of((u) => {
           if (u.selectionSet || u.docChanged) reportCaret(u.view)
         }),
@@ -206,6 +217,7 @@
   }
 
   onMount(async () => {
+    cancelNotebooksChanged = EventsOn('notebook:changed', () => refreshDots())
     try {
       target = await GetExtractTarget(extractId)
       dispatch('ready', { filePath: target.filePath })
@@ -234,7 +246,7 @@
   // drop them. flush() captures the doc synchronously and is a no-op when clean.
   onDestroy(() => {
     flush().catch(() => {})
-    clearTimeout(caretTimer)
+    cancelNotebooksChanged?.()
     view?.destroy()
   })
 </script>

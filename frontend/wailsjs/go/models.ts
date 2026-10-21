@@ -1157,20 +1157,6 @@ export namespace main {
 		}
 	}
 	
-	export class NotebookLinkMark {
-	    line: number;
-	    notebookIds: string[];
-	
-	    static createFrom(source: any = {}) {
-	        return new NotebookLinkMark(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.line = source["line"];
-	        this.notebookIds = source["notebookIds"];
-	    }
-	}
 	export class NotebookMark {
 	    line: number;
 	    notebookId: string;

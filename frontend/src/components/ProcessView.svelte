@@ -1,67 +1,43 @@
 <script>
+  import { onMount, onDestroy } from 'svelte'
   import Splitter from './Splitter.svelte'
   import ProcessEditor from './ProcessEditor.svelte'
   import NotebookPane from './notebook/NotebookPane.svelte'
-  import { RecordPush, PeekNotebook, FileNodeSpans } from '../../wailsjs/go/main/App'
-  import { nodeIdAtLine } from '../lib/node-span.js'
+  import { PeekNotebook, FileNodeSpans } from '../../wailsjs/go/main/App'
+  import { EventsOn } from '../../wailsjs/runtime/runtime'
+  import { createCaretNotebook } from '../lib/caret-notebook.js'
 
   export let extractId
   export let onAdvance = null
 
   let editorRef            // bound ProcessEditor instance
-  let notebookId = null
   let filePath = null
   let leftWidth = 520      // px width of the left (editor) pane; user-resizable
 
-  let spans = []
   let focusedId = extractId   // the node under the caret; starts on the queued one
   let peeked = null           // NotebookView for focusedId, or null when it has none
-  let peekedFor = null        // which id `peeked` describes, so a stale reply is ignored
-  let caretLine = 0           // last reported caret line, kept so spans arriving later can re-resolve
 
-  // Ids are fully qualified (`<path>:<chapter>:id:<short>`); the path is noise in
-  // a one-line header, so show only the short id the user actually recognises.
-  const shortId = (id) => (id ? id.slice(id.lastIndexOf(':') + 1) : null)
+  // The queued extract is both the fallback (its file's spans could not be
+  // read, so the pane degrades to the pre-feature behaviour instead of pinning
+  // the empty state with no error shown) and our own: its Notebook is the
+  // creating NotebookPane below, never a peek.
+  const caretNb = createCaretNotebook({
+    peek: PeekNotebook,
+    fallbackId: extractId,
+    ownId: extractId,
+    onFocus: ({ id, notebook }) => { focusedId = id; peeked = notebook },
+  })
 
   async function loadSpans() {
     if (!filePath) return
+    let spans = []
     try { spans = await FileNodeSpans(filePath) } catch { spans = [] }
     // The editor reports its caret as soon as it is ready, which can beat this
-    // fetch — without re-resolving here, opening Process mode would land on the
-    // empty state because the map was still [] when the first report arrived.
-    if (caretLine) await resolve(caretLine)
+    // fetch; setSpans resolves the last reported line again.
+    caretNb.setSpans(spans)
   }
 
-  async function onCaret(e) { await resolve(e.detail.line) }
-
-  async function resolve(line) {
-    caretLine = line
-    // An empty map means the file's nodes could not be read at all — the queued
-    // extract is in this file and has an id, so a genuinely empty map is a parse
-    // or IPC failure, not a file without nodes. Falling back to the queued
-    // extract degrades to the pre-feature behaviour; resolving to null instead
-    // would pin the pane to the empty state for the whole session, with no error
-    // shown anywhere.
-    const id = spans.length ? nodeIdAtLine(spans, line) : extractId
-    if (id === focusedId) return
-    focusedId = id
-    // The queued extract keeps its creating path; nothing else is peeked until
-    // it is actually focused.
-    if (!id || id === extractId) { peeked = null; peekedFor = id; return }
-    try {
-      const view = await PeekNotebook(id)
-      // A slower reply for a node we have already left must not win.
-      if (focusedId !== id) return
-      peeked = view
-      peekedFor = id
-    } catch { peeked = null; peekedFor = id }
-  }
-
-  function onReady(e) { notebookId = e.detail.notebookId }
-  // Cleared whenever the empty state renders. Nothing can push from it today, so
-  // a stale id is unreachable rather than harmless — clear it anyway, because the
-  // next person to add an affordance there will not know it was load-bearing.
-  $: if (focusedId !== extractId && !(peeked && peekedFor === focusedId)) notebookId = null
+  function onCaret(e) { caretNb.caret(e.detail.line) }
 
   function onEditorReady(e) {
     filePath = e.detail?.filePath ?? filePath
@@ -70,17 +46,15 @@
 
   async function handlePush(text) {
     if (!editorRef) return
-    // Captured BEFORE the await: insertAndSave moves the caret itself, which
-    // fires the caret event, can change focusedId, and nulls notebookId via the
-    // reactive clear below — so reading it afterwards can silently skip the
-    // provenance record for a push that plainly succeeded.
-    const pushedFrom = notebookId
-    const inserted = await editorRef.insertAndSave(text)
-    if (pushedFrom && filePath && inserted) {
-      try { await RecordPush(pushedFrom, filePath, inserted) } catch { /* provenance is best-effort */ }
-    }
+    await editorRef.insertAndSave(text)
     await loadSpans()   // the insert moved every line below it
   }
+
+  // A Notebook created on the focused node should appear now, not on the next
+  // caret move.
+  let cancelNotebooksChanged = null
+  onMount(() => { cancelNotebooksChanged = EventsOn('notebook:changed', () => caretNb.refresh()) })
+  onDestroy(() => { cancelNotebooksChanged?.(); caretNb.destroy() })
 </script>
 
 <div class="pv-split">
@@ -93,16 +67,16 @@
   <div class="pv-pane pv-right">
     {#if focusedId !== extractId}
       <div class="pv-focus">
-        Processing <b>{shortId(extractId)}</b> · reading <b>{shortId(focusedId) ?? 'a line with no id'}</b>
+        Processing <b>{extractId}</b> · reading <b>{focusedId ?? 'a line with no id'}</b>
       </div>
     {/if}
 
     <div class="pv-notebook">
       {#key focusedId}
         {#if focusedId === extractId}
-          <NotebookPane nodeID={extractId} onPush={handlePush} on:ready={onReady} />
-        {:else if peeked && peekedFor === focusedId}
-          <NotebookPane notebookId={peeked.notebookId} onPush={handlePush} on:ready={onReady} />
+          <NotebookPane nodeID={extractId} onPush={handlePush} />
+        {:else if peeked}
+          <NotebookPane notebookId={peeked.notebookId} onPush={handlePush} />
         {:else}
           <div class="pv-empty">No notebook for this line.</div>
         {/if}

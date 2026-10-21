@@ -12,7 +12,7 @@
   import { runLint } from '../stores/lint.js'
   import { SaveFile, GetFileContent, GetRecentArrows, UpdateRecentArrows, NotebookMarks, FileNodeSpans, PeekNotebook } from '../../wailsjs/go/main/App'
   import { EventsOn } from '../../wailsjs/runtime/runtime'
-  import { nodeIdAtLine } from '../lib/node-span.js'
+  import { createCaretNotebook } from '../lib/caret-notebook.js'
   import NotebookPane from './notebook/NotebookPane.svelte'
 
   const dispatch = createEventDispatcher()
@@ -21,7 +21,6 @@
   let view
   let externalBanner = null
   let vimMode = false
-  let cancelLinksChanged = null
   let cancelNotebooksChanged = null
   let loadedFilePath = null  // tracks which FILE is currently in the editor
   let _prevContextFilter = null
@@ -57,29 +56,37 @@
     reopenReadOnly = true
     // Move the caret to the clicked line rather than resolving it out of band.
     // The overlay follows the caret, so leaving the caret where it was would
-    // show a node the user is not on — and reportCaret's same-line guard would
-    // then never fire for their actual line, freezing the overlay there.
+    // show a node the user is not on.
     if (view && line >= 1 && line <= view.state.doc.lines) {
       const pos = view.state.doc.line(line).from
       view.dispatch({ selection: { anchor: pos } })
       view.focus()
     }
-    resolveCaret(line, true)
+    // Focus the clicked line first, then show: showing peeks it, forced.
+    caretNb.resolve(line)
+    caretNb.setShown(true)
   }
-  function closeReopen() { armed = false; reopenReadOnly = true }
+  function closeReopen() { armed = false; reopenReadOnly = true; caretNb.setShown(false) }
   function resumeReopen() { reopenReadOnly = false }
 
-  // Caret -> node -> notebook, for the read-only overlay. Same approach as
-  // ProcessView: fetch the line map once per file and resolve locally, because
-  // caret movement is constant and a round trip per keystroke would be a stream
-  // of work for a read that changes nothing.
-  let spans = []
-  let caretLine = 0
+  // Caret -> node -> notebook, for the read-only overlay (lib/caret-notebook.js,
+  // shared with ProcessView). Nothing is peeked until the overlay is armed:
+  // nothing displays the result before then, and assembleContext behind
+  // PeekNotebook re-parses the file, searches the graph and reads the whole
+  // source document — far too much for every caret move.
   let focusedId = null
   let focusedNb = null      // NotebookView for focusedId, or null when it has none
-  let focusedNbFor = null   // which id focusedNb describes, so a stale reply loses
-  let caretTimer = null
-  let lastCaretLine = 0
+  const caretNb = createCaretNotebook({
+    peek: PeekNotebook,
+    shown: false,
+    onFocus: ({ id, notebook }) => {
+      // Moving to a different node drops back to read-only: "Resume (edit)" was
+      // granted for the notebook you were looking at, not the next one.
+      if (id !== focusedId) reopenReadOnly = true
+      focusedId = id
+      focusedNb = notebook
+    },
+  })
 
   // Dots and spans come from two INDEPENDENT parses of the same file, so every
   // path that replaces the document must refresh both. Refreshing only spans
@@ -94,51 +101,16 @@
 
   async function loadSpans(path) {
     if (!path) return
+    let spans = []
     try { spans = await FileNodeSpans(path) } catch { spans = [] }
-    if (!view) return
     // Resolve from the view's ACTUAL caret, not the last reported line.
     // setContent (every save) and rebuildEditor both reset the caret to the top,
-    // and reportCaret's debounce has not fired yet — so caretLine is stale here
-    // and would briefly resolve the node the caret just left.
-    const line = view.state.doc.lineAt(view.state.selection.main.head).number
-    lastCaretLine = line
-    clearTimeout(caretTimer)
-    await resolveCaret(line)
-  }
-
-  async function resolveCaret(line, force = false) {
-    caretLine = line
-    const id = spans.length ? nodeIdAtLine(spans, line) : null
-    if (id === focusedId && !force) return
-    focusedId = id
-    // Moving to a different node drops back to read-only: "Resume (edit)" was
-    // granted for the notebook you were looking at, not the next one.
-    reopenReadOnly = true
-    // No peek until the overlay is armed. Nothing displays the result before
-    // then, and assembleContext behind PeekNotebook re-parses the file, searches
-    // the graph and reads the whole source document — far too much to spend on
-    // every caret move for a pane that is not on screen.
-    if (!id || !armed) { focusedNb = null; focusedNbFor = null; return }
-    try {
-      const v = await PeekNotebook(id)
-      if (focusedId !== id) return   // a slower reply for a node we have left
-      focusedNb = v
-      focusedNbFor = id
-    } catch {
-      // Same guard as the success path: a rejection for a node the caret has
-      // already left must not wipe the notebook belonging to the node it is on.
-      if (focusedId !== id) return
-      focusedNb = null
-      focusedNbFor = null
-    }
+    // and a caret report may still be waiting on its debounce.
+    caretNb.setSpans(spans, view ? view.state.doc.lineAt(view.state.selection.main.head).number : undefined)
   }
 
   function reportCaret(v) {
-    const line = v.state.doc.lineAt(v.state.selection.main.head).number
-    if (line === lastCaretLine) return
-    lastCaretLine = line
-    clearTimeout(caretTimer)
-    caretTimer = setTimeout(() => resolveCaret(line), 150)
+    caretNb.caret(v.state.doc.lineAt(v.state.selection.main.head).number)
   }
 
   // Keep mutable refs that the CM6 completion source can close over
@@ -170,12 +142,11 @@
       // this, the overlay stays armed and keeps the previous file's focused node
       // until the first caret report of the new one.
       armed = false
-      spans = []
+      caretNb.reset()
+      caretNb.setShown(false)
       dotMarks = []
       focusedId = null
       focusedNb = null
-      focusedNbFor = null
-      lastCaretLine = 0
       GetFileContent(key.filePath)
         .then((text) => {
           setContent(text ?? '')
@@ -432,9 +403,6 @@
     reportCaret(view)
     editorAPI.set({ triggerSave, triggerUndo, insertAtCursor, insertAtLineEnd, openArrowPicker })
 
-    cancelLinksChanged = EventsOn('notebook:links-changed', (p) => {
-      if (p?.path === loadedFilePath) refreshDots(loadedFilePath)
-    })
     // A notebook was created elsewhere — in Process mode, which leaves this
     // editor mounted. Without this the gutter keeps its stale marks for the
     // whole session, which is exactly the reported symptom: process an extract,
@@ -446,7 +414,7 @@
       // just created. Re-resolve so it appears now rather than on the next caret
       // move — otherwise the dot arrives while the pane stays stubbornly empty.
       if (armed && view) {
-        resolveCaret(view.state.doc.lineAt(view.state.selection.main.head).number, true)
+        caretNb.resolve(view.state.doc.lineAt(view.state.selection.main.head).number, true)
       }
     })
 
@@ -460,9 +428,8 @@
 
   onDestroy(() => {
     editorAPI.set(null)
-    cancelLinksChanged?.()
     cancelNotebooksChanged?.()
-    clearTimeout(caretTimer)
+    caretNb.destroy()
     view?.destroy()
   })
 </script>
@@ -479,7 +446,7 @@
     </div>
   {/if}
   <div class="editor-container" bind:this={container} />
-  {#if armed && focusedNb && focusedNbFor === focusedId}
+  {#if armed && focusedNb}
     <div class="nb-overlay">
       <div class="nb-overlay-bar">
         <span>Notebook</span>
