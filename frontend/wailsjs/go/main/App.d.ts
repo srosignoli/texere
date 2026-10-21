@@ -65,8 +65,6 @@ export function GetLLMConfig():Promise<main.LLMConfig>;
 
 export function GetNotebook(arg1:string):Promise<main.NotebookView>;
 
-export function GetNotebookLinks(arg1:string):Promise<Array<main.NotebookLinkMark>>;
-
 export function GetQueryLLMProfile():Promise<string>;
 
 export function GetReadingExtracts():Promise<Record<string, Array<main.ReadingExtractView>>>;
@@ -140,8 +138,6 @@ export function PeekNotebook(arg1:string):Promise<main.NotebookView>;
 export function PickCollectionDir():Promise<string>;
 
 export function PromoteExtract(arg1:string,arg2:string):Promise<void>;
-
-export function RecordPush(arg1:string,arg2:string,arg3:string):Promise<Array<string>>;
 
 export function ResolveReminder(arg1:string,arg2:number):Promise<content.WriteBackResult>;
 

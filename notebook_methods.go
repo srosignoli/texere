@@ -5,9 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"sort"
-	"strings"
 	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -99,7 +96,7 @@ func (a *App) OpenNotebook(nodeID string) (*NotebookView, error) {
 // This is OpenNotebook minus its UpsertNotebook, and that difference is the
 // whole point. The Process view calls this as the caret moves, so a creating
 // lookup would write a notebook row for every node scrolled past, and
-// GetNotebookLinks would then mark those lines as having notebooks — after one
+// NotebookMarks would then mark those lines as having notebooks — after one
 // visit a node WOULD have one, so the pane would start showing it. The feature
 // would defeat itself.
 //
@@ -246,14 +243,6 @@ func (a *App) assembleContext(h collection.Handles, nodeID string) ContextPayloa
 	return out
 }
 
-// notebookLinksChanged notifies the frontend that a file's provenance dots
-// need refreshing.
-func (a *App) notebookLinksChanged(filePath string) {
-	if a.ctx != nil {
-		runtime.EventsEmit(a.ctx, "notebook:links-changed", map[string]string{"path": filePath})
-	}
-}
-
 // notebooksChanged notifies the frontend that the set of nodes having notebooks
 // has changed, so any open editor should re-fetch its gutter marks.
 //
@@ -268,88 +257,10 @@ func (a *App) notebooksChanged() {
 	}
 }
 
-// pushedNodeKeys returns the (chapterTitle, nodeText) of every parsed node that
-// the pushed text authored as a subject. A node matches when a collapsed
-// inserted line equals its text or begins with "<text> " (text then arrow).
-// Arrow targets are not matched. Matching is by text, so it survives the line
-// shifts SaveFile causes when it injects "# @id" markers.
-func pushedNodeKeys(pf *content.ParsedFile, insertedText string) [][2]string {
-	if pf == nil {
-		return nil
-	}
-	var lines []string
-	for _, raw := range strings.Split(insertedText, "\n") {
-		if c := strings.Join(strings.Fields(raw), " "); c != "" {
-			lines = append(lines, c)
-		}
-	}
-	var out [][2]string
-	seen := map[[2]string]bool{}
-	for _, ch := range pf.Chapters {
-		for _, n := range ch.Nodes {
-			if n.Text == "" {
-				continue
-			}
-			// Collapse node text the same way as the inserted lines so internal
-			// double-spaces/tabs (which the parser only trims at the edges) do
-			// not defeat the match. The stored key keeps the raw n.Text.
-			nt := strings.Join(strings.Fields(n.Text), " ")
-			for _, c := range lines {
-				if c == nt || strings.HasPrefix(c, nt+" ") {
-					key := [2]string{ch.Title, n.Text}
-					if !seen[key] {
-						seen[key] = true
-						out = append(out, key)
-					}
-					break
-				}
-			}
-		}
-	}
-	return out
-}
-
-// RecordPush records provenance links for the nodes a pushed draft authored,
-// then signals the gutter to refresh. filePath must be the file the text was
-// pushed into (already saved to disk by the caller).
-func (a *App) RecordPush(notebookID, filePath, insertedText string) ([]string, error) {
-	return inCollection(a, func(h collection.Handles) ([]string, error) {
-		pf, _ := content.ParseFile(filePath, a.registry)
-		keys := pushedNodeKeys(pf, insertedText)
-		// filePath is absolute (content-layer, as passed in by the frontend); the
-		// notebook_links.file_path column stores the collection-relative form.
-		relPath, err := h.Learning().Rel(filePath)
-		if err != nil {
-			return nil, fmt.Errorf("RecordPush: %w", err)
-		}
-		links := make([]learning.NotebookLink, 0, len(keys))
-		texts := make([]string, 0, len(keys))
-		for _, k := range keys {
-			links = append(links, learning.NotebookLink{
-				FilePath: relPath, Chapter: k[0], NodeText: k[1], NotebookID: notebookID})
-			texts = append(texts, k[1])
-		}
-		if err := h.Learning().AddNotebookLinks(links, time.Now()); err != nil {
-			return nil, err
-		}
-		a.notebookLinksChanged(filePath)
-		return texts, nil
-	})
-}
-
-// NotebookLinkMark is one gutter dot: a line and the notebooks linked to the
-// node on that line.
-type NotebookLinkMark struct {
-	Line        int      `json:"line"`
-	NotebookIDs []string `json:"notebookIds"`
-}
-
 // NotebookMark is one gutter dot: a line whose node has a notebook.
 //
-// This replaces NotebookLinkMark as the gutter's source. The old mark meant
-// "text on this line was pushed out of a notebook" and was keyed by
-// (chapter, node_text), so any edit to the line silently dropped the dot. This
-// one is keyed by node id, which is stable across edits.
+// Keyed by node id, which is stable across edits, so a dot survives any change
+// to the line's text. It is the gutter's only source in every editor.
 type NotebookMark struct {
 	Line       int    `json:"line"`
 	NotebookID string `json:"notebookId"`
@@ -394,65 +305,6 @@ func (a *App) NotebookMarks(filePath string) ([]NotebookMark, error) {
 				}
 			}
 		}
-		return out, nil
-	})
-}
-
-// GetNotebookLinks resolves this file's links to line marks by re-parsing and
-// matching each linked (chapter, text) tuple to a current node line.
-func (a *App) GetNotebookLinks(filePath string) ([]NotebookLinkMark, error) {
-	return inCollection(a, func(h collection.Handles) ([]NotebookLinkMark, error) {
-		// filePath is absolute (content-layer); notebook_links.file_path is stored
-		// collection-relative, so the lookup key must be converted the same way
-		// RecordPush converted it when writing the link.
-		relPath, err := h.Learning().Rel(filePath)
-		if err != nil {
-			return nil, fmt.Errorf("GetNotebookLinks: %w", err)
-		}
-		links, err := h.Learning().LinksForFile(relPath)
-		if err != nil {
-			return nil, err
-		}
-		if len(links) == 0 {
-			return []NotebookLinkMark{}, nil
-		}
-		// (chapter, text) -> set of notebook IDs
-		byKey := map[[2]string]map[string]bool{}
-		for _, l := range links {
-			k := [2]string{l.Chapter, l.NodeText}
-			if byKey[k] == nil {
-				byKey[k] = map[string]bool{}
-			}
-			byKey[k][l.NotebookID] = true
-		}
-		pf, _ := content.ParseFile(filePath, a.registry)
-		byLine := map[int]map[string]bool{}
-		if pf != nil {
-			for _, ch := range pf.Chapters {
-				for _, n := range ch.Nodes {
-					ids, ok := byKey[[2]string{ch.Title, n.Text}]
-					if !ok {
-						continue
-					}
-					if byLine[n.Line] == nil {
-						byLine[n.Line] = map[string]bool{}
-					}
-					for id := range ids {
-						byLine[n.Line][id] = true
-					}
-				}
-			}
-		}
-		out := make([]NotebookLinkMark, 0, len(byLine))
-		for line, ids := range byLine {
-			list := make([]string, 0, len(ids))
-			for id := range ids {
-				list = append(list, id)
-			}
-			sort.Strings(list)
-			out = append(out, NotebookLinkMark{Line: line, NotebookIDs: list})
-		}
-		sort.Slice(out, func(i, j int) bool { return out[i].Line < out[j].Line })
 		return out, nil
 	})
 }

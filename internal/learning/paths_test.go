@@ -155,7 +155,9 @@ func openAtSchemaSix(t *testing.T, dir string) *sql.DB {
 	return db
 }
 
-func TestMigrationRewritesAllFourColumns(t *testing.T) {
+// notebook_links is still seeded: v7 must rewrite it while it exists. v9 then
+// drops it, so only the surviving columns are checked after Open.
+func TestMigrationRewritesThePathColumns(t *testing.T) {
 	dir := t.TempDir()
 	mustWrite(t, filepath.Join(dir, "reading", "x.n4l"), "x")
 	abs := filepath.Join(dir, "reading", "x.n4l")
@@ -191,7 +193,6 @@ func TestMigrationRewritesAllFourColumns(t *testing.T) {
 	checks := []struct{ query, wantVal string }{
 		{`SELECT file_path FROM items WHERE id='i1'`, want},
 		{`SELECT file_path FROM extracts WHERE id='e1'`, want},
-		{`SELECT file_path FROM notebook_links WHERE notebook_id='nb1'`, want},
 		{`SELECT notes_path FROM reading_elements WHERE id='r1'`, want},
 	}
 	for _, c := range checks {
@@ -205,11 +206,9 @@ func TestMigrationRewritesAllFourColumns(t *testing.T) {
 	}
 }
 
-// TestMigrationIsIdempotent covers all four migrated columns, not just
-// items.file_path: notebook_links.file_path in particular is part of that
-// table's composite primary key, so a second UPDATE against an
-// already-migrated row is a different shape of risk than for the
-// single-column-keyed tables. Each table gets one resolvable row (proving a
+// TestMigrationIsIdempotent covers the migrated columns, not just
+// items.file_path. notebook_links is seeded but not dumped: v9 drops it, so the
+// second run below also proves the v7 step tolerates the table being gone. Each table gets one resolvable row (proving a
 // second pass over an already-relative value is a true no-op) and one
 // unresolvable row (proving a second pass doesn't newly damage a row it
 // already gave up on).
@@ -280,7 +279,6 @@ func TestMigrationIsIdempotent(t *testing.T) {
 		}
 		add("items", `SELECT id, file_path FROM items ORDER BY id`)
 		add("extracts", `SELECT id, file_path FROM extracts ORDER BY id`)
-		add("notebook_links", `SELECT notebook_id, file_path FROM notebook_links ORDER BY notebook_id`)
 		add("reading_elements", `SELECT id, notes_path FROM reading_elements ORDER BY id`)
 		return out
 	}

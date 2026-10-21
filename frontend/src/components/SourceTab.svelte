@@ -21,7 +21,6 @@
   let view
   let externalBanner = null
   let vimMode = false
-  let cancelLinksChanged = null
   let cancelNotebooksChanged = null
   let loadedFilePath = null  // tracks which FILE is currently in the editor
   let _prevContextFilter = null
@@ -432,9 +431,6 @@
     reportCaret(view)
     editorAPI.set({ triggerSave, triggerUndo, insertAtCursor, insertAtLineEnd, openArrowPicker })
 
-    cancelLinksChanged = EventsOn('notebook:links-changed', (p) => {
-      if (p?.path === loadedFilePath) refreshDots(loadedFilePath)
-    })
     // A notebook was created elsewhere — in Process mode, which leaves this
     // editor mounted. Without this the gutter keeps its stale marks for the
     // whole session, which is exactly the reported symptom: process an extract,
@@ -460,7 +456,6 @@
 
   onDestroy(() => {
     editorAPI.set(null)
-    cancelLinksChanged?.()
     cancelNotebooksChanged?.()
     clearTimeout(caretTimer)
     view?.destroy()

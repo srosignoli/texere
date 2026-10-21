@@ -2,14 +2,13 @@
   import Splitter from './Splitter.svelte'
   import ProcessEditor from './ProcessEditor.svelte'
   import NotebookPane from './notebook/NotebookPane.svelte'
-  import { RecordPush, PeekNotebook, FileNodeSpans } from '../../wailsjs/go/main/App'
+  import { PeekNotebook, FileNodeSpans } from '../../wailsjs/go/main/App'
   import { nodeIdAtLine } from '../lib/node-span.js'
 
   export let extractId
   export let onAdvance = null
 
   let editorRef            // bound ProcessEditor instance
-  let notebookId = null
   let filePath = null
   let leftWidth = 520      // px width of the left (editor) pane; user-resizable
 
@@ -57,12 +56,6 @@
     } catch { peeked = null; peekedFor = id }
   }
 
-  function onReady(e) { notebookId = e.detail.notebookId }
-  // Cleared whenever the empty state renders. Nothing can push from it today, so
-  // a stale id is unreachable rather than harmless — clear it anyway, because the
-  // next person to add an affordance there will not know it was load-bearing.
-  $: if (focusedId !== extractId && !(peeked && peekedFor === focusedId)) notebookId = null
-
   function onEditorReady(e) {
     filePath = e.detail?.filePath ?? filePath
     loadSpans()
@@ -70,15 +63,7 @@
 
   async function handlePush(text) {
     if (!editorRef) return
-    // Captured BEFORE the await: insertAndSave moves the caret itself, which
-    // fires the caret event, can change focusedId, and nulls notebookId via the
-    // reactive clear below — so reading it afterwards can silently skip the
-    // provenance record for a push that plainly succeeded.
-    const pushedFrom = notebookId
-    const inserted = await editorRef.insertAndSave(text)
-    if (pushedFrom && filePath && inserted) {
-      try { await RecordPush(pushedFrom, filePath, inserted) } catch { /* provenance is best-effort */ }
-    }
+    await editorRef.insertAndSave(text)
     await loadSpans()   // the insert moved every line below it
   }
 </script>
@@ -100,9 +85,9 @@
     <div class="pv-notebook">
       {#key focusedId}
         {#if focusedId === extractId}
-          <NotebookPane nodeID={extractId} onPush={handlePush} on:ready={onReady} />
+          <NotebookPane nodeID={extractId} onPush={handlePush} />
         {:else if peeked && peekedFor === focusedId}
-          <NotebookPane notebookId={peeked.notebookId} onPush={handlePush} on:ready={onReady} />
+          <NotebookPane notebookId={peeked.notebookId} onPush={handlePush} />
         {:else}
           <div class="pv-empty">No notebook for this line.</div>
         {/if}
