@@ -3,7 +3,7 @@
   // Stats focus is a single GetStatistics call so the panels can never disagree
   // about the moment they describe.
   import { onMount } from 'svelte'
-  import { GetStatistics } from '../../wailsjs/go/main/App'
+  import { GetStatistics, GetStudyMix, SetStudyMix } from '../../wailsjs/go/main/App'
   import { humanDuration, fiBand } from '../lib/stats-format.js'
   import Chart from 'chart.js/auto'
   import {
@@ -20,6 +20,7 @@
   // so onMount re-runs and the numbers are fresh on every return to the tab.
   // An exported refresh nobody calls is just a claim that something reloads.
   onMount(load)
+  onMount(loadMix)
 
   async function load() {
     error = ''
@@ -58,6 +59,31 @@
   function chart(node, config) {
     const c = new Chart(node, config)
     return { destroy() { c.destroy() } }
+  }
+
+  // The Next mix: how Next shares its Turns between Sources, Extracts and
+  // Cards. Whole-number weights; the line under the inputs shows the shares.
+  let mix = null
+  let mixError = ''
+  let mixSaved = false
+  async function loadMix() {
+    try { mix = await GetStudyMix() } catch (e) { mixError = String(e?.message ?? e) }
+  }
+  async function saveMix() {
+    mixError = ''
+    mixSaved = false
+    try {
+      await SetStudyMix({ source: Number(mix.source) || 0, extract: Number(mix.extract) || 0, card: Number(mix.card) || 0 })
+      mix = await GetStudyMix()
+      mixSaved = true
+    } catch (e) { mixError = String(e?.message ?? e) }
+  }
+  function mixShares(m) {
+    const w = [Number(m.source) || 0, Number(m.extract) || 0, Number(m.card) || 0]
+    const total = w[0] + w[1] + w[2]
+    if (total <= 0) return 'All zero: the default mix applies.'
+    const pc = (v) => `${Math.round((v / total) * 100)}%`
+    return `Source ${pc(w[0])} · Extract ${pc(w[1])} · Card ${pc(w[2])}`
   }
 
   const weekLabels = (series) => (series ?? []).map((w) => w.weekStart)
@@ -233,11 +259,34 @@
           </p>
         {/if}
       </section>
+      <section class="sp-card">
+        <h3>Next mix</h3>
+        {#if mix}
+          <div class="sp-mix">
+            <label>Source <input type="number" min="0" step="1" bind:value={mix.source} on:input={() => (mixSaved = false)} /></label>
+            <label>Extract <input type="number" min="0" step="1" bind:value={mix.extract} on:input={() => (mixSaved = false)} /></label>
+            <label>Card <input type="number" min="0" step="1" bind:value={mix.card} on:input={() => (mixSaved = false)} /></label>
+          </div>
+          <p class="sp-sub">{mixShares(mix)}</p>
+          <div class="sp-mix-actions">
+            <button class="sp-save" on:click={saveMix}>Save</button>
+            {#if mixSaved}<span class="sp-meaning">Saved. Applies from the next Turn.</span>{/if}
+          </div>
+        {/if}
+        {#if mixError}<p class="sp-error">{mixError}</p>{/if}
+        <span class="sp-meaning">How Next shares its Turns between sources, extracts and cards. 0 switches a kind off.</span>
+      </section>
     </div>
   {/if}
 </div>
 
 <style>
+  .sp-mix { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 8px 0; }
+  .sp-mix label { display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .sp-mix input { width: 64px; text-align: center; background: var(--surface-bar); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 2px 4px; }
+  .sp-mix-actions { display: flex; gap: 8px; align-items: center; justify-content: center; margin: 4px 0 8px; }
+  .sp-save { background: var(--accent); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 3px 12px; cursor: pointer; font-size: 12px; }
+  .sp-save:hover { background: var(--accent-hover); }
   .sp-root { position: absolute; inset: 0; overflow: auto; padding: 12px; background: var(--surface-study); }
   .sp-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
   .sp-card { background: var(--surface-study); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }

@@ -2,7 +2,7 @@
   import { askConfirm } from '../lib/dialog.js'
   import { createSwitcher } from '../lib/study-switch.js'
   import { onMount } from 'svelte'
-  import { GetStudyCounts, GetExtractQueue, GetReadingList, GetDueQueue, GradeItem } from '../../wailsjs/go/main/App'
+  import { GetStudyCounts, GetExtractQueue, GetReadingList, GetDueQueue, GradeItem, NextTurn } from '../../wailsjs/go/main/App'
   import { studyFocus } from '../stores/study.js'
   import { activeReading } from '../stores/reading.js'
   import ReadingView from './ReadingView.svelte'
@@ -18,6 +18,9 @@
   let counts = { read: 0, process: 0, recall: 0 }
   let error = ''
 
+  // Next state: the Turn the Study Queue serves. Asking again before it has
+  // ended returns the same Turn, so entering Next is always safe to repeat.
+  let turn = null
   // Process state
   let processId = null
   // Recall state
@@ -106,8 +109,25 @@
     try {
       if ($activeReading) return
       const list = await GetReadingList()
-      const due = (list ?? []).find((r) => !r.done && (r.due === 0 || r.due * 1000 <= Date.now()))
+      const due = (list ?? []).find((r) => r.isDue)
       if (due) activeReading.set(due) // open the next due source; else SourcesSidebar shows the library
+    } catch (e) { error = String(e?.message ?? e) }
+  }
+
+  // Next shows whatever the Study Queue serves. Policy lives in the queue
+  // (internal/learning/queue.go): this only puts the Turn on screen.
+  async function loadNext() {
+    try {
+      turn = await NextTurn()
+      if (turn?.kind === 'source') {
+        // Through switchTo, so a different open Source ends its Sitting first.
+        if ($activeReading?.id !== turn.source.id) await switchTo(turn.source, null)
+      } else if (turn?.kind === 'extract') {
+        processId = turn.extract.id
+      } else if (turn?.kind === 'card') {
+        recallCard = turn.card
+        recallShownAt = Date.now()
+      }
     } catch (e) { error = String(e?.message ?? e) }
   }
 
@@ -116,41 +136,31 @@
     error = ''
     studyFocus.set(focus)
     await refresh()
-    if (focus === 'process' || focus === 'next') await loadProcess()
-    if (focus === 'recall' || focus === 'next') await loadRecall()
-    if (focus === 'read' || focus === 'next') await loadRead()
+    if (focus === 'next') await loadNext()
+    if (focus === 'process') await loadProcess()
+    if (focus === 'recall') await loadRecall()
+    if (focus === 'read') await loadRead()
   }
 
-  // "Next": rotate read → process → recall, picking the first non-empty.
-  //
-  // A REACTIVE STATEMENT, not a function the template calls. Svelte derives a
-  // block's dirty mask from the variables an expression names, and
-  // `nextKind` named none of these: the {#if} chain below kept whatever it
-  // answered on mount while `counts` was still all zeroes, so opening Study
-  // showed "Nothing due." over tabs that already read Read 1 · Recall 1. It
-  // corrected itself only when something else invalidated the block, which is
-  // why leaving the tab and coming back appeared to fix it. Naming counts and
-  // $activeReading here is what makes the chain re-run when they arrive.
-  $: nextKind =
-    counts.read > 0 || $activeReading
-      ? 'read'
-      : counts.process > 0
-        ? 'process'
-        : counts.recall > 0
-          ? 'recall'
-          : 'empty'
-
-  async function onProcessAdvance() { await refresh(); await loadProcess(); if ($studyFocus === 'next' && !processId) await advanceNext() }
+  // An Extract action ends the Turn; in Next the queue decides what follows.
+  async function onProcessAdvance() {
+    if ($studyFocus === 'next') return enter('next')
+    await refresh()
+    await loadProcess()
+  }
+  // A grade ends a Card Turn. In Next the Card GradeItem returns is ignored:
+  // following it would keep Next on Cards for as long as any are due.
   async function onRecallGrade(n) {
     if (!recallCard) return
+    let following = null
     try {
-      recallCard = (await GradeItem(recallCard.id, n, Date.now() - recallShownAt)) ?? null
-      recallShownAt = Date.now()
-    } catch (e) { error = String(e?.message ?? e) }
+      following = (await GradeItem(recallCard.id, n, Date.now() - recallShownAt)) ?? null
+    } catch (e) { error = String(e?.message ?? e); return }
+    if ($studyFocus === 'next') return enter('next')
+    recallCard = following
+    recallShownAt = Date.now()
     await refresh()
-    if ($studyFocus === 'next' && !recallCard) await advanceNext()
   }
-  async function advanceNext() { await enter('next') }
 
   // A chat is persisted nowhere, so closing Study destroys it. Both exits ask
   // first: this is the only place the conversation can be lost without the user
@@ -182,7 +192,7 @@
   {#if error}<div class="ss-error">{error}</div>{/if}
 
   <div class="ss-body">
-    {#if $studyFocus === 'read' || ($studyFocus === 'next' && nextKind === 'read')}
+    {#if $studyFocus === 'read' || ($studyFocus === 'next' && turn?.kind === 'source')}
       <div class="ss-read">
         <SourcesSidebar
           bind:this={sidebar}
@@ -204,13 +214,13 @@
           {/if}
         </div>
       </div>
-    {:else if $studyFocus === 'process' || ($studyFocus === 'next' && nextKind === 'process')}
+    {:else if $studyFocus === 'process' || ($studyFocus === 'next' && turn?.kind === 'extract')}
       {#if processId}
         {#key processId}<ProcessView extractId={processId} onAdvance={onProcessAdvance} />{/key}
       {:else}
         <div class="ss-empty">No extracts to process.</div>
       {/if}
-    {:else if $studyFocus === 'recall' || ($studyFocus === 'next' && nextKind === 'recall')}
+    {:else if $studyFocus === 'recall' || ($studyFocus === 'next' && turn?.kind === 'card')}
       <RecallCard card={recallCard} onGrade={onRecallGrade} />
     {:else if $studyFocus === 'stats'}
       <StatsPanel />

@@ -19,6 +19,9 @@ along with themes, an LLM integration and the first packaged binaries.
   image and promote it to a picture fact.
 - **Incremental reading (Phase 2).** A sources sidebar with extract trees, PDF,
   text, web and LLM sources, and media and LaTeX in the Read tab.
+- **Next mixes the queue.** Sources, extracts and cards take turns by a mix you
+  set per collection in Stats (default 20 / 15 / 65), so a reading backlog no
+  longer holds back reviews that are due.
 - **Study.** Statistics with readable charts, media and math on flashcards, and
   card provenance back to the line that produced it.
 - **Ask the graph in plain language.** An LLM turns a question into a query,
