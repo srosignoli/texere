@@ -27,7 +27,9 @@ const NONE = Symbol('none')
 // Notebook changes; notebook is null while unknown, absent, not shown or ownId.
 export function createCaretNotebook({
   peek, onFocus, fallbackId = null, ownId = null, shown = true, delayMs = 150,
-  timers = { set: setTimeout, clear: clearTimeout },
+  // Wrapped, not passed bare: called as timers.set(...), a bare setTimeout gets
+  // `this` = timers, which the webview rejects outright.
+  timers = { set: (fn, ms) => setTimeout(fn, ms), clear: (id) => clearTimeout(id) },
 }) {
   let spans = []
   let line = 0          // last line resolved, re-used when spans or visibility change

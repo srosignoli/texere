@@ -157,3 +157,30 @@ test('setSpans without a line resolves at the latest reported caret line', async
   s.cn.setSpans(SPANS)          // the reload lands first
   assert.equal(s.last().id, 'b')
 })
+
+// Browsers refuse a setTimeout called with any `this` but the window
+// ("Can only call Window.setTimeout on instances of Window"); Node does not, so
+// the default timers have to be checked against a setTimeout that behaves like
+// the webview's.
+test('the default timers call setTimeout the way a browser allows', async () => {
+  const real = { set: globalThis.setTimeout, clear: globalThis.clearTimeout }
+  function strict(fn) {
+    return function (...args) {
+      if (this !== undefined && this !== globalThis) throw new TypeError('Can only call Window.setTimeout on instances of Window')
+      return fn(...args)
+    }
+  }
+  globalThis.setTimeout = strict(real.set)
+  globalThis.clearTimeout = strict(real.clear)
+  try {
+    const p = peeker()
+    const cn = createCaretNotebook({ peek: p.peek, onFocus: () => {}, delayMs: 0 })
+    cn.setSpans(SPANS)
+    cn.caret(2)
+    cn.caret(6)
+    cn.destroy()
+  } finally {
+    globalThis.setTimeout = real.set
+    globalThis.clearTimeout = real.clear
+  }
+})
