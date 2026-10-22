@@ -99,7 +99,8 @@ Full setup, cross-compilation and the test matrix are in
 | [docs/quickstart.md](docs/quickstart.md) | Developer setup, build, test, project layout |
 | [docs/query-language.md](docs/query-language.md) | Query syntax and the ask box |
 | [docs/Texere_Specification_v1.3.md](docs/Texere_Specification_v1.3.md) | The long-form design document. Aspirational — much of it is unbuilt, and ROADMAP.md says which parts are queued |
-| [specs/](specs/) | Per-feature specs, plans and tasks |
+| [docs/specs/](docs/specs/), [docs/plans/](docs/plans/) | Design specs and implementation plans, one per feature or change |
+| [docs/principles.md](docs/principles.md) | The project's founding principles: plain-text N4L as the source of truth, one self-contained binary, … |
 
 ## Licence
 

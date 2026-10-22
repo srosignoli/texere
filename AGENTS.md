@@ -1,6 +1,6 @@
 # texere Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-05-04
+The project's founding principles (plain-text N4L as the source of truth, one self-contained binary, …) are in `docs/principles.md`; the rules below follow from them.
 
 ## Active Technologies
 - Go 1.22 (enforced via `go.mod`) + `github.com/fsnotify/fsnotify` v1.7 (pure Go, cross-platform inotify/ReadDirectoryChanges/kqueue); standard library `hash/fnv` for node IDs; `bufio` for streaming line reads (002-n4l-parser)
@@ -50,7 +50,7 @@ make clean           # Remove build artifacts
 
 - Skills come from the **mattpocock-skills** plugin only (`grilling`, `domain-modeling`, `codebase-design`, `tdd`, `writing-for-agents`, …): use them for design, refactoring and implementation work.
 - The domain glossary is `CONTEXT.md`; when `domain-modeling` says `GLOSSARY.md`, it means this file.
-- Specs go in `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`, plans in `docs/superpowers/plans/YYYY-MM-DD-<topic>.md`.
+- Specs go in `docs/specs/YYYY-MM-DD-<topic>-design.md`, plans in `docs/plans/YYYY-MM-DD-<topic>.md`, ADRs in `docs/adr/`: folders named for what the documents are.
 
 ## Recent Changes
 - 006-isometric-graph-explorer: Added Go 1.22 (backend, layout engine + Wails bindings); JavaScript/Svelte 3.49 (frontend); pinned via existing `go.mod` and `frontend/package.json`.
