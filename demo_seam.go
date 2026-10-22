@@ -48,21 +48,21 @@ func (a *App) DemoImportPdfSource(path string) (*ReadingView, error) {
 }
 
 // DemoImportImage ingests the image at path, skipping the dialog that
-// ImportImage would open. Returns {asset, mime}, which is what the notebook's
-// "+ Scan" button feeds to newImageCell.
-func (a *App) DemoImportImage(path string) (map[string]any, error) {
+// ImportImage would open. Returns the AssetRef the notebook's "+ Scan" button
+// feeds to newImageCell.
+func (a *App) DemoImportImage(path string) (*AssetRef, error) {
 	return a.importImageFrom(path)
 }
 
 // DemoImportAudio ingests the audio file at path, skipping the dialog that
-// ImportAudio would open. Returns {asset, mime, durationMs} — what the audio
-// cell's Import button hands to the cell.
+// ImportAudio would open. Returns the AssetRef the audio cell's Import button
+// hands to the cell.
 //
 // The recording half of that cell cannot be scripted at all: it goes through
 // MediaRecorder and a real capture device, which this seam deliberately does
 // not fake. Importing a file is the other half of the same feature, and it is
 // the half someone arriving with a memo from their phone actually uses.
-func (a *App) DemoImportAudio(path string) (map[string]any, error) {
+func (a *App) DemoImportAudio(path string) (*AssetRef, error) {
 	return a.importAudioFrom(path)
 }
 

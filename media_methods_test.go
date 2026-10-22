@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -80,12 +81,12 @@ func TestFetchMediaURLStoresAsset(t *testing.T) {
 	if err != nil {
 		t.Fatalf("FetchMediaURL: %v", err)
 	}
-	name, _ := got["asset"].(string)
+	name := got.Asset
 	if name == "" {
 		t.Fatalf("no asset in %+v", got)
 	}
-	if got["mime"] != "image/png" {
-		t.Errorf("mime = %v, want image/png", got["mime"])
+	if got.Mime != "image/png" {
+		t.Errorf("mime = %v, want image/png", got.Mime)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "media", name)); err != nil {
 		t.Errorf("asset not on disk: %v", err)
@@ -104,7 +105,19 @@ func TestFetchMediaURLPassesKindThrough(t *testing.T) {
 	if err != nil {
 		t.Fatalf("FetchMediaURL: %v", err)
 	}
-	if got["mime"] != "audio/wav" {
-		t.Errorf("mime = %v, want audio/wav", got["mime"])
+	if got.Mime != "audio/wav" {
+		t.Errorf("mime = %v, want audio/wav", got.Mime)
+	}
+}
+
+// The notebook reads ref.asset and ref.mime (NotebookPane, MediaSearchPanel,
+// AudioCell). Those two keys, and only those, are the contract.
+func TestAssetRefSerialisesToTheKeysTheFrontendReads(t *testing.T) {
+	b, err := json.Marshal(AssetRef{Asset: "a1b2.png", Mime: "image/png"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := string(b), `{"asset":"a1b2.png","mime":"image/png"}`; got != want {
+		t.Errorf("AssetRef JSON = %s, want %s", got, want)
 	}
 }

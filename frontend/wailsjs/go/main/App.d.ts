@@ -43,7 +43,7 @@ export function ExplorerOpen(arg1:string,arg2:string):Promise<explorer.LayoutRes
 
 export function ExplorerReanchor(arg1:string,arg2:string,arg3:string):Promise<explorer.LayoutResult>;
 
-export function FetchMediaURL(arg1:string,arg2:string):Promise<Record<string, any>>;
+export function FetchMediaURL(arg1:string,arg2:string):Promise<main.AssetRef>;
 
 export function FileNodeSpans(arg1:string):Promise<Array<content.NodeSpan>>;
 
@@ -97,9 +97,9 @@ export function GradeItem(arg1:string,arg2:number,arg3:number):Promise<learning.
 
 export function GraphLayout(arg1:string,arg2:string):Promise<explorer.LayoutResult>;
 
-export function ImportAudio():Promise<Record<string, any>>;
+export function ImportAudio():Promise<main.AssetRef>;
 
-export function ImportImage():Promise<Record<string, any>>;
+export function ImportImage():Promise<main.AssetRef>;
 
 export function ImportPdfSource():Promise<main.ReadingView>;
 
@@ -155,7 +155,7 @@ export function SaveLLMProfile(arg1:main.LLMProfile):Promise<void>;
 
 export function SaveNotebook(arg1:string,arg2:string):Promise<void>;
 
-export function SaveRecording(arg1:string,arg2:string):Promise<Record<string, any>>;
+export function SaveRecording(arg1:string,arg2:string):Promise<main.AssetRef>;
 
 export function SaveSTTProfile(arg1:main.LLMProfile):Promise<void>;
 

@@ -118,10 +118,10 @@ func TestImportImageFromIngestsAPathWithoutADialog(t *testing.T) {
 	if err != nil || got == nil {
 		t.Fatalf("importImageFrom got=%v err=%v", got, err)
 	}
-	if got["mime"] != "image/png" {
-		t.Fatalf("mime = %v, want image/png", got["mime"])
+	if got.Mime != "image/png" {
+		t.Fatalf("mime = %v, want image/png", got.Mime)
 	}
-	asset, _ := got["asset"].(string)
+	asset := got.Asset
 	if asset == "" {
 		t.Fatal("asset name empty")
 	}
@@ -153,7 +153,7 @@ func TestImportAudioFromIngestsAPathWithoutADialog(t *testing.T) {
 	if err != nil || got == nil {
 		t.Fatalf("importAudioFrom got=%v err=%v", got, err)
 	}
-	asset, _ := got["asset"].(string)
+	asset := got.Asset
 	if asset == "" {
 		t.Fatal("asset name empty")
 	}
