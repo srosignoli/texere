@@ -1,4 +1,6 @@
 <script>
+  import { ATTACHABLE_TYPES } from '../../lib/cell-schema.js'
+  import { cellLabel } from '../../lib/cell-label.js'
   import { onMount, onDestroy } from 'svelte'
   import { GetLLMConfig, ListSkills } from '../../../wailsjs/go/main/App'
   import { streamTurn } from '../../lib/llm.js'
@@ -189,11 +191,11 @@
     </select>
   </div>
 
-  {#if !readOnly && cells.filter((c) => c.id !== cell.id && ['n4l', 'llm', 'graph', 'compute', 'sketch', 'image'].includes(c.type)).length}
+  {#if !readOnly && cells.filter((c) => c.id !== cell.id && ATTACHABLE_TYPES.includes(c.type)).length}
     <div class="attach">
       <span>Attach context:</span>
-      {#each cells.filter((c) => c.id !== cell.id && ['n4l', 'llm', 'graph', 'compute', 'sketch', 'image'].includes(c.type)) as c}
-        <label><input type="checkbox" checked={(cell.attachments ?? []).includes(c.id)} on:change={() => toggleAttach(c.id)} /> {c.type === 'n4l' ? 'draft' : c.type === 'graph' ? 'graph' : c.type === 'compute' ? 'compute' : c.type === 'sketch' ? 'sketch' : c.type === 'image' ? 'image' : 'llm'} {c.id.slice(-4)}</label>
+      {#each cells.filter((c) => c.id !== cell.id && ATTACHABLE_TYPES.includes(c.type)) as c}
+        <label><input type="checkbox" checked={(cell.attachments ?? []).includes(c.id)} on:change={() => toggleAttach(c.id)} /> {cellLabel(c)} {c.id.slice(-4)}</label>
       {/each}
     </div>
   {/if}

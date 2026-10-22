@@ -1,4 +1,5 @@
 <script>
+  import { pickMediaAsset } from '../../lib/cell-schema.js'
   import MediaSearchPanel from './MediaSearchPanel.svelte'
   import MediaImageView from './media/MediaImageView.svelte'
   import MediaAudioView from './media/MediaAudioView.svelte'
@@ -28,24 +29,7 @@
   function clearCrop() { cell.crop = null; cell = cell; persist() }
 
   function onPick(result, ref) {
-    cell.asset = ref.asset
-    cell.mime = ref.mime
-    cell.kind = result.kind || 'image'
-    cell.provider = result.provider ?? cell.provider
-    cell.sourcePage = result.sourcePage ?? ''
-    cell.license = result.license ?? ''
-    // The thing you searched for is the thing the fact will be about.
-    if (!cell.subject) cell.subject = cell.query.trim()
-    // A crop is fractions of the OLD frame; carrying it onto a differently
-    // framed picture silently mis-crops it, so drop it with the asset.
-    cell.crop = null
-    cell.naturalW = 0
-    cell.naturalH = 0
-    cell.embedURL = result.embedURL ?? ''
-    cell.playerKind = result.playerKind ?? ''
-    cell.title = result.title ?? ''
-    cell.startSec = 0
-    cell.durationMs = result.durationMs ?? 0
+    pickMediaAsset(cell, result, ref)
     cell = cell
     replacing = false
     cropping = false

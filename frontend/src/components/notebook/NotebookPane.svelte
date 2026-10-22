@@ -1,7 +1,8 @@
 <script>
   import { createEventDispatcher, onDestroy } from 'svelte'
   import { OpenNotebook, GetNotebook, SaveNotebook, ImportImage } from '../../../wailsjs/go/main/App'
-  import { newDraftCell, newLLMCell, newGraphCell, newComputeCell, newSketchCell, newImageCell, newAudioCell, newMediaCell, newShellCell, cellRegistry } from '../../lib/notebook.js'
+  import { newDraftCell, newLLMCell, newGraphCell, newComputeCell, newSketchCell, newImageCell, newAudioCell, newMediaCell, newShellCell } from '../../lib/cell-schema.js'
+  import { cellRegistry } from '../../lib/notebook.js'
   import { cellLabel } from '../../lib/cell-label.js'
   import { cellPreview } from '../../lib/cell-preview.js'
   import ContextCell from './ContextCell.svelte'
