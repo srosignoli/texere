@@ -10,6 +10,11 @@ predates that and is left as it is.
 Two large features landed — the processing notebook and incremental reading —
 along with themes, an LLM integration and the first packaged binaries.
 
+Release candidates: `v0.2.0-rc.1` (2026-10-14), `v0.2.0-rc.2` (2026-10-22).
+rc.2 adds the mixed study queue, a round of fixes to reading and the notebook,
+and an architecture refactor that moves policy out of the views and bindings
+into tested modules (see Internal).
+
 ### Added
 
 - **Processing notebook.** A cell-based overlay on any note: N4L draft, LLM,
@@ -50,6 +55,16 @@ along with themes, an LLM integration and the first packaged binaries.
 - A race in the file watcher when a file was added.
 - Dialogs are drawn by the app, so the theme reaches them. Prose is no longer
   centred by default.
+- A failed source import left its notes file in `reading/`, where the graph and
+  the linter took it for a stray note. A failed import now leaves nothing behind.
+- A notebook whose autosave failed said nothing, and its edits existed only in
+  memory. It now shows "Notebook not saved: …" until a save succeeds.
+- The LLM cell's "Attach context" list named cells differently from their
+  headers ("draft", "image"). It now uses the header names ("N4L draft", "Scan").
+- In a collection copied from elsewhere, an extract or card whose stored path
+  still pointed at the original showed up with that raw path. It is now left
+  out of the lists and logged; nothing is ever read or written outside the open
+  collection.
 - A line with several arrows is a chain, as in upstream N4L: `A (r1) B (r2) C`
   now builds A→B and B→C. It used to build A→B and A→C, in the graph, in
   search and in the explorer.
@@ -59,6 +74,35 @@ along with themes, an LLM integration and the first packaged binaries.
   line, not its parent node.
 
 ### Internal
+
+- **Architecture refactor.** Policy that lived in Svelte views and Wails bindings
+  moved into modules with tests at their interface:
+  - **Sitting** (`internal/sitting`): ending a reading (the order of its writes,
+    the peek rule, idempotence) in one backend module. ReadingView reports what
+    happened instead of re-implementing it three times.
+  - **Study Queue** (`internal/learning/queue.go`): Next's scheduling, out of
+    `StudySurface.svelte`. Whether a source is due is decided in Go only.
+  - **The learning store speaks absolute paths**: every read returns them and
+    every write takes them, with one policy for rows outside the collection,
+    replacing about twenty per-binding conversions.
+  - **`source.Register`**: the one way a source enters a collection, behind the
+    text, PDF, web and LLM imports.
+  - **Frontend logic in `frontend/src/lib/`**, testable without Svelte: the
+    notebook cell schema, the notebook autosave, caret→notebook resolution, and
+    the reader's end and switch rules.
+  - Notebook dots: the text-keyed push-provenance system was removed; every dot
+    means "this node has a notebook".
+  - The media bindings return a typed `AssetRef`.
+- **learning.db schema v10.** v9 drops `notebook_links` (push provenance that
+  nothing read any more) and v10 adds `study_settings` (the mix). Collections
+  upgrade on open. A collection opened by this version should not be opened by
+  an older one.
+- **Docs.** Specs live in `docs/specs/`, plans in `docs/plans/`, and the
+  project's founding principles in `docs/principles.md`. The spec-kit scaffolding
+  they came from is removed, and `CONTEXT.md` gains the study and notebook
+  vocabulary (Sitting, Turn, Mix, Study Queue, Notebook, Push, …).
+- The pre-commit hook's demo-shim check silently passed whenever more than one
+  generated binding was staged. It now checks them all.
 
 - A selector contract covering every surface, plus a recording kit that drives
   the real app under Playwright for demo videos. A hook keeps the demo seam out
