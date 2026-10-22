@@ -954,6 +954,20 @@ export namespace llm {
 
 export namespace main {
 	
+	export class AssetRef {
+	    asset: string;
+	    mime: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AssetRef(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.asset = source["asset"];
+	        this.mime = source["mime"];
+	    }
+	}
 	export class BuildGraphResult {
 	    nodesIngested: number;
 	    linksIngested: number;

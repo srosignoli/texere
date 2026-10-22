@@ -70,10 +70,19 @@ func (a *App) ListLanguages() []mediasearch.Language {
 	return mediasearch.Languages()
 }
 
+// AssetRef is a media file stored in the collection's media/ directory, as
+// the notebook's cells refer to it: the asset's name and its MIME type.
+type AssetRef struct {
+	Asset string `json:"asset"`
+	Mime  string `json:"mime"`
+}
+
+func toAssetRef(a media.Asset) *AssetRef { return &AssetRef{Asset: a.Name, Mime: a.Mime} }
+
 // FetchMediaURL downloads rawURL into the collection's media/ directory and
-// returns {asset, mime}. kind is "image" or "audio". Serves both "clicked a
+// returns its AssetRef. kind is "image" or "audio". Serves both "clicked a
 // search result" and "pasted a URL" — they are the same operation.
-func (a *App) FetchMediaURL(rawURL, kind string) (map[string]any, error) {
+func (a *App) FetchMediaURL(rawURL, kind string) (*AssetRef, error) {
 	dir, err := a.currentDir()
 	if err != nil {
 		return nil, err
@@ -82,5 +91,5 @@ func (a *App) FetchMediaURL(rawURL, kind string) (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return map[string]any{"asset": asset.Name, "mime": asset.Mime}, nil
+	return toAssetRef(asset), nil
 }

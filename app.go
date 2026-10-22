@@ -188,10 +188,10 @@ func (a *App) LintCollection() (content.LintResult, error) {
 }
 
 // ImportImage opens the OS file dialog, copies the chosen image into the
-// collection's media/ directory, and returns {asset, mime}. Returns (nil, nil)
+// collection's media/ directory, and returns its AssetRef. Returns (nil, nil)
 // when the user cancels, and an error when no collection is open or the file is
 // not a supported image.
-func (a *App) ImportImage() (map[string]any, error) {
+func (a *App) ImportImage() (*AssetRef, error) {
 	_, err := a.currentDir()
 	if err != nil {
 		return nil, err
@@ -213,7 +213,7 @@ func (a *App) ImportImage() (map[string]any, error) {
 
 // importImageFrom is the ingest half of ImportImage: everything after a path
 // has been chosen. Unexported, so Wails generates no JS binding for it.
-func (a *App) importImageFrom(sel string) (map[string]any, error) {
+func (a *App) importImageFrom(sel string) (*AssetRef, error) {
 	dir, err := a.currentDir()
 	if err != nil {
 		return nil, err
@@ -225,13 +225,13 @@ func (a *App) importImageFrom(sel string) (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return map[string]any{"asset": asset.Name, "mime": asset.Mime}, nil
+	return toAssetRef(asset), nil
 }
 
 // ImportAudio opens the OS file dialog (audio filter), copies the chosen file
-// into media/, and returns {asset, mime}. (nil, nil) on cancel; error if no
+// into media/, and returns its AssetRef. (nil, nil) on cancel; error if no
 // collection is open or the type is unsupported.
-func (a *App) ImportAudio() (map[string]any, error) {
+func (a *App) ImportAudio() (*AssetRef, error) {
 	_, err := a.currentDir()
 	if err != nil {
 		return nil, err
@@ -253,7 +253,7 @@ func (a *App) ImportAudio() (map[string]any, error) {
 
 // importAudioFrom is the ingest half of ImportAudio: everything after a path
 // has been chosen. Unexported, so Wails generates no JS binding for it.
-func (a *App) importAudioFrom(sel string) (map[string]any, error) {
+func (a *App) importAudioFrom(sel string) (*AssetRef, error) {
 	dir, err := a.currentDir()
 	if err != nil {
 		return nil, err
@@ -265,12 +265,12 @@ func (a *App) importAudioFrom(sel string) (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return map[string]any{"asset": asset.Name, "mime": asset.Mime}, nil
+	return toAssetRef(asset), nil
 }
 
 // SaveRecording decodes base64 audio bytes from an in-app recording and stores
-// them in media/, returning {asset, mime}.
-func (a *App) SaveRecording(dataBase64, mime string) (map[string]any, error) {
+// them in media/, returning its AssetRef.
+func (a *App) SaveRecording(dataBase64, mime string) (*AssetRef, error) {
 	dir, err := a.currentDir()
 	if err != nil {
 		return nil, err
@@ -283,7 +283,7 @@ func (a *App) SaveRecording(dataBase64, mime string) (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return map[string]any{"asset": asset.Name, "mime": asset.Mime}, nil
+	return toAssetRef(asset), nil
 }
 
 // ParseFileForUI is a Wails-bound method that parses a .n4l file and returns
