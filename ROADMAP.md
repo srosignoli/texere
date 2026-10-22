@@ -2,7 +2,7 @@
 
 Direction, not commitment. No dates.
 
-An item moves to `docs/superpowers/specs/` when it gets designed, and to
+An item moves to `docs/specs/` when it gets designed, and to
 [CHANGELOG.md](CHANGELOG.md) when it ships. Small work — the kind that becomes a
 numbered branch and a merge commit — does not appear here.
 

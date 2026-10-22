@@ -299,7 +299,7 @@ func (a *App) ParseFileForUI(path string) (*content.ParsedFile, []content.ParseE
 
 // =============================================================================
 // 2.5D Isometric Graph Explorer (feature 006) — Wails IPC surface.
-// See docs/superpowers/specs/006-isometric-graph-explorer/contracts/layout-ipc.md for the
+// See docs/specs/006-isometric-graph-explorer/contracts/layout-ipc.md for the
 // full contract: error model, lifecycle, and JSON shapes.
 // =============================================================================
 

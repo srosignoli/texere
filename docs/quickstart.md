@@ -140,7 +140,7 @@ texere/
 | Add a UI component or view | `frontend/src/` |
 | Expose a backend function to the UI | `app.go` (add a method to `App`) |
 
-### Layer rules (from the [Texere Constitution](.specify/memory/constitution.md))
+### Layer rules (from the [Texere Constitution](principles.md))
 
 - Only `internal/content/` may read or write `.n4l` files.
 - `internal/graph/` and `internal/learning/` are derived caches — they MUST be
