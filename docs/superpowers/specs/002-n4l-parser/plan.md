@@ -1,7 +1,7 @@
 # Implementation Plan: N4L File Parser — Layer I Content I/O
 
 **Branch**: `002-n4l-parser` | **Date**: 2026-04-07 | **Spec**: [spec.md](spec.md)  
-**Input**: Feature specification from `/specs/002-n4l-parser/spec.md`
+**Input**: Feature specification from `/docs/superpowers/specs/002-n4l-parser/spec.md`
 
 ## Summary
 
@@ -52,7 +52,7 @@ its decode path; all structured writes to `.n4l` files flow through its write-ba
 ### Documentation (this feature)
 
 ```text
-specs/002-n4l-parser/
+docs/superpowers/specs/002-n4l-parser/
 ├── plan.md              # This file
 ├── research.md          # Phase 0 output
 ├── data-model.md        # Phase 1 output

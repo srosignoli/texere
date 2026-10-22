@@ -4,7 +4,7 @@ description: "Tasks for 006-isometric-graph-explorer"
 
 # Tasks: 2.5D Isometric Graph Explorer
 
-**Input**: Design documents from `/specs/006-isometric-graph-explorer/`
+**Input**: Design documents from `/docs/superpowers/specs/006-isometric-graph-explorer/`
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
 
 **Tests**: Tests are REQUIRED for the Go layout engine per the project Constitution (§Development Workflow: "All public APIs and scheduling algorithms MUST have unit tests"). They are NOT generated for the frontend; UI behavior is verified by [quickstart.md](./quickstart.md) scenarios.

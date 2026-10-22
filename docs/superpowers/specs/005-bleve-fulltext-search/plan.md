@@ -1,7 +1,7 @@
 # Implementation Plan: Replace text matching with Bleve full-text search engine
 
 **Branch**: `005-bleve-fulltext-search` | **Date**: 2026-04-25 | **Spec**: [spec.md](spec.md)
-**Input**: Feature specification from `/specs/005-bleve-fulltext-search/spec.md`
+**Input**: Feature specification from `/docs/superpowers/specs/005-bleve-fulltext-search/spec.md`
 
 ## Summary
 
@@ -59,7 +59,7 @@ Add a Bleve-backed full-text matcher to SSTorytime-KV (library-owned per clarifi
 ### Documentation (this feature)
 
 ```text
-specs/005-bleve-fulltext-search/
+docs/superpowers/specs/005-bleve-fulltext-search/
 ├── plan.md                       # This file
 ├── research.md                   # Phase 0 — Bleve API choices, analyzer config, ordering, error model
 ├── data-model.md                 # Phase 1 — index document schema, Go types, query AST
@@ -105,7 +105,7 @@ frontend/src/components/
 
 .gitignore                        # MODIFY — add `bleve/` and `*.bleve/` patterns.
 
-specs/005-bleve-fulltext-search/  # This feature's spec dir (already created)
+docs/superpowers/specs/005-bleve-fulltext-search/  # This feature's spec dir (already created)
 ```
 
 **Structure Decision**: Library-owned Bleve integration per clarification Q1. The library grows two new files (`bleve_index.go` for lifecycle + query API, `bleve_translate.go` for the operator-grammar parser) plus tests. The library's existing `SearchNodesByName` and `GetDBNodePtrMatchingNCCS` become thin wrappers that delegate to the new `Index.Search` when a Bleve index is available, falling back to the existing substring matcher only as a transition path during the migration window — but **at v1.0 of this feature**, callers must always pass an Index, and the substring matcher is removed (clarification Q4: no fallback). Texere's changes are local to two files in `internal/search/` and one in `internal/graph/`.

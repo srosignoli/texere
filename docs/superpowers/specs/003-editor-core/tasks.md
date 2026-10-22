@@ -1,6 +1,6 @@
 # Tasks: Editor Core — Hybrid Band Layout Workbench
 
-**Input**: Design documents from `/specs/003-editor-core/`
+**Input**: Design documents from `/docs/superpowers/specs/003-editor-core/`
 **Prerequisites**: plan.md ✅ spec.md ✅ research.md ✅ data-model.md ✅ contracts/wails-bridge.md ✅
 
 **Tests**: Not requested — no test tasks included.

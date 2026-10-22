@@ -4,7 +4,7 @@ description: "Task list for 001-project-scaffold"
 
 # Tasks: Project Scaffold
 
-**Input**: Design documents from `/specs/001-project-scaffold/`
+**Input**: Design documents from `/docs/superpowers/specs/001-project-scaffold/`
 **Prerequisites**: plan.md ✅, spec.md ✅, research.md ✅, data-model.md ✅, contracts/build-contract.md ✅, quickstart.md ✅
 
 **Tests**: No test tasks generated (not explicitly requested in spec). One smoke test (app_test.go) is included as part of US2 quality-gate infrastructure.
@@ -85,7 +85,7 @@ description: "Task list for 001-project-scaffold"
 - [x] T012 [P] [US3] Create internal/content/doc.go with package declaration `package content` and doc comment: "Package content implements Layer I of the Texere architecture: reading, writing, and parsing .n4l knowledge files. Only this package may read or write .n4l files." at internal/content/doc.go
 - [x] T013 [P] [US3] Create internal/graph/doc.go with package declaration `package graph` and doc comment: "Package graph implements Layer II of the Texere architecture: knowledge graph storage and querying via BadgerDB. This is a derived cache — always rebuildable from the content layer." at internal/graph/doc.go
 - [x] T014 [P] [US3] Create internal/learning/doc.go with package declaration `package learning` and doc comment: "Package learning implements Layer III of the Texere architecture: FSRS spaced-repetition scheduling state via SQLite. This is a derived store — losing it causes history loss but not knowledge loss." at internal/learning/doc.go
-- [x] T015 [US3] Create docs/quickstart.md from specs/001-project-scaffold/quickstart.md: copy content and adjust any spec-relative paths to repo-root-relative paths; ensure the "Project Structure" section reflects the actual generated tree and the "Where to add new features" table lists all four layers at docs/quickstart.md (depends on T012, T013, T014)
+- [x] T015 [US3] Create docs/quickstart.md from docs/superpowers/specs/001-project-scaffold/quickstart.md: copy content and adjust any spec-relative paths to repo-root-relative paths; ensure the "Project Structure" section reflects the actual generated tree and the "Where to add new features" table lists all four layers at docs/quickstart.md (depends on T012, T013, T014)
 
 **Checkpoint**: User Story 3 complete — docs/quickstart.md exists; internal/ tree has all three layer stubs with constitutional doc comments.
 

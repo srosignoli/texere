@@ -1,6 +1,6 @@
 # Tasks: Unified Search Bar with SSTorytime-KV Graph Integration
 
-**Input**: Design documents from `/specs/004-unified-search-graph/`  
+**Input**: Design documents from `/docs/superpowers/specs/004-unified-search-graph/`  
 **Prerequisites**: plan.md ✅, spec.md ✅, research.md ✅, data-model.md ✅, contracts/search-binding.md ✅, quickstart.md ✅
 
 **Tests**: Not requested in spec — no test tasks generated.
@@ -29,7 +29,7 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [X] T003 Create `internal/search/types.go` with all result types as specified in `specs/004-unified-search-graph/data-model.md`: `SearchResult`, `GraphNode`, `OrbitEntry`, `StructuralChain`, `ChainNode`, `ListingItem`; ensure all slice fields are initialized as non-nil empty slices (`[]GraphNode{}` etc.) when zero-valued, enforced via a `NewSearchResult()` constructor
+- [X] T003 Create `internal/search/types.go` with all result types as specified in `docs/superpowers/specs/004-unified-search-graph/data-model.md`: `SearchResult`, `GraphNode`, `OrbitEntry`, `StructuralChain`, `ChainNode`, `ListingItem`; ensure all slice fields are initialized as non-nil empty slices (`[]GraphNode{}` etc.) when zero-valued, enforced via a `NewSearchResult()` constructor
 - [X] T004 Create `internal/search/search.go` with `SearchService` struct (`dbPath string`, `store *badger.BadgerKV`, `pst sst.PoSST`, `mu sync.Mutex`); implement `NewSearchService(collectionDir string) *SearchService` (sets `dbPath = filepath.Join(collectionDir, "sst_data")`), `IsReady() bool` (calls `os.Stat(s.dbPath)`), `Close()` (calls `sst.Close(s.pst)` if store is non-nil), and a stub `Search(query string) (*SearchResult, error)` that returns `NewSearchResult()` with `GraphUnavailable: true`; import `github.com/srosignoli/sstorytime-kv` as `sst`
 - [X] T005 Add `searchSvc *search.SearchService` field to the `App` struct in `app.go`; add `a.searchSvc = search.NewSearchService(cfg.CollectionDir)` in `startup()` after the successful collection load block (after `a.initialSums = summaries`); add the same call in `OpenCollection()` after `a.openFilePath = ""`; add `if a.searchSvc != nil { a.searchSvc.Close() }` in `shutdown()`; add `import "texere/internal/search"` to `app.go`
 - [X] T006 Create `search_methods.go` (package main) with the `SearchGraph(query string) (*search.SearchResult, error)` method on `App`: if `a.searchSvc == nil` return `search.NewSearchResult()` with `GraphUnavailable: true`; otherwise delegate to `a.searchSvc.Search(query)`; import `"texere/internal/search"`
@@ -83,7 +83,7 @@
 - [X] T021 [US3] Implement `routeListing` branch in `internal/search/search.go` for four sub-types: `\chapter any` / `\contents` / `\toc` → call `sst.GetChaptersByChapContext(s.pst, params.Chapter, params.Context, 20)`, return as `ListingItem{Kind: "chapter", Title: chapterName}`; `\notes [chapter]` → call `sst.GetDBPageMap(s.pst, params.Chapter, params.Context, 0)`, return as `ListingItem{Kind: "note-line", Title: pm.Alias, Detail: pm.Chapter}`; `\arrow [term]` → call `sst.GetDBArrowByName(s.pst, params.Name[0])` or `sst.GetDBArrowBySTType(...)`, return as `ListingItem{Kind: "arrow", Title: ad.Short, Detail: ad.Long}`; `\context [term]` → use `GetChaptersByChapContext` with context filter, return as `ListingItem{Kind: "context", Title: tag, Detail: chapterName}`
 - [X] T022 [US3] Extend Tier 2 display in `frontend/src/components/OmniBar.svelte` for `StructuralChain`: render each chain as a collapsible item (chain summary as button, full node sequence shown inline as `A → [arrow] → B → [arrow] → C`); each chain node is independently selectable in `flatResults` as type `'graph-structural'`; extend `navigate()` for `'graph-structural'` using the same enrichment + fileCache lookup as `'graph-node'`
 - [X] T023 [US3] Extend Tier 2 display in `frontend/src/components/OmniBar.svelte` for `ListingItem`: render listing items under a section label matching their kind ("Chapters", "Arrows", "Contexts", "Notes"); type `'graph-listing'`; extend `navigate()` for `'graph-listing'` (navigate if `item.NodeText` non-empty, otherwise no-op)
-- [X] T024 [US3] Update `parseAndRouteQuery` classifier in `internal/search/search.go` to replace the `routeUnimplemented` stubs with the correct `routeStructural` / `routeListing` returns based on the full condition table in `specs/004-unified-search-graph/research.md` §1 "Query Type Classification"
+- [X] T024 [US3] Update `parseAndRouteQuery` classifier in `internal/search/search.go` to replace the `routeUnimplemented` stubs with the correct `routeStructural` / `routeListing` returns based on the full condition table in `docs/superpowers/specs/004-unified-search-graph/research.md` §1 "Query Type Classification"
 
 **Checkpoint**: All query types produce visible results in the overlay. Structural chains display as plain-text sequences. Listing commands show chapter/arrow/context catalogs.
 
@@ -109,7 +109,7 @@
 
 - [X] T028 [P] Run `make build` and `make build-windows` to verify both Linux and Windows cross-compilation succeed with the new `github.com/srosignoli/sstorytime-kv` dependency; fix any CGo or platform-specific issues (pure Go dependency — should be clean)
 - [X] T029 [P] Add CSS styles for the new Tier 2 elements in `frontend/src/components/OmniBar.svelte`: `.graph-loading`, `.graph-unavailable`, `.graph-error`, `.orbit-summary`, `.chain-display` — use the existing colour palette (`#1a2535` background, `#5a7a9a` secondary text, `#e8eaf0` primary text) and match the result-item spacing
-- [X] T030 Run the quickstart verification checklist from `specs/004-unified-search-graph/quickstart.md` §"Step 6: Verify" in `make dev` mode: test each scenario (Tier 1 regression, Tier 2 unavailable, Tier 2 available, navigation, structural, listing); confirm all pass before marking the feature complete
+- [X] T030 Run the quickstart verification checklist from `docs/superpowers/specs/004-unified-search-graph/quickstart.md` §"Step 6: Verify" in `make dev` mode: test each scenario (Tier 1 regression, Tier 2 unavailable, Tier 2 available, navigation, structural, listing); confirm all pass before marking the feature complete
 
 ---
 

@@ -1,7 +1,7 @@
 # Implementation Plan: Project Scaffold
 
 **Branch**: `001-project-scaffold` | **Date**: 2026-04-06 | **Spec**: [spec.md](spec.md)
-**Input**: Feature specification from `/specs/001-project-scaffold/spec.md`
+**Input**: Feature specification from `/docs/superpowers/specs/001-project-scaffold/spec.md`
 
 ## Summary
 
@@ -42,7 +42,7 @@ mingw-w64, passes all Go tests and linter checks, and runs fully automated on Gi
 ### Documentation (this feature)
 
 ```text
-specs/001-project-scaffold/
+docs/superpowers/specs/001-project-scaffold/
 ├── plan.md              # This file
 ├── research.md          # Phase 0 output
 ├── data-model.md        # Phase 1 output

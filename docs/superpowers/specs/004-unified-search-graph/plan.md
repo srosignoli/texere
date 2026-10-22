@@ -1,7 +1,7 @@
 # Implementation Plan: Unified Search Bar with SSTorytime-KV Graph Integration
 
 **Branch**: `004-unified-search-graph` | **Date**: 2026-04-17 | **Spec**: [spec.md](spec.md)  
-**Input**: Feature specification from `/specs/004-unified-search-graph/spec.md`
+**Input**: Feature specification from `/docs/superpowers/specs/004-unified-search-graph/spec.md`
 
 ## Summary
 
@@ -40,7 +40,7 @@ Extend the existing `OmniBar.svelte` overlay (which already implements Ctrl+K, f
 ### Documentation (this feature)
 
 ```text
-specs/004-unified-search-graph/
+docs/superpowers/specs/004-unified-search-graph/
 ├── plan.md              # This file
 ├── research.md          # Phase 0 — SSTorytime-KV API, architecture decisions
 ├── data-model.md        # Phase 1 — Go types, frontend state additions

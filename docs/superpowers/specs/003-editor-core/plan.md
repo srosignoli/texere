@@ -1,7 +1,7 @@
 # Implementation Plan: Editor Core — Hybrid Band Layout Workbench
 
-**Branch**: `003-editor-core` | **Date**: 2026-04-09 | **Spec**: `specs/003-editor-core/spec.md`
-**Input**: Feature specification from `/specs/003-editor-core/spec.md`
+**Branch**: `003-editor-core` | **Date**: 2026-04-09 | **Spec**: `docs/superpowers/specs/003-editor-core/spec.md`
+**Input**: Feature specification from `/docs/superpowers/specs/003-editor-core/spec.md`
 
 ## Summary
 
@@ -45,7 +45,7 @@ No violations. Complexity Tracking table not required.
 ### Documentation (this feature)
 
 ```text
-specs/003-editor-core/
+docs/superpowers/specs/003-editor-core/
 ├── plan.md              ← this file
 ├── research.md          ← Phase 0 output
 ├── data-model.md        ← Phase 1 output

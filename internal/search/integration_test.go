@@ -1729,7 +1729,7 @@ func TestSearchService_EmptyName_BypassesBleve(t *testing.T) {
 // Extra hits are allowed (e.g. stemming finds "soups" for "soup"); missing
 // hits are a regression. Baseline captured from commit 173f159 (the branch-cut
 // for feature 005) via cmd/baseline_capture (now removed); JSON committed at
-// specs/005-bleve-fulltext-search/baseline/legacy_queries.json.
+// docs/superpowers/specs/005-bleve-fulltext-search/baseline/legacy_queries.json.
 func TestSearchService_LegacyQueryRegression(t *testing.T) {
 	type baselineHit struct {
 		NodeText string `json:"NodeText"`
@@ -1744,7 +1744,7 @@ func TestSearchService_LegacyQueryRegression(t *testing.T) {
 	// directory is internal/search/, so go up two).
 	_, file, _, _ := runtime.Caller(0)
 	baselinePath := filepath.Join(filepath.Dir(file), "..", "..",
-		"specs", "005-bleve-fulltext-search", "baseline", "legacy_queries.json")
+		"docs", "superpowers", "specs", "005-bleve-fulltext-search", "baseline", "legacy_queries.json")
 
 	data, err := os.ReadFile(baselinePath)
 	if err != nil {

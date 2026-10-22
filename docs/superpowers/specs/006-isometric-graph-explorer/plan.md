@@ -1,7 +1,7 @@
 # Implementation Plan: 2.5D Isometric Graph Explorer
 
 **Branch**: `006-isometric-graph-explorer` | **Date**: 2026-05-04 | **Spec**: [spec.md](./spec.md)
-**Input**: Feature specification from `/specs/006-isometric-graph-explorer/spec.md`
+**Input**: Feature specification from `/docs/superpowers/specs/006-isometric-graph-explorer/spec.md`
 
 ## Summary
 
@@ -80,7 +80,7 @@ Replace the previously planned 2D node-link diagram (feature 004) with a 2.5D is
 ### Documentation (this feature)
 
 ```text
-specs/006-isometric-graph-explorer/
+docs/superpowers/specs/006-isometric-graph-explorer/
 ├── plan.md                 # This file
 ├── research.md             # Phase 0: tech decisions + rationale
 ├── data-model.md           # Phase 1: types & relationships

@@ -9,6 +9,6 @@
 // and emits a JSON LayoutResult consumed by the Three.js frontend.
 //
 // This package writes nothing to disk and never modifies the SSTorytime-KV
-// store. See specs/006-isometric-graph-explorer/ for the spec, plan,
+// store. See docs/superpowers/specs/006-isometric-graph-explorer/ for the spec, plan,
 // data model, and IPC contracts.
 package explorer
