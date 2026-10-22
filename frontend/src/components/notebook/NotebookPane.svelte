@@ -1,7 +1,9 @@
 <script>
   import { createEventDispatcher, onDestroy } from 'svelte'
   import { OpenNotebook, GetNotebook, SaveNotebook, ImportImage } from '../../../wailsjs/go/main/App'
-  import { newDraftCell, newLLMCell, newGraphCell, newComputeCell, newSketchCell, newImageCell, newAudioCell, newMediaCell, newShellCell, cellRegistry } from '../../lib/notebook.js'
+  import { newDraftCell, newLLMCell, newGraphCell, newComputeCell, newSketchCell, newImageCell, newAudioCell, newMediaCell, newShellCell } from '../../lib/cell-schema.js'
+  import { cellRegistry } from '../../lib/notebook.js'
+  import { createAutosave } from '../../lib/autosave.js'
   import { cellLabel } from '../../lib/cell-label.js'
   import { cellPreview } from '../../lib/cell-preview.js'
   import ContextCell from './ContextCell.svelte'
@@ -16,7 +18,17 @@
   let cells = []
   let nbId = null
   let error = ''
-  let saveTimer = null
+  // A failed save is shown, never swallowed: the edits exist only here until
+  // one succeeds. Logged too, because a save on close has no pane left to show.
+  const NOT_SAVED = 'Notebook not saved: '
+  const autosave = createAutosave({
+    save: () => SaveNotebook(nbId, JSON.stringify(cells)),
+    onError: (e) => {
+      error = NOT_SAVED + String(e?.message ?? e)
+      console.error('notebook autosave:', e)
+    },
+    onSaved: () => { if (error.startsWith(NOT_SAVED)) error = '' },
+  })
 
   async function load() {
     error = ''
@@ -31,20 +43,10 @@
   $: if (nodeID || notebookId) load()
 
   function scheduleSave() {
-    if (readOnly) return
-    clearTimeout(saveTimer)
-    saveTimer = setTimeout(() => {
-      saveTimer = null
-      SaveNotebook(nbId, JSON.stringify(cells)).catch(() => {})
-    }, 600)
+    if (readOnly || !nbId) return
+    autosave.schedule()
   }
-  onDestroy(() => {
-    const pending = saveTimer != null
-    clearTimeout(saveTimer)
-    if (pending && !readOnly && nbId) {
-      SaveNotebook(nbId, JSON.stringify(cells)).catch(() => {})
-    }
-  })
+  onDestroy(() => { autosave.flush() })
 
   function addDraft() { cells = [...cells, newDraftCell('')]; scheduleSave() }
   function addLLM() { cells = [...cells, newLLMCell()]; scheduleSave() }

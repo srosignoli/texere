@@ -9,77 +9,7 @@ import AudioCell from '../components/notebook/AudioCell.svelte'
 import MediaCell from '../components/notebook/MediaCell.svelte'
 import ShellCell from '../components/notebook/ShellCell.svelte'
 
-let seq = 0
-export function newDraftCell(text = '') {
-  seq += 1
-  return { id: `cell-${Date.now()}-${seq}`, type: 'n4l', text }
-}
-
-export function newLLMCell() {
-  seq += 1
-  return {
-    id: `cell-${Date.now()}-${seq}`, type: 'llm',
-    skill: 'thinking-partner', skillName: 'Thinking partner',
-    profileId: null, messages: [], attachments: [],
-  }
-}
-
-export function newGraphCell() {
-  seq += 1
-  return { id: `cell-${Date.now()}-${seq}`, type: 'graph', query: '', resultText: '' }
-}
-
-export function newComputeCell() {
-  seq += 1
-  return { id: `cell-${Date.now()}-${seq}`, type: 'compute', language: 'js', code: '', resultText: '' }
-}
-
-export function newSketchCell() {
-  seq += 1
-  return { id: `cell-${Date.now()}-${seq}`, type: 'sketch', height: 240, strokes: [] }
-}
-
-export function newImageCell(asset, mime) {
-  seq += 1
-  return { id: `cell-${Date.now()}-${seq}`, type: 'image', asset, mime, naturalW: 0, naturalH: 0, rotation: 0, crop: null }
-}
-
-export function newAudioCell() {
-  seq += 1
-  return { id: `cell-${Date.now()}-${seq}`, type: 'audio', asset: '', mime: '', durationMs: 0 }
-}
-
-// Media cell: a study asset (picture now; pronunciation and video later) found
-// by web search, pasted URL, or file import. `kind` discriminates the render;
-// `embedURL` is reserved for video, which is referenced rather than stored, so
-// adding it later needs no migration of saved notebooks.
-export function newMediaCell() {
-  seq += 1
-  return {
-    id: `cell-${Date.now()}-${seq}`, type: 'media',
-    kind: 'image',
-    asset: '', mime: '', embedURL: '',
-    playerKind: '',    // 'file' | 'iframe'; video only
-    title: '',         // video only; drives the promoted (note) line
-    startSec: 0,       // video only; the marked moment
-    crop: null, naturalW: 0, naturalH: 0,
-    query: '', subject: '', lang: '',
-    provider: '', sourcePage: '', license: '',
-  }
-}
-
-// Shell cell: runs one command in a chosen OS shell. `shell`/`shellLabel` are
-// the dropdown's id and display text; scrollback is deliberately absent, since
-// it is never persisted. See the shell-cell design doc.
-export function newShellCell() {
-  seq += 1
-  return {
-    id: `cell-${Date.now()}-${seq}`, type: 'shell',
-    shell: '', shellLabel: '', cwd: '', command: '', subject: '',
-  }
-}
-
-// type -> Svelte component. Later slices add: image.
+// type -> Svelte component. The cells themselves are defined in cell-schema.js.
 export const cellRegistry = {
   context: ContextCell,
   n4l: N4LDraftCell,
